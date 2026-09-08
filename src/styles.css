@@ -1236,7 +1236,34 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
     padding-left: 28px;
     padding-right: 28px;
   }
-  .pagina-larga .detalhe-grid { grid-template-columns: minmax(0, 1fr) clamp(340px, 30%, 480px); gap: 18px; }
+}
+
+/* ── A grade da ficha do cliente (R209, U116) ────────────────────────────────
+   Três áreas com a FORMA do conteúdo: a identidade (cards curtos), o local (os
+   dois painéis do vínculo, que querem largura) e as atividades (uma coluna
+   ALTA de cards, que quer altura). Celular: uma coluna, local → atividades →
+   identidade. De 1024 a 1439: duas colunas, a identidade à direita e o resto
+   empilhado. A partir de 1440: as três lado a lado — identidade | local |
+   atividades — e o que cresce com o monitor é a coluna do local. */
+.ficha-grid {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start;
+  grid-template-areas: "local" "atividades" "identidade";
+}
+.ficha-identidade { grid-area: identidade; }
+.ficha-local      { grid-area: local; }
+.ficha-atividades { grid-area: atividades; }
+.ficha-identidade, .ficha-local, .ficha-atividades { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (min-width: 1024px) {
+  .ficha-grid {
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 32%, 400px); gap: 18px;
+    grid-template-areas: "local identidade" "atividades identidade";
+  }
+}
+@media (min-width: 1440px) {
+  .ficha-grid {
+    grid-template-columns: clamp(320px, 24%, 400px) minmax(0, 1fr) clamp(320px, 26%, 420px);
+    grid-template-areas: "identidade local atividades";
+  }
 }
 
 /* ── Os dois painéis do vínculo — Blocos | Sem bloco (R206, U114) ───────────

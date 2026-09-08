@@ -1,4 +1,4 @@
-// Ficha do cliente — o centro do cliente no sistema, numa página só (R146, R200–R207).
+// Ficha do cliente — o centro do cliente no sistema, numa página só (R146, R200–R210).
 //
 // ── R203 (U112): UMA PÁGINA SÓ, EDIÇÃO NO LUGAR ─────────────────────────────
 // Davi, 2026-09-07: "na página do cliente, eu quero que tenha tudo, não deve
@@ -6,26 +6,32 @@
 // página. Quero que seja uma página só, com layout bem estruturado, design
 // clean."
 //
-// Não existe mais "modo de configuração": cada card da coluna de identidade
-// tem o próprio lápis e edita no lugar, com Salvar/Cancelar dentro dele
-// (CardLocal, CardContatos, CardEstrutura — features/clientes/ClienteForm.tsx).
-// As etiquetas de serviço prestado, no cabeçalho, já eram o próprio controle
-// (R41/R173). A foto da fachada sobe pelo card dela (R146).
+// Não existe "modo de configuração": cada card da coluna de identidade tem o
+// próprio lápis e edita no lugar, com Salvar/Cancelar dentro dele (CardLocal,
+// CardContatos, CardEstrutura — features/clientes/ClienteForm.tsx). O serviço
+// prestado é um item do card O local (R210). A foto da fachada sobe pelo card
+// dela (R146).
 //
-// A ordem da ficha é a ordem em que se trabalha o cliente (R201):
-//   · CABEÇALHO (largura toda): nome 22/700, situação, tipo de local, endereço
-//     numa linha e as etiquetas de serviço prestado.
-//   · COLUNA LARGA — o LOCAL: Sistemas instalados (os blocos e o vínculo por
-//     arrasto em dois painéis, R200/R202/R206), Atividades, Plantão, Visitas.
-//   · COLUNA ESTREITA — a IDENTIDADE: a fachada, o local, os contatos (com os
-//     botões de WhatsApp e copiar, R207), os contratos (só quem vê financeiro)
-//     e a estrutura com as observações.
-// A grade é a da página da atividade (.detalhe-grid); no celular empilha.
+// ── R209 (U116): TRÊS COLUNAS DE DESKTOP, CADA UMA COM A FORMA DO CONTEÚDO ──
+// Davi, 2026-09-08: "os campos devem ser planejados, devem ser dinamizados e
+// automaticamente adaptados para preencher as margens […] O campo Atividades
+// por exemplo, estrategicamente deveria ser um campo maior na vertical do que
+// na horizontal, listando cards de atividades."
+//
+//   · IDENTIDADE (esquerda, 320–400px): a fachada, O local, Contatos,
+//     Contratos (só quem vê financeiro), Estrutura e observações.
+//   · O LOCAL (centro, o que sobrar): Sistemas instalados — os dois painéis do
+//     vínculo por arrasto (R206) — e o Histórico de visitas.
+//   · ATIVIDADES (direita, 320–420px): a coluna ALTA — os cards de atividade
+//     em fila vertical, rolando por dentro (R208), e o Plantão embaixo.
+// A grade é `.ficha-grid` (styles.css): três colunas a partir de 1440px, duas
+// entre 1024 e 1439 (identidade à direita, o resto empilhado), uma no celular
+// (local → atividades → identidade). Toda lista longa rola dentro do próprio
+// card — a página não cresce com o histórico (R208).
 //
 // R205 (U114): a página PREENCHE A LARGURA da janela (`.pagina-larga`, a mesma
-// conta da sangria da Início) — a coluna larga cresce com o monitor, a de
-// identidade tem teto. Davi: "o conteúdo da tela deverá preencher o espaço,
-// adaptando a largura da tela."
+// conta da sangria da Início). Davi: "o conteúdo da tela deverá preencher o
+// espaço, adaptando a largura da tela."
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRef, useState, type CSSProperties } from "react";
@@ -60,11 +66,6 @@ import {
   removerFachada,
   SITUACAO_LABEL,
   SITUACAO_CORES,
-  SERVICO_ORDEM,
-  SERVICOS_OFERECIDOS,
-  SERVICO_LABEL,
-  SERVICO_CORES,
-  temServico,
   type ClientePatch,
 } from "@/features/clientes/data";
 
@@ -78,6 +79,9 @@ export const Route = createFileRoute("/_authenticated/clientes/$id")({
  * histórico inteiro. Agora o teto é declarado, e há um botão para abrir tudo.
  */
 const TETO_CHAMADOS = 12;
+
+/** a altura da coluna de atividades — alta, mas nunca além da janela (R208/R209) */
+const ALTURA_DAS_ATIVIDADES = "min(72vh, 900px)";
 
 function ClienteDetalhePage() {
   const { id } = Route.useParams();
@@ -105,7 +109,7 @@ function ClienteDetalhePage() {
   const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
 
   // card() de lib/ui — a superfície da casa (as telas irmãs usam a mesma)
-  const CARD: CSSProperties = { ...card(isLight), borderRadius: 18, padding: 16 };
+  const CARD: CSSProperties = { ...card(isLight), borderRadius: 18, padding: 18 };
   // o micro-rótulo de seção do design system (§6.2): dourado, 10,5/700, caixa alta
   const SEC_LABEL: CSSProperties = {
     fontFamily: FONT, fontWeight: 700, fontSize: 10.5,
@@ -118,7 +122,7 @@ function ClienteDetalhePage() {
     fontFamily: FONT, fontSize: 12, fontWeight: 600,
     display: "inline-flex", alignItems: "center", gap: 6,
   };
-  /** a linha clicável das listas de histórico (atividade, visita, contrato) */
+  /** a linha clicável das listas de histórico (visita, contrato) */
   const itemLista = (corDaBorda?: string): CSSProperties => ({
     display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
     padding: "9px 12px", borderRadius: 12, cursor: "pointer",
@@ -126,11 +130,20 @@ function ClienteDetalhePage() {
     borderLeft: corDaBorda ? `3px solid ${corDaBorda}` : `1px solid ${c.divisoria}`,
     color: textPrimary,
   });
+  /** o CARD de atividade da coluna alta (R209): título em cima, meta embaixo, status à direita */
+  const cardAtividade = (corDaBorda: string): CSSProperties => ({
+    display: "flex", flexDirection: "column", gap: 6, width: "100%", textAlign: "left",
+    padding: "10px 12px", borderRadius: 12, cursor: "pointer",
+    background: c.campo, border: `1px solid ${c.divisoria}`, borderLeft: `3px solid ${corDaBorda}`,
+    color: textPrimary, flexShrink: 0,
+  });
   const chipStatus = (cor: { dark: string; light: string; bg: string }): CSSProperties => ({
     padding: "3px 8px", borderRadius: 999, flexShrink: 0,
     ...etiqueta(cor),
     fontFamily: FONT, fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", textTransform: "uppercase",
   });
+  /** R208: a lista rola por dentro do card; o cabeçalho fica parado */
+  const rolagem: CSSProperties = { overflowY: "auto", minHeight: 0, paddingRight: 2 };
 
   // R203: cada card grava SÓ os campos dele — o patch é parcial de propósito
   const salvar = useMutation({
@@ -241,202 +254,12 @@ function ClienteDetalhePage() {
             <span style={{ opacity: 0.6 }}>·</span>
             <span>{ordens.length} atividade{ordens.length === 1 ? "" : "s"} · {visitas.length} visita{visitas.length === 1 ? "" : "s"}</span>
           </div>
-
-          {/* SERVIÇO PRESTADO (R41) — etiquetas que também são o controle. A
-              gravação manda o ARRAY inteiro. R173: um grupo ainda não aceito
-              pelo banco não se OFERECE — mas, se já estiver marcado, aparece
-              (para poder ser desmarcado). */}
-          <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 10, flexWrap: "wrap" }}>
-            <span style={{ ...SEC_LABEL, fontSize: 9.5, color: textSecondary }}>Serviço prestado</span>
-            {SERVICO_ORDEM.filter((s) => SERVICOS_OFERECIDOS.includes(s) || temServico(cliente, s)).map((s) => {
-              const tem = temServico(cliente, s);
-              const cs = SERVICO_CORES[s];
-              return (
-                <button
-                  key={s}
-                  onClick={() => {
-                    const atuais = (cliente.servicos_prestados ?? []) as string[];
-                    const novos = tem ? atuais.filter((x) => x !== s) : [...atuais, s];
-                    salvar.mutate({ servicos_prestados: novos });
-                  }}
-                  disabled={salvar.isPending || !isGerente}
-                  aria-pressed={tem}
-                  title={!isGerente ? SERVICO_LABEL[s] : tem ? `Remover ${SERVICO_LABEL[s]}` : `Marcar ${SERVICO_LABEL[s]}`}
-                  style={{
-                    padding: "4px 11px", borderRadius: 999, cursor: isGerente ? "pointer" : "default",
-                    ...(tem ? etiqueta(cs) : { background: "transparent", color: textSecondary }),
-                    border: tem ? "1px solid transparent" : `1px dashed ${c.divisoria}`,
-                    fontFamily: FONT, fontWeight: tem ? 700 : 600, fontSize: 10.5, letterSpacing: "0.04em",
-                  }}
-                >
-                  {SERVICO_LABEL[s]}
-                </button>
-              );
-            })}
-          </div>
         </div>
       </div>
 
-      <div className="detalhe-grid">
-        {/* ══ COLUNA LARGA — o LOCAL ═════════════════════════════════════════ */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-          {/* R200/R202/R206: os sistemas instalados — os blocos, nomeados direto,
-              e o vínculo por arrasto em dois painéis (Blocos | Sem bloco). O
-              painel "Sem bloco" mora DENTRO do card, não é mais um card à parte. */}
-          <InventarioCliente clienteId={id} podeEditar={isGerente} />
-
-          {/* Atividades do cliente — Etapa 3, completadas na U96 (R143): as
-              dele, as em que ele é local extra e as do GRUPO a que pertence. */}
-          <div style={CARD}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Wrench size={15} color={gold} />
-              <span style={SEC_LABEL}>Atividades</span>
-              <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>{ordens.length}</span>
-              <span style={{ flex: 1 }} />
-              {isGerente && (
-                <button onClick={() => navigate({ to: "/chamados/novo" })} style={botaoLeve}>
-                  Abrir atividade
-                </button>
-              )}
-            </div>
-            {ordens.length === 0 ? (
-              <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, paddingTop: 10 }}>
-                Nenhuma atividade registrada para este cliente.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-                {chamadosVisiveis.map((o) => {
-                  const info = chamadoStatusInfo(o.status);
-                  const corSt = isLight ? info.colorLight : info.color;
-                  // veio pelo grupo ou como local extra — a ficha diz, para a
-                  // pessoa não estranhar uma atividade "de outro cliente" aqui
-                  const indireta = o.cliente_id !== id;
-                  return (
-                    <button
-                      key={o.id}
-                      onClick={() => navigate({ to: "/chamados/$id", params: { id: o.id } })}
-                      style={itemLista(corSt)}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600 }}>{o.titulo}</div>
-                        <div style={{ fontFamily: FONT, fontSize: 11, color: textSecondary }}>
-                          {o.numero ?? "—"} · {new Date(o.created_at).toLocaleDateString("pt-BR")}
-                          {indireta ? " · pelo grupo de clientes ou como local extra" : ""}
-                        </div>
-                      </div>
-                      <span style={chipStatus({ dark: info.color, light: info.colorLight, bg: info.bg })}>
-                        {info.labelUpper}
-                      </span>
-                    </button>
-                  );
-                })}
-                {ordens.length > TETO_CHAMADOS && (
-                  /* O TETO É DECLARADO — a lição da seção de plantão. */
-                  <button
-                    onClick={() => setTodosOsChamados((v) => !v)}
-                    style={{
-                      alignSelf: "flex-start", background: "transparent", border: "none", padding: 0,
-                      cursor: "pointer", color: gold, fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
-                    }}
-                  >
-                    {todosOsChamados
-                      ? "Mostrar só as mais recentes"
-                      : `Mostrando ${TETO_CHAMADOS} de ${ordens.length} · ver todas`}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Plantão — o pedaço que faltava no histórico (R123, U92).
-              FECHADO POR `isGerente`, e não deixado aberto: a policy de
-              `atendimentos_plantao` é "dono OU gestor", então para o técnico
-              a lista viria PARCIAL — só os atendimentos dele — parecendo o
-              histórico inteiro do cliente. Uma lista que mostra um pedaço com
-              cara de tudo é pior que uma seção ausente. */}
-          {isGerente && (
-            <div style={CARD}>
-              <span style={SEC_LABEL}>Plantão</span>
-              {plantao.isError ? (
-                /* Erro NÃO vira "nenhum atendimento" — a lição da U86. */
-                <div style={{ fontFamily: FONT, fontSize: 12.5, color: vermelho, paddingTop: 10 }}>
-                  Não foi possível ler os atendimentos de plantão: {(plantao.error as Error)?.message}
-                </div>
-              ) : plantao.isLoading ? (
-                <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, paddingTop: 10 }}>
-                  Carregando…
-                </div>
-              ) : (plantao.data ?? []).length === 0 ? (
-                <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, paddingTop: 10 }}>
-                  Nenhum atendimento de plantão registrado para este cliente.
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-                  {(plantao.data ?? []).map((a) => (
-                    <div key={a.id} style={{ ...itemLista(), cursor: "default" }}>
-                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: gold, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
-                        {diaCurto(a.dia)} · {horaCurta(a.hora)}
-                      </span>
-                      <span style={{ fontFamily: FONT, fontSize: 12.5, color: textPrimary, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {a.descricao}
-                      </span>
-                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, flexShrink: 0, letterSpacing: "0.08em", textTransform: "uppercase", color: textSecondary }}>
-                        {PLANTAO_TIPO_LABEL[a.tipo as "remoto" | "presencial"] ?? a.tipo}
-                      </span>
-                    </div>
-                  ))}
-                  {(plantao.data ?? []).length === TETO_PLANTAO && (
-                    <span style={{ fontFamily: FONT, fontSize: 11, color: textSecondary }}>
-                      Mostrando os {TETO_PLANTAO} mais recentes.
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Histórico de visitas */}
-          <div style={CARD}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <CalendarDays size={15} color={gold} />
-              <span style={SEC_LABEL}>Histórico de visitas</span>
-              <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>{visitas.length}</span>
-            </div>
-            {visitas.length === 0 ? (
-              <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, paddingTop: 10 }}>
-                Nenhuma visita técnica registrada para este cliente.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-                {visitas.map((v: any) => {
-                  const info = getStatusInfo(v.status);
-                  const corVisita = isLight ? info.colorLight : info.color;
-                  const quando = v.data_hora_agendada ?? v.created_at;
-                  return (
-                    <button
-                      key={v.id}
-                      onClick={() => navigate(visitaRouteFor(v.status, v.id) as any)}
-                      style={itemLista(corVisita)}
-                    >
-                      <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 12.5, fontWeight: 600 }}>
-                        {quando
-                          ? new Date(quando).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
-                          : "sem data"}
-                        {v.nome_predio || v.titulo ? <span style={{ fontWeight: 400, color: textSecondary }}> · {v.nome_predio ?? v.titulo}</span> : null}
-                      </span>
-                      <span style={chipStatus({ dark: info.color, light: info.colorLight, bg: info.bg })}>
-                        {info.labelUpper}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ══ COLUNA ESTREITA — a IDENTIDADE ═════════════════════════════════ */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+      <div className="ficha-grid">
+        {/* ══ IDENTIDADE — quem é e onde fica ════════════════════════════════ */}
+        <div className="ficha-identidade">
           {/* A FACHADA (R146) — sobe pelo próprio card, para o bucket privado */}
           {(fotoUrl || isGerente) && (
             <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
@@ -564,6 +387,168 @@ function ClienteDetalhePage() {
           )}
 
           <CardEstrutura {...propsDosCards} />
+        </div>
+
+        {/* ══ O LOCAL — o que está instalado, e as visitas ═══════════════════ */}
+        <div className="ficha-local">
+          {/* R200/R202/R206: os sistemas instalados — os blocos, nomeados direto,
+              e o vínculo por arrasto em dois painéis (Blocos | Sem bloco). */}
+          <InventarioCliente clienteId={id} podeEditar={isGerente} />
+
+          {/* Histórico de visitas */}
+          <div style={{ ...CARD, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <CalendarDays size={15} color={gold} />
+              <span style={SEC_LABEL}>Histórico de visitas</span>
+              <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>{visitas.length}</span>
+            </div>
+            {visitas.length === 0 ? (
+              <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary }}>
+                Nenhuma visita técnica registrada para este cliente.
+              </div>
+            ) : (
+              <div className="rolagem-fina" style={{ ...rolagem, maxHeight: 360, display: "flex", flexDirection: "column", gap: 8 }}>
+                {visitas.map((v: any) => {
+                  const info = getStatusInfo(v.status);
+                  const corVisita = isLight ? info.colorLight : info.color;
+                  const quando = v.data_hora_agendada ?? v.created_at;
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => navigate(visitaRouteFor(v.status, v.id) as any)}
+                      style={{ ...itemLista(corVisita), flexShrink: 0 }}
+                    >
+                      <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 12.5, fontWeight: 600 }}>
+                        {quando
+                          ? new Date(quando).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+                          : "sem data"}
+                        {v.nome_predio || v.titulo ? <span style={{ fontWeight: 400, color: textSecondary }}> · {v.nome_predio ?? v.titulo}</span> : null}
+                      </span>
+                      <span style={chipStatus({ dark: info.color, light: info.colorLight, bg: info.bg })}>
+                        {info.labelUpper}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ══ ATIVIDADES — a coluna alta (R209) ═════════════════════════════ */}
+        <div className="ficha-atividades">
+          {/* Atividades do cliente — Etapa 3, completadas na U96 (R143): as
+              dele, as em que ele é local extra e as do GRUPO a que pertence.
+              Cards em fila vertical; a lista rola por dentro (R208). */}
+          <div style={{ ...CARD, display: "flex", flexDirection: "column", gap: 10, maxHeight: ALTURA_DAS_ATIVIDADES }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Wrench size={15} color={gold} />
+              <span style={SEC_LABEL}>Atividades</span>
+              <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>{ordens.length}</span>
+              <span style={{ flex: 1 }} />
+              {isGerente && (
+                <button onClick={() => navigate({ to: "/chamados/novo" })} style={{ ...botaoLeve, height: 28, padding: "0 10px", fontSize: 11.5 }}>
+                  Abrir atividade
+                </button>
+              )}
+            </div>
+            {ordens.length === 0 ? (
+              <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary }}>
+                Nenhuma atividade registrada para este cliente.
+              </div>
+            ) : (
+              <div className="rolagem-fina" style={{ ...rolagem, flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                {chamadosVisiveis.map((o) => {
+                  const info = chamadoStatusInfo(o.status);
+                  const corSt = isLight ? info.colorLight : info.color;
+                  // veio pelo grupo ou como local extra — a ficha diz, para a
+                  // pessoa não estranhar uma atividade "de outro cliente" aqui
+                  const indireta = o.cliente_id !== id;
+                  return (
+                    <button
+                      key={o.id}
+                      onClick={() => navigate({ to: "/chamados/$id", params: { id: o.id } })}
+                      style={cardAtividade(corSt)}
+                    >
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, width: "100%" }}>
+                        <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, lineHeight: 1.35 }}>
+                          {o.titulo}
+                        </span>
+                        <span style={chipStatus({ dark: info.color, light: info.colorLight, bg: info.bg })}>
+                          {info.labelUpper}
+                        </span>
+                      </div>
+                      <div style={{ fontFamily: FONT, fontSize: 11, color: textSecondary }}>
+                        {o.numero ?? "—"} · {new Date(o.created_at).toLocaleDateString("pt-BR")}
+                        {indireta ? " · pelo grupo de clientes ou como local extra" : ""}
+                      </div>
+                    </button>
+                  );
+                })}
+                {ordens.length > TETO_CHAMADOS && (
+                  /* O TETO É DECLARADO — a lição da seção de plantão. */
+                  <button
+                    onClick={() => setTodosOsChamados((v) => !v)}
+                    style={{
+                      alignSelf: "flex-start", flexShrink: 0, background: "transparent", border: "none", padding: "2px 0",
+                      cursor: "pointer", color: gold, fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
+                    }}
+                  >
+                    {todosOsChamados
+                      ? "Mostrar só as mais recentes"
+                      : `Mostrando ${TETO_CHAMADOS} de ${ordens.length} · ver todas`}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Plantão — o pedaço que faltava no histórico (R123, U92).
+              FECHADO POR `isGerente`, e não deixado aberto: a policy de
+              `atendimentos_plantao` é "dono OU gestor", então para o técnico
+              a lista viria PARCIAL — só os atendimentos dele — parecendo o
+              histórico inteiro do cliente. Uma lista que mostra um pedaço com
+              cara de tudo é pior que uma seção ausente. */}
+          {isGerente && (
+            <div style={CARD}>
+              <span style={SEC_LABEL}>Plantão</span>
+              {plantao.isError ? (
+                /* Erro NÃO vira "nenhum atendimento" — a lição da U86. */
+                <div style={{ fontFamily: FONT, fontSize: 12.5, color: vermelho, paddingTop: 10 }}>
+                  Não foi possível ler os atendimentos de plantão: {(plantao.error as Error)?.message}
+                </div>
+              ) : plantao.isLoading ? (
+                <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, paddingTop: 10 }}>
+                  Carregando…
+                </div>
+              ) : (plantao.data ?? []).length === 0 ? (
+                <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, paddingTop: 10 }}>
+                  Nenhum atendimento de plantão registrado para este cliente.
+                </div>
+              ) : (
+                <div className="rolagem-fina" style={{ ...rolagem, maxHeight: 320, display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                  {(plantao.data ?? []).map((a) => (
+                    <div key={a.id} style={{ ...itemLista(), cursor: "default", flexShrink: 0, flexWrap: "wrap" }}>
+                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: gold, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                        {diaCurto(a.dia)} · {horaCurta(a.hora)}
+                      </span>
+                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, flexShrink: 0, letterSpacing: "0.08em", textTransform: "uppercase", color: textSecondary, marginLeft: "auto" }}>
+                        {PLANTAO_TIPO_LABEL[a.tipo as "remoto" | "presencial"] ?? a.tipo}
+                      </span>
+                      <span style={{ fontFamily: FONT, fontSize: 12.5, color: textPrimary, flexBasis: "100%", lineHeight: 1.4 }}>
+                        {a.descricao}
+                      </span>
+                    </div>
+                  ))}
+                  {(plantao.data ?? []).length === TETO_PLANTAO && (
+                    <span style={{ fontFamily: FONT, fontSize: 11, color: textSecondary, flexShrink: 0 }}>
+                      Mostrando os {TETO_PLANTAO} mais recentes.
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

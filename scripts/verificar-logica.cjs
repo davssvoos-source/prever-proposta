@@ -2019,10 +2019,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a linha do cliente mostra os serviços dele',
      /SERVICO_ORDEM\.filter\(\(s\) => temServico\(c, s\)\)/.test(pag), true);
   // sem edição, a propriedade ficaria congelada nos 29 da migration
-  eq('o detalhe do cliente permite ligar e desligar o serviço',
-     /salvar\.mutate\(\{ servicos_prestados: novos \}\)/.test(det), true);
+  // U116 (R210): o serviço prestado passou do cabeçalho para o card O local —
+  // liga/desliga em edição e grava com o card, sempre o array inteiro
+  const formServ = fs16.readFileSync('src/features/clientes/ClienteForm.tsx', 'utf8');
+  eq('o detalhe do cliente permite ligar e desligar o serviço (no card O local, R210)',
+     /servicos_prestados: servicos,/.test(formServ) && /aria-pressed=\{tem\}/.test(formServ), true);
   eq('a gravação manda o array inteiro (estado completo, não incremento)',
-     /const novos = tem[\s\S]{0,120}\[\.\.\.atuais, s\]/.test(det), true);
+     /const novos = tem[\s\S]{0,120}\[\.\.\.servicos, sv\]/.test(formServ), true);
 }
 
 // ── Achados da revisão adversarial da U33 (2026-08-22) ─────────────────────
@@ -16822,8 +16825,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /export async function baixarFachadaComoArquivo/.test(cd96), /await atualizarCliente\(cliente\.id, \{ foto_fachada_url: path \}\);/.test(cd96)],
      [true, true, true, true, true, true]);
   const fc96 = ler96('src/routes/_authenticated/clientes.$id.tsx');
-  eq('R146 CRÍTICO: a ficha é duas colunas (.detalhe-grid), o WhatsApp abre o WhatsApp, a fachada sobe pela ficha, e o histórico inclui o grupo (servicos_prestados) com teto declarado',
-     [/className="detalhe-grid"/.test(fc96), /href=\{whatsappLink\(whatsapp\)\}/.test(ler96('src/features/clientes/ClienteForm.tsx')), // U112: Contato mora no ClienteForm
+  eq('R146 CRÍTICO: a ficha tem a própria grade (.ficha-grid, R209), o WhatsApp abre o WhatsApp, a fachada sobe pela ficha, e o histórico inclui o grupo (servicos_prestados) com teto declarado',
+     [/className="ficha-grid"/.test(fc96), /href=\{whatsappLink\(whatsapp\)\}/.test(ler96('src/features/clientes/ClienteForm.tsx')), // U112: Contato mora no ClienteForm
       /useChamadosDoCliente\(id, cliente\?\.servicos_prestados\)/.test(fc96), /const TETO_CHAMADOS = 12;/.test(fc96),
       /subirFachada\(cliente, arquivo\)/.test(fc96), /Adicionar foto da fachada/.test(fc96), /ordens\.slice\(0, 8\)/.test(fc96)],
      [true, true, true, true, true, true, false]);
@@ -17310,7 +17313,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R173 CRÍTICO (regra 5): os dois grupos novos NÃO são oferecidos até a U100 rodar — a ficha e os três seletores de grupo leem SERVICOS_OFERECIDOS',
      [CD100.SERVICOS_NAO_OFERECIDOS.every((g) => !CD100.SERVICOS_OFERECIDOS.includes(g)),
       CD100.SERVICOS_OFERECIDOS.length + CD100.SERVICOS_NAO_OFERECIDOS.length === CD100.SERVICO_ORDEM.length,
-      /SERVICO_ORDEM\.filter\(\(s\) => SERVICOS_OFERECIDOS\.includes\(s\) \|\| temServico\(cliente, s\)\)\.map/.test(ler100('src/routes/_authenticated/clientes.$id.tsx')),
+      /SERVICO_ORDEM\.filter\(\(s\) => SERVICOS_OFERECIDOS\.includes\(s\) \|\| temServico\(cliente, s\)\)\.map/.test(ler100('src/features/clientes/ClienteForm.tsx')), // U116: no card O local
       /\.\.\.SERVICOS_OFERECIDOS\.map\(\(s\) => \(\{ valor: valorDoGrupo\(s\)/.test(ler100('src/features/home/NovaAtividadeDialog.tsx')),
       /\.\.\.SERVICOS_OFERECIDOS\s*\n\s*\.filter\(\(s\) => !setoresDoChamado\.includes\(s\)\)/.test(ler100('src/features/chamados/PainelChamado.tsx')),
       /\.\.\.SERVICOS_OFERECIDOS\.map\(\(g\) => \(\{ valor: valorDoGrupo\(g\)/.test(ler100('src/features/chamados/DetalheInterno.tsx'))],
@@ -17452,13 +17455,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       'src/features/chamados/DetalheCampo.tsx': 4, 'src/components/StatusBadge.tsx': 1,
       'src/features/clientes/InventarioCliente.tsx': 1, 'src/features/home/NovaAtividadeDialog.tsx': 1,
       'src/features/administrativo/Usuarios.tsx': 2,
-      // U111: a ficha do cliente v2 — o chip de status/situação e a etiqueta de serviço
-      'src/routes/_authenticated/clientes.$id.tsx': 2,
+      // U111: a ficha do cliente v2 — o chip de status/situação
+      // (U116: a etiqueta de serviço foi para o card O local, R210)
+      'src/routes/_authenticated/clientes.$id.tsx': 1,
+      'src/features/clientes/ClienteForm.tsx': 1,
     };
     const chamadas = (f) => codigo101(ler101(f)).split('\n')
       .filter((l) => !/^import /.test(l)).join('\n').match(/etiqueta\(/g) ?? [];
     const fora = Object.entries(alvos).filter(([f, n]) => chamadas(f).length !== n);
-    eq('R177 CRÍTICO: as 20 etiquetas dos dez arquivos passam por etiqueta() — nenhuma monta cor à mão',
+    eq('R177 CRÍTICO: as 20 etiquetas dos onze arquivos passam por etiqueta() — nenhuma monta cor à mão',
        fora.map(([f]) => `${f}: ${chamadas(f).length}`), []);
     eq('R177: são 20 etiquetas ao todo — o número está aqui para uma etiqueta nova não entrar sem passar pelo helper',
        Object.keys(alvos).reduce((t, f) => t + chamadas(f).length, 0), 20);
@@ -18401,23 +18406,24 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const fic111 = ler111('src/routes/_authenticated/clientes.$id.tsx');
   const fic111c = cod111(fic111);
   const form111 = ler111('src/features/clientes/ClienteForm.tsx');
-  eq('R201: cabeçalho de página — h1 22/700 com o nome, situação e tipo de local ao lado, endereço numa linha e as etiquetas de serviço embaixo',
+  eq('R201: cabeçalho de página — h1 22/700 com o nome, situação e tipo de local ao lado, endereço numa linha; o serviço prestado mora no card O local (R210), não mais no cabeçalho',
      [/fontFamily: FONT, fontWeight: 700, fontSize: 22, margin: 0/.test(fic111),
       /\{cliente\.nome\}\s*\n\s*<\/h1>/.test(fic111),
       /\{enderecoCurto \|\| "endereço não informado"\}/.test(fic111),
-      /Serviço prestado<\/span>/.test(fic111)],
-     [true, true, true, true]);
+      /Serviço prestado<\/span>/.test(fic111c), (form111.match(/Serviço prestado<\/(span|label)>/g) ?? []).length],
+     [true, true, true, false, 2]);
   {
-    const ordem = ['<InventarioCliente clienteId={id} podeEditar={isGerente} />',
-      '<span style={SEC_LABEL}>Atividades</span>', '<span style={SEC_LABEL}>Plantão</span>', '<span style={SEC_LABEL}>Histórico de visitas</span>',
-      'Adicionar foto da fachada', '<CardLocal {...propsDosCards} />', '<CardContatos {...propsDosCards} veFinanceiro={veFinanceiro} />',
-      '<span style={SEC_LABEL}>Contratos</span>', '<CardEstrutura {...propsDosCards} />']
+    // U116 (R209): três colunas — identidade | local | atividades — nesta ordem no fonte
+    const ordem = ['Adicionar foto da fachada', '<CardLocal {...propsDosCards} />', '<CardContatos {...propsDosCards} veFinanceiro={veFinanceiro} />',
+      '<span style={SEC_LABEL}>Contratos</span>', '<CardEstrutura {...propsDosCards} />',
+      '<InventarioCliente clienteId={id} podeEditar={isGerente} />', '<span style={SEC_LABEL}>Histórico de visitas</span>',
+      '<span style={SEC_LABEL}>Atividades</span>', '<span style={SEC_LABEL}>Plantão</span>']
       .map((t) => fic111c.indexOf(t));
-    eq('R201/R203: a coluna larga é o LOCAL (sistemas com o vínculo dentro → atividades → plantão → visitas) e a estreita é a IDENTIDADE (fachada → o local → contatos → contratos → estrutura e observações), nesta ordem',
+    eq('R201/R203/R209: IDENTIDADE (fachada → o local → contatos → contratos → estrutura) → O LOCAL (sistemas com o vínculo dentro → visitas) → ATIVIDADES (a coluna alta → plantão), nesta ordem',
        ordem.every((p, i) => p >= 0 && (i === 0 || ordem[i - 1] < p)), true);
   }
-  eq('R201: `Contato` é componente de MÓDULO (dentro do pai remontaria a cada render) — hoje exportado pelo ClienteForm, ao lado dos cards; a ficha continua na grade .detalhe-grid',
-     [/^export function Contato\(/m.test(form111), /function ClienteDetalhePage\(\) \{[\s\S]*?\n  function Contato\(/.test(fic111), /className="detalhe-grid"/.test(fic111)],
+  eq('R201: `Contato` é componente de MÓDULO (dentro do pai remontaria a cada render) — hoje exportado pelo ClienteForm, ao lado dos cards; a ficha está na grade própria .ficha-grid (R209)',
+     [/^export function Contato\(/m.test(form111), /function ClienteDetalhePage\(\) \{[\s\S]*?\n  function Contato\(/.test(fic111), /className="ficha-grid"/.test(fic111)],
      [true, false, true]);
   eq('R201: a ficha e os cards falam o design system — cinzas(isLight), card(isLight), etiqueta(); nenhum gradiente próprio de tema sobrou',
      [/cinzas\(isLight\)/.test(fic111) && /cinzas\(isLight\)/.test(form111),
@@ -18500,9 +18506,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R203: só quem pode editar vê o lápis — o card em leitura é o mesmo para todos',
      [/podeEditar && !editando && \(/.test(form112), /podeEditar: isGerente/.test(fic112)],
      [true, true]);
-  eq('R203: a fachada continua subindo pelo próprio card (R146), as etiquetas de serviço continuam sendo o controle no cabeçalho (R41/R173), e nenhum campo do antigo formulário ficou sem card',
+  eq('R203: a fachada continua subindo pelo próprio card (R146), o serviço prestado grava pelo card O local (R210 — antes era etiqueta-controle no cabeçalho), e nenhum campo do antigo formulário ficou sem card',
      [/subirFachada\(cliente, arquivo\)/.test(fic112), /Adicionar foto da fachada/.test(fic112),
-      /salvar\.mutate\(\{ servicos_prestados: novos \}\);/.test(fic112),
+      /servicos_prestados: servicos,/.test(form112),
       ['nome', 'documento', 'tipo_local', 'situacao', 'endereco', 'complemento', 'cidade', 'uf', 'latitude', 'longitude',
        'nome_sindico', 'telefone_sindico', 'email_sindico', 'nome_zelador', 'telefone_zelador', 'email_zelador',
        'responsavel_financeiro', 'email_financeiro', 'qtd_apartamentos', 'qtd_acessos', 'observacoes']
@@ -18634,13 +18640,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── R205: a página preenche a largura ──────────────────────────────────────
   const css114 = ler114('src/styles.css');
-  eq('R205 CRÍTICO: a ficha usa .pagina-larga — a mesma conta da sangria (50% - 50vw + rail/2) nos dois lados, padding constante — e dentro dela a grade vira "o que sobrar | identidade com teto" (clamp 340–480)',
+  eq('R205 CRÍTICO: a ficha usa .pagina-larga — a mesma conta da sangria (50% - 50vw + rail/2) nos dois lados, padding constante — e dentro dela a grade própria (.ficha-grid, R209) é quem distribui a largura',
      [/<div className="pagina-larga" style=\{\{ paddingTop: 12, paddingBottom: 48,/.test(fic114),
       /\.pagina-larga \{ margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; \}/.test(css114),
       /\.pagina-larga \{\s*\n\s*margin-left: calc\(50% - 50vw \+ var\(--rail\) \/ 2\);\s*\n\s*margin-right: calc\(50% - 50vw \+ var\(--rail\) \/ 2\);\s*\n\s*padding-left: 28px;\s*\n\s*padding-right: 28px;\s*\n\s*\}/.test(css114),
-      /\.pagina-larga \.detalhe-grid \{ grid-template-columns: minmax\(0, 1fr\) clamp\(340px, 30%, 480px\); gap: 18px; \}/.test(css114),
-      /className="detalhe-grid"/.test(fic114)],
-     [true, true, true, true, true]);
+      /\.pagina-larga \.detalhe-grid/.test(css114),
+      /className="ficha-grid"/.test(fic114)],
+     [true, true, true, false, true]);
   const form114 = ler114('src/features/clientes/ClienteForm.tsx');
   eq('R205: em leitura, as linhas dos cards são uma GRADE rótulo | valor (valor à esquerda, na mesma coluna) — não "rótulo na esquerda, valor fugindo para a direita"',
      [/gridTemplateColumns: "minmax\(96px, 30%\) minmax\(0, 1fr\)", alignItems: "baseline",/.test(form114),
@@ -18700,6 +18706,64 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/\*\*R208\*\*/.test(prod115), /scroll interno/.test(prod115), Number((prod115.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 208,
       /^## U115 /m.test(ler115('docs/PLANO_UNIFICACAO.md')), /U115/.test(ler115('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true]);
+}
+
+// ── U116 — a ficha em três colunas de desktop; o serviço prestado no card O local (R209–R210) ──
+{
+  const fs116 = require('fs');
+  const ler116 = (f) => fs116.readFileSync(f, 'utf8');
+  const cod116 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const css116 = ler116('src/styles.css');
+  const fic116 = ler116('src/routes/_authenticated/clientes.$id.tsx');
+  const fic116c = cod116(fic116);
+  const form116 = ler116('src/features/clientes/ClienteForm.tsx');
+  const form116c = cod116(form116);
+
+  // ── R209: a grade ──────────────────────────────────────────────────────────
+  eq('R209 CRÍTICO: .ficha-grid tem três ÁREAS nomeadas — uma coluna no celular (local → atividades → identidade), duas de 1024 a 1439 (identidade à direita, o resto empilhado) e três a partir de 1440 (identidade | local | atividades)',
+     [/\.ficha-grid \{\s*\n\s*display: grid; grid-template-columns: minmax\(0, 1fr\); gap: 14px; align-items: start;\s*\n\s*grid-template-areas: "local" "atividades" "identidade";/.test(css116),
+      /@media \(min-width: 1024px\) \{\s*\n\s*\.ficha-grid \{\s*\n\s*grid-template-columns: minmax\(0, 1fr\) clamp\(320px, 32%, 400px\); gap: 18px;\s*\n\s*grid-template-areas: "local identidade" "atividades identidade";/.test(css116),
+      /@media \(min-width: 1440px\) \{\s*\n\s*\.ficha-grid \{\s*\n\s*grid-template-columns: clamp\(320px, 24%, 400px\) minmax\(0, 1fr\) clamp\(320px, 26%, 420px\);\s*\n\s*grid-template-areas: "identidade local atividades";/.test(css116),
+      /\.ficha-identidade \{ grid-area: identidade; \}/.test(css116) && /\.ficha-local\s+\{ grid-area: local; \}/.test(css116) && /\.ficha-atividades \{ grid-area: atividades; \}/.test(css116)],
+     [true, true, true, true]);
+  eq('R209: a página usa as três áreas — e a coluna do LOCAL é a que cresce (minmax(0, 1fr)), as outras duas têm piso e teto',
+     [/<div className="ficha-grid">/.test(fic116), /<div className="ficha-identidade">/.test(fic116),
+      /<div className="ficha-local">/.test(fic116), /<div className="ficha-atividades">/.test(fic116)],
+     [true, true, true, true]);
+  eq('R209 CRÍTICO: Atividades é a coluna ALTA — cards em fila vertical (cardAtividade: título em cima, status à direita, meta embaixo), o card com teto min(72vh, 900px) e a LISTA rolando por dentro (R208); o teto declarado de 12 continua',
+     [/const ALTURA_DAS_ATIVIDADES = "min\(72vh, 900px\)";/.test(fic116),
+      /maxHeight: ALTURA_DAS_ATIVIDADES/.test(fic116),
+      /const cardAtividade = \(corDaBorda: string\): CSSProperties => \(\{\s*\n\s*display: "flex", flexDirection: "column"/.test(fic116),
+      /style=\{cardAtividade\(corSt\)\}/.test(fic116),
+      /const TETO_CHAMADOS = 12;/.test(fic116), /ordens\.slice\(0, 8\)/.test(fic116)],
+     [true, true, true, true, true, false]);
+  eq('R208/R209: as três listas de histórico da ficha rolam por dentro (atividades, visitas, plantão) — a página não cresce com o histórico',
+     (fic116.match(/className="rolagem-fina" style=\{\{ \.\.\.rolagem/g) ?? []).length, 3);
+
+  // ── R210: O local ──────────────────────────────────────────────────────────
+  eq('R210 CRÍTICO: o serviço prestado é um item do card O local — em leitura, etiquetas sólidas por serviço marcado (ou "nenhum"); em edição, chips que ligam/desligam e gravam com o card; o cabeçalho da página não tem mais o controle',
+     [/const servicosMarcados = SERVICO_ORDEM\.filter\(\(sv\) => temServico\(cliente, sv\)\);/.test(form116),
+      /\.\.\.etiqueta\(SERVICO_CORES\[sv\]\),/.test(form116),
+      (form116.match(/Serviço prestado<\/(span|label)>/g) ?? []).length,
+      /aria-pressed=\{tem\}\s*\n\s*style=\{s\.chip\(tem\)\}/.test(form116),
+      /servicos_prestados: servicos,/.test(form116),
+      /SERVICO_ORDEM|servicos_prestados: novos|Serviço prestado/.test(fic116c)],
+     [true, true, 2, true, true, false]);
+  eq('R210: a linha "Coordenadas" saiu da leitura — o mapa continua sendo conferido na edição ("O mapa entendeu", U84)',
+     [/Coordenadas<\/span>/.test(form116c), /latitude\.toFixed/.test(form116c), /O mapa entendeu/.test(form116)],
+     [false, false, true]);
+
+  // regra 7
+  const prod116 = ler116('docs/PRODUTO.md');
+  const ds116 = ler116('DESIGN_SYSTEM.md');
+  const sec620c = ds116.slice(ds116.indexOf('### 6.20 Ficha do cliente'), ds116.indexOf('### 6.13 Card de cliente'));
+  eq('U116 (regra 7): R209–R210 existem com a frase do Davi, a última atualização aponta para a R210, o DS §6.20 descreve a .ficha-grid e a coluna de atividades, a U116 está no diário e no ESTADO',
+     [['R209', 'R210'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod116)),
+      Number((prod116.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 210,
+      /maior na\s+vertical do que na horizontal/.test(prod116),
+      /ficha-grid/.test(sec620c) && /cardAtividade|coluna alta|coluna ALTA/i.test(sec620c) && !/clamp\(340px, 30%, 480px\)/.test(sec620c),
+      /^## U116 /m.test(ler116('docs/PLANO_UNIFICACAO.md')), /U116/.test(ler116('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

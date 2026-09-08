@@ -35,7 +35,7 @@
   - [6.17 Calendário — o card tingido e a dica expandida (v12 — 2026-09-04, R187–R191)](#617-calendário-o-card-tingido-e-a-dica-expandida-v12-2026-09-04-r187r191)
   - [6.18 Página em duas colunas — o Administrativo (v12 — 2026-09-04, R193)](#618-página-em-duas-colunas-o-administrativo-v12-2026-09-04-r193)
   - [6.19 Formulário em colunas — a Nova Visita (v12 — 2026-09-04, R194)](#619-formulário-em-colunas-a-nova-visita-v12-2026-09-04-r194)
-  - [6.20 Ficha do cliente — largura toda, os dois painéis do vínculo e os cards editáveis (v14 — 2026-09-07, R200–R207)](#620-ficha-do-cliente-largura-toda-os-dois-painéis-do-vínculo-e-os-cards-editáveis-v14-2026-09-07-r200r207)
+  - [6.20 Ficha do cliente — três colunas de desktop, os dois painéis do vínculo e os cards editáveis (v15 — 2026-09-08, R200–R210)](#620-ficha-do-cliente-três-colunas-de-desktop-os-dois-painéis-do-vínculo-e-os-cards-editáveis-v15-2026-09-08-r200r210)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
@@ -910,24 +910,37 @@ O que saiu, e não volta: a paleta local `L` (um segundo tema claro só daquela
 tela) e o "vidro dourado" dos campos no escuro — um design system por tela é o
 primeiro anti-padrão da skill de designer.
 
-### 6.20 Ficha do cliente — largura toda, os dois painéis do vínculo e os cards editáveis (v14 — 2026-09-07, R200–R207)
+### 6.20 Ficha do cliente — três colunas de desktop, os dois painéis do vínculo e os cards editáveis (v15 — 2026-09-08, R200–R210)
 
 A ficha é a página que se trabalha por mais tempo, e o desenho segue a ordem
 do trabalho — no desktop, que é onde ela é usada (R205):
 
 - **Largura toda** (`.pagina-larga`): a página sangra até a borda da janela
   com a mesma conta da `.sangra-x` (margem `calc(50% - 50vw + var(--rail)/2)`
-  nos dois lados), padding 28px no desktop e 16px no celular. Dentro dela a
-  grade `.detalhe-grid` vira `minmax(0, 1fr) clamp(340px, 30%, 480px)` com
-  gap 18 — a coluna larga cresce com o monitor, a de identidade tem teto.
+  nos dois lados), padding 28px no desktop e 16px no celular.
   Receita para outra página que precise da largura: a classe na raiz da
   página, e `paddingTop`/`paddingBottom` em vez do atalho `padding`, que
   sobrescreveria o horizontal da classe.
+- **A grade** (`.ficha-grid`, R209): três ÁREAS nomeadas com a forma do
+  conteúdo. `identidade` (cards curtos) · `local` (os dois painéis do vínculo
+  — querem largura) · `atividades` (a coluna ALTA). Celular: uma coluna,
+  `local → atividades → identidade`. De 1024 a 1439: `minmax(0,1fr) |
+  clamp(320px, 32%, 400px)`, identidade à direita e o resto empilhado. A
+  partir de 1440: `clamp(320px, 24%, 400px) | minmax(0,1fr) | clamp(320px,
+  26%, 420px)` — identidade | local | atividades; o que cresce com o monitor é
+  a coluna do local. Gap 14 (18 no desktop).
 - **Cabeçalho de página** (largura toda): botão de voltar 40px · `h1` 22/700
   com o nome · chip de situação (`etiqueta`) · tipo de local com ícone ·
-  linha de meta 12,5 secundária (endereço · contagens) · etiquetas de serviço
-  prestado (`etiqueta` quando marcada, tracejada quando não). Não há botão
-  de configurar: a edição é no lugar, card a card (R203).
+  linha de meta 12,5 secundária (endereço · contagens). O serviço prestado
+  saiu daqui para o card O local (R210). Não há botão de configurar: a edição
+  é no lugar, card a card (R203).
+- **Coluna de atividades** (R209): o card tem `max-height: min(72vh, 900px)`
+  e a lista rola por dentro (`.rolagem-fina`). Cada atividade é um **card**
+  (`cardAtividade`): coluna, gap 6, padding 10×12, raio 12, fundo `campo`,
+  borda `divisoria` com 3px à esquerda na cor do status; título 13/600 com o
+  chip de status 9/700 à direita, meta 11 secundário embaixo. Teto declarado
+  de 12 com "ver todas". Plantão e Histórico de visitas rolam por dentro com
+  `max-height` 320 e 360.
 - **Card**: `card(isLight)`, raio 18, padding 18, micro-rótulo dourado 10,5/700
   com ícone 15px e a contagem em 11,5 secundário ao lado.
 - **Linha de lista clicável** (atividade, visita, contrato): fundo
@@ -974,6 +987,10 @@ do trabalho — no desktop, que é onde ela é usada (R205):
   borda `divisoria`, chips `botaoSelecao` sem brilho, nota de campo 11,5
   secundário, e o rodapé com **Cancelar** (leve, 36px) e a ação dourada
   **Salvar** — a única primária do card. Cada card grava só os seus campos.
+  O card **O local** traz o **Serviço prestado** (R210): em leitura, uma
+  etiqueta sólida por serviço (`etiqueta(SERVICO_CORES[s])`, 10/700 caixa
+  alta, pílula) ou "nenhum"; em edição, chips `botaoSelecao` que ligam e
+  desligam. A linha "Coordenadas" não existe mais em leitura.
 
 ### 6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)
 

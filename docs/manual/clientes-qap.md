@@ -171,6 +171,13 @@ configuração. Os cards **O local**, **Contatos** e **Estrutura** têm um lápi
 Cancelar, e grava só os campos daquele card. As etiquetas de serviço prestado,
 no cabeçalho, continuam sendo o próprio controle.
 
+Na U116 (R209) a ficha ficou em **três colunas de desktop**: à esquerda a
+identidade (fachada, O local — onde agora mora o **serviço prestado**, R210 —,
+contatos, contratos, estrutura), no centro os sistemas instalados e as visitas,
+à direita a coluna alta de **atividades** (cards em fila, rolando por dentro) e
+o plantão. Em tela menor a identidade vai à direita e o resto empilha; no
+celular é uma coluna.
+
 Na U114 a ficha passou a **preencher a largura da janela** (R205) — a coluna dos
 sistemas cresce com o monitor, a da identidade tem teto — e os contatos
 ganharam botões de ação (R207): **Enviar mensagem no WhatsApp** ao lado de cada

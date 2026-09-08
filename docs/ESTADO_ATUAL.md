@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-08** · última regra: **R208** · último diário:
-**U115** · verificador: **3.071 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-08** · última regra: **R210** · último diário:
+**U116** · verificador: **3.078 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
 `mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
 entra na matriz, a tela "Catálogo" sai). A **U110** (os 4.241 equipamentos do
@@ -92,6 +92,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U113 | a tela Administrativo ganha **cancelar convite** na lista de Convites Pendentes — muda só o status em `convites`, não toca na conta já criada pelo envio (R204) |
 | U114 | a ficha do cliente **preenche a largura** (`.pagina-larga`, R205); o vínculo equipamento → bloco é **por arrasto** em dois painéis, Blocos com sub-itens | Sem bloco (R206, lógica pura em `vinculo.ts`); botões **WhatsApp / copiar e-mail / copiar endereço** nos cards (R207) |
 | U115 | os painéis Blocos e Sem bloco **rolam por dentro** (teto min(64vh, 720px), mesma altura no desktop, só a lista rola) — a página não cresce com os equipamentos (R208) |
+| U116 | a ficha em **três colunas de desktop** (`.ficha-grid`: identidade \| local \| atividades, com a forma do conteúdo — Atividades é a coluna alta de cards, rolando por dentro) (R209); o **serviço prestado vira item do card O local** e a linha Coordenadas sai (R210) |
 
 ## 4. Banco: migrations
 
@@ -207,6 +208,10 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   como caminho sem arrasto; contatos com botões de WhatsApp e copiar e-mail,
   endereço com copiar. **R208:** os dois painéis rolam por dentro, com teto de
   altura — a página não cresce com a quantidade de equipamentos.
+- **R209–R210** — a ficha em **três colunas de desktop** (identidade | local |
+  atividades), cada uma com a forma do conteúdo; Atividades é a coluna ALTA de
+  cards, rolando por dentro. O **serviço prestado** é item do card O local
+  (edição pelo lápis, grava com o card); a linha Coordenadas saiu.
 
 ## 6. Perguntas em aberto
 

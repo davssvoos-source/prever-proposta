@@ -28,7 +28,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { geocode } from "@/features/gerencial/data";
 import { TIPO_LABEL, TIPOS_LOCAL, whatsappLink } from "@/features/gerencial/constants";
 import { mascararDocumento, validarDocumento } from "@/lib/normalizar";
-import { FONT, card, botaoSelecao, goldButton } from "@/lib/ui";
+import { FONT, card, etiqueta, botaoSelecao, goldButton } from "@/lib/ui";
 import { PRISMA, cinzas } from "@/lib/paleta";
 import { copiarTexto } from "@/lib/copiar";
 import { enderecoParaCopiar } from "./ficha";
@@ -45,6 +45,11 @@ async function copiar(texto: string, oQue: string) {
 }
 import {
   SITUACAO_LABEL,
+  SERVICO_ORDEM,
+  SERVICOS_OFERECIDOS,
+  SERVICO_LABEL,
+  SERVICO_CORES,
+  temServico,
   type Cliente,
   type ClientePatch,
   type SituacaoCliente,
@@ -173,6 +178,9 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
   const [situacao, setSituacao] = useState<SituacaoCliente>("ativo");
   const [endereco, setEndereco] = useState("");
   const [complemento, setComplemento] = useState("");
+  // R210: o serviço prestado é um item do card O local (era etiqueta no
+  // cabeçalho, R41/R173). A gravação continua mandando o ARRAY inteiro.
+  const [servicos, setServicos] = useState<string[]>([]);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [geocodificando, setGeocodificando] = useState(false);
@@ -193,6 +201,7 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
    * PERMANENTE no cadastro e é invisível: quem for até lá vai ao lugar errado.
    */
   const [resolvido, setResolvido] = useState<string | null>(null);
+  const servicosMarcados = SERVICO_ORDEM.filter((sv) => temServico(cliente, sv));
 
   function abrir() {
     setNome(cliente.nome ?? "");
@@ -201,6 +210,7 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
     setSituacao(cliente.situacao ?? "ativo");
     setEndereco(cliente.endereco ?? "");
     setComplemento(cliente.complemento ?? "");
+    setServicos([...((cliente.servicos_prestados ?? []) as string[])]);
     setLat(cliente.latitude ?? null);
     setLng(cliente.longitude ?? null);
     setResolvido(null);
@@ -255,6 +265,7 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
         situacao,
         endereco: endereco.trim(),
         complemento: complemento.trim() || null,
+        servicos_prestados: servicos,
         latitude: lat,
         longitude: lng,
       });
@@ -298,18 +309,30 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
             </span>
           </div>
           <div style={s.linha}><span style={s.linhaLabel}>Situação</span><span style={s.linhaValor}>{SITUACAO_LABEL[cliente.situacao] ?? cliente.situacao}</span></div>
+          {/* R210: o serviço prestado mora aqui — etiquetas sólidas (R177), "nenhum" quando não há */}
+          <div style={{ ...s.linha, alignItems: "center" }}>
+            <span style={s.linhaLabel}>Serviço prestado</span>
+            <span style={{ display: "flex", flexWrap: "wrap", gap: 6, minWidth: 0 }}>
+              {servicosMarcados.length === 0 ? (
+                <span style={{ ...s.linhaValor, color: s.c.textoSecundario }}>nenhum</span>
+              ) : servicosMarcados.map((sv) => (
+                <span
+                  key={sv}
+                  style={{
+                    padding: "3px 9px", borderRadius: 999, ...etiqueta(SERVICO_CORES[sv]),
+                    fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.05em", textTransform: "uppercase",
+                  }}
+                >
+                  {SERVICO_LABEL[sv]}
+                </span>
+              ))}
+            </span>
+          </div>
           {cliente.documento && (
             <div style={s.linha}><span style={s.linhaLabel}>CNPJ / CPF</span><span style={{ ...s.linhaValor, fontFamily: "ui-monospace, Menlo, monospace" }}>{cliente.documento}</span></div>
           )}
-          {cliente.latitude != null && cliente.longitude != null && (
-            <div style={s.linha}>
-              <span style={s.linhaLabel}>Coordenadas</span>
-              <span style={{ ...s.linhaValor, display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end", fontVariantNumeric: "tabular-nums" }}>
-                <MapPin size={12} color={s.gold} />
-                {cliente.latitude.toFixed(5)}, {cliente.longitude.toFixed(5)}
-              </span>
-            </div>
-          )}
+          {/* R210: a linha "Coordenadas" saiu — dois números não dizem nada a quem
+              lê a ficha; o mapa continua sendo conferido na edição ("O mapa entendeu") */}
         </div>
       ) : (
         <>
@@ -341,6 +364,32 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
                 </button>
               ))}
             </div>
+          </div>
+          <div>
+            <label style={s.LABEL}>Serviço prestado</label>
+            {/* R173: um grupo ainda não aceito pelo banco não se OFERECE — mas, se
+                já estiver marcado, aparece (para poder ser desmarcado). R41: a
+                gravação manda o array inteiro. */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {SERVICO_ORDEM.filter((s) => SERVICOS_OFERECIDOS.includes(s) || temServico(cliente, s)).map((sv) => {
+                const tem = servicos.includes(sv);
+                return (
+                  <button
+                    key={sv}
+                    type="button"
+                    aria-pressed={tem}
+                    style={s.chip(tem)}
+                    onClick={() => {
+                      const novos = tem ? servicos.filter((x) => x !== sv) : [...servicos, sv];
+                      setServicos(novos);
+                    }}
+                  >
+                    {SERVICO_LABEL[sv]}
+                  </button>
+                );
+              })}
+            </div>
+            <span style={s.NOTA}>Define o grupo de clientes em que este local entra nas atividades de grupo.</span>
           </div>
           <div>
             <label style={s.LABEL}>Endereço completo</label>

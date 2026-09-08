@@ -11037,3 +11037,69 @@ linha com `align-items: stretch`.
 
 **Números.** Verificador: 3.071 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.
+
+## U116 — a ficha em três colunas de desktop; o serviço prestado no card O local (R209–R210)
+
+O Davi olhou a ficha e mandou quatro coisas: tirar a linha "Coordenadas";
+"Serviço prestado deve ser um dos itens do campo O Local"; e o layout —
+"os campos devem ser planejados, devem ser dinamizados e automaticamente
+adaptados para preencher as margens […] O campo Atividades por exemplo,
+estrategicamente deveria ser um campo maior na vertical do que na horizontal,
+listando cards de atividades. Eu quero que você crie uma página harmonica,
+uma página com layout otimizado mesmo para desktop!!"
+
+**A grade (R209).** A ficha herdava a `.detalhe-grid` da página da atividade —
+duas colunas, texto e propriedades — e a U114 só a alargou. O problema era de
+FORMA: os três conjuntos de conteúdo querem formas diferentes. A identidade
+são cards curtos; os dois painéis do vínculo querem LARGURA (arrastar de um
+para o outro); as atividades querem ALTURA (é uma fila de coisas que aconteceu,
+lê-se de cima para baixo). Numa grade de duas colunas, Atividades ficava um
+card largo e baixo com linhas espremidas, e Sistemas disputava a largura com a
+identidade. A ficha ganhou a própria grade, `.ficha-grid`, com três ÁREAS
+nomeadas: `identidade | local | atividades` a partir de 1440px; de 1024 a
+1439, identidade à direita e o resto empilhado; no celular uma coluna, local
+primeiro (é o que o técnico abre para ver). Áreas nomeadas em vez de ordem no
+fonte porque a ordem de LEITURA (quem é → o que tem → o que aconteceu) e a
+ordem de TELA por largura não coincidem, e o CSS é quem sabe a largura. A
+coluna que cresce com o monitor é a do local; as outras duas têm piso e teto
+(`clamp`), porque um card de contatos com 700px não fica melhor, fica pior.
+
+**Atividades vira coluna alta.** Cada atividade é um CARD (título em cima com
+o chip de status ao lado, número · data · origem embaixo), em fila vertical,
+o card com teto de 72% da janela e a lista rolando por dentro (R208). O teto
+declarado de 12 com "ver todas" ficou — dentro da rolagem. Plantão veio para
+baixo dela (é história também); o Histórico de visitas ficou com o local. As
+três listas rolam por dentro, com `max-height` — a página não cresce com o
+histórico.
+
+**O local (R210).** As etiquetas de serviço eram o próprio controle no
+cabeçalho (R41/R173: clicar ligava e desligava na hora). Dentro do card, esse
+comportamento brigaria com o modelo do card — lápis, edita, salva — então o
+serviço passou a ser um ITEM: em leitura, etiquetas sólidas (R177) ou
+"nenhum"; em edição, chips que ligam e desligam e gravam com o Salvar do card,
+sempre o array inteiro. A R173 continua valendo letra por letra: só os grupos
+oferecidos, mais os já marcados. A linha "Coordenadas" saiu da leitura — dois
+números com cinco decimais não dizem nada a quem lê uma ficha; o lugar
+continua sendo conferido onde importa, na edição, pelo NOME que o mapa
+responde (U84, intocada).
+
+**O que se recusou a fazer.** Manter o clique-liga no card em leitura: um
+card com um item que grava no clique e oito que precisam do lápis é uma
+armadilha. Tirar o "Localizar no mapa" junto com a linha de coordenadas: o
+pedido foi a LINHA, e a coordenada é o que põe o cliente no mapa de clientes.
+Reordenar o fonte para bater com a tela de 1440: a ordem de leitura por
+leitor de tela é quem é → o que tem → o que aconteceu, e é essa que o fonte
+segue.
+
+**O que a verificação pegou.** Sete pinos apontavam para a forma antiga —
+`className="detalhe-grid"` na ficha (R146, R201, R205), o filtro R173 dos
+serviços na PÁGINA, `salvar.mutate({ servicos_prestados: novos })` em dois
+blocos, o "Serviço prestado" no cabeçalho, a ordem da coluna larga e o censo
+de `etiqueta()` (a ficha tinha 2 chamadas e o ClienteForm 0; agora 1 e 1, e o
+total continua 20 em onze arquivos). Todos reapontados. O bloco U116 trava a
+grade (as três áreas nos três breakpoints), a coluna alta de atividades com o
+teto e a rolagem, as três listas rolando, o serviço prestado no card (leitura
+E edição) e a ausência de "Coordenadas" e do controle no cabeçalho.
+
+**Números.** Verificador: 3.078 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa.

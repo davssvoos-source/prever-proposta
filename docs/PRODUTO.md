@@ -14,7 +14,7 @@
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
-- [22. O patrimônio do QAP e a ficha do cliente (R196–R208, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-e-a-ficha-do-cliente-r196r208-davi-2026-09-04-a-2026-09-08) · R196–R208 (13)
+- [22. O patrimônio do QAP e a ficha do cliente (R196–R210, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-e-a-ficha-do-cliente-r196r210-davi-2026-09-04-a-2026-09-08) · R196–R210 (15)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -28,7 +28,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-08 (R208). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-08 (R210). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3721,7 +3721,7 @@ trabalho".
   e 6 de 800). *(Davi, 04/09/2026, revisão manual: pediu tipografia
   estratégica — pesos mais grossos onde cabe, mais finos em outros lugares.)*
 
-## 22. O patrimônio do QAP e a ficha do cliente (R196–R208, Davi, 2026-09-04 a 2026-09-08)
+## 22. O patrimônio do QAP e a ficha do cliente (R196–R210, Davi, 2026-09-04 a 2026-09-08)
 
 O controle patrimonial da Prever vive no **QAP ERP**, em *Patrimônio >
 Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
@@ -3923,3 +3923,32 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   cliente com sessenta câmeras não estica a ficha inteira. *(Davi,
   08/09/2026: "A tela de clientes deve ter os campos de bloco e equipamentos
   com scroll interno, não deve ser scroll da tela inteira.")*
+
+- **R209** — **A ficha do cliente é de desktop: três colunas, cada uma com a
+  forma do seu conteúdo.** A grade própria da ficha (`.ficha-grid`) tem três
+  áreas — **identidade** (a fachada, O local, Contatos, Contratos, Estrutura:
+  cards curtos, 320 a 400px), **o local** (Sistemas instalados com os dois
+  painéis do vínculo e o Histórico de visitas: querem largura, é a coluna que
+  cresce com o monitor) e **atividades** (a coluna ALTA: os cards de atividade
+  em fila vertical, título em cima e status ao lado, meta embaixo, rolando por
+  dentro com teto de 72% da janela; o Plantão embaixo). A partir de 1440px as
+  três ficam lado a lado (identidade | local | atividades); de 1024 a 1439 a
+  identidade vai à direita e o resto empilha; no celular é uma coluna (local →
+  atividades → identidade). Toda lista de histórico rola dentro do próprio
+  card (R208). *(Davi, 08/09/2026: "Os campos da tela Clientes devem estar com
+  layout otimizado para PC, os campos devem ser planejados, devem ser
+  dinamizados e automaticamente adaptados para preencher as margens […] O
+  campo Atividades por exemplo, estrategicamente deveria ser um campo maior na
+  vertical do que na horizontal, listando cards de atividades. Eu quero que
+  você crie uma página harmonica, uma página com layout otimizado mesmo para
+  desktop!!")*
+
+- **R210** — **O serviço prestado é um item do card O local; a linha
+  "Coordenadas" sai.** As etiquetas de serviço deixam o cabeçalho da página e
+  entram no card O local: em leitura, uma etiqueta sólida por serviço marcado
+  ("nenhum" quando não há); em edição, chips que ligam e desligam e gravam com
+  o card, sempre o array inteiro (R41) e só os grupos oferecidos mais os já
+  marcados (R173). A linha "Coordenadas" (dois números) sai da leitura — o
+  lugar continua sendo conferido na edição, pelo nome que o mapa responde
+  (U84). *(Davi, 08/09/2026: "Remova o item Coordenadas. Serviço prestado deve
+  ser um dos itens do campo O Local.")*
