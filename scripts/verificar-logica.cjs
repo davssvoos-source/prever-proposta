@@ -16522,13 +16522,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // toda (a coluna estreita de 660px de seletores esticados era a queixa do
   // Davi). O contrato que a U95 queria continua: o TEXTO vem primeiro, as
   // propriedades não competem com ele, e a grade mora no CSS.
-  eq('U95/R135 + R234: a página é uma pilha de FAIXAS (props, corpo, conversa) e o texto ocupa a faixa larga — a coluna de propriedades de 2fr não existe mais',
+  // R234 (U121): a estrutura aprovada pelo Davi sobre o mockup — DOCUMENTO à
+  // esquerda (1fr), FICHA à direita (340px, sticky). A grade 3fr|2fr da U95
+  // e a "pilha de faixas" da U120 saíram. O que a U95 queria continua: o texto
+  // vem primeiro e as propriedades não competem com ele.
+  eq('U95/R135 + R234: a página é DOCUMENTO | FICHA — o texto na coluna larga, a ficha de 340px ao lado; nem a grade 3fr|2fr nem a faixa de propriedades existem mais',
      [/className="detalhe-grid"/.test(di), /className="atividade-props"/.test(di),
+      /className="atividade-grade"/.test(di) && /className="atividade-documento"/.test(di) && /className="atividade-ficha"/.test(di),
       /className=\{ehCorretiva \? "atividade-textos duplo" : "atividade-textos"\}/.test(di),
-      di.indexOf('<EditorDeDescricao') < di.indexOf('<span style={SEC}>Cliente</span>'),
-      /\.atividade-corpo, \.atividade-conversa \{ grid-template-columns: minmax\(0, 1fr\) clamp\(320px, 22%, 400px\); \}/.test(ler95('src/styles.css')),
+      di.indexOf('<EditorDeDescricao') < di.indexOf('<span style={SEC}>Ficha</span>'),
+      /@media \(min-width: 1024px\) \{ \.atividade-grade \{ grid-template-columns: minmax\(0, 1fr\) 340px; \} \}/.test(ler95('src/styles.css')),
       /@media \(min-width: 1700px\) \{\s*\n\s*\.atividade-textos\.duplo \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/.test(ler95('src/styles.css'))],
-     [false, true, true, true, true, true]);
+     [false, false, true, true, true, true, true]);
   eq('U95/R135: responsável e apoio mostram o ROSTO (AvatarCirculo) na página, como no painel',
      [/iconeEsquerda=\{\(esc\) => esc[\s\S]{0,40}<AvatarCirculo id=\{esc\.valor\}/.test(di),
       /<AvatarCirculo id=\{pid\} nome=\{nomeDe\(pid\)\}/.test(di)],
@@ -16779,8 +16784,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const di96 = ler96('src/features/chamados/DetalheInterno.tsx');
   const di96c = codigo96(di96);
   eq('R144: a página mostra o RECEBIMENTO (de quem, quando), o início e a conclusão',
-     [/Recebido\{chamado\.aberto_por \? ` de \$\{nomeDe\(chamado\.aberto_por\)\}` : ""\} em \{dataHora\(chamado\.created_at\)\}/.test(di96),
-      /Iniciado em \{dataHora\(chamado\.iniciada_em\)\}/.test(di96), /Concluído em \{dataHora\(chamado\.concluida_em\)\}/.test(di96)],
+     // U121: a ATIVIDADE é feminina — "Recebida", "Iniciada", "Concluída" (era o vocabulário do chamado)
+     [/Recebida\{chamado\.aberto_por \? ` de \$\{nomeDe\(chamado\.aberto_por\)\}` : ""\} em \{dataHora\(chamado\.created_at\)\}/.test(di96),
+      /Iniciada em \{dataHora\(chamado\.iniciada_em\)\}/.test(di96), /Concluída em \{dataHora\(chamado\.concluida_em\)\}/.test(di96)],
      [true, true, true]);
   eq('R149: a corretiva tem "Problema detectado" e "Solução aplicada" — a solução grava em servico_executado, a coluna que o campo já usa',
      // U120: o predicado virou `temDiagnostico` (o mesmo do painel) — ver o
@@ -16793,12 +16799,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /accept="image\/\*,application\/pdf"/.test(di96)],
      [true, true, true, true]);
   eq('R148: a implantação tem o campo "Proposta comercial aprovada" na página, gravando proposta_id',
-     /chamado\.tipo === "implantacao" && prop\("Proposta comercial aprovada"[\s\S]{0,600}salvar\.mutate\(\{ proposta_id: v \}\)/.test(di96), true);
+     // U121: uma LINHA da ficha (linha("Proposta", …)) — o rótulo curto cabe nos 96px do rótulo
+     /chamado\.tipo === "implantacao" && linha\("Proposta", \([\s\S]{0,600}salvar\.mutate\(\{ proposta_id: v \}\)/.test(di96), true);
   eq('R139: a página mostra as EQUIPES ENVOLVIDAS derivadas das pessoas, e troca a coluna equipe junto com o responsável',
      [/const equipesEnvolvidas = equipesDePessoas\(\s*\n\s*\[chamado\.responsavel_id, \.\.\.apoios\.map\(\(a\) => a\.profile_id\)\],/.test(di96),
       // U120/R234: os rótulos da faixa de propriedades saem de `prop(…)`, não
       // mais de um <label> por caixa da coluna estreita
-      /prop\("Equipes envolvidas", 0, \(/.test(di96),
+      /linha\("Equipes", \(/.test(di96),  // U121: uma linha da ficha
       /const eq = equipeDaPessoa\(pessoas, v\);\s*\n\s*salvar\.mutate\(\{ responsavel_id: v, \.\.\.\(eq \? \{ equipe: eq \} : \{\}\) \}\);/.test(di96)],
      [true, true, true]);
   eq('R143: a página diz "Interno — Prever" sem cliente, e mostra o grupo como "Clientes de …"',
@@ -17481,7 +17488,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // quantas CHAMADAS de etiqueta() cada tela faz (a linha de import não conta)
     const alvos = {
       'src/features/home/CardAtividade.tsx': 1, 'src/features/home/TabelaAtividades.tsx': 3,
-      'src/features/chamados/PainelChamado.tsx': 2, 'src/features/chamados/DetalheInterno.tsx': 3,
+      'src/features/chamados/PainelChamado.tsx': 2, 'src/features/chamados/DetalheInterno.tsx': 2,  // U121: a etiqueta de status saiu do título — o status é a 1ª linha da ficha
       'src/features/chamados/DetalheCampo.tsx': 4, 'src/components/StatusBadge.tsx': 1,
       'src/features/clientes/InventarioCliente.tsx': 1, 'src/features/home/NovaAtividadeDialog.tsx': 1,
       'src/features/administrativo/Usuarios.tsx': 2,
@@ -17493,10 +17500,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const chamadas = (f) => codigo101(ler101(f)).split('\n')
       .filter((l) => !/^import /.test(l)).join('\n').match(/etiqueta\(/g) ?? [];
     const fora = Object.entries(alvos).filter(([f, n]) => chamadas(f).length !== n);
-    eq('R177 CRÍTICO: as 20 etiquetas dos onze arquivos passam por etiqueta() — nenhuma monta cor à mão',
+    eq('R177 CRÍTICO: as 19 etiquetas dos onze arquivos passam por etiqueta() — nenhuma monta cor à mão',
        fora.map(([f]) => `${f}: ${chamadas(f).length}`), []);
-    eq('R177: são 20 etiquetas ao todo — o número está aqui para uma etiqueta nova não entrar sem passar pelo helper',
-       Object.keys(alvos).reduce((t, f) => t + chamadas(f).length, 0), 20);
+    eq('R177: são 19 etiquetas ao todo (eram 20 até a U121 tirar a de status do título da atividade) — o número está aqui para uma etiqueta nova não entrar sem passar pelo helper',
+       Object.keys(alvos).reduce((t, f) => t + chamadas(f).length, 0), 19);
     // O véu (.bg) continua VÁLIDO para superfície — fundo de campo, anel de
     // seleção. O que não pode voltar é véu pintando ETIQUETA, e a diferença
     // está no que cerca: uma etiqueta tem `borderRadius: 999` (ou 12) e texto
@@ -18921,12 +18928,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, false, true, true, true]);
   const dash117 = ler117('src/routes/_authenticated/dashboard.tsx');
   const pc117b = ler117('src/features/chamados/PainelChamado.tsx');
-  eq('R215: a Início monta o botão do chat e, ao clicar numa menção, abre o Configurador rápido CENTRALIZADO (posicao="central" → Dialog no meio da tela, mesmo miolo); abrir pelo quadro continua lateral',
-     [/<ChatDeMencoes aoAbrirAtividade=\{\(id\) => \{ setPainelCentral\(true\); setPainelId\(id\); \}\} \/>/.test(dash117),
-      /posicao=\{painelCentral \? "central" : "lateral"\}/.test(dash117), /setPainelCentral\(false\);\s*\n\s*setPainelId\(a\.registroId\);/.test(dash117),
-      /if \(posicao === "central"\) \{/.test(pc117b), /<DialogContent\s*\n\s*className="p-0"/.test(pc117b), /\{miolo\}/.test(pc117b),
-      (pc117b.match(/\{miolo\}/g) ?? []).length],
-     [true, true, true, true, true, true, 2]);
+  // R238 (U121): o clique na menção — e no card do quadro — abre a TELA INTEIRA
+  // da atividade num diálogo largo (DialogDaAtividade); o modo "central" do
+  // configurador rápido, que a U117 criou para o chat, saiu com ele.
+  eq('R215/R238: a Início monta o botão do chat e, ao clicar numa menção, abre a atividade no diálogo (a mesma tela da página); o configurador rápido não tem mais modo central',
+     [/<ChatDeMencoes aoAbrirAtividade=\{\(id\) => setPainelId\(id\)\} \/>/.test(dash117),
+      /<DialogDaAtividade\s*\n\s*chamadoId=\{painelId\}/.test(dash117), /PainelChamado/.test(dash117),
+      /posicao/.test(pc117b), /<DialogContent/.test(pc117b), (pc117b.match(/\{miolo\}/g) ?? []).length],
+     [true, true, false, false, false, 1]);
   eq('R216/R217: o card do chat tem "Responder aqui" (comentário na atividade via comentarChamado) e a fileira de reações só em menção de comentário; a MESMA fileira está no painel e na página da atividade',
      // U119 (R222/R223): "Responder aqui" virou o ícone abaixo da bolha; a
      // resposta passa por rotearEnvio e vira comentário pelo MESMO comentarChamado
@@ -19183,20 +19192,23 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [false, true, false, true]);
 
   // ── R226: equipamentos pela atividade ────────────────────────────────────
-  // R236 (U120): `agruparPorBloco` (U119) derivava os blocos dos ITENS, então
-  // bloco vazio não existia — e sem ele não há onde soltar o primeiro
-  // equipamento. `blocosParaArrastar` parte dos blocos do cliente.
-  eq('R226/R236: blocosParaArrastar lista TODOS os blocos do cliente (inclusive os vazios), em ordem, com "Sem bloco" no fim; rotuloDoEquipamento junta nome, fabricante, modelo e o nº',
-     [EQ.blocosParaArrastar(
+  // R237 (U121): `repartirEquipamentos` separa os BLOCOS do cliente (inclusive
+  // os vazios — o alvo do arrasto precisa existir antes do primeiro item) do
+  // que está SEM BLOCO (o que o QAP trouxe). Substituiu o agrupamento da U119
+  // (bloco vazio não aparecia) e o da U120 (misturava "Sem bloco" na lista).
+  eq('R226/R237: repartirEquipamentos lista TODOS os blocos do cliente (inclusive os vazios), em ordem, e devolve à parte o que está sem bloco; rotuloDoEquipamento junta nome, fabricante, modelo e o nº',
+     (() => {
+       const r = EQ.repartirEquipamentos(
         [{ id: 's1', nome: 'Alfa' }, { id: 's2', nome: 'Zeta' }, { id: 's3', nome: 'Beta' }],
         [{ patrimonio_id: '1', identificacao: null, nome: 'a', modelo: null, fabricante: null, sistema_id: null, sistema_nome: null },
          { patrimonio_id: '2', identificacao: '9', nome: 'b', modelo: null, fabricante: null, sistema_id: 's2', sistema_nome: 'Zeta' },
-         { patrimonio_id: '3', identificacao: null, nome: 'c', modelo: null, fabricante: null, sistema_id: 's1', sistema_nome: 'Alfa' }],
-      ).map((g) => `${g.nome}:${g.itens.length}`),
-      // bloco que o inventário não trouxe mas que tem item: entra assim mesmo
-      EQ.blocosParaArrastar([], [{ patrimonio_id: '9', identificacao: null, nome: 'x', modelo: null, fabricante: null, sistema_id: 'sX', sistema_nome: 'Órfão' }]).map((g) => g.nome),
-      EQ.rotuloDoEquipamento({ nome: 'Câmera', fabricante: 'Intelbras', modelo: 'VHD 1220', identificacao: '4471' }), EQ.rotuloDoEquipamento({ nome: 'DVR', modelo: null, fabricante: null, identificacao: null })],
-     [['Alfa:1', 'Beta:0', 'Zeta:1', 'Sem bloco:1'], ['Órfão'], 'Câmera Intelbras VHD 1220 · nº 4471', 'DVR']);
+         { patrimonio_id: '3', identificacao: null, nome: 'c', modelo: null, fabricante: null, sistema_id: 's1', sistema_nome: 'Alfa' }]);
+       return [r.blocos.map((g) => `${g.nome}:${g.itens.length}`), r.semBloco.map((i) => i.patrimonio_id),
+         // bloco que o inventário não trouxe mas que tem item: entra assim mesmo
+         EQ.repartirEquipamentos([], [{ patrimonio_id: '9', identificacao: null, nome: 'x', modelo: null, fabricante: null, sistema_id: 'sX', sistema_nome: 'Órfão' }]).blocos.map((g) => g.nome),
+         EQ.rotuloDoEquipamento({ nome: 'Câmera', fabricante: 'Intelbras', modelo: 'VHD 1220', identificacao: '4471' }), EQ.rotuloDoEquipamento({ nome: 'DVR', modelo: null, fabricante: null, identificacao: null })];
+     })(),
+     [['Alfa:1', 'Beta:0', 'Zeta:1'], ['1'], ['Órfão'], 'Câmera Intelbras VHD 1220 · nº 4471', 'DVR']);
   const di119 = ler119('src/features/chamados/DetalheInterno.tsx');
   const eqUi119 = ler119('src/features/chamados/EquipamentosDaAtividade.tsx');
   const eqD119 = ler119('src/features/chamados/equipamentos-atividade.ts');
@@ -19204,10 +19216,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/const clienteUnico = !!chamado\?\.cliente_id\s*\n\s*&& !locais\.some\(\(l\) => !!l\.cliente_id && l\.cliente_id !== chamado\?\.cliente_id\);/.test(di119),
       /\{clienteUnico && chamado\.cliente_id && \(\s*\n\s*<EquipamentosDaAtividade/.test(di119), /\{\(!clienteUnico \|\| equipamentos\.length > 0\) && \(/.test(di119),
       /supabase\.rpc\("mover_equipamento" as any/.test(eqD119), /\.from\("equipamentos_patrimonio"/.test(eqUi119 + eqD119),
-      // R236 (U120): os dois cards ("Removidos"/"Instalados") viraram os dois
-      // PAINÉIS do arrasto — "No cliente" (por bloco) e "Fora do cliente" —, e o
-      // que a atividade fez virou a lista "Nesta atividade" com desfazer
-      /titulo="No cliente"/.test(eqUi119) && /titulo="Fora do cliente"/.test(eqUi119) && /Nesta atividade<\/span>/.test(eqUi119)],
+      // R237 (U121): os dois painéis são "Blocos do cliente" | "Sem bloco" (o que
+      // o QAP trouxe) — nada entra por aqui; o que a atividade fez fica em
+      // "Nesta atividade", com desfazer
+      /titulo="Blocos do cliente"/.test(eqUi119) && /titulo="Sem bloco"/.test(eqUi119) && /Nesta atividade<\/span>/.test(eqUi119)],
      [true, true, true, true, false, true]);
   eq('U119 migration (equipamentos): situacao com CHECK; equipamento_movimentos só de leitura para authenticated; mover_equipamento DEFINER valida cliente único, bloco do cliente e item no cliente e guarda o estado ANTES; desfazer só de quem fez ou gestor; três leituras DEFINER',
      [/CHECK \(situacao IN \('ativo', 'retirado'\)\)/.test(mig119), /GRANT SELECT ON public\.equipamento_movimentos TO authenticated;/.test(mig119),
@@ -19323,20 +19335,23 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R234 CRÍTICO: a largura vem de o <main> soltar o teto por `:has()` — NÃO de sangria com 100vw, que conta a barra de rolagem e deixava a margem esquerda 15px menor que a direita (medido em 1920px); o miolo tem teto de 1880px',
      [/main:has\(\.pagina-trabalho\) \{ max-width: none; \}/.test(css120),
       /\.pagina-trabalho \{ padding-left: 24px; padding-right: 24px; \}/.test(css120),
-      /50vw/.test(css120.slice(css120.indexOf('main:has(.pagina-trabalho)'), css120.indexOf('.atividade-props'))),
-      /\.pagina-trabalho > \.trabalho-miolo \{\s*\n\s*max-width: 1880px; margin: 0 auto;/.test(css120),
+      /50vw/.test(css120.slice(css120.indexOf('main:has(.pagina-trabalho)'), css120.indexOf('.atividade-grade'))),
+      /\.pagina-trabalho > \.trabalho-miolo \{\s*max-width: 1880px; margin: 0 auto;/.test(css120),
       /className="trabalho-miolo"/.test(di120)],
      [true, true, false, true, true]);
-  eq('R234: as propriedades são uma FAIXA de campos compactos (rótulo em cima, controle do tamanho do conteúdo), não a coluna de 2fr de caixas esticadas — e cada seletor da faixa é compacto',
-     [/const prop = \(rotulo: string, base: number, filho: ReactNode\)/.test(di120),
-      /\.atividade-props \{ display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; \}/.test(css120),
-      (di120.match(/prop\("/g) ?? []).length,
-      /<span style=\{SEC\}>Propriedades<\/span>/.test(di120), /<span style=\{SEC\}>Pessoas<\/span>/.test(di120)],
-     [true, true, 8, false, false]);
+  // U121 (R234 aprovada): a faixa da U120 virou a FICHA — uma linha rótulo | valor
+  // por propriedade, 96px de rótulo, 40px de altura, sticky ao rolar
+  eq('R234: as propriedades são LINHAS da ficha (rótulo 96px | valor, 40px, uma borda entre elas) — nove linhas, nem card "Propriedades" nem "Pessoas"; a ficha acompanha a rolagem só na página (no diálogo o scroll é do diálogo)',
+     [/const linha = \(rotulo: string, filho: ReactNode\)/.test(di120),
+      /\.ficha-linha \{ display: grid; grid-template-columns: 96px minmax\(0, 1fr\); gap: 10px; align-items: center; min-height: 40px;/.test(css120),
+      (di120.match(/linha\("/g) ?? []).length,
+      /<span style=\{SEC\}>Propriedades<\/span>/.test(di120), /<span style=\{SEC\}>Pessoas<\/span>/.test(di120),
+      /\.pagina-trabalho \.atividade-ficha \{\s*\n\s*position: sticky;/.test(css120), /\.atividade-props/.test(css120)],
+     [true, true, 9, false, false, true, false]);
   eq('R234: os DOIS textos são o miolo da tela — altura mínima de 400px cada na corretiva (480 quando é um só), lado a lado só a partir de 1700px (medido: em 1440 cada um ficava com 382px)',
-     [/minAltura=\{ehCorretiva \? 400 : 480\}/.test(di120), /minAltura=\{400\}/.test(di120),
+     [/minAltura=\{ehCorretiva \? 440 : 520\}/.test(di120), /minAltura=\{440\}/.test(di120),  // U121: 520 quando é um só, 440 cada quando são dois
       /@media \(min-width: 1700px\) \{\s*\n\s*\.atividade-textos\.duplo/.test(css120),
-      di120.indexOf('atividade-textos') < di120.indexOf('<span style={SEC}>Cliente</span>')],
+      di120.indexOf('atividade-textos') < di120.indexOf('linha("Cliente"')],  // U121: Cliente é uma linha da ficha
      [true, true, true, true]);
 
   // ── R235: o progresso — a lógica pura ─────────────────────────────────────
@@ -19382,9 +19397,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /filter=|feDropShadow/.test(rosca120),
       /\{p\.pct\}%/.test(rosca120),
       // ela recebe o resultado pronto: importa só o TIPO, nunca a função que conta
-      /import type \{ ProgressoDaAtividade \}/.test(rosca120) && /progressoDaAtividade\(/.test(rosca120),
-      /<RoscaDeProgresso p=\{prog\} tamanho=\{92\} \/>/.test(di120),
-      di120.indexOf('<RoscaDeProgresso') < di120.indexOf('className="atividade-props"')],
+      /import \{ ROTULO_DO_CAMPO, type ProgressoDaAtividade \}/.test(rosca120) && /progressoDaAtividade\(/.test(rosca120),
+      /<RoscaDeProgresso p=\{prog\} tamanho=\{96\} \/>/.test(di120),
+      // U121: a rosca ABRE a ficha — vem antes das linhas
+      di120.indexOf('<RoscaDeProgresso') < di120.indexOf('className="ficha-linhas"')],
      [true, true, true, false, true, false, true, true]);
   eq('R235: a tela DIZ em qual campo o checklist conta — o convite fica no card que conta, não numa legenda solta',
      [(di120.match(/Cada item de checklist daqui conta no progresso da atividade\./g) ?? []).length,
@@ -19393,29 +19409,32 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── R236: o arrasto dos equipamentos ──────────────────────────────────────
   const eq120 = ler120('src/features/chamados/EquipamentosDaAtividade.tsx');
-  eq('R236 CRÍTICO: são dois painéis lado a lado (.painel-vinculo, o mesmo da ficha) e o gesto é ARRASTAR, com o MIME da casa: do cliente para "Fora do cliente" = retirada; de fora para um BLOCO = instalação. Arrastar de bloco para bloco NÃO é aceito (mudar de bloco é cadastro, e o lugar dele é a ficha)',
+  // R237 (U121) reescreveu o gesto: nada ENTRA no cliente por aqui. Os dois
+  // painéis são Blocos do cliente | Sem bloco (o que o QAP trouxe); arrastar
+  // para um bloco = instalado ali; "remover" (um clique) = retirado do cliente.
+  eq('R236/R237 CRÍTICO: dois painéis lado a lado (.painel-vinculo, o mesmo da ficha) — Blocos do cliente | Sem bloco —, arrasto com o MIME da casa só PARA um bloco (de "Sem bloco" ou de outro bloco), "remover" é um clique no item; o painel "Fora do cliente" e a instalação vinda de fora não existem mais',
      [/className="painel-vinculo"/.test(eq120),
-      /e\.dataTransfer\.setData\(TIPO_ARRASTO, serializarArrasto\(\[id\]\)\)/.test(eq120),
+      /e\.dataTransfer\.setData\(TIPO_ARRASTO, serializarArrasto\(\[item\.patrimonio_id\]\)\)/.test(eq120),
       /arrastoEhNosso\(e\.dataTransfer\.types\)/.test(eq120),
-      /aceita=\{podeSoltar && !!b\.sistemaId && arrasto\?\.origem === "fora"\}/.test(eq120),
-      /aceita=\{podeSoltar && arrasto\?\.origem === "cliente"\}/.test(eq120),
-      /tipo: "instalacao", sistemaId: b\.sistemaId/.test(eq120), /tipo: "retirada"/.test(eq120),
-      // os botões "Remover equipamento…"/"Instalar equipamento…" da U119 saíram
-      /Remover equipamento…|Instalar equipamento…/.test(cod120(eq120))],  // citados no comentário
-     [true, true, true, true, true, true, true, false]);
+      /aceita=\{podeMexer && !!arrasto && arrasto\.deSistema !== b\.sistemaId\}/.test(eq120),
+      /tipo: "instalacao", sistemaId: a\.sistemaId/.test(eq120), /tipo: "retirada"/.test(eq120),
+      />\s*remover\s*<\/button>/.test(eq120),
+      /Fora do cliente|useEquipamentosLivres|buscar_equipamentos_livres/.test(cod120(eq120) + cod120(ler120('src/features/chamados/equipamentos-atividade.ts'))),
+      /Remover equipamento…|Instalar equipamento…/.test(cod120(eq120))],
+     [true, true, true, true, true, true, true, false, false]);
   eq('R236: o painel mostra o que ESTA atividade fez, com desfazer, e a escrita continua sendo só a RPC (nenhum UPDATE de patrimônio pela tela)',
      [/Nesta atividade<\/span>/.test(eq120), /desfazer\.mutate\(m\)/.test(eq120),
-      /\.from\("equipamentos_patrimonio"/.test(eq120), /moverEquipamento\(\{ patrimonioId: id, chamadoId, tipo: a\.tipo/.test(eq120),
+      /\.from\("equipamentos_patrimonio"/.test(eq120), /moverEquipamento\(\{ patrimonioId: (a\.id|id), chamadoId, tipo: "(instalacao|retirada)"/.test(eq120),
       // reusa a casca dos painéis da ficha em vez de inventar outra
       /estiloDoPainel|CabecalhoDoPainel|ROLAGEM_DO_PAINEL/.test(eq120)],
      [true, true, false, true, true]);
 
   // ── a versão ──────────────────────────────────────────────────────────────
   const pkg120 = JSON.parse(ler120('package.json'));
-  eq('R229/R234: a versão é UMA e subiu para 0.0.3 (package.json = src/lib/versao.ts), e a v0.0.3 está no VERSOES.md',
-     [pkg120.version, (ler120('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
+  eq('R229/R234: a versão é UMA (package.json = src/lib/versao.ts) e a v0.0.3 está no VERSOES.md — o número atual é pino da última U (a U121 pinou 0.0.4)',
+     [pkg120.version === (ler120('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
       /^## v0\.0\.3 /m.test(ler120('docs/VERSOES.md'))],
-     ['0.0.3', '0.0.3', true]);
+     [true, true]);
 
   // regra 7
   const prod120 = ler120('docs/PRODUTO.md');
@@ -19429,6 +19448,103 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /U120/.test(ler120('docs/ESTADO_ATUAL.md')) && /R236/.test(ler120('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true, true]);
 }
+
+// ── U121 — a v0.0.4: documento | ficha, a mesma tela no pop-up, equipamento só pelo QAP (R237–R238) ──
+{
+  const fs121 = require('fs');
+  const ler121 = (f) => fs121.readFileSync(f, 'utf8');
+  const cod121 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const di121 = ler121('src/features/chamados/DetalheInterno.tsx');
+  const css121 = ler121('src/styles.css');
+  const dlg121 = ler121('src/features/chamados/DialogDaAtividade.tsx');
+  const dash121 = ler121('src/routes/_authenticated/dashboard.tsx');
+  const pc121 = ler121('src/features/chamados/PainelChamado.tsx');
+  const eqUi121 = ler121('src/features/chamados/EquipamentosDaAtividade.tsx');
+  const eqD121 = ler121('src/features/chamados/equipamentos-atividade.ts');
+  const mig121 = ler121('supabase/migrations/20260922090000_u121_v004_equipamento_so_pelo_qap.sql');
+  const mig119b = ler121('supabase/migrations/20260921090000_u119_v002_visibilidade_chat_agenda_equipamentos.sql');
+
+  // ── R234 (aprovada): a grade e a ficha ────────────────────────────────────
+  eq('R234 CRÍTICO: a tela é DOCUMENTO | FICHA — grade 1fr | 340px (360 a partir de 1700), o documento antes da ficha no fonte, a ficha sticky só na página (top = --topo + 4px, teto 100vh − --topo − 28px) e estática no diálogo',
+     [/className="atividade-grade"/.test(di121), di121.indexOf('className="atividade-documento"') < di121.indexOf('className="atividade-ficha"'),
+      /@media \(min-width: 1024px\) \{ \.atividade-grade \{ grid-template-columns: minmax\(0, 1fr\) 340px; \} \}/.test(css121),
+      /@media \(min-width: 1700px\) \{ \.atividade-grade \{ grid-template-columns: minmax\(0, 1fr\) 360px; gap: 20px; \} \}/.test(css121),
+      /\.pagina-trabalho \.atividade-ficha \{\s*\n\s*position: sticky; top: calc\(var\(--topo\) \+ 4px\);\s*\n\s*max-height: calc\(100vh - var\(--topo\) - 28px\); overflow-y: auto;/.test(css121),
+      /\.atividade-embutida \.atividade-ficha/.test(css121)],
+     [true, true, true, true, true, false]);
+  eq('R234 CRÍTICO: a ficha abre com o PROGRESSO e as propriedades são nove LINHAS rótulo | valor (Status, Tipo, Impacto, Quando, Responsável, Apoio, Equipes, Proposta, Cliente), todas por `linha(…)`; a etiqueta de status saiu do título',
+     [di121.indexOf('<RoscaDeProgresso') < di121.indexOf('className="ficha-linhas"'),
+      ['Status', 'Tipo', 'Impacto', 'Quando', 'Responsável', 'Apoio', 'Equipes', 'Proposta', 'Cliente'].map((r) => new RegExp('linha\\("' + r + '", \\(').test(di121)),
+      (di121.match(/etiqueta\(/g) ?? []).length, /const st = chamadoStatusInfo/.test(di121)],
+     [true, [true, true, true, true, true, true, true, true, true], 2, false]);
+  eq('R234: o cabeçalho diz número · "aberta há…" por quem · tipo — sem etiqueta; título 22/700 com text-wrap balance',
+     [/aberta \{tempoRelativo\(chamado\.created_at\)\}\{chamado\.aberto_por \? ` por \$\{nomeDe\(chamado\.aberto_por\)\}` : ""\}/.test(di121),
+      /\{tipoRotulo && <span>· \{tipoRotulo\}<\/span>\}/.test(di121),
+      /fontWeight: 700, fontSize: 22,\s*\n\s*lineHeight: 1\.25, textWrap: "balance" as any,/.test(di121)],
+     [true, true, true]);
+  eq('R234: a ficha tem o recebimento como rodapé, e fotos em grade de 3 quadrados',
+     [/Recebida\{chamado\.aberto_por/.test(di121), /gridTemplateColumns: "repeat\(3, minmax\(0, 1fr\)\)", gap: 8/.test(di121), /aspectRatio: "1 \/ 1"/.test(di121)],
+     [true, true, true]);
+
+  // ── R238: a mesma tela no pop-up ──────────────────────────────────────────
+  eq('R238 CRÍTICO: o card do quadro e a menção do chat abrem a MESMA tela num diálogo largo (DialogDaAtividade, 1600px) — DetalheInterno embutido; o configurador rápido saiu da Início e perdeu o modo central; Calendário e Operacional continuam com a folha lateral',
+     [/import \{ DialogDaAtividade \} from "@\/features\/chamados\/DialogDaAtividade";/.test(dash121), /PainelChamado/.test(dash121),
+      /<DialogDaAtividade\s*\n\s*chamadoId=\{painelId\}/.test(dash121), /setPainelId\(a\.registroId\);/.test(dash121),
+      /width: "min\(1600px, 96vw\)"/.test(dlg121), /<DetalheInterno id=\{chamadoId\} embutido aoAbrirPagina=\{aoAbrirPagina\} \/>/.test(dlg121),
+      /chamado\.natureza === "interno"/.test(dlg121) && /<DetalheCampo id=\{chamadoId\} \/>/.test(dlg121),
+      /posicao/.test(cod121(pc121)), /ui\/dialog/.test(pc121),
+      /<PainelChamado/.test(ler121('src/routes/_authenticated/calendario.tsx')) && /<PainelChamado/.test(ler121('src/routes/_authenticated/painel.operacional.tsx'))],
+     [true, false, true, true, true, true, true, false, false, true]);
+  eq('R238: embutido, a página não tem a casca de página — .atividade-embutida, sem o botão voltar (vira "abrir em página inteira")',
+     [/if \(embutido\) \{\s*\n\s*return <div className="atividade-embutida" style=\{\{ color: textPrimary \}\}>\{conteudo\}<\/div>;/.test(di121),
+      /aria-label="Abrir em página inteira"/.test(di121), /\.atividade-embutida \{ padding: 18px 22px 28px; \}/.test(css121),
+      /embutido\?: boolean;/.test(di121)],
+     [true, true, true, true]);
+
+  // ── R237: equipamento entra no cliente só pelo QAP ────────────────────────
+  const EQ2 = carregar('src/features/chamados/equipamentos-atividade.ts');
+  eq('R237 CRÍTICO: repartirEquipamentos separa os blocos (inclusive vazios) do que está SEM BLOCO — e não existe mais leitura de "equipamentos livres" na feature',
+     [EQ2.repartirEquipamentos([{ id: 'a', nome: 'A' }], []).blocos, EQ2.repartirEquipamentos([{ id: 'a', nome: 'A' }], []).semBloco,
+      typeof EQ2.useEquipamentosLivres, typeof EQ2.blocosParaArrastar, /buscar_equipamentos_livres|EquipamentoLivre/.test(cod121(eqD121))],
+     [[{ sistemaId: 'a', nome: 'A', itens: [] }], [], 'undefined', 'undefined', false]);
+  eq('R237 CRÍTICO: os dois gestos da tela — arrastar para um BLOCO (de "Sem bloco" ou de outro bloco, nunca para o mesmo) e REMOVER com um clique; nada entra por aqui',
+     [/titulo="Blocos do cliente"/.test(eqUi121), /titulo="Sem bloco"/.test(eqUi121),
+      /aceita=\{podeMexer && !!arrasto && arrasto\.deSistema !== b\.sistemaId\}/.test(eqUi121),
+      /tipo: "instalacao", sistemaId: a\.sistemaId/.test(eqUi121), /tipo: "retirada"/.test(eqUi121),
+      />\s*remover\s*<\/button>/.test(eqUi121), /Fora do cliente/.test(cod121(eqUi121)),
+      /chegaram pelo QAP/.test(eqUi121), /lista de removidos/.test(eqUi121)],
+     [true, true, true, true, true, true, false, true, true]);
+  eq('U121 migration CRÍTICO: mover_equipamento exige que o item JÁ SEJA do cliente nos dois movimentos (a mensagem cita a R237), a instalação só troca o bloco (não escreve cliente_id) e recusa o mesmo bloco; pré-voo exige a U119; a U119 NÃO foi editada (ainda tem o caminho antigo, que a U121 substitui por cima)',
+     [/IF to_regprocedure\('public\.mover_equipamento\(uuid, uuid, text, uuid\)'\) IS NULL THEN/.test(mig121),
+      /IF v_it\.cliente_id IS DISTINCT FROM v_ch\.cliente_id THEN\s*\n\s*RAISE EXCEPTION '[^']*só pelo QAP \(R237\)/.test(mig121),
+      /SET cliente_id = v_ch\.cliente_id/.test(mig121.slice(mig121.indexOf('CREATE OR REPLACE FUNCTION'), mig121.indexOf('\nCOMMIT;'))),  // só o corpo da função (a conferência cita a frase)
+      /SET cliente_sistema_id = _sistema, situacao = 'ativo', updated_at = now\(\)/.test(mig121),
+      /IF v_it\.cliente_sistema_id IS NOT DISTINCT FROM _sistema THEN/.test(mig121),
+      /CREATE OR REPLACE FUNCTION public\.mover_equipamento/.test(mig121), /^BEGIN;$/m.test(mig121) && /^COMMIT;$/m.test(mig121),
+      />>> OLHAR <<</.test(mig121), /DESFAZER/.test(mig121),
+      /SET cliente_id = v_ch\.cliente_id, pessoa_id = NULL, cliente_sistema_id = _sistema,/.test(mig119b)],
+     [true, true, false, true, true, true, true, true, true, true]);
+
+  // ── a versão ──────────────────────────────────────────────────────────────
+  const pkg121 = JSON.parse(ler121('package.json'));
+  eq('R229: a versão subiu para 0.0.4 nas duas fontes, e a v0.0.4 está no VERSOES.md com a U121 como exigência',
+     [pkg121.version, (ler121('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
+      /^## v0\.0\.4 [^\n]*U121/m.test(ler121('docs/VERSOES.md'))],
+     ['0.0.4', '0.0.4', true]);
+
+  // regra 7
+  const prod121 = ler121('docs/PRODUTO.md');
+  eq('U121 (regra 7): R237 e R238 existem com a frase do Davi, última atualização R238, o DS tem a §6.23 v18 (documento | ficha), o manual conta a ficha e o pop-up, P65 fechou e P66 abriu, a U121 está no diário e o ESTADO aponta U119 e U121 como pendentes',
+     [['R237', 'R238'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod121)),
+      Number((prod121.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 238,
+      /^### 6\.23 A tela da atividade — documento à esquerda, ficha à direita \(v18/m.test(ler121('DESIGN_SYSTEM.md')),
+      /ficha/i.test(ler121('docs/manual/visao-geral.md')) && /pop-up/i.test(ler121('docs/manual/visao-geral.md')),
+      /^## P65 — ~~MÉDIO~~ FECHADA/m.test(ler121('docs/PENDENCIAS_TECNICAS.md')), /^## P66 /m.test(ler121('docs/PENDENCIAS_TECNICAS.md')),
+      /^## U121 /m.test(ler121('docs/PLANO_UNIFICACAO.md')),
+      /\*\*Pendente: U119\*\*/.test(ler121('docs/ESTADO_ATUAL.md')) && /U121/.test(ler121('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true, true, true, true]);
+}
+
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 69 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **61 em aberto, 8 fechadas.**
+> **Sumário** — 70 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **61 em aberto, 9 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -71,7 +71,8 @@
 - [P62 — BAIXO · O chat: só falta o realtime de comentários e reações (2026-09-08, U117; revista na U119)](#p62-baixo-o-chat-só-falta-o-realtime-de-comentários-e-reações-2026-09-08-u117-revista-na-u119)
 - [P63 — BAIXO · O botão de forçar o sincronismo com o QAP fica para depois (2026-09-08, U119)](#p63-baixo-o-botão-de-forçar-o-sincronismo-com-o-qap-fica-para-depois-2026-09-08-u119)
 - [P64 — BAIXO · As duas leituras à parte de `reagendamentos` podem sair depois da U119 (2026-09-08, U119)](#p64-baixo-as-duas-leituras-à-parte-de-reagendamentos-podem-sair-depois-da-u119-2026-09-08-u119)
-- [P65 — MÉDIO · A v0.0.3 oferece "instalar de fora", que a R237 proíbe (2026-09-08, U120)](#p65-médio-a-v003-oferece-instalar-de-fora-que-a-r237-proíbe-2026-09-08-u120)
+- [P65 — ~~MÉDIO~~ FECHADA (U121, 2026-09-08) · A v0.0.3 oferece "instalar de fora", que a R237 proíbe (2026-09-08, U120)](#p65-médio-fechada-u121-2026-09-08-a-v003-oferece-instalar-de-fora-que-a-r237-proíbe-2026-09-08-u120)
+- [P66 — BAIXO · No pop-up da Início, o chamado de campo ainda abre a tela de campo; a folha lateral só vive no Calendário e no Operacional (2026-09-08, U121)](#p66-baixo-no-pop-up-da-início-o-chamado-de-campo-ainda-abre-a-tela-de-campo-a-folha-lateral-só-vive-no-calendário-e-no-operacional-2026-09-08-u121)
 <!-- sumario:fim -->
 
 Registro formal do que a revisão adversarial encontrou.
@@ -2231,7 +2232,7 @@ SELECT principal — a Início lê `select("id, reagendamentos").gt(…, 0)` à 
 confirmar a U119, as duas podem colapsar no SELECT principal (uma consulta a
 menos por tela) — o mesmo caminho da P60 (`comFallbackDaU96`).
 
-## P65 — MÉDIO · A v0.0.3 oferece "instalar de fora", que a R237 proíbe (2026-09-08, U120)
+## P65 — ~~MÉDIO~~ FECHADA (U121, 2026-09-08) · A v0.0.3 oferece "instalar de fora", que a R237 proíbe (2026-09-08, U120)
 
 Davi, 08/09/2026: "Os equipamentos que vão para o cliente vão sempre
 OBRIGATORIAMENTE pelo QAP […] o que é possível fazer é mover o equipamento para
@@ -2245,3 +2246,22 @@ bloco" (os itens DO CLIENTE sem bloco), "remover" vira ação em cada item, a RP
 **U121** reescreve `mover_equipamento` para recusar instalação de item que não
 seja do cliente (`v_it.cliente_id = v_ch.cliente_id`, senão RAISE). Enquanto a
 U119 não rodou, o gesto não funciona (RPC ausente) — o risco é só depois dela.
+
+**Fechada na U121 (2026-09-08):** a tela ficou com os dois painéis da ficha
+(**Blocos do cliente** | **Sem bloco**), o botão **remover** em cada item, e a
+feature deixou de ler `buscar_equipamentos_livres`; a migration **U121**
+reescreve `mover_equipamento` exigindo item do cliente nos dois movimentos (a
+instalação só troca o bloco). A U119 não foi editada (regra das migrations:
+nunca mexer numa entregue — corrigir por cima).
+
+## P66 — BAIXO · No pop-up da Início, o chamado de campo ainda abre a tela de campo; a folha lateral só vive no Calendário e no Operacional (2026-09-08, U121)
+
+A R238 fez o diálogo da Início (`DialogDaAtividade`) mostrar a tela inteira da
+atividade interna (`DetalheInterno` em modo `embutido`). Duas pontas ficaram:
+(1) um chamado de **campo** clicado no quadro ou no chat abre `DetalheCampo` no
+mesmo diálogo, com a casca de página dele (não tem `embutido`) — funciona, mas
+não foi redesenhado; espera a rodada da área técnica (ESTADO §7, item 1). (2) O
+`PainelChamado` (a folha lateral, R183/R184) perdeu o modo "central" e a
+Início; só o Calendário e o painel Operacional ainda o usam. Se esses dois
+também passarem ao diálogo, o componente sai — até lá são dois desenhos para o
+mesmo objeto, o que o verificador não tem como impedir.

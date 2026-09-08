@@ -11539,3 +11539,78 @@ baseline (57) e o build completa; o `.claude/launch.json` entrou no repo para o
 `npm run build:windows` gera o `Prever-0.0.3.zip`. Medições da tela nova, em
 1920px: margens 56/56, miolo 1561px, dois editores de 595px, sem rolagem
 horizontal; em 1280px: margens 40/40, texto 639px, contexto 300px.
+
+## U121 — a v0.0.4: a estrutura aprovada (documento | ficha), a mesma tela no pop-up, e equipamento só pelo QAP (R237–R238)
+
+Depois da v0.0.3 o Davi disse que "o layout dos campos ainda não está de acordo
+com as minhas expectativas" e pediu outra coisa: "agora você fará o papel de um
+UX/UI Designer […] crie uma estrutura de layout para a página." Duas rodadas
+de código sem ele ver antes tinham dado errado; esta começou por um MOCKUP —
+uma página publicada como artifact ("Layout da Atividade"), no visual do
+Prever OS, com a CH-2026-0030 dele de exemplo, dois estados (implantação /
+corretiva) e as anotações ligáveis — e só depois do "1. Aprovo" virou código.
+É o método que a skill de designer sempre prescreveu (briefing antes do
+código); aqui ele foi cumprido à letra, e funcionou.
+
+**A estrutura.** "Documento à esquerda, ficha à direita" — o padrão a que
+Linear, Jira e Notion convergiram para item de trabalho no desktop. O
+DOCUMENTO (1fr, ~1180px em 1920) tem o cabeçalho, os textos ocupando a faixa
+inteira (na corretiva, Problema e Solução lado a lado a partir de 1700px), os
+equipamentos e a conversa. A FICHA (340px; 360 no monitor grande) abre com a
+rosca do progresso e lista as propriedades em LINHAS rótulo | valor — 96px de
+rótulo, 40px de altura, uma borda entre elas — e acompanha a rolagem
+(`position: sticky`), porque status, prazo e responsável precisam estar à vista
+enquanto se lê um texto longo. O que a U120 tinha errado ficou nomeado no
+diagnóstico do mockup: a faixa horizontal de sete controles de larguras
+diferentes quebrando em duas linhas era "o layout dos campos"; numa ficha
+vertical eles têm a mesma borda, a mesma altura e um só lugar para o olho
+procurar. A etiqueta de status saiu do título — o status é a primeira linha da
+ficha, pintado; duplicar era ruído (o censo da R177 desceu de 20 para 19).
+Medido no navegador em 1920: margens 56/56, documento 1181px, ficha 360px,
+dois editores de 582px, ficha sticky com teto de 1028px, sem rolagem
+horizontal.
+
+**O pop-up (R238).** "Faça a adaptação na tela do pop-up também." Em vez de um
+segundo layout, o diálogo passou a mostrar a MESMA tela: `DialogDaAtividade`
+(1600px, para o texto ficar com ~1200px) renderiza o `DetalheInterno` em modo
+`embutido` — sem a casca da página, sem a ficha sticky (o scroll é do diálogo),
+e com "abrir em página inteira" no lugar do "voltar". O card do quadro e a
+menção do chat abrem esse diálogo. O configurador rápido (a folha lateral,
+R183/R184) saiu da Início e perdeu o modo "central" que a U117 lhe dera para o
+chat — fica onde ainda é consulta sem sair da tela: Calendário e painel
+Operacional. O chamado de campo no diálogo continua com a tela de campo (P66).
+
+**A regra que eu tinha entendido errado (R237).** Na noite anterior, ao ver o
+mockup, o Davi corrigiu a R226/R236: "os equipamentos que vão para o cliente
+vão sempre OBRIGATORIAMENTE pelo QAP […] o que é possível fazer é mover o
+equipamento para dentro de um bloco ou removê-lo do cliente." Eu havia lido
+"equipamentos que não estão vinculados a nenhum bloco do cliente" como "os de
+fora do cliente" e construído um painel "Fora do cliente" de onde se
+INSTALAVA — um equipamento entrando por aqui, exatamente o que a regra proíbe
+(P65). Agora os dois painéis são os da ficha (R206): **Blocos do cliente** |
+**Sem bloco** (o que o QAP trouxe). Arrastar para um bloco = "instalado ali"
+(de "Sem bloco" ou de outro bloco — só não para o bloco em que já está);
+**remover** é um clique no item e o manda para a lista de removidos do
+Administrativo. A leitura "equipamentos livres" saiu da feature. E a regra
+mora no BANCO: a **U121** reescreve `mover_equipamento` para exigir que o item
+já seja do cliente da atividade nos dois movimentos — a instalação só troca o
+bloco, nunca escreve `cliente_id`. A U119 não foi tocada (ela ainda não rodou,
+mas foi entregue; corrigir por cima é o que a regra das migrations manda).
+
+**O que se recusou.** Redesenhar também o `DetalheCampo` no diálogo (é a tela
+do técnico, no celular; fica para a rodada da área técnica); apagar o
+`PainelChamado` inteiro (dois lugares ainda o usam com razão); e confirmar
+com `confirm()` cada remoção de equipamento — dez câmeras seriam dez caixas; o
+"Nesta atividade" desfaz o clique errado em um gesto.
+
+**O que a verificação pegou.** O verificador MORREU em vez de falhar: um pino
+da U119 chamava `EQ.blocosParaArrastar`, que não existe mais — TypeError no
+meio da rodada. A troca de nome de função exportada exige olhar quem a
+importa NO VERIFICADOR também. Onze pinos descreviam a versão anterior da tela
+(a faixa, o modo central, "Fora do cliente", o "Recebido" masculino) e foram
+reapontados com o motivo. A prévia de medição pegou nada de novo desta vez — o
+CSS já vinha do mockup medido.
+
+**Números.** Verificador: 3.172 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa;
+`npm run build:windows` gera o `Prever-0.0.4.zip`. Migrations pendentes: U119 e,
+depois dela, U121.

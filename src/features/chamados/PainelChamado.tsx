@@ -72,7 +72,6 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink, Loader2, X, Building2, Send, MessageSquare, Layers, Trash2, ChevronRight } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useReacoesDoChamado, SEM_REACOES } from "./reacoes";
 import { FileiraDeReacoes } from "./FileiraDeReacoes";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
@@ -676,11 +675,15 @@ interface Props {
   aoFechar: () => void;
   /** leva para a página completa — onde ficam execução, fotos e assinatura */
   aoAbrirPagina: (id: string) => void;
-  /** R215: "central" = aberto pelo chat de menções, no meio da tela; o padrão é a folha lateral (R183) */
-  posicao?: "lateral" | "central";
 }
 
-export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina, posicao = "lateral" }: Props) {
+/**
+ * A FOLHA LATERAL — o configurador rápido (R183/R184), usado pelo Calendário e
+ * pelo painel Operacional. Na Início ele saiu na U121 (R238): o card e o chat
+ * abrem a tela inteira da atividade num diálogo (DialogDaAtividade); o modo
+ * "central" que a U117 tinha aqui foi removido junto.
+ */
+export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
   const est = useEstiloCampo();
   const { isLight } = useTheme();
   const qc = useQueryClient();
@@ -1391,28 +1394,6 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina, posicao = "l
         )}
     </>
   );
-
-  // R215 (U117): aberto pelo chat de menções, o painel vem CENTRALIZADO — um
-  // Dialog no meio da tela, com o MESMO miolo (cabeçalho R183, registro R184,
-  // comentários com as reações R217, linha do tempo). Da Início, do calendário
-  // e do painel operacional continua a folha lateral (R183).
-  if (posicao === "central") {
-    return (
-      <Dialog open={!!chamadoId} onOpenChange={(aberto) => { if (!aberto) aoFechar(); }}>
-        <DialogContent
-          className="p-0"
-          aria-describedby={undefined}
-          style={{
-            width: "min(1120px, 96vw)", maxWidth: "96vw", height: "min(92vh, 900px)", maxHeight: "92vh",
-            overflow: "hidden", borderRadius: 18, background: superficie, border: est.borda,
-            display: "flex", flexDirection: "column",
-          }}
-        >
-          {miolo}
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
     <Sheet open={!!chamadoId} onOpenChange={(aberto) => { if (!aberto) aoFechar(); }}>

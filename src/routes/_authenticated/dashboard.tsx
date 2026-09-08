@@ -51,7 +51,7 @@ import {
 import { EQUIPES, EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
 import { CardAtividade } from "@/features/home/CardAtividade";
 import { TabelaAtividades } from "@/features/home/TabelaAtividades";
-import { PainelChamado } from "@/features/chamados/PainelChamado";
+import { DialogDaAtividade } from "@/features/chamados/DialogDaAtividade";
 import { ChatDeMencoes } from "@/features/home/ChatDeMencoes";
 import { CampoBusca } from "@/features/home/CampoBusca";
 import { GraficoDemanda, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
@@ -104,9 +104,8 @@ const PRAZOS: { chave: Exclude<Prazo, null>; label: string; nota?: string }[] = 
 function Home() {
   const navigate = useNavigate();
   /** chamado aberto no painel lateral (null = fechado) */
+  /** R238: a atividade aberta no diálogo — pelo card do quadro ou pelo chat */
   const [painelId, setPainelId] = useState<string | null>(null);
-  /** R215: aberto pelo chat de menções, o painel vem no MEIO da tela */
-  const [painelCentral, setPainelCentral] = useState(false);
   const location = useLocation();
   const { isLight } = useTheme();
   const qc = useQueryClient();
@@ -337,7 +336,8 @@ function Home() {
       const v = visitas.find((x) => x.id === a.registroId);
       navigate({ ...visitaRouteFor((v?.status ?? "pendente") as any, a.registroId), state: { from: location.pathname } } as any);
     } else {
-      setPainelCentral(false);
+      // R238 (U121): o card abre a TELA da atividade (a mesma da página) num
+      // diálogo largo — não mais a folha lateral do configurador rápido
       setPainelId(a.registroId);
     }
   }
@@ -900,24 +900,23 @@ function Home() {
         )}
       </div>
 
-      <PainelChamado
+      <DialogDaAtividade
         chamadoId={painelId}
-        posicao={painelCentral ? "central" : "lateral"}
-        aoFechar={() => { setPainelId(null); setPainelCentral(false); }}
+        aoFechar={() => setPainelId(null)}
         aoAbrirPagina={abrirPagina}
       />
 
       <NovaAtividadeDialog aberto={novaAberta} aoFechar={() => setNovaAberta(false)} />
 
       {/* R215–R217: o botão circular fixo do chat de menções; clicar numa menção
-          abre a atividade no Configurador rápido CENTRALIZADO */}
+          abre a atividade no MESMO diálogo do card (R238) */}
       <AgendarDialog
         atividade={agendando}
         aoFechar={() => setAgendando(null)}
         aoConfirmar={(dia) => { if (agendando) agendar.mutate({ a: agendando, dia }); }}
         salvando={agendar.isPending}
       />
-      <ChatDeMencoes aoAbrirAtividade={(id) => { setPainelCentral(true); setPainelId(id); }} />
+      <ChatDeMencoes aoAbrirAtividade={(id) => setPainelId(id)} />
     </>
   );
 }

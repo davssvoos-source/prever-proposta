@@ -8,12 +8,13 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-08** · última regra: **R237** (ditada, implementação
-na v0.0.4 — ver P65) · último diário: **U120** · verificador: **3.161 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-08** · última regra: **R238** · último diário:
+**U121** · verificador: **3.172 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U117** (U106 e U109 em 07/09/2026; U110 e
-**U117** em 08/09/2026) · **pendente: U119** (entregue na v0.0.2 e ainda não
-rodada) · **versão instalada no servidor: v0.0.1** (o pacote da U118); **esta
-entrega é a v0.0.3** — o que entrou em cada versão está em `docs/VERSOES.md`.
+**U117** em 08/09/2026) · **pendentes: U119 e U121** (nesta ordem — a U121
+exige a U119; nenhuma das duas rodou) · **versão instalada no servidor:
+v0.0.1** (o pacote da U118); **esta entrega é a v0.0.4** — o que entrou em cada
+versão está em `docs/VERSOES.md`.
 
 ---
 
@@ -100,6 +101,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U118 | na ficha, **visitas, chamados e atividades numa lista só** (R218) e as **colunas alinhadas embaixo** (R219); o **pacote para Windows Server** — `npm run build:windows`, `Instalar-Prever.exe` com porta configurável, serviço WinSW, manual `hospedagem-windows.md` (R220); revisão: inventário da skill, P61/P62, ONBOARDING §6 |
 | U119 | a **v0.0.2**: **todos veem todas as atividades** (R221); o **chat como conversa 9:16** com recado para todos e resposta pelo `#Código` (R222–R223); o **editor de uma área** (R224); a coluna **Agendado**, "Re-agendado Nx" e o aviso das 08h (R225); **equipamentos removidos/instalados pela atividade** (R226); etiquetas empilhadas (R227); página da atividade larga (R228); **versão 0.0.2**, `VERSOES.md` e o banner local (R229); migration **U119** |
 | U120 | a **v0.0.3**: o sistema é o **Prever OS** (R230); o plantão sai da abertura de chamado (R231); **prazo × agendar** num controle só (R232); no quadro **a coluna inteira aceita o card** (R233); a **tela da atividade redesenhada para desktop** — quatro faixas, margem de verdade, os textos mandando (R234); a **rosca do progresso** pelo checklist (R235); **equipamentos por arrasto** em dois painéis (R236). Sem migration nova |
+| U121 | a **v0.0.4**: a tela da atividade na estrutura **aprovada sobre o mockup** — documento à esquerda, ficha de 340px à direita, propriedades em linhas rótulo \| valor, ficha acompanhando a rolagem (R234); o **pop-up da Início mostra a mesma tela** num diálogo de 1600px (R238); equipamento **entra no cliente só pelo QAP** — painéis Blocos do cliente \| Sem bloco, botão remover, nada de "Fora do cliente" (R237). Migration **U121** (`mover_equipamento` exige item do cliente; exige a U119) |
 
 ## 4. Banco: migrations
 
@@ -108,6 +110,15 @@ Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
 - **Rodadas até a U117** (a U117 em 08/09/2026, "tudo OK" — Davi).
+- **Pendente: U121** (`20260922090000_u121_v004_equipamento_so_pelo_qap.sql`)
+  — reescreve `mover_equipamento` (R237): nos dois movimentos o item tem de
+  ser **do cliente da atividade** (senão RAISE "Equipamento entra no cliente
+  só pelo QAP"); a instalação só troca o bloco (nunca escreve `cliente_id`) e
+  recusa o mesmo bloco. Pré-voo exige a U119 — **rodar a U119 antes, depois a
+  U121**, e só então subir o pacote v0.0.4. Com a U119 rodada e a U121 ainda
+  não, a tela já funciona (ela não oferece nada de fora do cliente); a U121 é
+  a trava no banco, para nenhum caminho fora da tela instalar o que não veio
+  do QAP. Conferência obtido × esperado × veredito no fim.
 - **Pendente: U119** (`20260921090000_u119_v002_visibilidade_chat_agenda_equipamentos.sql`)
   — a v0.0.2 inteira, em quatro seções: (§1) `chamados_select` e
   `visitas_select` viram `USING (true)` e `pode_acessar_chamado()` vira

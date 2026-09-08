@@ -1,11 +1,14 @@
-// EQUIPAMENTOS REMOVIDOS E INSTALADOS pela atividade — os dados (R226, U119).
+// EQUIPAMENTOS DA ATIVIDADE — os dados (R226, U119; R237, U121).
 //
-// Davi, 08/09/2026: "O campo 'Equipamentos envolvidos' deve virar 'Equipamentos
-// Removidos' — lista os blocos do cliente, expande, remove; o equipamento passa
-// a ser 'Retirado do cliente' — e 'Equipamentos Instalados' — lista os que não
-// estão vinculados a nenhum bloco do cliente, e ao selecionar escolhe-se para
-// qual bloco ele foi instalado. Só quando o cliente da atividade é um cliente
-// único (não interna, não grupo)."
+// Davi, 08/09/2026 (R237): "Em uma atividade, o usuário só pode movimentar um
+// equipamento para dentro de um bloco ou então clicar em remover um equipamento
+// do cliente. Os equipamentos que vão para o cliente vão sempre
+// OBRIGATORIAMENTE pelo QAP, e o sistema lê isso a partir do sincronismo."
+//
+// Isto corrige a leitura da U119: "os equipamentos que não estão vinculados a
+// nenhum bloco do cliente" são os DO CLIENTE sem bloco (o que o QAP trouxe),
+// não os de fora dele. Nada entra num cliente por aqui — por isso não existe
+// mais a leitura "equipamentos livres" nesta feature.
 //
 // Tudo passa por RPCs da U119: as leituras são SECURITY DEFINER (a policy de
 // leitura do patrimônio, U109, só mostra ao técnico o cliente que ele "vê"; com
@@ -52,17 +55,6 @@ export interface EquipamentoDoCliente {
   sistema_nome: string | null;
 }
 
-export interface EquipamentoLivre {
-  patrimonio_id: string;
-  identificacao: string | null;
-  nome: string;
-  modelo: string | null;
-  fabricante: string | null;
-  local_qap: string | null;
-  pessoa_nome: string | null;
-  situacao: string | null;
-}
-
 interface Carregado<T> { itens: T[]; faltaMigration: boolean }
 
 async function rpcLista<T>(nome: string, args: Record<string, unknown>): Promise<Carregado<T>> {
@@ -92,16 +84,6 @@ export function useEquipamentosDoClienteDaAtividade(chamadoId: string | undefine
   });
 }
 
-/** Os equipamentos que não estão em cliente nenhum — os candidatos a "Instalar". */
-export function useEquipamentosLivres(busca: string, ativo = true) {
-  return useQuery({
-    queryKey: ["equipamentos-livres", busca.trim().toLowerCase()],
-    enabled: ativo,
-    staleTime: 15_000,
-    queryFn: () => rpcLista<EquipamentoLivre>("buscar_equipamentos_livres", { _busca: busca.trim(), _teto: 30 }),
-  });
-}
-
 /** O nome que a tela mostra para um item: "Câmera Intelbras VHD 1220 · nº 4471". */
 export function rotuloDoEquipamento(e: { nome: string; modelo?: string | null; fabricante?: string | null; identificacao?: string | null }): string {
   const partes = [e.nome, e.fabricante, e.modelo].filter((x): x is string => !!x && x.trim().length > 0);
@@ -110,48 +92,37 @@ export function rotuloDoEquipamento(e: { nome: string; modelo?: string | null; f
 }
 
 export interface BlocoComItens {
-  /** null = o grupo "Sem bloco" (não aceita instalação) */
-  sistemaId: string | null;
+  sistemaId: string;
   nome: string;
   itens: EquipamentoDoCliente[];
 }
 
 /**
- * Os blocos do cliente COM os equipamentos de cada um (R236, U120) — a lista
- * do painel esquerdo do arrasto.
- *
- * Inclui os blocos VAZIOS, e é essa a diferença que importa: o alvo do arrasto
- * precisa existir ANTES do primeiro equipamento, senão não há como instalar num
- * bloco novo. (O agrupamento anterior, da U119, derivava os blocos dos próprios
- * itens — bloco sem item simplesmente não aparecia.)
- *
- * O grupo "Sem bloco" só aparece quando há item sem bloco, e vai no fim: ele é
- * o resto do cadastro, não um destino — equipamento instalado por uma atividade
- * sempre vai PARA um bloco (R226). Um bloco que o inventário não trouxe mas que
+ * Os DOIS painéis da atividade (R237, U121): os blocos do cliente — inclusive os
+ * VAZIOS, porque o alvo do arrasto precisa existir antes do primeiro
+ * equipamento — e, à parte, o que está "sem bloco" (o que o QAP trouxe e ainda
+ * não foi posto em lugar nenhum). Um bloco que o inventário não trouxe mas que
  * tem item entra assim mesmo: item nenhum some da tela.
  */
-export function blocosParaArrastar(
+export function repartirEquipamentos(
   sistemas: readonly { id: string; nome: string }[],
   itens: readonly EquipamentoDoCliente[],
-): BlocoComItens[] {
-  const porSistema = new Map<string | null, EquipamentoDoCliente[]>();
+): { blocos: BlocoComItens[]; semBloco: EquipamentoDoCliente[] } {
+  const porSistema = new Map<string, EquipamentoDoCliente[]>();
+  const semBloco: EquipamentoDoCliente[] = [];
   for (const i of itens) {
-    const k = i.sistema_id ?? null;
-    const arr = porSistema.get(k) ?? [];
+    if (!i.sistema_id) { semBloco.push(i); continue; }
+    const arr = porSistema.get(i.sistema_id) ?? [];
     arr.push(i);
-    porSistema.set(k, arr);
+    porSistema.set(i.sistema_id, arr);
   }
-  const lista: BlocoComItens[] = sistemas.map((s) => ({
-    sistemaId: s.id, nome: s.nome, itens: porSistema.get(s.id) ?? [],
-  }));
+  const blocos: BlocoComItens[] = sistemas.map((s) => ({ sistemaId: s.id, nome: s.nome, itens: porSistema.get(s.id) ?? [] }));
   for (const [k, arr] of porSistema) {
-    if (k === null || lista.some((b) => b.sistemaId === k)) continue;
-    lista.push({ sistemaId: k, nome: arr[0]?.sistema_nome ?? "Bloco", itens: arr });
+    if (blocos.some((b) => b.sistemaId === k)) continue;
+    blocos.push({ sistemaId: k, nome: arr[0]?.sistema_nome ?? "Bloco", itens: arr });
   }
-  lista.sort((a, b) => a.nome.localeCompare(b.nome));
-  const semBloco = porSistema.get(null) ?? [];
-  if (semBloco.length > 0) lista.push({ sistemaId: null, nome: "Sem bloco", itens: semBloco });
-  return lista;
+  blocos.sort((a, b) => a.nome.localeCompare(b.nome));
+  return { blocos, semBloco };
 }
 
 export async function moverEquipamento(args: { patrimonioId: string; chamadoId: string; tipo: TipoDeMovimento; sistemaId?: string | null }): Promise<string> {

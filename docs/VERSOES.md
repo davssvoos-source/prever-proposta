@@ -9,6 +9,24 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v0.0.4 — 2026-09-08 (U121) · migrations **U119** (se ainda não rodou) e depois **U121** — rodar ANTES de subir o pacote
+
+- **A tela da atividade na estrutura aprovada** (R234): documento à esquerda
+  — título, textos ocupando a faixa inteira (Problema e Solução lado a lado no
+  monitor grande), equipamentos, conversa — e a **ficha** à direita, que
+  acompanha a rolagem: a rosca do progresso e as propriedades uma por linha
+  (Status, Tipo, Impacto, Quando, Responsável, Apoio, Equipes, Proposta,
+  Cliente). A etiqueta de status saiu do título.
+- **O pop-up da Início mostra a mesma tela** (R238): o card do quadro e a
+  menção do chat abrem a atividade inteira num diálogo largo; um botão leva à
+  página. A folha lateral de consulta fica só no Calendário e no Operacional.
+- **Equipamento entra no cliente só pelo QAP** (R237): os painéis viraram
+  **Blocos do cliente** e **Sem bloco**; arrastar para um bloco = instalado
+  ali; **remover** é um botão em cada item. O "Fora do cliente" da v0.0.3
+  saiu, e o banco (U121) recusa instalar item que não seja do cliente.
+- **Banco:** a **U121** reescreve `mover_equipamento`. Exige a U119 — rode a
+  U119 primeiro se ainda não rodou.
+
 ## v0.0.3 — 2026-09-08 (U120) · migration **U119** (a mesma da v0.0.2; rode antes se ainda não rodou)
 
 - **O sistema chama-se Prever OS** (R230): no título da aba e na tela de login,

@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R237 (8)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R238 (9)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-08 (R237). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-08 (R238). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4348,9 +4348,10 @@ adaptado."
   tela: **não existe "instalar de fora"** — nem pela tela, nem pela RPC. Isto
   corrige a leitura que a R226/R236 fizeram de "equipamentos que não estão
   vinculados a nenhum bloco do cliente": são os **do cliente** sem bloco, não os
-  de fora dele. O painel "Fora do cliente" da v0.0.3 sai na v0.0.4, e o banco
-  passa a recusar a instalação de item que não seja do cliente (migration
-  U121). *(Davi, 08/09/2026: "Em uma atividade, o usuário só pode movimentar um
+  de fora dele. O painel "Fora do cliente" da v0.0.3 saiu na v0.0.4 (U121) —
+  os painéis são **Blocos do cliente** | **Sem bloco**, com o botão **remover**
+  em cada item —, e o banco recusa a instalação de item que não seja do cliente
+  (migration U121). *(Davi, 08/09/2026: "Em uma atividade, o usuário só pode movimentar um
   equipamento para dentro de um bloco ou então clicar em remover um equipamento
   do cliente. Os equipamentos que vão para o cliente vão sempre
   OBRIGATORIAMENTE pelo QAP, e o sistema lê isso a partir do sincronismo. No
@@ -4359,3 +4360,14 @@ adaptado."
   cliente, no painel administrativo no catálogo de equipamentos fica uma lista
   de equipamentos removidos e um checklist. Em breve estruturaremos esse
   mecanismo do painel administrativo melhor.")*
+
+- **R238** — **O pop-up da Início mostra a mesma tela da atividade.** Clicar num
+  card do quadro — ou numa menção no chat — abre a tela inteira da atividade
+  (R234: documento à esquerda, ficha à direita) dentro de um diálogo largo
+  (até 1600px), sem trocar de página; o botão do canto leva para a página
+  inteira. Um layout só, em dois lugares: o que se aprende na página vale no
+  pop-up. O configurador rápido (a folha lateral, R183/R184) fica só onde
+  ainda faz sentido consultar sem sair da tela: o Calendário e o painel
+  Operacional. O chamado de campo, no pop-up, continua com a tela de campo
+  (não foi redesenhada nesta leva). *(Davi, 08/09/2026, ao aprovar a
+  estrutura: "1. Aprovo. 2. Faça a adaptação na tela do pop up também.")*

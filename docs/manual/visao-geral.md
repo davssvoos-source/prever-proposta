@@ -131,34 +131,51 @@ campo, que tem Perfil, Calendário e uma Início própria ("Bom dia, você tem X
 chamados hoje" + cards) — a Fase B2 do plano. Toda tela nova diz para qual
 aparelho nasceu.
 
-## A tela da atividade (R135, R234–R236)
+## A tela da atividade (R135, R234–R238)
 
 A página `/chamados/$id` de uma atividade interna é feita para o **computador**
-e é a tela mais usada do sistema. Ela tem quatro faixas, de cima para baixo:
+e é a tela mais usada do sistema. Ela é um **documento com uma ficha ao lado**
+— o mesmo desenho que Linear, Jira e Notion usam para um item de trabalho:
 
-1. **Cabeçalho** — o título, o número, o status e, no canto superior direito, a
-   **rosca do progresso** (R235): 0% a 100% contados pelos itens de checklist
-   do campo onde está o plano de trabalho — a **Descrição** em geral, a
-   **Solução aplicada** na corretiva. Três de cinco marcados = 60%. Sem
-   checklist o progresso é 0% (em qualquer status) e concluída é 100%. O card do
-   campo que conta avisa isso em uma linha.
-2. **Propriedades** — uma faixa horizontal: Status, Tipo de demanda, Impacto
-   operacional, **Quando** (o par prazo × agendar, R232), Responsável, Apoio,
-   Equipes envolvidas e, na implantação, a proposta aprovada. Embaixo, em letra
-   fina, quem abriu e quando, o início e a conclusão.
-3. **Os textos** — Descrição (ou Problema detectado e Solução aplicada, na
-   corretiva) ocupam a maior parte da tela; em monitor grande os dois ficam lado
-   a lado. À direita, cliente e arquivos.
-4. **Equipamentos** (R236, cliente único) e a **conversa** (comentários e linha
-   do tempo).
+- **O documento, à esquerda** (a parte larga): o título e, embaixo, o número,
+  há quanto tempo foi aberta e por quem, e o tipo; depois os **textos** —
+  Descrição (ou Problema detectado e Solução aplicada, na corretiva), que
+  ocupam a faixa inteira e, em monitor grande, ficam lado a lado; depois os
+  **equipamentos** (R237) e a **conversa** (comentários).
+- **A ficha, à direita** (340px, acompanha a rolagem): abre com a **rosca do
+  progresso** (R235) — 0% a 100% contados pelos itens de checklist do campo
+  onde está o plano de trabalho, a Descrição em geral e a Solução aplicada na
+  corretiva; três de cinco marcados = 60%; sem checklist é 0% em qualquer
+  status e 100% quando concluída. Depois vêm as propriedades, uma por linha,
+  rótulo à esquerda e valor à direita: Status, Tipo, Impacto operacional,
+  **Quando** (o par prazo × agendar, R232), Responsável, Apoio, Equipes, a
+  proposta aprovada (na implantação) e o Cliente; no rodapé da ficha, quem
+  abriu e quando, o início e a conclusão. Abaixo, fotos e arquivos e a linha
+  do tempo.
 
-Cada propriedade (Status, Tipo, Impacto operacional — e a proposta aprovada, na
-implantação) é um **seletor**: um botão pintado pela cor da coisa escolhida que
-abre a lista (`SeletorDeOpcao`). No editor, um item de checklist é a caixa de marcar do
-design system e não "[ ]"; digitar `@` abre a lista de pessoas, e a **menção**
-avisa a pessoa (uma vez, mesmo com o autosave). Só quem escreveu um comentário
-pode apagá-lo. Responsável e apoio mostram o rosto. O texto continua Markdown
-puro no banco — o que muda é a apresentação.
+Cada propriedade de escolha (Status, Tipo, Impacto operacional, a proposta) é
+um **seletor**: um botão pintado pela cor da coisa escolhida que abre a lista
+(`SeletorDeOpcao`). O status aparece só ali — não há etiqueta repetida no
+título.
+
+**Equipamentos** (R237): dois painéis — **Blocos do cliente** e **Sem bloco**
+(o que chegou do QAP e ainda não tem lugar). Só há dois gestos: **arrastar**
+um equipamento para dentro de um bloco (de "Sem bloco" ou de outro bloco) diz
+onde ele foi instalado; **remover**, o botão em cada item, tira o equipamento
+do cliente e o manda para a lista de removidos do Administrativo. Nada entra
+num cliente por esta tela — equipamento chega só pelo QAP. "Nesta atividade"
+lista o que se moveu, com desfazer.
+
+**O pop-up** (R238): na Início, clicar num card do quadro ou numa menção do
+chat abre esta mesma tela num diálogo largo, sem sair da página; o botão do
+canto leva para a página inteira. No Calendário e no painel Operacional a
+folha lateral de consulta rápida continua.
+
+No editor, um item de checklist é a caixa de marcar do design system e não
+"[ ]"; digitar `@` abre a lista de pessoas, e a **menção** avisa a pessoa (uma
+vez, mesmo com o autosave). Só quem escreveu um comentário pode apagá-lo.
+Responsável e apoio mostram o rosto. O texto continua Markdown puro no banco —
+o que muda é a apresentação.
 
 ## A estrutura das atividades (R137–R150)
 

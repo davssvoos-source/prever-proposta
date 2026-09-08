@@ -18,7 +18,7 @@ import type { CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
-import type { ProgressoDaAtividade } from "@/features/chamados/progresso";
+import { ROTULO_DO_CAMPO, type ProgressoDaAtividade } from "@/features/chamados/progresso";
 
 export function RoscaDeProgresso({ p, tamanho = 96, estilo }: {
   p: ProgressoDaAtividade;
@@ -80,10 +80,14 @@ export function RoscaDeProgresso({ p, tamanho = 96, estilo }: {
         }}>
           Progresso
         </span>
-        <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, lineHeight: 1.4 }}>
+        <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13, color: textPrimary, lineHeight: 1.3 }}>
           {p.fonte === "checklist"
-            ? `${p.marcados}/${p.total} itens`
+            ? `${p.marcados} de ${p.total} ${p.total === 1 ? "item" : "itens"}`
             : p.pct === 100 ? "concluída" : "sem checklist"}
+        </span>
+        {/* de onde vem o número — sem isso a rosca seria mágica */}
+        <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 10.5, color: textSecondary, lineHeight: 1.4 }}>
+          checklist da {ROTULO_DO_CAMPO[p.campo]} · concluída = 100%
         </span>
       </div>
     </div>
