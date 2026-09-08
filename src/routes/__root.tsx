@@ -58,10 +58,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
-      { title: "Prever Orçamentos — Segurança Eletrônica" },
+      // R230 (U120), Davi: "o nome do sistema será Prever OS". O título da
+      // aba dizia "Prever Orçamentos" desde quando isto era só um gerador de
+      // propostas — hoje é o sistema de atividades da casa.
+      { title: "Prever OS — Grupo Prever" },
       {
         name: "description",
-        content: "Gerador de orçamentos do Grupo Prever para sistemas de segurança eletrônica.",
+        content: "Prever OS — o sistema de atividades, chamados e propostas do Grupo Prever.",
       },
       { name: "theme-color", content: "#0E0E0E" },
     ],

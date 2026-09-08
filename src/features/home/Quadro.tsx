@@ -137,7 +137,18 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
       ref={trilhoRef}
       className="trilho-x sangra-x"
     >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingBottom: 4 }}>
+      {/* R233 (U120), Davi: "o sistema deve alterar a coluna daquele card se
+          ele arrastar para a área da coluna, não necessariamente para a área da
+          coluna onde tem card […] se ele arrastar para a direita na reta da
+          coluna de stand-by o sistema já deveria considerar que ele arrastou
+          para a coluna stand-by."
+          Era `flex-start`: cada coluna tinha a altura do próprio conteúdo,
+          então ao lado do 20º card de "Aguardando início" a coluna "Stand-by"
+          (com 1 card) simplesmente NÃO EXISTIA naquela altura — não havia alvo
+          para soltar, e a pessoa tinha de arrastar o card lá para cima. Com
+          `stretch` todas as colunas têm a altura da mais alta e a pista de
+          cada uma vai de ponta a ponta: soltar na horizontal basta. */}
+      <div style={{ display: "flex", alignItems: "stretch", gap: 10, paddingBottom: 4 }}>
         {colunas.map((c) => {
           const itens = porColuna.get(c) ?? [];
           const cor = colunaCores(c);
@@ -240,6 +251,12 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
                 display: "flex",
                 flexDirection: "column",
                 gap: 9,
+                // R233: a pista ocupa o resto da coluna — é o vazio DEPOIS do
+                // último card que faz o alvo existir na altura em que a mão
+                // está. O piso serve para o dia em que todas as colunas estão
+                // curtas: ainda há onde soltar.
+                flex: "1 1 auto",
+                minHeight: 140,
               }}
               >
                 {itens.length === 0 ? (

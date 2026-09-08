@@ -8,12 +8,12 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-08** · última regra: **R229** · último diário:
-**U119** · verificador: **3.140 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-08** · última regra: **R236** · último diário:
+**U120** · verificador: **3.161 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U117** (U106 e U109 em 07/09/2026; U110 e
-**U117** em 08/09/2026) · **pendente: U119** (a v0.0.2) · **versão instalada no
-servidor: v0.0.1** (o pacote da U118); **esta entrega é a v0.0.2** — o que
-entrou em cada versão está em `docs/VERSOES.md`.
+**U117** em 08/09/2026) · **pendente: U119** (entregue na v0.0.2 e ainda não
+rodada) · **versão instalada no servidor: v0.0.1** (o pacote da U118); **esta
+entrega é a v0.0.3** — o que entrou em cada versão está em `docs/VERSOES.md`.
 
 ---
 
@@ -99,6 +99,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U117 | a **estrutura dentro de O local** (R211); a coluna Atividades da ficha usa o **card da Início** (R212); **Problema/Diagnóstico só na corretiva** (R213); a **Proposta Comercial expande no "+"** (R214, o formulário da visita virou componente); o **chat de menções** na Início — botão fixo, painel, atividade no meio da tela, responder aqui, reações (R215–R217); migration U117 |
 | U118 | na ficha, **visitas, chamados e atividades numa lista só** (R218) e as **colunas alinhadas embaixo** (R219); o **pacote para Windows Server** — `npm run build:windows`, `Instalar-Prever.exe` com porta configurável, serviço WinSW, manual `hospedagem-windows.md` (R220); revisão: inventário da skill, P61/P62, ONBOARDING §6 |
 | U119 | a **v0.0.2**: **todos veem todas as atividades** (R221); o **chat como conversa 9:16** com recado para todos e resposta pelo `#Código` (R222–R223); o **editor de uma área** (R224); a coluna **Agendado**, "Re-agendado Nx" e o aviso das 08h (R225); **equipamentos removidos/instalados pela atividade** (R226); etiquetas empilhadas (R227); página da atividade larga (R228); **versão 0.0.2**, `VERSOES.md` e o banner local (R229); migration **U119** |
+| U120 | a **v0.0.3**: o sistema é o **Prever OS** (R230); o plantão sai da abertura de chamado (R231); **prazo × agendar** num controle só (R232); no quadro **a coluna inteira aceita o card** (R233); a **tela da atividade redesenhada para desktop** — quatro faixas, margem de verdade, os textos mandando (R234); a **rosca do progresso** pelo checklist (R235); **equipamentos por arrasto** em dois painéis (R236). Sem migration nova |
 
 ## 4. Banco: migrations
 

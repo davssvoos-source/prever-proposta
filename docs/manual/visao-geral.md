@@ -131,15 +131,30 @@ campo, que tem Perfil, Calendário e uma Início própria ("Bom dia, você tem X
 chamados hoje" + cards) — a Fase B2 do plano. Toda tela nova diz para qual
 aparelho nasceu.
 
-## A tela da atividade (R135)
+## A tela da atividade (R135, R234–R236)
 
-A página `/chamados/$id` de uma atividade interna (e o painel lateral, que usa
-os mesmos componentes) tem, no computador, duas colunas: o **texto** na larga —
-a descrição num editor de blocos e a conversa — e as **propriedades** na
-estreita. Cada propriedade (Status, Tipo, Impacto operacional, Prazo — e a
-proposta aprovada, na implantação) é
-um **seletor**: um botão pintado pela cor da coisa escolhida que abre a lista
-(`SeletorDeOpcao`). No editor, um item de checklist é a caixa de marcar do
+A página `/chamados/$id` de uma atividade interna é feita para o **computador**
+e é a tela mais usada do sistema. Ela tem quatro faixas, de cima para baixo:
+
+1. **Cabeçalho** — o título, o número, o status e, no canto superior direito, a
+   **rosca do progresso** (R235): 0% a 100% contados pelos itens de checklist
+   do campo onde está o plano de trabalho — a **Descrição** em geral, a
+   **Solução aplicada** na corretiva. Três de cinco marcados = 60%. Sem
+   checklist o progresso é 0% (em qualquer status) e concluída é 100%. O card do
+   campo que conta avisa isso em uma linha.
+2. **Propriedades** — uma faixa horizontal: Status, Tipo de demanda, Impacto
+   operacional, **Quando** (o par prazo × agendar, R232), Responsável, Apoio,
+   Equipes envolvidas e, na implantação, a proposta aprovada. Embaixo, em letra
+   fina, quem abriu e quando, o início e a conclusão.
+3. **Os textos** — Descrição (ou Problema detectado e Solução aplicada, na
+   corretiva) ocupam a maior parte da tela; em monitor grande os dois ficam lado
+   a lado. À direita, cliente e arquivos.
+4. **Equipamentos** (R236, cliente único) e a **conversa** (comentários e linha
+   do tempo).
+
+Cada propriedade (Status, Tipo, Impacto operacional — e a proposta aprovada, na
+implantação) é um **seletor**: um botão pintado pela cor da coisa escolhida que
+abre a lista (`SeletorDeOpcao`). No editor, um item de checklist é a caixa de marcar do
 design system e não "[ ]"; digitar `@` abre a lista de pessoas, e a **menção**
 avisa a pessoa (uma vez, mesmo com o autosave). Só quem escreveu um comentário
 pode apagá-lo. Responsável e apoio mostram o rosto. O texto continua Markdown

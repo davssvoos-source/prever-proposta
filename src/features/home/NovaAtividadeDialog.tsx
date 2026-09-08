@@ -47,6 +47,7 @@ import {
   checklistDoGrupo, acrescentarChecklist, rotuloDoGrupo, valorDoGrupo, setorDoValor,
 } from "@/features/chamados/grupos";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
+import { CampoQuando } from "@/components/CampoQuando";
 import { usePermissoes } from "@/features/gerencial/permissoes";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
 import {
@@ -571,12 +572,26 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
                         </div>
                       </div>
                     )}
+                    {/* R232 (U120), Davi: "os itens PRAZO / AGENDAR PARA devem
+                        ter design estratégico de acordo com o design system,
+                        quero que fique mais claro que é um ou outro."
+                        Eram dois campos de data empilhados, um deles cinza
+                        quando o outro tinha valor — o "ou" ficava por conta de
+                        quem lesse a legenda. Agora é UMA pergunta ("quando?"),
+                        com dois botões de seleção (botaoSelecao, o mesmo par
+                        do tipo e do impacto acima) e UM campo de data: a
+                        escolha é o botão, e trocar de botão apaga a outra data.
+                        Nenhum dos dois é obrigatório — "sem data" é o estado
+                        inicial e continua alcançável pelo botão aceso. */}
                     <div>
-                      <label style={rotulo} htmlFor="nova-prazo">Prazo <span style={{ fontWeight: 400 }}>(opcional)</span></label>
-                      <input id="nova-prazo" type="date" style={entrada} value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!!agendarPara} />
-                      {/* R225: agendada não tem prazo — o campo acima apaga quando há dia marcado */}
-                      <label style={{ ...rotulo, marginTop: 8 }} htmlFor="nova-agendar">Agendar para <span style={{ fontWeight: 400 }}>(opcional — vai para a coluna Agendado, sem prazo)</span></label>
-                      <input id="nova-agendar" type="date" style={entrada} value={agendarPara} onChange={(e) => setAgendarPara(e.target.value)} />
+                      <label style={rotulo}>Quando <span style={{ fontWeight: 400 }}>(opcional)</span></label>
+                      <CampoQuando
+                        idBase="nova"
+                        prazo={prazo}
+                        agendado={agendarPara}
+                        aoMudar={({ prazo: p, agendado: a }) => { setPrazo(p); setAgendarPara(a); }}
+                        estiloEntrada={entrada}
+                      />
                     </div>
                     <div>
                       <label style={rotulo}>Apoio <span style={{ fontWeight: 400 }}>(opcional)</span></label>
@@ -644,16 +659,14 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
               </>
             )}
 
-            {/* o plantão (R117) continua entrando por aqui — é registro, não chamado */}
-            <button
-              onClick={() => setModoPlantao(true)}
-              style={{
-                alignSelf: "flex-start", background: "transparent", border: "none", cursor: "pointer",
-                fontFamily: FONT, fontSize: 11.5, color: textSecondary, textDecoration: "underline", padding: 0,
-              }}
-            >
-              Registrar um atendimento de plantão
-            </button>
+            {/* R231 (U120): o atalho do plantão saiu daqui — pedido do Davi em
+                08/09/2026, a frase dele está na R231 do PRODUTO. Ele ficava
+                neste ponto, sublinhado, para quem ABRE chamado — e abrir
+                chamado é o assunto desta tela; o plantão é registro de outra
+                coisa (R117) e virava ruído no fim de um formulário longo. A
+                porta do plantão continua existindo para quem a usa de verdade:
+                o técnico de campo, que não abre chamado (R163) e cai no bloco
+                acima, onde aquele botão é a única ação da tela. */}
           </>
         )}
       </div>

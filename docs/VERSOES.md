@@ -9,6 +9,24 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v0.0.3 — 2026-09-08 (U120) · migration **U119** (a mesma da v0.0.2; rode antes se ainda não rodou)
+
+- **O sistema chama-se Prever OS** (R230): no título da aba e na tela de login,
+  com a versão embaixo.
+- **A tela da atividade virou um posto de trabalho de desktop** (R234): quatro
+  faixas (cabeçalho · propriedades · textos + contexto · equipamentos e
+  conversa), margem lateral de verdade (40/56px, iguais dos dois lados), os
+  dois textos ocupando a maior parte da tela e lado a lado a partir de 1700px.
+- **Rosca de progresso** no canto superior direito (R235): conta o checklist da
+  Descrição (da Solução, na corretiva); sem checklist é 0%, concluída é 100%.
+- **Equipamentos por arrasto** (R236): dois painéis — o patrimônio do cliente
+  por bloco e o que está fora dele.
+- **No quadro, a coluna inteira aceita o card** (R233): soltar na faixa da
+  coluna vizinha basta, sem subir até onde ela tem card.
+- **Prazo × Agendar num controle só** (R232); o botão do plantão saiu da tela
+  de abrir chamado (R231).
+- Nenhuma mudança de banco nesta versão.
+
 ## v0.0.2 — 2026-09-08 (U119) · migration **U119** (rodar ANTES de subir o pacote)
 
 - **Todos veem todas as atividades** (R221): a Início do técnico deixa de

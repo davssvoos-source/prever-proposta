@@ -109,20 +109,49 @@ export function rotuloDoEquipamento(e: { nome: string; modelo?: string | null; f
   return e.identificacao ? `${base} · nº ${e.identificacao}` : base;
 }
 
-/** Agrupa o patrimônio do cliente por bloco — "sem bloco" no fim. */
-export function agruparPorBloco(itens: readonly EquipamentoDoCliente[]): { sistemaId: string | null; nome: string; itens: EquipamentoDoCliente[] }[] {
-  const mapa = new Map<string | null, { sistemaId: string | null; nome: string; itens: EquipamentoDoCliente[] }>();
-  for (const it of itens) {
-    const chave = it.sistema_id ?? null;
-    const g = mapa.get(chave) ?? { sistemaId: chave, nome: it.sistema_nome ?? "Sem bloco", itens: [] };
-    g.itens.push(it);
-    mapa.set(chave, g);
+export interface BlocoComItens {
+  /** null = o grupo "Sem bloco" (não aceita instalação) */
+  sistemaId: string | null;
+  nome: string;
+  itens: EquipamentoDoCliente[];
+}
+
+/**
+ * Os blocos do cliente COM os equipamentos de cada um (R236, U120) — a lista
+ * do painel esquerdo do arrasto.
+ *
+ * Inclui os blocos VAZIOS, e é essa a diferença que importa: o alvo do arrasto
+ * precisa existir ANTES do primeiro equipamento, senão não há como instalar num
+ * bloco novo. (O agrupamento anterior, da U119, derivava os blocos dos próprios
+ * itens — bloco sem item simplesmente não aparecia.)
+ *
+ * O grupo "Sem bloco" só aparece quando há item sem bloco, e vai no fim: ele é
+ * o resto do cadastro, não um destino — equipamento instalado por uma atividade
+ * sempre vai PARA um bloco (R226). Um bloco que o inventário não trouxe mas que
+ * tem item entra assim mesmo: item nenhum some da tela.
+ */
+export function blocosParaArrastar(
+  sistemas: readonly { id: string; nome: string }[],
+  itens: readonly EquipamentoDoCliente[],
+): BlocoComItens[] {
+  const porSistema = new Map<string | null, EquipamentoDoCliente[]>();
+  for (const i of itens) {
+    const k = i.sistema_id ?? null;
+    const arr = porSistema.get(k) ?? [];
+    arr.push(i);
+    porSistema.set(k, arr);
   }
-  return [...mapa.values()].sort((a, b) => {
-    if (a.sistemaId === null) return 1;
-    if (b.sistemaId === null) return -1;
-    return a.nome.localeCompare(b.nome);
-  });
+  const lista: BlocoComItens[] = sistemas.map((s) => ({
+    sistemaId: s.id, nome: s.nome, itens: porSistema.get(s.id) ?? [],
+  }));
+  for (const [k, arr] of porSistema) {
+    if (k === null || lista.some((b) => b.sistemaId === k)) continue;
+    lista.push({ sistemaId: k, nome: arr[0]?.sistema_nome ?? "Bloco", itens: arr });
+  }
+  lista.sort((a, b) => a.nome.localeCompare(b.nome));
+  const semBloco = porSistema.get(null) ?? [];
+  if (semBloco.length > 0) lista.push({ sistemaId: null, nome: "Sem bloco", itens: semBloco });
+  return lista;
 }
 
 export async function moverEquipamento(args: { patrimonioId: string; chamadoId: string; tipo: TipoDeMovimento; sistemaId?: string | null }): Promise<string> {

@@ -1,33 +1,58 @@
-// EQUIPAMENTOS REMOVIDOS e EQUIPAMENTOS INSTALADOS na página da atividade
-// (R226, U119) — só quando o cliente da atividade é UM cliente.
+// EQUIPAMENTOS REMOVIDOS e INSTALADOS pela atividade — dois painéis e um
+// arrasto (R226, U119; R236, U120). Só quando o cliente da atividade é UM.
 //
-// Davi, 08/09/2026: "O campo 'Equipamentos envolvidos' deve virar dois:
+// Davi, 08/09/2026 (U119): "O campo 'Equipamentos envolvidos' deve virar
 // 'Equipamentos Removidos' — deve listar os blocos do cliente, ao expandir o
 // bloco aparecem os equipamentos e o botão remover; o equipamento passa a ser
-// 'Retirado do cliente' — e 'Equipamentos Instalados' — lista os equipamentos
-// que não estão vinculados a nenhum bloco do cliente, e ao selecionar o
-// equipamento deve ser possível escolher para qual bloco ele foi instalado.
-// Somente quando o cliente da atividade for um cliente único (não interna,
-// não grupo)."
+// 'Retirado do cliente' — e 'Equipamentos Instalados' […] escolher para qual
+// bloco ele foi instalado."
 //
-// Dois cards, a mesma anatomia: o que ESTA atividade já fez (a lista, com
-// desfazer para o clique errado) e o gesto para fazer mais (um painel que
-// abre embaixo). O gesto grava pela RPC `mover_equipamento` (U119) — validada
-// no banco — e o patrimônio do cliente (a ficha, R199) reflete na hora.
+// Davi, 08/09/2026 (v0.0.3): "Pense sempre em uma organização visual que torne
+// o uso das ferramentas mais intuitivo. Por isso o esquema de arrastar
+// equipamentos nos campos de equipamentos instalados/removidos, enfim a gente
+// deve otimizar o sistema para o usuário conseguir usar com praticidade no dia
+// a dia."
+//
+// ── O QUE MUDOU NA v0.0.3 ──────────────────────────────────────────────────
+// Era um par de botões ("Remover equipamento…", "Instalar equipamento…") que
+// abriam painéis embaixo, um de cada vez: para trocar uma câmera a pessoa
+// abria um, procurava, clicava, fechava, abria o outro, buscava, escolhia o
+// bloco. Agora são DOIS PAINÉIS lado a lado — o patrimônio do cliente à
+// esquerda (por bloco) e o que está fora dele à direita — e o gesto é o mesmo
+// da ficha do cliente (R206): **arrastar**.
+//
+//   · do cliente  →  para "Fora do cliente"  = RETIRADA ("retirado do cliente")
+//   · de fora     →  para um BLOCO           = INSTALAÇÃO naquele bloco
+//
+// Arrastar DENTRO do painel do cliente (de um bloco para outro) NÃO é aceito de
+// propósito: mudar de bloco não é trabalho de campo desta atividade, é
+// cadastro — e o lugar dele é a ficha do cliente. Aceitar aqui gravaria uma
+// "instalação" que nunca aconteceu.
+//
+// A ESCRITA continua sendo uma RPC só (`mover_equipamento`, U119), validada no
+// banco, com o estado ANTERIOR guardado em `equipamento_movimentos` — que é o
+// que faz o desfazer existir. A tela não dá UPDATE em patrimônio.
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, PackageMinus, PackagePlus, Search, Undo2, Wrench } from "lucide-react";
+import { GripVertical, Inbox, Layers, PackageMinus, PackagePlus, Search, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, goldButton } from "@/lib/ui";
+import { FONT } from "@/lib/ui";
 import { PRISMA, cinzas } from "@/lib/paleta";
 import { useInventario } from "@/features/clientes/inventario";
 import {
-  agruparPorBloco, desfazerMovimento, moverEquipamento, rotuloDoEquipamento,
+  CabecalhoDoPainel, ROLAGEM_DO_PAINEL, estiloDoPainel,
+} from "@/features/clientes/EquipamentosDoCliente";
+import { TIPO_ARRASTO, arrastoEhNosso, lerArrasto, serializarArrasto } from "@/features/clientes/vinculo";
+import {
+  blocosParaArrastar, desfazerMovimento, moverEquipamento, rotuloDoEquipamento,
   useEquipamentosDaAtividade, useEquipamentosDoClienteDaAtividade, useEquipamentosLivres,
-  type EquipamentoLivre, type MovimentoDeEquipamento,
+  type EquipamentoDoCliente, type EquipamentoLivre, type MovimentoDeEquipamento,
 } from "./equipamentos-atividade";
+
+/** De onde o item saiu — é o que decide se o drop é retirada, instalação ou nada. */
+type Origem = "cliente" | "fora";
 
 interface Props {
   chamadoId: string;
@@ -42,10 +67,23 @@ export function EquipamentosDaAtividade({ chamadoId, clienteId, podeEditar, esti
   const { isLight } = useTheme();
   const c = cinzas(isLight);
   const qc = useQueryClient();
-  const { data: mov, isLoading } = useEquipamentosDaAtividade(chamadoId);
-  const movimentos = mov?.itens ?? [];
-  const removidos = movimentos.filter((m) => m.tipo === "retirada");
-  const instalados = movimentos.filter((m) => m.tipo === "instalacao");
+  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
+
+  const [busca, setBusca] = useState("");
+  /** o que está na mão agora: os ids e de qual painel saíram */
+  const [arrasto, setArrasto] = useState<{ origem: Origem; ids: string[] } | null>(null);
+
+  const mov = useEquipamentosDaAtividade(chamadoId);
+  const doCliente = useEquipamentosDoClienteDaAtividade(chamadoId, true);
+  const livres = useEquipamentosLivres(busca, true);
+  const { data: sistemas = [] } = useInventario(clienteId);
+
+  const movimentos = mov.data?.itens ?? [];
+  const faltaMigration = !!(mov.data?.faltaMigration || doCliente.data?.faltaMigration || livres.data?.faltaMigration);
+  const blocos = useMemo(
+    () => blocosParaArrastar(sistemas.filter((s) => s.ativo !== false), doCliente.data?.itens ?? []),
+    [sistemas, doCliente.data],
+  );
 
   function recarregar() {
     qc.invalidateQueries({ queryKey: ["equipamentos-atividade", chamadoId] });
@@ -55,262 +93,372 @@ export function EquipamentosDaAtividade({ chamadoId, clienteId, podeEditar, esti
     qc.invalidateQueries({ queryKey: ["cliente-inventario", clienteId] });
   }
 
+  const mover = useMutation({
+    mutationFn: async (a: { ids: string[]; tipo: "retirada" | "instalacao"; sistemaId?: string | null }) => {
+      for (const id of a.ids) {
+        await moverEquipamento({ patrimonioId: id, chamadoId, tipo: a.tipo, sistemaId: a.sistemaId ?? null });
+      }
+      return a;
+    },
+    onSuccess: (a) => {
+      recarregar();
+      const n = a.ids.length;
+      toast.success(a.tipo === "retirada"
+        ? `${n === 1 ? "Equipamento retirado" : `${n} equipamentos retirados`} do cliente.`
+        : `${n === 1 ? "Equipamento instalado" : `${n} equipamentos instalados`}.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const desfazer = useMutation({
     mutationFn: (m: MovimentoDeEquipamento) => desfazerMovimento(m.movimento_id),
     onSuccess: () => { recarregar(); toast.success("Movimento desfeito."); },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const linha: CSSProperties = {
-    display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 12,
-    background: c.campo, border: `1px solid ${c.divisoria}`,
-  };
-  const texto: CSSProperties = { fontFamily: FONT, fontSize: 13, color: c.texto, minWidth: 0 };
-  const sub: CSSProperties = { fontFamily: FONT, fontSize: 11, color: c.textoSecundario };
+  const ocupado = mover.isPending || desfazer.isPending;
+  const podeSoltar = podeEditar && !faltaMigration && !ocupado;
 
-  function Lista({ itens, verbo }: { itens: MovimentoDeEquipamento[]; verbo: "de" | "em" }) {
-    if (itens.length === 0) return null;
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {itens.map((m) => (
-          <div key={m.movimento_id} style={linha}>
-            <Wrench size={14} color={isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark} style={{ flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ ...texto, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rotuloDoEquipamento(m)}</div>
-              <div style={sub}>{verbo === "de" ? "Retirado de" : "Instalado em"} {m.sistema_nome ?? "sem bloco"}</div>
-            </div>
-            {podeEditar && (
-              <button
-                type="button"
-                onClick={() => desfazer.mutate(m)}
-                disabled={desfazer.isPending}
-                title="Desfazer este movimento"
-                aria-label="Desfazer este movimento"
-                style={{ width: 32, height: 32, borderRadius: 10, border: `1px solid ${c.divisoria}`, background: c.superficie, color: c.textoSecundario, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-              >
-                <Undo2 size={14} />
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-    );
+  // ── o gesto ───────────────────────────────────────────────────────────────
+  function iniciar(e: DragEvent<HTMLDivElement>, origem: Origem, id: string) {
+    e.dataTransfer.setData(TIPO_ARRASTO, serializarArrasto([id]));
+    e.dataTransfer.setData("text/plain", serializarArrasto([id]));
+    e.dataTransfer.effectAllowed = "move";
+    setArrasto({ origem, ids: [id] });
+  }
+  function terminar() { setArrasto(null); }
+  function idsSoltos(e: DragEvent<HTMLElement>): string[] {
+    const ids = lerArrasto(e.dataTransfer.getData(TIPO_ARRASTO) || e.dataTransfer.getData("text/plain"));
+    return ids.length > 0 ? ids : (arrasto?.ids ?? []);
   }
 
+  const linha: CSSProperties = {
+    display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 10,
+    background: c.campo, border: `1px solid ${c.divisoria}`, minWidth: 0,
+  };
+  const nota: CSSProperties = { fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario, lineHeight: 1.45 };
+
   return (
-    <>
-      <div style={estiloCard}>
-        <span style={estiloSecao}>Equipamentos removidos</span>
-        {mov?.faltaMigration && <AvisoMigration c={c} />}
-        {isLoading && <span style={sub}>Carregando…</span>}
-        {!isLoading && removidos.length === 0 && !mov?.faltaMigration && (
-          <span style={{ ...sub, fontSize: 12 }}>Nenhum equipamento retirado nesta atividade.</span>
-        )}
-        <Lista itens={removidos} verbo="de" />
-        {podeEditar && !mov?.faltaMigration && (
-          <PainelRemover chamadoId={chamadoId} aoMover={recarregar} c={c} isLight={isLight} />
-        )}
+    <div style={estiloCard}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+        <span style={estiloSecao}>Equipamentos</span>
+        <span style={nota}>
+          Arraste um equipamento do cliente para <strong style={{ fontWeight: 600 }}>Fora do cliente</strong> para
+          retirar; arraste de lá para um <strong style={{ fontWeight: 600 }}>bloco</strong> para instalar.
+        </span>
       </div>
 
-      <div style={estiloCard}>
-        <span style={estiloSecao}>Equipamentos instalados</span>
-        {isLoading && <span style={sub}>Carregando…</span>}
-        {!isLoading && instalados.length === 0 && !mov?.faltaMigration && (
-          <span style={{ ...sub, fontSize: 12 }}>Nenhum equipamento instalado nesta atividade.</span>
-        )}
-        <Lista itens={instalados} verbo="em" />
-        {podeEditar && !mov?.faltaMigration && (
-          <PainelInstalar chamadoId={chamadoId} clienteId={clienteId} aoMover={recarregar} c={c} isLight={isLight} />
-        )}
-      </div>
-    </>
+      {faltaMigration ? (
+        <span style={nota}>
+          Os equipamentos da atividade precisam da migration <strong>U119</strong>. Até ela rodar, nada aparece aqui.
+        </span>
+      ) : (
+        <div className="painel-vinculo">
+          {/* ══ NO CLIENTE — por bloco; cada bloco é uma zona de soltar ═════ */}
+          <section aria-label="Equipamentos no cliente, por bloco" style={estiloDoPainel(isLight, "nenhum")}>
+            <CabecalhoDoPainel
+              icone={<Layers size={15} />}
+              titulo="No cliente"
+              contagem={`${doCliente.data?.itens.length ?? 0} ${(doCliente.data?.itens.length ?? 0) === 1 ? "item" : "itens"}`}
+            />
+            {doCliente.isLoading ? (
+              <span style={nota}>Carregando os blocos…</span>
+            ) : blocos.length === 0 ? (
+              <span style={nota}>Este cliente não tem bloco cadastrado — crie na ficha do cliente.</span>
+            ) : (
+              <div className="rolagem-fina" style={{ ...ROLAGEM_DO_PAINEL, display: "flex", flexDirection: "column", gap: 8 }}>
+                {blocos.map((b) => (
+                  <ZonaDoBloco
+                    key={b.sistemaId ?? "__sem"}
+                    nome={b.nome}
+                    itens={b.itens}
+                    // R236: só o que vem de FORA instala; de bloco para bloco é cadastro (ficha)
+                    aceita={podeSoltar && !!b.sistemaId && arrasto?.origem === "fora"}
+                    aoSoltar={(ids) => mover.mutate({ ids, tipo: "instalacao", sistemaId: b.sistemaId })}
+                    idsSoltos={idsSoltos}
+                    arrastando={arrasto?.ids ?? null}
+                    aoIniciar={(e, id) => iniciar(e, "cliente", id)}
+                    aoTerminar={terminar}
+                    podeArrastar={podeSoltar}
+                    linha={linha}
+                    nota={nota}
+                    c={c}
+                    gold={gold}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ══ FORA DO CLIENTE — a zona de soltar da RETIRADA ══════════════ */}
+          <PainelFora
+            itens={livres.data?.itens ?? []}
+            carregando={livres.isLoading}
+            busca={busca}
+            aoBuscar={setBusca}
+            aceita={podeSoltar && arrasto?.origem === "cliente"}
+            aoSoltar={(ids) => mover.mutate({ ids, tipo: "retirada" })}
+            idsSoltos={idsSoltos}
+            arrastando={arrasto?.ids ?? null}
+            aoIniciar={(e, id) => iniciar(e, "fora", id)}
+            aoTerminar={terminar}
+            podeArrastar={podeSoltar}
+            linha={linha}
+            nota={nota}
+            c={c}
+          />
+        </div>
+      )}
+
+      {/* ══ O QUE ESTA ATIVIDADE FEZ — com desfazer para o clique errado ══ */}
+      {movimentos.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 7, paddingTop: 4 }}>
+          <span style={{ ...estiloSecao, fontSize: 9.5 }}>Nesta atividade</span>
+          <div className="atividade-equip-lista">
+            {movimentos.map((m) => {
+              const cor = m.tipo === "retirada"
+                ? (isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark)
+                : (isLight ? PRISMA.verde.light : PRISMA.verde.dark);
+              return (
+                <div key={m.movimento_id} style={linha}>
+                  {m.tipo === "retirada"
+                    ? <PackageMinus size={14} color={cor} style={{ flexShrink: 0 }} />
+                    : <PackagePlus size={14} color={cor} style={{ flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontFamily: FONT, fontSize: 12.5, color: c.texto,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {rotuloDoEquipamento(m)}
+                    </div>
+                    <div style={{ fontFamily: FONT, fontSize: 11, color: c.textoSecundario }}>
+                      {m.tipo === "retirada" ? "Retirado do cliente" : `Instalado em ${m.sistema_nome ?? "sem bloco"}`}
+                    </div>
+                  </div>
+                  {podeEditar && (
+                    <button
+                      type="button"
+                      onClick={() => desfazer.mutate(m)}
+                      disabled={ocupado}
+                      title="Desfazer este movimento"
+                      aria-label={`Desfazer: ${rotuloDoEquipamento(m)}`}
+                      style={{
+                        width: 30, height: 30, borderRadius: 9, flexShrink: 0, cursor: ocupado ? "wait" : "pointer",
+                        border: `1px solid ${c.divisoria}`, background: c.superficie, color: c.textoSecundario,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >
+                      <Undo2 size={14} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
-function AvisoMigration({ c }: { c: ReturnType<typeof cinzas> }) {
-  return (
-    <span style={{ fontFamily: FONT, fontSize: 12, color: c.textoSecundario, lineHeight: 1.5 }}>
-      Os equipamentos da atividade precisam da migration <strong>U119</strong>. Até ela rodar, nada aparece aqui.
-    </span>
-  );
-}
+// ── um bloco do cliente: cabeçalho que aceita o drop + os itens arrastáveis ──
 
-function BotaoLeve({ children, onClick, aberto, c }: { children: ReactNode; onClick: () => void; aberto: boolean; c: ReturnType<typeof cinzas> }) {
+function ZonaDoBloco({
+  nome, itens, aceita, aoSoltar, idsSoltos, arrastando, aoIniciar, aoTerminar, podeArrastar, linha, nota, c, gold,
+}: {
+  nome: string;
+  itens: EquipamentoDoCliente[];
+  aceita: boolean;
+  aoSoltar: (ids: string[]) => void;
+  idsSoltos: (e: DragEvent<HTMLElement>) => string[];
+  arrastando: string[] | null;
+  aoIniciar: (e: DragEvent<HTMLDivElement>, id: string) => void;
+  aoTerminar: () => void;
+  podeArrastar: boolean;
+  linha: CSSProperties;
+  nota: CSSProperties;
+  c: ReturnType<typeof cinzas>;
+  gold: string;
+}) {
+  const [sobre, setSobre] = useState(false);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-expanded={aberto}
+    <div
+      onDragOver={(e: DragEvent<HTMLDivElement>) => {
+        if (!aceita || !arrastoEhNosso(e.dataTransfer.types)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (!sobre) setSobre(true);
+      }}
+      onDragLeave={(e: DragEvent<HTMLDivElement>) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setSobre(false);
+      }}
+      onDrop={(e: DragEvent<HTMLDivElement>) => {
+        if (!aceita) return;
+        e.preventDefault();
+        setSobre(false);
+        const ids = idsSoltos(e);
+        if (ids.length > 0) aoSoltar(ids);
+        aoTerminar();
+      }}
       style={{
-        alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6,
-        height: 40, padding: "0 12px 0 10px", borderRadius: 12, cursor: "pointer",
-        background: c.campo, border: `1px solid ${c.divisoria}`, color: c.texto,
-        fontFamily: FONT, fontSize: 12.5, fontWeight: 600,
+        display: "flex", flexDirection: "column", gap: 5,
+        padding: 8, borderRadius: 12,
+        border: sobre ? `1.5px solid ${gold}` : aceita ? `1.5px dashed ${gold}` : `1px solid ${c.divisoria}`,
+        background: sobre ? PRISMA.amarelo.bg : "transparent",
+        transition: "border-color .15s ease, background-color .15s ease",
       }}
     >
-      <ChevronRight size={14} style={{ transform: aberto ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
-      {children}
-    </button>
-  );
-}
-
-// ── remover: os blocos do cliente → expande → o item → Remover ──────────────
-
-function PainelRemover({ chamadoId, aoMover, c, isLight }: { chamadoId: string; aoMover: () => void; c: ReturnType<typeof cinzas>; isLight: boolean }) {
-  const [aberto, setAberto] = useState(false);
-  const [blocoAberto, setBlocoAberto] = useState<string | null>(null);
-  const { data, isLoading } = useEquipamentosDoClienteDaAtividade(chamadoId, aberto);
-  const grupos = useMemo(() => agruparPorBloco(data?.itens ?? []), [data]);
-  const remover = useMutation({
-    mutationFn: (patrimonioId: string) => moverEquipamento({ patrimonioId, chamadoId, tipo: "retirada" }),
-    onSuccess: () => { aoMover(); toast.success("Equipamento retirado do cliente."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
-
-  return (
-    <>
-      <BotaoLeve onClick={() => setAberto((a) => !a)} aberto={aberto} c={c}>
-        <PackageMinus size={14} /> Remover equipamento…
-      </BotaoLeve>
-      {aberto && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {isLoading && <span style={{ fontFamily: FONT, fontSize: 12, color: c.textoSecundario }}>Carregando os blocos…</span>}
-          {!isLoading && grupos.length === 0 && (
-            <span style={{ fontFamily: FONT, fontSize: 12, color: c.textoSecundario }}>Este cliente não tem equipamento ativo no patrimônio.</span>
-          )}
-          {grupos.map((g) => {
-            const chave = g.sistemaId ?? "__sem";
-            const abertoG = blocoAberto === chave;
-            return (
-              <div key={chave} style={{ borderRadius: 12, border: `1px solid ${c.divisoria}`, background: c.superficie, overflow: "hidden" }}>
-                <button
-                  type="button"
-                  onClick={() => setBlocoAberto(abertoG ? null : chave)}
-                  aria-expanded={abertoG}
-                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "transparent", border: "none", cursor: "pointer", color: c.texto, textAlign: "left" }}
-                >
-                  <ChevronRight size={14} style={{ transform: abertoG ? "rotate(90deg)" : "none", transition: "transform .15s", flexShrink: 0 }} />
-                  <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13, flex: 1 }}>{g.nome}</span>
-                  <span style={{ fontFamily: FONT, fontSize: 11, color: c.textoSecundario }}>{g.itens.length} {g.itens.length === 1 ? "item" : "itens"}</span>
-                </button>
-                {abertoG && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "0 8px 8px" }}>
-                    {g.itens.map((it) => (
-                      <div key={it.patrimonio_id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px 7px 12px", borderRadius: 10, background: c.campo }}>
-                        <span style={{ fontFamily: FONT, fontSize: 12.5, color: c.texto, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {rotuloDoEquipamento(it)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => remover.mutate(it.patrimonio_id)}
-                          disabled={remover.isPending}
-                          style={{
-                            height: 30, padding: "0 10px", borderRadius: 9, cursor: "pointer",
-                            background: "transparent", border: `1px solid ${vermelho}`, color: vermelho,
-                            fontFamily: FONT, fontSize: 11.5, fontWeight: 600, flexShrink: 0,
-                          }}
-                        >
-                          Remover
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+        <span style={{
+          fontFamily: FONT, fontWeight: 600, fontSize: 12.5, color: c.texto,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {nome}
+        </span>
+        <span style={{ marginLeft: "auto", fontFamily: FONT, fontSize: 11, color: c.textoSecundario, flexShrink: 0 }}>
+          {itens.length}
+        </span>
+      </div>
+      {itens.length === 0 && <span style={{ ...nota, fontSize: 11 }}>vazio</span>}
+      {itens.map((i) => (
+        <div
+          key={i.patrimonio_id}
+          draggable={podeArrastar}
+          onDragStart={(e) => aoIniciar(e, i.patrimonio_id)}
+          onDragEnd={aoTerminar}
+          title={podeArrastar ? "Arraste para “Fora do cliente” para retirar" : undefined}
+          style={{
+            ...linha, padding: "6px 9px",
+            cursor: podeArrastar ? "grab" : "default",
+            opacity: arrastando?.includes(i.patrimonio_id) ? 0.45 : 1,
+          }}
+        >
+          {podeArrastar && <GripVertical size={13} color={c.textoSecundario} style={{ flexShrink: 0 }} aria-hidden />}
+          <span style={{
+            fontFamily: FONT, fontSize: 12, color: c.texto, flex: 1, minWidth: 0,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {rotuloDoEquipamento(i)}
+          </span>
         </div>
-      )}
-    </>
+      ))}
+    </div>
   );
 }
 
-// ── instalar: buscar entre os que não estão em cliente → escolher o bloco ───
+// ── o painel de fora: busca, lista arrastável, e a zona de soltar da retirada ──
 
-function PainelInstalar({ chamadoId, clienteId, aoMover, c, isLight }: { chamadoId: string; clienteId: string; aoMover: () => void; c: ReturnType<typeof cinzas>; isLight: boolean }) {
-  const [aberto, setAberto] = useState(false);
-  const [busca, setBusca] = useState("");
-  const [escolhido, setEscolhido] = useState<EquipamentoLivre | null>(null);
-  const [sistemaId, setSistemaId] = useState<string>("");
-  const { data, isLoading } = useEquipamentosLivres(busca, aberto);
-  const { data: sistemas = [] } = useInventario(aberto ? clienteId : undefined);
-  const blocos = sistemas.filter((s) => s.ativo !== false);
-  const instalar = useMutation({
-    mutationFn: () => {
-      if (!escolhido) throw new Error("Escolha o equipamento.");
-      if (!sistemaId) throw new Error("Escolha o bloco em que ele foi instalado.");
-      return moverEquipamento({ patrimonioId: escolhido.patrimonio_id, chamadoId, tipo: "instalacao", sistemaId });
-    },
-    onSuccess: () => { aoMover(); setEscolhido(null); setSistemaId(""); toast.success("Equipamento instalado no bloco."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const entrada: CSSProperties = {
-    height: 40, borderRadius: 12, padding: "0 12px", fontFamily: FONT, fontSize: 13, fontWeight: 400,
-    background: c.campo, border: `1px solid ${c.divisoria}`, color: c.texto, outline: "none", width: "100%", boxSizing: "border-box",
-  };
+function PainelFora({
+  itens, carregando, busca, aoBuscar, aceita, aoSoltar, idsSoltos, arrastando, aoIniciar, aoTerminar, podeArrastar, linha, nota, c,
+}: {
+  itens: EquipamentoLivre[];
+  carregando: boolean;
+  busca: string;
+  aoBuscar: (v: string) => void;
+  aceita: boolean;
+  aoSoltar: (ids: string[]) => void;
+  idsSoltos: (e: DragEvent<HTMLElement>) => string[];
+  arrastando: string[] | null;
+  aoIniciar: (e: DragEvent<HTMLDivElement>, id: string) => void;
+  aoTerminar: () => void;
+  podeArrastar: boolean;
+  linha: CSSProperties;
+  nota: CSSProperties;
+  c: ReturnType<typeof cinzas>;
+}) {
+  const { isLight } = useTheme();
+  const [sobre, setSobre] = useState(false);
+  const campo = useRef<HTMLInputElement>(null);
+
+  const onde = (i: EquipamentoLivre): string =>
+    i.pessoa_nome ? `Com ${i.pessoa_nome}` : i.situacao === "retirado" ? "Retirado de cliente" : (i.local_qap || "Sem local");
+
+  const miolo: ReactNode = carregando ? (
+    <span style={nota}>Buscando…</span>
+  ) : itens.length === 0 ? (
+    <span style={nota}>
+      {busca.trim() ? `Nenhum equipamento fora de cliente com “${busca.trim()}”.` : "Nenhum equipamento fora de cliente."}
+    </span>
+  ) : (
+    <div className="rolagem-fina" style={{ ...ROLAGEM_DO_PAINEL, display: "flex", flexDirection: "column", gap: 5 }}>
+      {itens.map((i) => (
+        <div
+          key={i.patrimonio_id}
+          draggable={podeArrastar}
+          onDragStart={(e) => aoIniciar(e, i.patrimonio_id)}
+          onDragEnd={aoTerminar}
+          title={podeArrastar ? "Arraste para um bloco para instalar" : undefined}
+          style={{
+            ...linha,
+            cursor: podeArrastar ? "grab" : "default",
+            opacity: arrastando?.includes(i.patrimonio_id) ? 0.45 : 1,
+          }}
+        >
+          {podeArrastar && <GripVertical size={13} color={c.textoSecundario} style={{ flexShrink: 0 }} aria-hidden />}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontFamily: FONT, fontSize: 12, color: c.texto,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {rotuloDoEquipamento(i)}
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: 10.5, color: c.textoSecundario }}>{onde(i)}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
-    <>
-      <BotaoLeve onClick={() => setAberto((a) => !a)} aberto={aberto} c={c}>
-        <PackagePlus size={14} /> Instalar equipamento…
-      </BotaoLeve>
-      {aberto && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ position: "relative" }}>
-            <Search size={14} color={c.textoSecundario} style={{ position: "absolute", left: 12, top: 13 }} />
+    <section
+      aria-label="Equipamentos fora do cliente"
+      onDragOver={(e: DragEvent<HTMLElement>) => {
+        if (!aceita || !arrastoEhNosso(e.dataTransfer.types)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (!sobre) setSobre(true);
+      }}
+      onDragLeave={(e: DragEvent<HTMLElement>) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setSobre(false);
+      }}
+      onDrop={(e: DragEvent<HTMLElement>) => {
+        if (!aceita) return;
+        e.preventDefault();
+        setSobre(false);
+        const ids = idsSoltos(e);
+        if (ids.length > 0) aoSoltar(ids);
+        aoTerminar();
+      }}
+      style={estiloDoPainel(isLight, sobre ? "ativo" : aceita ? "possivel" : "nenhum")}
+    >
+      <CabecalhoDoPainel
+        icone={<Inbox size={15} />}
+        titulo="Fora do cliente"
+        contagem={itens.length > 0 ? `${itens.length}` : undefined}
+        direita={(
+          <div style={{ position: "relative", minWidth: 180 }}>
+            <Search size={13} color={c.textoSecundario} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
             <input
+              ref={campo}
               value={busca}
-              onChange={(e) => { setBusca(e.target.value); setEscolhido(null); }}
-              placeholder="Buscar por identificação, nome, modelo, fabricante ou local…"
-              aria-label="Buscar equipamento"
-              style={{ ...entrada, paddingLeft: 34 }}
+              onChange={(e) => aoBuscar(e.target.value)}
+              placeholder="Buscar por nº, nome, modelo…"
+              aria-label="Buscar equipamento fora do cliente"
+              style={{
+                width: "100%", boxSizing: "border-box", minHeight: 28,
+                padding: "0 10px 0 28px", borderRadius: 999,
+                background: c.campo, border: `1px solid ${c.divisoria}`, color: c.texto,
+                fontFamily: FONT, fontSize: 12, outline: "none",
+              }}
             />
           </div>
-          {data?.faltaMigration && <AvisoMigration c={c} />}
-          {isLoading && <span style={{ fontFamily: FONT, fontSize: 12, color: c.textoSecundario }}>Buscando…</span>}
-          {!isLoading && (data?.itens.length ?? 0) === 0 && !data?.faltaMigration && (
-            <span style={{ fontFamily: FONT, fontSize: 12, color: c.textoSecundario }}>Nenhum equipamento fora de cliente com esse texto.</span>
-          )}
-          {!escolhido && (data?.itens ?? []).map((it) => (
-            <button
-              key={it.patrimonio_id}
-              type="button"
-              onClick={() => setEscolhido(it)}
-              className="hover-suave"
-              style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "8px 12px", borderRadius: 10, background: c.campo, border: `1px solid ${c.divisoria}`, color: c.texto, cursor: "pointer", textAlign: "left" }}
-            >
-              <span style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600 }}>{rotuloDoEquipamento(it)}</span>
-              <span style={{ fontFamily: FONT, fontSize: 11, color: c.textoSecundario }}>
-                {it.pessoa_nome ? `Com ${it.pessoa_nome}` : it.situacao === "retirado" ? "Retirado de cliente" : (it.local_qap || "Sem local")}
-              </span>
-            </button>
-          ))}
-          {escolhido && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 10, borderRadius: 12, background: c.superficie, border: `1px solid ${c.divisoria}` }}>
-              <span style={{ fontFamily: FONT, fontSize: 12.5, color: c.texto }}>
-                <strong style={{ fontWeight: 600 }}>{rotuloDoEquipamento(escolhido)}</strong>
-                <button type="button" onClick={() => setEscolhido(null)} style={{ marginLeft: 8, background: "none", border: "none", color: c.textoSecundario, cursor: "pointer", fontFamily: FONT, fontSize: 11.5, textDecoration: "underline" }}>trocar</button>
-              </span>
-              <select value={sistemaId} onChange={(e) => setSistemaId(e.target.value)} aria-label="Bloco em que foi instalado" style={entrada}>
-                <option value="">Em qual bloco foi instalado?</option>
-                {blocos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-              </select>
-              {blocos.length === 0 && (
-                <span style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario }}>Este cliente ainda não tem bloco cadastrado — crie na ficha do cliente.</span>
-              )}
-              <button
-                type="button"
-                onClick={() => instalar.mutate()}
-                disabled={!sistemaId || instalar.isPending}
-                style={{ ...goldButton(), boxShadow: "none", height: 40, borderRadius: 12, fontSize: 12.5, alignSelf: "flex-start", padding: "0 14px", opacity: !sistemaId || instalar.isPending ? 0.6 : 1 }}
-              >
-                {instalar.isPending ? "Gravando…" : "Confirmar instalação"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </>
+        )}
+      />
+      {aceita && <span style={{ ...nota, fontSize: 11 }}>Solte aqui para retirar do cliente.</span>}
+      {miolo}
+    </section>
   );
 }

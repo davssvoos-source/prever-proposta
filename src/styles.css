@@ -1237,6 +1237,75 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   .detalhe-grid { grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr); }
 }
 
+/* ── A TELA DA ATIVIDADE — o posto de trabalho de desktop (R234, U120) ──────
+   Davi, 08/09/2026: "você não respeitou as margens da direita e esquerda […]
+   eu vejo que nós temos uma tela criada inicialmente para celular, que os
+   botões simplesmente foram esticados para adaptar para PC […] quero algo
+   essencialmente para desktop."
+   A `.pagina-larga` (R205) sangra até a borda da janela com 28px: na ficha do
+   cliente isso é o certo (são painéis que querem a borda), aqui deixava o
+   texto encostado no vidro. Esta usa a mesma sangria com margem de gente —
+   40px, 56px no monitor grande — e um TETO de 1880px no miolo: passando disso
+   a linha de texto vira uma régua e o olho perde o começo da linha seguinte.
+   A grade 3fr|2fr virou faixas: as propriedades deixaram de ser uma coluna de
+   caixas de 660px e o texto ficou com a largura toda. */
+/* SEM SANGRIA, de propósito. A `.pagina-larga` (R205) puxa o conteúdo para
+   fora do <main> com `margin: calc(50% - 50vw …)`, e isso tem um defeito
+   MEDIDO (U120, no navegador, em 1920px): `100vw` inclui a barra de rolagem,
+   mas o <main> é centrado na largura ÚTIL (1905px) — a faixa toda escorrega
+   ~8px para a esquerda, e a margem sai 41px de um lado e 56px do outro. Numa
+   página de painéis ninguém nota; nesta, cujo pedido era "respeite as margens
+   da direita e da esquerda", nota-se.
+   Aqui quem abre mão do teto é o PRÓPRIO <main>, por `:has()` — sem prop
+   nenhuma descendo a árvore e sem `vw`. As margens saem exatas e iguais: os
+   16px que o <main> já tem mais o respiro desta página. Navegador sem `:has()`
+   (nenhum em uso na casa) cai no teto de 1280px de sempre, que é legível. */
+main:has(.pagina-trabalho) { max-width: none; }
+.pagina-trabalho { padding-left: 0; padding-right: 0; }
+@media (min-width: 1024px) {
+  .pagina-trabalho { padding-left: 24px; padding-right: 24px; }
+}
+@media (min-width: 1600px) {
+  .pagina-trabalho { padding-left: 40px; padding-right: 40px; }
+}
+.pagina-trabalho > .trabalho-miolo {
+  max-width: 1880px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+/* A faixa de propriedades: controles do tamanho do próprio conteúdo, lidos
+   numa varredura. `flex-end` alinha pela BASE, porque os rótulos têm uma
+   linha e alguns controles têm duas (o "quando" tem botão, data e frase). */
+.atividade-props { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; }
+
+/* O corpo e a conversa compartilham a MESMA grade — é o que faz as faixas se
+   alinharem verticalmente em vez de cada uma inventar a sua. */
+.atividade-corpo, .atividade-conversa {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start;
+}
+@media (min-width: 1024px) {
+  .atividade-corpo, .atividade-conversa { grid-template-columns: minmax(0, 1fr) clamp(300px, 26%, 360px); }
+}
+@media (min-width: 1440px) {
+  .atividade-corpo, .atividade-conversa { grid-template-columns: minmax(0, 1fr) clamp(320px, 22%, 400px); }
+}
+
+/* Os textos: um só ocupa a faixa inteira; na corretiva são DOIS, e a partir de
+   1700px ficam lado a lado — é lendo o Problema que se escreve a Solução.
+   O corte é 1700 e não 1440 porque foi MEDIDO (U120, no navegador): em 1440 os
+   dois editores ficavam com 382px cada, umas cinquenta letras por linha —
+   pior que empilhados. Em 1700 cada um passa de 500px; em 1920, de 590px. */
+.atividade-textos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+@media (min-width: 1700px) {
+  .atividade-textos.duplo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Os equipamentos anotados à mão (atividade interna ou de grupo): uma lista de
+   uma coluna no celular vira grade no desktop, em vez de uma fila de 1600px. */
+.atividade-equip-lista { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+@media (min-width: 1024px) { .atividade-equip-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1600px) { .atividade-equip-lista { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
 /* R146 (U96): a foto da fachada sobreposta ao card da lista de clientes.
    Camada absoluta pela DIREITA, com máscara que some para a esquerda (onde
    está o texto), e que só aparece depois de carregar — a classe .pronta liga a

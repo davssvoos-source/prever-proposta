@@ -1,7 +1,7 @@
 # Prever App — Documento Mestre do Produto
 
 <!-- sumario:inicio -->
-> **Sumário** — 13 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 14 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Papéis (permissão) e equipes (roteamento)](#2-papéis-permissão-e-equipes-roteamento)
@@ -16,6 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R236 (7)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -29,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-08 (R229). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-08 (R236). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4232,3 +4233,106 @@ v0.0.2." As regras desta seção são o conteúdo da v0.0.2 (migration U119).
   *(Davi, 08/09/2026: "qualquer alteração que façamos será executada via
   versionamento do sistema, para preservar o banco de dados […] as imagens não
   carregaram no servidor (ex.: foto de banner da fachada) — arrumar.")*
+
+## 24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)
+
+Os usuários começaram a testar o sistema no servidor. Davi, 08/09/2026:
+"Fizemos a migração, agora os usuários estão testando o sistema, vamos fazer
+mais essa rodada de alterações, com tudo o que for listado abaixo, de maneira
+estratégica e planejada." O centro desta leva é a tela da atividade — "será a
+tela mais usada no dia a dia por vários usuários. Quero que você dê uma atenção
+especial para essa tela. Todos usarão por Desktop, então faça um layout bem
+adaptado."
+
+- **R230** — **O sistema se chama Prever OS.** O nome está no título da aba de
+  toda página ("Prever OS — Grupo Prever") e como título da tela de login,
+  abaixo do logotipo do grupo, com "Grupo Prever · v<versão>" embaixo. A marca
+  é o Grupo Prever; o produto é o Prever OS. Saiu o "Prever Orçamentos" do
+  título e o "SISTEMA DE PROJETOS ELETRÔNICOS" do login — os dois eram da época
+  em que isto só fazia proposta. *(Davi, 08/09/2026: "Começando pela tela de
+  Login, o nome do sistema será Prever OS, e deverá estar no título da página
+  de login.")*
+
+- **R231** — **A tela de abrir chamado não oferece mais o plantão.** O botão
+  "Registrar um atendimento de plantão" que ficava no fim do formulário saiu:
+  abrir chamado é o assunto daquela tela, e o plantão é registro de outra coisa
+  (R117). A porta do plantão continua onde ela é a única ação de quem a usa: o
+  **técnico de campo**, que não abre chamado (R163) e vê só o convite do
+  plantão ao abrir o "+". *(Davi, 08/09/2026: "Na tela de abertura de chamados,
+  remova o botão 'Registrar um atendimento de plantão'.")*
+
+- **R232** — **Prazo e dia agendado são um OU outro, num controle só.** Onde se
+  escolhe a data de uma atividade (o "+" da Início e a tela da atividade) há
+  UMA pergunta — "quando?" — com dois botões de seleção, **Tem prazo**
+  (amarelo, a cor do prazo no card) e **Agendar** (azul, a coluna Agendado,
+  R225), e UM campo de data embaixo com a frase do que aquilo significa.
+  Escolher um apaga a data do outro; clicar no botão aceso volta para "sem
+  data", que é o estado inicial de toda atividade. Eram dois campos empilhados,
+  um deles cinza quando o outro tinha valor. *(Davi, 08/09/2026: "os itens
+  PRAZO / AGENDAR PARA devem ter design estratégico de acordo com o design
+  system, quero que fique mais claro que é um ou outro.")*
+
+- **R233** — **No quadro, a coluna inteira é alvo do arrasto.** Todas as
+  colunas têm a altura da mais alta e a pilha de cards ocupa a coluna até o
+  fim: soltar um card **na altura em que a mão está**, na faixa vertical da
+  coluna vizinha, muda o status — sem precisar subir até onde aquela coluna tem
+  card. *(Davi, 08/09/2026: "o sistema deve alterar a coluna daquele card se
+  ele arrastar para a área da coluna, não necessariamente para a área da coluna
+  onde tem card […] se tem 20 atividades Aguardando Início e 1 em Stand-By […]
+  se ele arrastar para direita na reta da coluna de stand-by o sistema já
+  deveria considerar que ele arrastou para coluna stand-by, mas hoje o usuário
+  precisaria arrastar e scrollar lá pra cima.")*
+
+- **R234** — **A tela da atividade é um posto de trabalho de desktop.** Quatro
+  faixas, de cima para baixo: (1) o **cabeçalho** com o título, o número, o
+  status e — no canto superior direito — o progresso (R235); (2) as
+  **propriedades** numa faixa horizontal de campos compactos (status, tipo,
+  impacto, quando, responsável, apoio, equipes, proposta), com o recebimento
+  como rodapé fino; (3) o **corpo**, onde os textos ocupam a faixa larga (na
+  corretiva, Problema e Solução lado a lado a partir de 1700px) e uma coluna de
+  320–400px à direita guarda cliente e arquivos; (4) os **equipamentos**
+  (R236) e a **conversa** (comentários e linha do tempo). A largura é a da
+  janela **com margem de verdade** — 40px, 56px no monitor grande, iguais dos
+  dois lados, e teto de 1880px no miolo. O que saiu: a coluna estreita de
+  seletores esticados (na tela do Davi ela tinha 660px de largura) e a
+  `.pagina-larga`, que encostava o conteúdo nas duas bordas. *(Davi,
+  08/09/2026: "A tela de configuração da atividade deve ter os campos de
+  'Descrição' ou 'Problema' e 'Solução' como os campos que ocupam a maior parte
+  do espaço da tela, pois são os principais campos que o usuário vai interagir
+  […] você não respeitou as margens da direita e esquerda […] eu vejo que nós
+  temos uma tela criada inicialmente para celular, que os botões simplesmente
+  foram esticados para adaptar para PC. E não é isso que eu quero, quero algo
+  essencialmente para desktop.")*
+
+- **R235** — **O progresso da atividade é uma rosca de 0% a 100%, contada pelo
+  checklist.** Ela mora no canto superior direito da tela da atividade. O que
+  conta é o checklist do campo onde está o plano de trabalho: a **Descrição**
+  nos tipos em geral e a **Solução aplicada** na corretiva (o mesmo predicado
+  da R213). Três itens marcados de cinco = 60%. **Sem checklist, o progresso é
+  0% em qualquer status; concluída é 100%** — com checklist ou sem, o status
+  manda depois de concluir. A rosca fecha em verde e anda em dourado, e o card
+  do campo que conta avisa: "cada item de checklist daqui conta no progresso da
+  atividade". Não existe campo de progresso no banco para alguém esquecer de
+  atualizar: o número sai do texto que a pessoa escreve. *(Davi, 08/09/2026:
+  "No canto superior direito da tela, adicione um campo contendo um gráfico de
+  rosca que vai de 0% a 100%, este gráfico será o progresso da atividade […]
+  quando o usuário adicionar um checklist no campo 'Descrição' (para atv.
+  manutenções corretivas, considere o campo 'Solução'), o sistema irá
+  contabilizar o progresso […] caso não tenha nenhum checklist na atividade, o
+  progresso só pode ser 0% (Qualquer Status) ou 100% (Concluída)." E, à
+  pergunta direta sobre concluída com checklist pela metade: "100% — concluída
+  é 100%.")*
+
+- **R236** — **Os equipamentos da atividade se movem por arrasto.** Na tela da
+  atividade de um cliente único, dois painéis lado a lado: **No cliente** (o
+  patrimônio, por bloco, incluindo os blocos vazios) e **Fora do cliente** (o
+  que está com alguém, no almoxarifado ou já retirado, com busca). Arrastar do
+  cliente para "Fora do cliente" **retira**; arrastar de fora para um **bloco**
+  **instala** ali. Arrastar de um bloco para outro não é aceito: mudar de bloco
+  é cadastro, e o lugar dele é a ficha do cliente. O que a atividade fez fica
+  listado embaixo, com desfazer. É o mesmo gesto e a mesma casca dos painéis da
+  ficha (R206). *(Davi, 08/09/2026: "Pense sempre em uma organização visual que
+  torne o uso das ferramentas mais intuitivo. Por isso o esquema de arrastar
+  equipamentos nos campos de equipamentos instalados/removidos, enfim a gente
+  deve otimizar o sistema para o usuário conseguir usar com praticidade no dia
+  a dia.")*

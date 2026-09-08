@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 49 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 50 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -39,6 +39,7 @@
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
   - [6.21 O chat da Início — botão flutuante, a conversa 9:16, as bolhas por prazo (v16 — 2026-09-08, R215–R217, R222–R223)](#621-o-chat-da-início-botão-flutuante-a-conversa-916-as-bolhas-por-prazo-v16-2026-09-08-r215r217-r222r223)
   - [6.22 O editor de texto — uma área, blocos com marcador próprio, menção como chip (v16 — 2026-09-08, R135, R224)](#622-o-editor-de-texto-uma-área-blocos-com-marcador-próprio-menção-como-chip-v16-2026-09-08-r135-r224)
+  - [6.23 A tela da atividade — o posto de trabalho de desktop (v17 — 2026-09-08, R234–R236)](#623-a-tela-da-atividade-o-posto-de-trabalho-de-desktop-v17-2026-09-08-r234r236)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
 - [9. Visualização de dados](#9-visualização-de-dados)
@@ -1118,6 +1119,49 @@ competiria com o texto escuro sobre branco.
   entrada do lugar (raio 14 no chat, `est.entrada` no painel), e o Enter é de
   quem a usa (envia).
 
+### 6.23 A tela da atividade — o posto de trabalho de desktop (v17 — 2026-09-08, R234–R236)
+
+- **A casca** (`.pagina-trabalho` + `.trabalho-miolo`): a página ocupa a
+  largura da janela porque o `<main>` solta o teto de 1280px quando ela está
+  presente (`main:has(.pagina-trabalho)`) — **não** por sangria com `100vw`,
+  que conta a barra de rolagem e desalinha as margens (ver o anti-padrão nº 10).
+  Margem lateral: 16px no celular, **40px** a partir de 1024 e **56px** a partir
+  de 1600, iguais dos dois lados; o miolo tem teto de **1880px** e é uma coluna
+  flex de `gap: 14px`. Estilo inline nesta página mexe só no eixo VERTICAL.
+- **Quatro faixas**, nesta ordem: cabeçalho · propriedades · corpo ·
+  equipamentos e conversa.
+- **Cabeçalho**: botão voltar 40px · título `22/700` com o número e "aberto há
+  Nd" em 11,5 secundário · etiqueta de status (`etiqueta()`, 10/600 caixa
+  alta) · e, no canto superior direito, o **campo do progresso**: um
+  `card(isLight)` com a rosca.
+- **Faixa de propriedades** (`.atividade-props`): um `card` com
+  `display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end`.
+  Cada item é rótulo `LABEL` (10/600 caixa alta) sobre o controle, com
+  largura-base própria (`flex: 0 1 190px` … `290px`; `0 0 auto` para chips).
+  Os seletores vão **compactos** (`SeletorDeOpcao`/`CampoComBusca` com
+  `compacto`), nunca esticados à largura de uma coluna. O recebimento (quem
+  criou, início, conclusão) é o rodapé fino da faixa, separado por 1px.
+- **Corpo** (`.atividade-corpo`): `minmax(0,1fr)` + `clamp(300px, 26%, 360px)`
+  a partir de 1024 (`clamp(320px, 22%, 400px)` a partir de 1440). Na larga, os
+  textos (`.atividade-textos`, `min-height` 480 quando é um só, 400 cada
+  quando são dois — lado a lado só a partir de **1700px**); na estreita, cliente
+  e arquivos. A conversa (`.atividade-conversa`) repete a MESMA grade, para as
+  faixas alinharem.
+- **A rosca** (`RoscaDeProgresso`, 92px na tela da atividade): dois círculos
+  SVG — trilho em `rgba(…,0.07)` e arco em `strokeDasharray` girado -90° —,
+  traço de 1/9 do diâmetro, `strokeLinecap: round`, número no centro em
+  `400`/(tamanho ÷ 3,4) e, ao lado, "PROGRESSO" 10/700 caixa alta com
+  "3/5 itens". Arco **dourado** enquanto anda e **verde** (`PRISMA.verde`) ao
+  fechar em 100%; sem glow — cor com função, não decoração (R174).
+- **Os dois painéis dos equipamentos** reusam a casca da ficha
+  (`estiloDoPainel`, `CabecalhoDoPainel`, `ROLAGEM_DO_PAINEL`,
+  `.painel-vinculo`): borda tracejada dourada = "pode soltar aqui", borda
+  sólida + `PRISMA.amarelo.bg` = "está sobre mim", `GripVertical` no item
+  arrastável e opacidade 0,45 no que está na mão.
+- **O par "quando"** (`CampoQuando`): dois `botaoSelecao` — amarelo para
+  "Tem prazo", azul para "Agendar" — e UM campo de data com a frase do que
+  aquilo faz. `compacto` na faixa (botões 6×11, campo 36px).
+
 ## 7. Arquitetura de tema
 
 Um contexto simples com persistência em `localStorage` e atributo no `<html>`:
@@ -1197,6 +1241,25 @@ Todos abaixo foram bugs de produção — verifique cada um antes de entregar.
    vivo continua sendo `--primary` nos dois temas (é o botão da marca, com
    texto quase-preto por cima); quem precisa de dourado como texto/ícone usa
    `--gold-primary`, que escurece para `#A06108` no claro.
+
+10. **O atalho `padding` inline apagando o padding lateral da classe.** É o
+    mais barato de cometer e o mais difícil de ver: um elemento com
+    `className="pagina-larga"` (ou `.pagina-trabalho`), que dá
+    `padding-left/right`, e ao lado `style={{ padding: "12px 0 48px" }}`. O
+    atalho escreve os QUATRO lados, e o `0` do meio zera o padding lateral da
+    classe — o CSS está certo, a tela é que fica encostada nas duas bordas da
+    janela. Foi exatamente o defeito que o Davi viu na tela da atividade
+    (08/09/2026: "você não respeitou as margens da direita e esquerda"), e o
+    `padding-left` computado medido no navegador era **0px**. Regra: em página
+    que tem classe de largura, estilo inline mexe só no eixo VERTICAL
+    (`paddingTop`/`paddingBottom`). Varredura (asserção CRÍTICA na R234):
+    ```bash
+    grep -rn 'className="pagina-\(larga\|trabalho\)"' src/ | grep 'style={{ padding: '
+    ```
+    Corolário: sangria com `calc(50% - 50vw …)` **desalinha** as margens onde
+    há barra de rolagem (`100vw` a inclui, o `<main>` centra na largura útil:
+    ~8px de diferença por lado, medidos em 1920px). Quando as margens precisam
+    ser iguais, prefira `main:has(.sua-classe) { max-width: none }` + padding.
 
 ---
 

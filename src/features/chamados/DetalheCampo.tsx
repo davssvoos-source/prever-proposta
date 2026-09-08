@@ -577,8 +577,10 @@ export function DetalheCampo({ id }: { id: string }) {
   const fotosAntes = fotos.filter((f) => f.etapa === "antes");
   const fotosDepois = fotos.filter((f) => f.etapa === "depois");
 
+  // U120: `paddingTop`/`paddingBottom`, nunca o atalho `padding` — ele zeraria
+  // o padding lateral da classe (ver o comentário em DetalheInterno.tsx).
   return (
-    <div className="pagina-larga" style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
+    <div className="pagina-trabalho" style={{ paddingTop: 12, paddingBottom: 48, display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button

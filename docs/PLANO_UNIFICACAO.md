@@ -11438,3 +11438,104 @@ Voltou ao baseline.
 
 **Números.** Verificador: 3.140 asserções, 0 falharam. `tsc`: 57 (baseline). Build
 completa; `npm run build:windows` completo (`dist-windows/Prever-0.0.2.zip`).
+
+## U120 — a v0.0.3: Prever OS, a tela da atividade para desktop, a rosca do progresso, a pista do Kanban, o arrasto dos equipamentos (R230–R236)
+
+Os usuários entraram no sistema no servidor e vieram sete pedidos numa mensagem
+só. Cinco eram objetivos; um era uma reclamação — e a reclamação é a parte
+importante desta entrada, porque ela tinha razão.
+
+**"Você não respeitou as margens da direita e esquerda, além disso você não
+reconsiderou o layout da página, não otimizou, não fez nada que eu pedi."** A
+R228 (U119) tinha "dado largura" à tela da atividade acrescentando uma classe
+CSS — e nada mais. Duas coisas estavam erradas, e a primeira só apareceu porque
+esta rodada foi medida no navegador em vez de olhada no código:
+
+1. **A margem existia no CSS e era apagada por um atalho.** O elemento tinha
+   `className="pagina-larga"` (que dá `padding-left/right`) e, ao lado,
+   `style={{ padding: "12px 0 48px" }}`. O ATALHO inline `padding` escreve os
+   quatro lados: o `0` do meio zerava o padding lateral da classe. Medido no
+   preview em 1920px: `paddingLeft` computado = **0px**, conteúdo encostado nas
+   duas bordas — exatamente o que ele viu. A ficha do cliente (R205), que usa a
+   mesma classe, não tinha o defeito porque lá o estilo inline é
+   `paddingTop`/`paddingBottom`. Virou o **anti-padrão nº 10** do DESIGN_SYSTEM,
+   com o `grep` que o encontra, e uma asserção CRÍTICA nas três páginas largas.
+2. **A sangria com `100vw` desalinha as margens.** Corrigido o atalho, a medição
+   deu 41px de margem à esquerda e 56px à direita. A causa: `margin: calc(50% -
+   50vw …)` — `100vw` inclui a barra de rolagem (1920), mas o `<main>` é
+   centrado na largura útil (1905), e a faixa toda escorrega meia barra para a
+   esquerda. Em vez de compensar com número mágico, a página parou de sangrar: é
+   o **`<main>` que solta o teto de 1280px**, por `main:has(.pagina-trabalho)`,
+   e as margens passam a ser padding de verdade. Medido: 56px e 56px, sem
+   rolagem horizontal. A `.pagina-larga` da ficha fica como está — lá a borda é
+   proposital (são painéis), e mexer nela era mexer em tela aprovada.
+
+**O layout, agora.** O que ele descreveu ("uma tela criada inicialmente para
+celular, que os botões simplesmente foram esticados") era literalmente a grade
+`3fr | 2fr`: na tela dele, 660px de SELETORES esticados ao lado de 985px de
+texto. Virou quatro faixas — cabeçalho com a rosca, propriedades numa barra
+horizontal, corpo com os textos ocupando a faixa larga, e embaixo equipamentos
+e conversa. As sete propriedades que eram uma coluna de caixas altas viraram
+sete controles do tamanho do próprio conteúdo (`prop(rótulo, base, campo)`), e
+o "Recebimento" virou o rodapé fino da faixa, que é o lugar de informação que
+não se edita. Na corretiva os dois textos ficam lado a lado — mas só a partir
+de **1700px**, e esse número foi medido: em 1440 cada um ficava com 382px, umas
+cinquenta letras por linha, pior que empilhados. Em 1920 dá 595px cada, e os
+dois editores ocupam a dobra inteira.
+
+Uma armadilha do React ficou registrada no código: o item da faixa é uma
+**função** que devolve JSX (`prop(...)`), não um componente declarado dentro do
+render — um componente declarado ali nasce com identidade nova a cada
+renderização e o React remonta o campo, tirando o foco de quem está digitando.
+
+**A rosca do progresso (R235).** O número sai do texto, não de uma coluna nova:
+`progressoDaAtividade` conta os itens de checklist do campo que carrega o plano
+de trabalho — a Solução na corretiva, a Descrição nos outros — pelo MESMO
+`temDiagnostico` da R213. As duas bordas da regra são do Davi: sem checklist é
+0% em qualquer status, e concluída é 100% (perguntei; ele respondeu "100% —
+concluída é 100%"). O que se recusou: gravar o progresso no banco (seria uma
+segunda verdade que envelhece sozinha) e somar os dois campos (marcar caixas no
+problema detectado não é progresso). A tela diz, no card que conta, que é dali
+que sai o número — sem isso a rosca seria mágica.
+
+**A pista do Kanban (R233).** O diagnóstico dele estava certo e a causa era uma
+linha: `alignItems: "flex-start"` na fileira de colunas. Cada coluna tinha a
+altura do próprio conteúdo, então na altura do 20º card de "Aguardando início"
+a coluna "Stand-by" (com um card) NÃO EXISTIA — não havia alvo. Com `stretch` e
+a pilha de cards em `flex: 1 1 auto` (piso de 140px), a coluna vira uma pista de
+ponta a ponta e o gesto passa a ser só horizontal. Os handlers de soltar já
+estavam na coluna inteira; faltava a coluna ter altura.
+
+**O arrasto dos equipamentos (R236).** Os dois botões da U119 ("Remover
+equipamento…", "Instalar equipamento…") pediam seis cliques para trocar uma
+câmera. Viraram os dois painéis da ficha (`.painel-vinculo`, `estiloDoPainel`,
+`CabecalhoDoPainel` — reusados, não clonados): o patrimônio do cliente por
+bloco de um lado, o que está fora do outro. O que decide o movimento é a ORIGEM
+do arrasto, guardada no estado, e não só o alvo: soltar num bloco só instala se
+o item veio de fora. Arrastar de bloco para bloco fica recusado de propósito —
+gravaria uma "instalação" que não aconteceu. `blocosParaArrastar` substituiu o
+`agruparPorBloco` da U119 porque aquele derivava os blocos dos itens, e bloco
+vazio não aparecia: sem ele não há onde soltar o primeiro equipamento.
+
+**As duas pequenas.** O nome (R230) entrou no `<title>` de todas as páginas e no
+login, com a versão embaixo — a aba dizia "Prever Orçamentos" desde a época do
+gerador de propostas. O botão do plantão (R231) saiu do fim da tela de abrir
+chamado; o do técnico de campo ficou, porque é a única porta dele (R163) — se
+os dois saíssem, ninguém mais registraria plantão.
+
+**Nada de migration.** Toda esta leva é app: o progresso é derivado, o resto é
+layout e gesto. A **U119 continua pendente** e é ela que a v0.0.3 exige.
+
+**O que a verificação pegou.** Seis pinos descreviam a página em duas colunas e
+foram reapontados com o motivo escrito (o da R148 e o da R139 caçavam o `<label>`
+de cada caixa; o da R135 caçava a grade `3fr|2fr`). O da R195 pegou defeito de
+verdade: o título novo nasceu 22px/600 e a regra da casa é 700. O da R213 mudou
+de sentido para melhor — o literal `chamado.tipo === "corretiva"` saiu da página
+e os dois lugares passaram a perguntar `temDiagnostico`. O `tsc` ficou no
+baseline (57) e o build completa; o `.claude/launch.json` entrou no repo para o
+`preview_start` funcionar em qualquer sessão.
+
+**Números.** Verificador: 3.161 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa;
+`npm run build:windows` gera o `Prever-0.0.3.zip`. Medições da tela nova, em
+1920px: margens 56/56, miolo 1561px, dois editores de 595px, sem rolagem
+horizontal; em 1280px: margens 40/40, texto 639px, contexto 300px.

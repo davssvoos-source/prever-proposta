@@ -234,6 +234,36 @@ export function textoDoDiaAgendado(iso: string | null | undefined): string | nul
   return `Agendada para ${dd}/${mm}`;
 }
 
+/**
+ * R232 (U120): a data de uma atividade tem DOIS destinos e eles se excluem —
+ * ou ela vence num dia (prazo), ou ela acontece num dia (agenda, R225: sem
+ * prazo). Davi, 08/09/2026: "os itens PRAZO / AGENDAR PARA devem ter design
+ * estratégico […] quero que fique mais claro que é um ou outro."
+ *
+ * A regra do "ou" mora aqui, não na tela: as duas telas que oferecem a escolha
+ * (o "+" da Início e a página da atividade) chamam as mesmas duas funções, e o
+ * componente CampoQuando só desenha. `null` = sem data nenhuma, que é o
+ * estado inicial de toda atividade e continua alcançável.
+ *
+ * A AGENDA VENCE o prazo quando as duas datas existem no banco — é o mesmo
+ * critério do montador (R225: agendada não tem prazo), e não uma segunda
+ * leitura que pudesse discordar dele.
+ */
+export type ModoDeQuando = "prazo" | "agenda";
+
+export function modoDeQuando(prazo: string | null | undefined, agendado: string | null | undefined): ModoDeQuando | null {
+  if (agendado) return "agenda";
+  if (prazo) return "prazo";
+  return null;
+}
+
+/** O par de datas depois de escolher um destino — o outro campo SEMPRE esvazia. */
+export function parDeQuando(modo: ModoDeQuando | null, dia: string): { prazo: string; agendado: string } {
+  if (modo === "prazo") return { prazo: dia, agendado: "" };
+  if (modo === "agenda") return { prazo: "", agendado: dia };
+  return { prazo: "", agendado: "" };
+}
+
 /** R225: a atividade tem dia marcado (data só, ou data e hora do campo)? */
 export function temAgendamento(c: Pick<BrutoChamado, "data_agendada" | "data_hora_agendada">): boolean {
   return !!(c.data_agendada || c.data_hora_agendada);

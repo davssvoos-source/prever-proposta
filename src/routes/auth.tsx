@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, type CSSProperties } from "react";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { VERSAO } from "@/lib/versao";
 import { toast } from "sonner";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LightBackground } from "@/components/LightBackground";
@@ -206,8 +207,28 @@ function AuthPage() {
               "drop-shadow(0 0 10px rgba(248,200,17,0.20))",
             }}
           />
+          {/* R230 (U120), Davi: "o nome do sistema será Prever OS, e deverá
+              estar no título da página de login." A ordem é a da identidade: a
+              MARCA é o Grupo Prever (o logotipo acima), o PRODUTO é o Prever
+              OS. A linha de baixo diz de quem é e em que versão — a versão é a
+              primeira coisa que o suporte pergunta (R229), e aqui ela é lida
+              antes de entrar. */}
+          <h1
+            style={{
+              margin: 0,
+              fontFamily: "var(--fonte)",
+              fontWeight: 600,
+              fontSize: 27,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.15,
+              color: isLight ? "#212121" : "#ffffff",
+            }}
+          >
+            Prever OS
+          </h1>
           <div
             style={{
+              marginTop: 7,
               fontFamily: "var(--fonte)",
               fontWeight: 400,
               fontSize: 11,
@@ -216,7 +237,7 @@ function AuthPage() {
               color: isLight ? "#727272" : "rgba(255,255,255,0.35)",
             }}
           >
-            SISTEMA DE PROJETOS ELETRÔNICOS
+            Grupo Prever · v{VERSAO}
           </div>
         </div>
 
