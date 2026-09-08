@@ -39,7 +39,7 @@
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
   - [6.21 O chat da Início — botão flutuante, a conversa 9:16, as bolhas por prazo (v16 — 2026-09-08, R215–R217, R222–R223)](#621-o-chat-da-início-botão-flutuante-a-conversa-916-as-bolhas-por-prazo-v16-2026-09-08-r215r217-r222r223)
   - [6.22 O editor de texto — uma área, blocos com marcador próprio, menção como chip (v16 — 2026-09-08, R135, R224)](#622-o-editor-de-texto-uma-área-blocos-com-marcador-próprio-menção-como-chip-v16-2026-09-08-r135-r224)
-  - [6.23 A tela da atividade — documento à esquerda, ficha à direita (v18 — 2026-09-08, R234–R238)](#623-a-tela-da-atividade-documento-à-esquerda-ficha-à-direita-v18-2026-09-08-r234r238)
+  - [6.23 A tela da atividade — documento à esquerda, ficha à direita (v19 — 2026-09-08, R234–R239)](#623-a-tela-da-atividade-documento-à-esquerda-ficha-à-direita-v19-2026-09-08-r234r239)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
 - [9. Visualização de dados](#9-visualização-de-dados)
@@ -380,6 +380,30 @@ Regras de implementação:
   desktop). Header fixo usa `left: var(--rail)`; o wrapper do `<main>` usa
   `padding-left: var(--rail)`; a sangria `.sangra-x` compensa `var(--rail)/2`
   na margem — a conta está comentada no styles.css.
+- **A RÉGUA DE MARGEM (`--gutter`, R239, v2 — 2026-09-08).** Uma variável, o
+  sistema inteiro: **16px** no celular, **24px** no desktop. Quem a lê: o
+  `<main>` (`padding-left/right`), a sangria `.sangra-x`, e as páginas largas.
+  Nenhuma tela tem padding lateral próprio — foi assim que a Início, a
+  atividade e a ficha do cliente acabaram com quatro margens diferentes (16,
+  24, 28 e 40), que é o que a R239 veio corrigir.
+- **Página larga é UMA receita**: `main:has(.pagina-larga)` /
+  `main:has(.pagina-trabalho)` solta o teto de 1280px do `<main>`, e a margem
+  continua sendo `--gutter`. A classe na raiz da página, e
+  `paddingTop`/`paddingBottom` em vez do atalho `padding` (anti-padrão nº 10).
+- **A meia barra de rolagem (`--barra`)**: a largura da janela conta a barra de
+  rolagem e a do container não, então a sangria por viewport escorregava meia
+  barra para a esquerda — o quadro da Início começava em 249 e a atividade em
+  256 (MEDIDO em 1920). O CSS não sabe essa largura; o `route.tsx` mede
+  (`innerWidth − clientWidth`, no load e no resize) e escreve `--barra`, que a
+  `.sangra-x` desconta pela metade nos dois lados. Piso `0px`: sem o JS o
+  comportamento é o de antes, não um layout quebrado. Depois disso as três
+  telas MEDEM 256 à esquerda e 24 à direita em 1920.
+- **As camadas (z-index)**, de baixo para cima: conteúdo `1` · barra inferior
+  do celular `50` · menu lateral `55` · botão flutuante e popover de
+  notificações `60` · **diálogo e folha lateral `70`** · avisos (sonner) acima
+  de tudo. Um modal cobre a casca INTEIRA, inclusive o menu — era o contrário
+  disto (menu em 55, diálogo em 50) que cortava o pop-up da atividade em 232px
+  (R239).
 - O alternador de tema (`ThemeToggle.tsx`) é a pílula Light/Dark com botão
   deslizante + o disco sol/lua com crescente animado (adaptado do Uiverse de
   Pradeepsaranbishnoi; o degradê do sol é Supernova 300→500).
@@ -931,9 +955,9 @@ embaixo): três colunas em 1120px de diálogo seriam ilegíveis.
 A ficha é a página que se trabalha por mais tempo, e o desenho segue a ordem
 do trabalho — no desktop, que é onde ela é usada (R205):
 
-- **Largura toda** (`.pagina-larga`): a página sangra até a borda da janela
-  com a mesma conta da `.sangra-x` (margem `calc(50% - 50vw + var(--rail)/2)`
-  nos dois lados), padding 28px no desktop e 16px no celular.
+- **Largura toda** (`.pagina-larga`): a receita única de página larga (§5b,
+  R239) — o `<main>` solta o teto por `:has()` e a margem lateral é a régua do
+  sistema (`--gutter`: 24px no desktop, 16 no celular), a mesma da Início.
   Receita para outra página que precise da largura: a classe na raiz da
   página, e `paddingTop`/`paddingBottom` em vez do atalho `padding`, que
   sobrescreveria o horizontal da classe.
@@ -1119,56 +1143,64 @@ competiria com o texto escuro sobre branco.
   entrada do lugar (raio 14 no chat, `est.entrada` no painel), e o Enter é de
   quem a usa (envia).
 
-### 6.23 A tela da atividade — documento à esquerda, ficha à direita (v18 — 2026-09-08, R234–R238)
+### 6.23 A tela da atividade — documento à esquerda, ficha à direita (v19 — 2026-09-08, R234–R239)
 
-Aprovada pelo Davi sobre o mockup "Layout da Atividade" (artifact, 08/09/2026).
+Aprovada pelo Davi sobre o mockup "Layout da Atividade" (artifact, 08/09/2026),
+e revista no mesmo dia pela R239 (a régua, o scroll, o modal, os equipamentos).
 A atividade é um DOCUMENTO com uma FICHA — o padrão de item de trabalho de
 Linear, Jira e Notion.
 
-- **A casca** (`.pagina-trabalho` + `.trabalho-miolo`): a página ocupa a
-  largura da janela porque o `<main>` solta o teto de 1280px quando ela está
-  presente (`main:has(.pagina-trabalho)`) — **não** por sangria com `100vw`
-  (anti-padrão nº 10). Margem lateral: 16px no celular, **40px** a partir de
-  1024, **56px** a partir de 1600, iguais dos dois lados; miolo com teto de
-  **1880px**. Estilo inline nesta página mexe só no eixo VERTICAL. No diálogo
-  (R238) a casca é `.atividade-embutida` (padding 18/22/28).
+- **A casca** (`.pagina-trabalho` + `.trabalho-miolo`): a receita de página
+  larga (§5b) — o `<main>` abre mão do teto por `:has()` e a margem lateral é
+  `--gutter`, a mesma de todas as telas. Miolo com teto de **1880px**. Estilo
+  inline nesta página mexe só no eixo VERTICAL (anti-padrão nº 10). No diálogo
+  (R238) a casca é `.atividade-embutida`, com a MESMA régua por dentro.
 - **A grade** (`.atividade-grade`): `minmax(0,1fr) 340px` a partir de 1024,
-  `1fr 360px` (gap 20) a partir de 1700; uma coluna no celular, a ficha
-  embaixo. Medido em 1920: documento 1181px, ficha 360px.
-- **O documento** (`.atividade-documento`): cabeçalho (voltar 40px — ou "abrir
-  em página inteira" no diálogo —, título `22/700` com `text-wrap: balance`,
-  meta 11,5 secundário: número · "aberta há Nd por Fulano" · tipo); os
-  **textos** (`.atividade-textos`, `min-height` 520 quando é um só, 440 cada
-  quando são dois; `.duplo` lado a lado a partir de **1700px**); os
-  equipamentos (dois painéis); a conversa. Sem etiqueta de status no título —
-  o status é a primeira linha da ficha.
-- **A ficha** (`.atividade-ficha`, sticky na página: `top: var(--topo) + 4px`,
-  `max-height: 100vh − var(--topo) − 28px`, rola por dentro; estática no
-  diálogo): abre com o **card do progresso** (`RoscaDeProgresso` 96px: rosca +
-  "PROGRESSO" 10/700 caixa alta + a fração `13/600` "1 de 3 itens" + a origem
-  10,5 secundário "checklist da Descrição · concluída = 100%"); depois o card
-  **Ficha** com as linhas; depois fotos e arquivos (grade de 3 por linha,
-  quadrados) e a linha do tempo; por fim "Excluir chamado" (gerente).
+  `1fr 360px` a partir de 1700; gap **16** em toda largura; uma coluna no
+  celular, a ficha embaixo. Medido em 1920: documento 1249px, ficha 360px.
+- **UM SCROLL SÓ** (R239): a ficha **não** é sticky e **não** tem
+  `overflow-y`; os painéis de equipamento não têm teto de altura. Quem rola é a
+  página — ou o diálogo. Rolagem dentro de rolagem é defeito nesta tela.
+- **A escala de espaçamento**: 8 (controles vizinhos, chips, itens de lista),
+  12 (dentro do card, rótulo → valor), 16 (entre cards e entre colunas), 24 (a
+  margem da página). Não há quinto número.
+- **O documento** (`.atividade-documento`): cabeçalho (na página, o quadrado de
+  voltar de 40px; no diálogo, nada — a chapelaria é da barra do diálogo), título
+  `22/700` com `text-wrap: balance`, meta 11,5 secundário: número · "aberta há
+  Nd por Fulano" · tipo; os **textos** (`.atividade-textos`, `min-height` 520
+  quando é um só, 440 cada quando são dois; `.duplo` lado a lado a partir de
+  **1700px**); os equipamentos; a conversa. Sem etiqueta de status no título.
+- **O cabeçalho de um bloco**: rótulo (`SEC`, 10/700 caixa alta) e, na MESMA
+  linha, a dica em 11 secundário — `cabecalho(titulo, dica?)`. Todo card abre
+  igual; dica pendurada por margem negativa é remendo.
+- **A ficha** (`.atividade-ficha`): abre com o **card do progresso**
+  (`RoscaDeProgresso` 96px: rosca + "PROGRESSO" 10/700 caixa alta + a fração
+  `13/600` "1 de 3 itens" + a origem 10,5 secundário "checklist da Descrição ·
+  concluída = 100%"); depois o card **Ficha** com as linhas; depois fotos e
+  arquivos (grade de 3 quadrados) e a linha do tempo; por fim "Excluir chamado"
+  (gerente).
 - **A linha da ficha** (`.ficha-linha`): `grid-template-columns: 96px
-  minmax(0,1fr)`, `gap 10px`, `min-height 40px`, `padding 5px 0`, borda de 1px
-  (`--border-color`) entre linhas. Rótulo `LABEL` (10/600 caixa alta,
-  secundário) alinhado ao centro do valor; o valor é o controle compacto que
-  preenche a coluna — `SeletorDeOpcao` (pintado pela cor da opção),
-  `CampoComBusca compacto`, `CampoQuando compacto`, chips de pessoa/equipe. Nove
-  linhas: Status · Tipo · Impacto* · Quando · Responsável · Apoio · Equipes ·
-  Proposta* · Cliente. O recebimento (quem abriu, início, conclusão) é o rodapé
-  fino do card, separado por 1px.
-- **Os equipamentos** (R237): a casca dos painéis da ficha (`estiloDoPainel`,
-  `CabecalhoDoPainel`, `.painel-vinculo`) — **Blocos do cliente** (cada bloco
-  uma zona de soltar: borda tracejada dourada = "pode soltar aqui", sólida +
-  `PRISMA.amarelo.bg` = "está sobre mim") | **Sem bloco** (o que o QAP trouxe,
-  com filtro a partir de 8 itens). Cada item: `GripVertical`, o rótulo e o
-  botão **remover** (pílula 24px, 9,5/600 caixa alta, borda `divisoria`).
-  Embaixo, "Nesta atividade": os movimentos com `PackagePlus` verde /
-  `PackageMinus` vermelho e o desfazer (`Undo2`, 30px).
+  minmax(0,1fr)`, `gap 12px`, `min-height 40px`, `padding 5px 0`, borda de 1px
+  (`--border-color`) entre linhas. O rótulo alinha pelo **topo** (8px de
+  respiro): com três chips empilhados no valor, um rótulo centrado no meio da
+  linha não aponta para nada. Nove linhas: Status · Tipo · Impacto* · Quando ·
+  Responsável · Apoio · Equipes · Proposta* · Cliente. O recebimento é o rodapé
+  fino do card.
+- **Os equipamentos** (R237/R239): **recolhido por padrão**. O cabeçalho traz o
+  resumo ("134 sem bloco · 3 em 2 blocos · 1 movimento nesta atividade") e o
+  botão que expande na **extremidade direita** (pílula 28px, 11/600, com o
+  chevron que gira). Aberto: a casca dos painéis da ficha (`estiloDoPainel` com
+  `maxHeight: "none"`, `CabecalhoDoPainel`, `.painel-vinculo`) — **Blocos do
+  cliente** (cada bloco uma zona de soltar: borda tracejada dourada = "pode
+  soltar aqui", sólida + `PRISMA.amarelo.bg` = "está sobre mim") | **Sem
+  bloco** (o que o QAP trouxe, em COLUNAS de 220px, os primeiros 24, com filtro
+  a partir de 8 e "mostrar todos"). Cada item: `GripVertical`, o rótulo e o
+  botão **remover**. Embaixo, "Nesta atividade" com o desfazer.
 - **O diálogo** (`DialogDaAtividade`): `width: min(1600px, 96vw)`, `height:
-  min(94vh, 1040px)`, fundo `cinzas.pagina` (os cards leem como na página),
-  `DialogTitle` só para leitor de tela, o conteúdo rolando por dentro.
+  min(94vh, 1040px)`, fundo `cinzas.pagina`, **z-70** (acima do menu). Barra de
+  **48px** no topo: o número à esquerda, "Página inteira" à direita e os 48px
+  finais reservados ao "X" do Radix, que é absoluto e antes caía em cima do
+  card do progresso. O conteúdo rola por baixo dela.
 
 ## 7. Arquitetura de tema
 
@@ -1267,7 +1299,9 @@ Todos abaixo foram bugs de produção — verifique cada um antes de entregar.
     Corolário: sangria com `calc(50% - 50vw …)` **desalinha** as margens onde
     há barra de rolagem (`100vw` a inclui, o `<main>` centra na largura útil:
     ~8px de diferença por lado, medidos em 1920px). Quando as margens precisam
-    ser iguais, prefira `main:has(.sua-classe) { max-width: none }` + padding.
+    ser iguais, prefira `main:has(.sua-classe) { max-width: none }` + a régua
+    `--gutter` (R239) — e onde a sangria for mesmo necessária (o quadro da
+    Início), desconte `var(--barra)/2` dos dois lados.
 
 ---
 

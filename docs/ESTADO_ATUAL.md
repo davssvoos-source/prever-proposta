@@ -8,13 +8,14 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-08** · última regra: **R238** · último diário:
-**U121** · verificador: **3.172 asserções, 0 falharam** · `tsc`: baseline
-**57** · migrations rodadas até a **U117** (U106 e U109 em 07/09/2026; U110 e
-**U117** em 08/09/2026) · **pendentes: U119 e U121** (nesta ordem — a U121
-exige a U119; nenhuma das duas rodou) · **versão instalada no servidor:
-v0.0.1** (o pacote da U118); **esta entrega é a v0.0.4** — o que entrou em cada
-versão está em `docs/VERSOES.md`.
+Última atualização: **2026-09-08** · última regra: **R239** · último diário:
+**U122** · verificador: **3.180 asserções, 0 falharam** · `tsc`: baseline
+**57** · migrations rodadas até a **U121** (U106 e U109 em 07/09/2026; U110,
+U117, U119 e U121 em 08/09/2026 — "Eu rodei as migrations", Davi) · **nenhuma
+migration pendente** · **versão instalada no servidor: v0.0.1** (o pacote da
+U118); **esta entrega é a v0.0.4** (o pacote foi refeito na U122, por cima, a
+pedido do Davi: "não executei o 004 no servidor, você pode sobrescrever") — o
+que entrou em cada versão está em `docs/VERSOES.md`.
 
 ---
 
@@ -102,6 +103,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U119 | a **v0.0.2**: **todos veem todas as atividades** (R221); o **chat como conversa 9:16** com recado para todos e resposta pelo `#Código` (R222–R223); o **editor de uma área** (R224); a coluna **Agendado**, "Re-agendado Nx" e o aviso das 08h (R225); **equipamentos removidos/instalados pela atividade** (R226); etiquetas empilhadas (R227); página da atividade larga (R228); **versão 0.0.2**, `VERSOES.md` e o banner local (R229); migration **U119** |
 | U120 | a **v0.0.3**: o sistema é o **Prever OS** (R230); o plantão sai da abertura de chamado (R231); **prazo × agendar** num controle só (R232); no quadro **a coluna inteira aceita o card** (R233); a **tela da atividade redesenhada para desktop** — quatro faixas, margem de verdade, os textos mandando (R234); a **rosca do progresso** pelo checklist (R235); **equipamentos por arrasto** em dois painéis (R236). Sem migration nova |
 | U121 | a **v0.0.4**: a tela da atividade na estrutura **aprovada sobre o mockup** — documento à esquerda, ficha de 340px à direita, propriedades em linhas rótulo \| valor, ficha acompanhando a rolagem (R234); o **pop-up da Início mostra a mesma tela** num diálogo de 1600px (R238); equipamento **entra no cliente só pelo QAP** — painéis Blocos do cliente \| Sem bloco, botão remover, nada de "Fora do cliente" (R237). Migration **U121** (`mover_equipamento` exige item do cliente; exige a U119) |
+| U122 | a **revisão geral da tela da atividade** (R239): o pop-up deixa de ser cortado pelo menu (diálogo e folha lateral em **z-70**); **uma régua de margem** para o sistema inteiro (`--gutter`, 16/24px) — Início, atividade e ficha do cliente no mesmo prumo, com a meia barra de rolagem descontada (`--barra`); **um scroll só** (a ficha não é mais sticky, os painéis não rolam por dentro); **Equipamentos recolhido** por padrão, com o botão que expande na extremidade direita; escala de espaçamento 8/12/16/24; barra de topo no diálogo. Sem migration nova |
 
 ## 4. Banco: migrations
 
@@ -109,17 +111,20 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **Rodadas até a U117** (a U117 em 08/09/2026, "tudo OK" — Davi).
-- **Pendente: U121** (`20260922090000_u121_v004_equipamento_so_pelo_qap.sql`)
+- **Rodadas até a U121** — a **U119** e a **U121** em 08/09/2026 à noite
+  (Davi: "Eu rodei as migrations"); a U117 mais cedo no mesmo dia ("tudo OK").
+- **U121** (`20260922090000_u121_v004_equipamento_so_pelo_qap.sql`, rodada em
+  08/09/2026)
   — reescreve `mover_equipamento` (R237): nos dois movimentos o item tem de
   ser **do cliente da atividade** (senão RAISE "Equipamento entra no cliente
   só pelo QAP"); a instalação só troca o bloco (nunca escreve `cliente_id`) e
   recusa o mesmo bloco. Pré-voo exige a U119 — **rodar a U119 antes, depois a
-  U121**, e só então subir o pacote v0.0.4. Com a U119 rodada e a U121 ainda
-  não, a tela já funciona (ela não oferece nada de fora do cliente); a U121 é
-  a trava no banco, para nenhum caminho fora da tela instalar o que não veio
-  do QAP. Conferência obtido × esperado × veredito no fim.
-- **Pendente: U119** (`20260921090000_u119_v002_visibilidade_chat_agenda_equipamentos.sql`)
+  U121**, e só então subir o pacote v0.0.4 — foi o que aconteceu. Enquanto a
+  U121 não rodou, a tela já se defendia (não oferece nada de fora do cliente);
+  ela é a trava no BANCO, para nenhum caminho fora da tela instalar o que não
+  veio do QAP. Conferência obtido × esperado × veredito no fim.
+- **U119** (`20260921090000_u119_v002_visibilidade_chat_agenda_equipamentos.sql`,
+  rodada em 08/09/2026)
   — a v0.0.2 inteira, em quatro seções: (§1) `chamados_select` e
   `visitas_select` viram `USING (true)` e `pode_acessar_chamado()` vira
   "logado e existe" (R221); (§2) `mensagens_chat` (o recado para todos, com
@@ -128,10 +133,10 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   campos (R222–R223); (§3) `chamados.reagendamentos` + gatilho, a função
   `notificar_agendadas_de_hoje()` e o job `agenda-de-hoje` às 11:00 UTC
   (R225); (§4) `situacao`/`retirado_*` no patrimônio, `equipamento_movimentos`
-  e as cinco RPCs (R226). Pré-voo exige a U117. **Rodar ANTES de subir o
-  pacote v0.0.2** — até rodar, o app se defende (regra 5): a Início e o painel
-  leem `reagendamentos` à parte, o chat avisa, os equipamentos da atividade
-  ficam vazios. Vinte itens de conferência.
+  e as cinco RPCs (R226). Pré-voo exige a U117. Rodou antes de o pacote
+  subir — e, até rodar, o app se defendia (regra 5): a Início e o painel liam
+  `reagendamentos` à parte, o chat avisava, os equipamentos da atividade
+  ficavam vazios. Vinte itens de conferência.
 - **U117** (`20260920090000_u117_reacoes_e_minhas_mencoes.sql`, rodada em
   08/09/2026) — `chamado_reacoes` e a v1 de `minhas_mencoes()`.
 - **U106** (`20260917090000_u106_mapa_sai.sql`, rodada em 07/09/2026) — o

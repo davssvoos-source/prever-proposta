@@ -58,6 +58,18 @@ function AuthenticatedLayout() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // R239: a barra de rolagem vertical tem largura, `100vw` a conta e `100%`
+  // não — é o que fazia a sangria do quadro (.sangra-x) escorregar meia barra
+  // para a esquerda e a margem da Início não bater com a da tela da atividade.
+  // O CSS não sabe essa largura; o navegador sabe.
+  useEffect(() => {
+    const medir = () => document.documentElement.style.setProperty(
+      "--barra", `${window.innerWidth - document.documentElement.clientWidth}px`);
+    medir();
+    window.addEventListener("resize", medir, { passive: true });
+    return () => window.removeEventListener("resize", medir);
+  }, []);
+
   // Bloqueia usuários desativados: força signOut e redireciona para /auth
   useEffect(() => {
     if (perfil && (perfil as any).ativo === false) {
@@ -231,7 +243,7 @@ function AuthenticatedLayout() {
         {/* CONTEÚDO */}
         <main
           className="mx-auto max-w-5xl lg:max-w-7xl"
-          style={{ paddingTop: "var(--topo)" as any, paddingBottom: 110, paddingLeft: 16, paddingRight: 16 }}
+          style={{ paddingTop: "var(--topo)" as any, paddingBottom: 110, paddingLeft: "var(--gutter)", paddingRight: "var(--gutter)" }}
         >
           <Outlet />
         </main>

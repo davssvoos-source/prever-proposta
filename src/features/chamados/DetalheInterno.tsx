@@ -34,7 +34,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Building2, CalendarClock, ExternalLink, FileText, Layers, Paperclip, Plus, Send, Trash2, Wrench, X,
+  ArrowLeft, Building2, CalendarClock, FileText, Layers, Paperclip, Plus, Send, Trash2, Wrench, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,11 +81,11 @@ const EXT_IMAGEM = /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i;
 const dataHora = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
-export function DetalheInterno({ id, embutido = false, aoAbrirPagina }: {
+export function DetalheInterno({ id, embutido = false }: {
   id: string;
-  /** R238: dentro do diálogo da Início — sem a casca da página, com "abrir em página inteira" */
+  /** R238: dentro do diálogo da Início — sem a casca da página. A chapelaria
+   *  (fechar, "página inteira") é do diálogo, não desta tela (R239). */
   embutido?: boolean;
-  aoAbrirPagina?: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -431,8 +431,19 @@ export function DetalheInterno({ id, embutido = false, aoAbrirPagina }: {
   const ROTULO_LINHA: CSSProperties = { ...LABEL, marginBottom: 0 };
   const DICA: CSSProperties = {
     fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11, color: textSecondary,
-    lineHeight: 1.4, marginTop: -6,
+    lineHeight: 1.4,
   };
+  /**
+   * O CABEÇALHO DE UM BLOCO (R239): o rótulo e, na MESMA linha, a dica. Todo
+   * card da tela abre igual — era isto que fazia os "tópicos" terem espaços
+   * diferentes entre si (a dica antes subia com um marginTop negativo).
+   */
+  const cabecalho = (titulo: string, dica?: string | null) => (
+    <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+      <span style={SEC}>{titulo}</span>
+      {dica && <span style={DICA}>{dica}</span>}
+    </div>
+  );
   const BOTAO_QUADRADO: CSSProperties = {
     width: 40, height: 40, borderRadius: 12,
     background: isLight ? "#ffffff" : "#1b1b1b",
@@ -448,7 +459,7 @@ export function DetalheInterno({ id, embutido = false, aoAbrirPagina }: {
   const linha = (rotulo: string, filho: ReactNode) => (
     <div className="ficha-linha">
       <span style={ROTULO_LINHA}>{rotulo}</span>
-      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>{filho}</div>
+      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>{filho}</div>
     </div>
   );
 
@@ -457,17 +468,11 @@ export function DetalheInterno({ id, embutido = false, aoAbrirPagina }: {
 
       {/* ══ DOCUMENTO ═══════════════════════════════════════════════════════ */}
       <section className="atividade-documento" aria-label="Documento da atividade">
-        <header style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-          {embutido ? (
-            <button
-              onClick={() => aoAbrirPagina?.(id)}
-              aria-label="Abrir em página inteira"
-              title="Abrir em página inteira"
-              style={BOTAO_QUADRADO}
-            >
-              <ExternalLink size={17} />
-            </button>
-          ) : (
+        <header style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+          {/* R239: no diálogo o "voltar" não existe — a chapelaria (fechar,
+              "Página inteira") é da barra do diálogo, e o conteúdo começa no
+              título. Na página, o quadrado leva de volta para a Início. */}
+          {!embutido && (
             <button
               onClick={() => navigate({ to: "/dashboard" })}
               aria-label="Voltar para a Início"
@@ -501,9 +506,9 @@ export function DetalheInterno({ id, embutido = false, aoAbrirPagina }: {
             detectado e Solução aplicada (R149), lado a lado no monitor grande. */}
         <div className={ehCorretiva ? "atividade-textos duplo" : "atividade-textos"}>
           <div style={{ ...CARD, minWidth: 0 }}>
-            <span style={SEC}>{temDiagnostico(chamado.tipo) ? "Problema detectado" : "Descrição"}</span>
-            {prog.campo === "descricao" && (
-              <span style={DICA}>Cada item de checklist daqui conta no progresso da atividade.</span>
+            {cabecalho(
+              temDiagnostico(chamado.tipo) ? "Problema detectado" : "Descrição",
+              prog.campo === "descricao" ? "Cada item de checklist daqui conta no progresso da atividade." : null,
             )}
             <EditorDeDescricao
               valor={chamado.descricao_problema ?? ""}
@@ -519,9 +524,9 @@ export function DetalheInterno({ id, embutido = false, aoAbrirPagina }: {
           </div>
           {ehCorretiva && (
             <div style={{ ...CARD, minWidth: 0 }}>
-              <span style={SEC}>Solução aplicada</span>
-              {prog.campo === "solucao" && (
-                <span style={DICA}>Cada item de checklist daqui conta no progresso da atividade.</span>
+              {cabecalho(
+                "Solução aplicada",
+                prog.campo === "solucao" ? "Cada item de checklist daqui conta no progresso da atividade." : null,
               )}
               <EditorDeDescricao
                 valor={chamado.servico_executado ?? ""}

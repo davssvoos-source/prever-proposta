@@ -131,7 +131,7 @@ campo, que tem Perfil, Calendário e uma Início própria ("Bom dia, você tem X
 chamados hoje" + cards) — a Fase B2 do plano. Toda tela nova diz para qual
 aparelho nasceu.
 
-## A tela da atividade (R135, R234–R238)
+## A tela da atividade (R135, R234–R239)
 
 A página `/chamados/$id` de uma atividade interna é feita para o **computador**
 e é a tela mais usada do sistema. Ela é um **documento com uma ficha ao lado**
@@ -142,7 +142,7 @@ e é a tela mais usada do sistema. Ela é um **documento com uma ficha ao lado**
   Descrição (ou Problema detectado e Solução aplicada, na corretiva), que
   ocupam a faixa inteira e, em monitor grande, ficam lado a lado; depois os
   **equipamentos** (R237) e a **conversa** (comentários).
-- **A ficha, à direita** (340px, acompanha a rolagem): abre com a **rosca do
+- **A ficha, à direita** (340px): abre com a **rosca do
   progresso** (R235) — 0% a 100% contados pelos itens de checklist do campo
   onde está o plano de trabalho, a Descrição em geral e a Solução aplicada na
   corretiva; três de cinco marcados = 60%; sem checklist é 0% em qualquer
@@ -151,14 +151,17 @@ e é a tela mais usada do sistema. Ela é um **documento com uma ficha ao lado**
   **Quando** (o par prazo × agendar, R232), Responsável, Apoio, Equipes, a
   proposta aprovada (na implantação) e o Cliente; no rodapé da ficha, quem
   abriu e quando, o início e a conclusão. Abaixo, fotos e arquivos e a linha
-  do tempo.
+  do tempo. A tela tem **uma barra de rolagem só**: a ficha desce junto com o
+  texto.
 
 Cada propriedade de escolha (Status, Tipo, Impacto operacional, a proposta) é
 um **seletor**: um botão pintado pela cor da coisa escolhida que abre a lista
 (`SeletorDeOpcao`). O status aparece só ali — não há etiqueta repetida no
 título.
 
-**Equipamentos** (R237): dois painéis — **Blocos do cliente** e **Sem bloco**
+**Equipamentos** (R237/R239): o campo vem **recolhido** — o cabeçalho resume o
+que tem lá dentro ("134 sem bloco · 3 em 2 blocos") e o botão da extremidade
+direita abre. Aberto, são dois painéis — **Blocos do cliente** e **Sem bloco**
 (o que chegou do QAP e ainda não tem lugar). Só há dois gestos: **arrastar**
 um equipamento para dentro de um bloco (de "Sem bloco" ou de outro bloco) diz
 onde ele foi instalado; **remover**, o botão em cada item, tira o equipamento
@@ -167,8 +170,8 @@ num cliente por esta tela — equipamento chega só pelo QAP. "Nesta atividade"
 lista o que se moveu, com desfazer.
 
 **O pop-up** (R238): na Início, clicar num card do quadro ou numa menção do
-chat abre esta mesma tela num diálogo largo, sem sair da página; o botão do
-canto leva para a página inteira. No Calendário e no painel Operacional a
+chat abre esta mesma tela num diálogo largo, por cima de tudo, sem sair da
+página; na barra do topo, "Página inteira" leva para a página e o X fecha. No Calendário e no painel Operacional a
 folha lateral de consulta rápida continua.
 
 No editor, um item de checklist é a caixa de marcar do design system e não

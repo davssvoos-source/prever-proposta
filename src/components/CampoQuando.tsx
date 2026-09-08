@@ -84,8 +84,8 @@ export function CampoQuando({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 7, minWidth: 0 }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {OPCOES.map((o) => (
           <button
             key={o.modo}

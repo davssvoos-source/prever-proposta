@@ -9,7 +9,7 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
-## v0.0.4 — 2026-09-08 (U121) · migrations **U119** (se ainda não rodou) e depois **U121** — rodar ANTES de subir o pacote
+## v0.0.4 — 2026-09-08 (U121–U122) · migrations **U119** e **U121** — rodadas em 08/09/2026, nada a fazer no banco
 
 - **A tela da atividade na estrutura aprovada** (R234): documento à esquerda
   — título, textos ocupando a faixa inteira (Problema e Solução lado a lado no
@@ -24,8 +24,17 @@
   **Blocos do cliente** e **Sem bloco**; arrastar para um bloco = instalado
   ali; **remover** é um botão em cada item. O "Fora do cliente" da v0.0.3
   saiu, e o banco (U121) recusa instalar item que não seja do cliente.
-- **Banco:** a **U121** reescreve `mover_equipamento`. Exige a U119 — rode a
-  U119 primeiro se ainda não rodou.
+- **O pop-up não é mais cortado pelo menu** (R239): um diálogo cobre a janela
+  inteira e escurece o resto — antes o menu lateral pintava por cima dele.
+- **Uma régua de margem para o sistema inteiro** (R239): a Início, a tela da
+  atividade e a ficha do cliente começam no mesmo prumo (24px do menu no
+  desktop, 16 no celular), e o espaçamento por dentro segue uma escala só.
+- **Um scroll só** (R239): acabou a rolagem dentro da rolagem — a ficha das
+  propriedades e os painéis de equipamento rolam com a página.
+- **Equipamentos vem recolhido** (R239), com o botão que abre na ponta direita
+  e um resumo do que tem dentro.
+- **Banco:** a **U121** reescreve `mover_equipamento` e exige a U119. As duas
+  rodaram em 08/09/2026 — este pacote não pede nada do banco.
 
 ## v0.0.3 — 2026-09-08 (U120) · migration **U119** (a mesma da v0.0.2; rode antes se ainda não rodou)
 

@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 70 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **61 em aberto, 9 fechadas.**
+> **Sumário** — 71 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **62 em aberto, 9 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -73,6 +73,7 @@
 - [P64 — BAIXO · As duas leituras à parte de `reagendamentos` podem sair depois da U119 (2026-09-08, U119)](#p64-baixo-as-duas-leituras-à-parte-de-reagendamentos-podem-sair-depois-da-u119-2026-09-08-u119)
 - [P65 — ~~MÉDIO~~ FECHADA (U121, 2026-09-08) · A v0.0.3 oferece "instalar de fora", que a R237 proíbe (2026-09-08, U120)](#p65-médio-fechada-u121-2026-09-08-a-v003-oferece-instalar-de-fora-que-a-r237-proíbe-2026-09-08-u120)
 - [P66 — BAIXO · No pop-up da Início, o chamado de campo ainda abre a tela de campo; a folha lateral só vive no Calendário e no Operacional (2026-09-08, U121)](#p66-baixo-no-pop-up-da-início-o-chamado-de-campo-ainda-abre-a-tela-de-campo-a-folha-lateral-só-vive-no-calendário-e-no-operacional-2026-09-08-u121)
+- [P67 — BAIXO · `--barra` só é remedida no resize (2026-09-08, U122)](#p67-baixo---barra-só-é-remedida-no-resize-2026-09-08-u122)
 <!-- sumario:fim -->
 
 Registro formal do que a revisão adversarial encontrou.
@@ -2265,3 +2266,17 @@ não foi redesenhado; espera a rodada da área técnica (ESTADO §7, item 1). (2
 Início; só o Calendário e o painel Operacional ainda o usam. Se esses dois
 também passarem ao diálogo, o componente sai — até lá são dois desenhos para o
 mesmo objeto, o que o verificador não tem como impedir.
+
+## P67 — BAIXO · `--barra` só é remedida no resize (2026-09-08, U122)
+
+A R239 acabou com a meia barra de rolagem que desalinhava a sangria do quadro da
+Início: o `route.tsx` mede `innerWidth − clientWidth` e escreve `--barra`, e a
+`.sangra-x` desconta metade dela nos dois lados. A medição acontece no primeiro
+render e a cada `resize` da janela. Se a barra de rolagem APARECER ou SUMIR sem
+resize — o conteúdo da Início encolher até caber na janela, por exemplo —, o
+valor fica velho até o próximo resize e o quadro volta a ficar ~7px fora do
+prumo das outras telas. Ninguém reclamou disso (e a Início quase sempre rola);
+se incomodar, um `ResizeObserver` no `documentElement` resolve. A alternativa
+puramente CSS (`@property --barra` com `calc(100vw - 100%)` no `:root`) foi
+recusada: onde `@property` não existe, a substituição textual resolve o `100%`
+contra o elemento errado e a sangria quebra feio, em vez de degradar.

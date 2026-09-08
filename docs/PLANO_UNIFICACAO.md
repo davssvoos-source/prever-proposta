@@ -11614,3 +11614,73 @@ CSS já vinha do mockup medido.
 **Números.** Verificador: 3.172 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa;
 `npm run build:windows` gera o `Prever-0.0.4.zip`. Migrations pendentes: U119 e,
 depois dela, U121.
+
+## U122 — a revisão geral da tela da atividade: uma régua de margem, um scroll, o modal por cima (R239)
+
+O Davi mandou um print da atividade aberta no pop-up com a tela CORTADA — o
+título lido como "ão de rede" —, e mais quatro pedidos numa mensagem só. Esta
+entrega sai por cima da v0.0.4: ele rodou as migrations (U119 e U121) mas ainda
+não subiu o pacote no servidor, e autorizou sobrescrever.
+
+**O corte (o bug).** A `SideNav` é `position: fixed; z-index: 55`; o diálogo do
+Radix nasce com `z-50`, e os dois são irmãos no `<body>`. 55 ganha de 50: o menu
+pintava por cima do diálogo e comia os 232px da esquerda — e continuava aceso e
+clicável enquanto um modal estava aberto, que é o contrário do que modal quer
+dizer. Diálogo e folha lateral foram para **z-70**, acima da barra inferior
+(50), do menu (55) e do botão flutuante (60); os avisos (sonner) já vivem acima
+disso. Vale para TODO diálogo do sistema, não só o da atividade — os outros são
+estreitos e por isso o defeito nunca tinha aparecido.
+
+**A régua (o pedido de fundo).** "As margens laterais da tela de configuração
+não estão seguindo o padrão […] o nosso sistema deve seguir um padrão." Ele
+estava certo, e o número era pior do que parecia: havia QUATRO réguas — o
+`<main>` com 16px, a `.sangra-x` do quadro com 24, a `.pagina-larga` da ficha do
+cliente com 28 e a `.pagina-trabalho` da atividade com 24 (e 40 acima de
+1600px). Agora existe uma variável, `--gutter` (16 no celular, 24 no desktop), e
+todo mundo a lê: o `<main>`, a sangria do quadro, as duas páginas largas e a
+casca do diálogo. Página larga também virou UMA receita — o `<main>` abre mão do
+teto por `:has()` e a margem é a régua; a conta antiga por unidade de viewport
+saiu das duas.
+
+Faltava meia barra de rolagem. Medido em 1920: o quadro da Início começava em
+249 e a atividade em 256 — sete pixels, porque a largura da janela conta a barra
+de rolagem e a do container não. O CSS não sabe essa largura; o navegador sabe.
+O layout mede uma vez (e a cada resize) e escreve `--barra`, que a sangria
+desconta pela metade. Depois disso, MEDIDO: quadro, atividade e ficha do cliente
+todos em **256 à esquerda e 24 à direita** em 1920, todos em **256** em 1366, e
+todos em **16** no celular — e o estouro horizontal foi a zero.
+
+**Um scroll só.** A ficha era `sticky` com `overflow-y: auto` (uma segunda barra
+dentro da primeira) e os painéis de equipamento tinham teto de altura com
+rolagem própria (a terceira). Sumiram as duas: a ficha rola com a página, e os
+painéis crescem. Perdi de propósito o que a U121 tinha ganhado — status e prazo
+à vista enquanto se lê um texto longo. Ele pediu explicitamente o contrário, e
+quem usa a tela o dia inteiro é ele.
+
+**Equipamentos recolhidos.** Um cliente do QAP traz 134 itens; abertos, eles
+empurravam a conversa 2000px para baixo. Recolhido por padrão, o cabeçalho diz o
+que tem lá dentro ("134 sem bloco · 3 em 2 blocos · 1 movimento nesta
+atividade") e o botão da extremidade direita abre. Aberta, a lista "Sem bloco"
+mostra os primeiros 24 em COLUNAS, com filtro e "mostrar todos" — sem rolagem
+própria, que é o que a regra do scroll pede.
+
+**A revisão do resto.** O "X" do diálogo é absoluto no canto e caía em cima do
+card do progresso: o diálogo ganhou uma barra de 48px com o número à esquerda e
+"Página inteira" à direita, e o conteúdo passou a começar abaixo dela — de
+quebra, a tela embutida ficou sem chapelaria nenhuma, que é o certo. Os
+cabeçalhos de bloco viraram um só formato (rótulo + dica na mesma linha; a dica
+do checklist estava pendurada por um `marginTop: -6`). O rótulo das linhas da
+ficha alinha pelo topo, porque com três chips empilhados no valor um rótulo
+centrado não aponta para nada. E os espaçamentos entraram na escala 8/12/16/24 —
+inclusive o par de botões do "Quando", que ele citou.
+
+**O que a verificação pegou.** Oito pinos descreviam a tela anterior (a ficha
+sticky, o padding de 24/40, a sangria da ficha do cliente, a dica solta, o botão
+"abrir em página inteira" dentro do conteúdo) e foram reapontados com o motivo.
+E uma cicatriz de ferramenta: `String.raw` guarda a barra invertida antes de uma
+crase, então um patch que procurava um comentário com crases não achava nada —
+crase em patch entra por concatenação.
+
+**Números.** Verificador: 3.180 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Migrations: nenhuma nesta entrega (a U119 e a U121 já rodaram). O pacote
+`Prever-0.0.4.zip` foi refeito por cima.

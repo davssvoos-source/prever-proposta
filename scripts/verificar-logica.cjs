@@ -16792,7 +16792,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      // U120: o predicado virou `temDiagnostico` (o mesmo do painel) — ver o
      // pino da R213 no bloco da U117
      [/temDiagnostico\(chamado\.tipo\) \? "Problema detectado" : "Descrição"/.test(di96),
-      /<span style=\{SEC\}>Solução aplicada<\/span>/.test(di96), /salvar\.mutate\(\{ servico_executado: v \|\| null \}\)/.test(di96)],
+      // R239: o rótulo e a dica saem do MESMO cabeçalho de bloco — cabecalho(titulo, dica)
+      /cabecalho\(\s*\n\s*"Solução aplicada",/.test(di96), /salvar\.mutate\(\{ servico_executado: v \|\| null \}\)/.test(di96)],
      [true, true, true]);
   eq('R150: fotos e arquivos na página — a MESMA tabela e o MESMO bucket do campo (anexarFoto, etapa "outra"; excluirFoto)',
      [/<span style=\{SEC\}>Fotos e arquivos<\/span>/.test(di96), /await anexarFoto\(id, f, "outra"\)/.test(di96), /excluirFoto\(fotoId, path\)/.test(di96),
@@ -17392,7 +17393,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      Number((estado.match(/última regra: \*\*R(\d+)\*\*/) ?? [])[1]), ultimaRegraProduto);
   eq('ESTADO_ATUAL: diz qual migration está pendente, lista os quatro lembretes do Davi e as perguntas que sobraram',
      // U106: "pendente" pode ser uma migration nomeada (**Pendente: Uxxx**) ou nenhuma
-     [/Nenhuma\s+migration pendente|\*\*[Pp]endente: U\d+\*\*/.test(estado), /## 7\. O que o Davi disse que vai mandar/.test(estado),
+     [/[Nn]enhuma\s+migration pendente|\*\*[Pp]endente: U\d+\*\*/.test(estado), /## 7\. O que o Davi disse que vai mandar/.test(estado),
       /Q8/.test(estado) && /Q13/.test(estado), /Rodadas até a U1\d\d/.test(estado)], // U117: até a U110 (08/09/2026)
      [true, true, true, true]);
   eq('ONBOARDING e o manual apontam para o ESTADO_ATUAL, e o README do manual cita a faixa atual de regras',
@@ -18679,10 +18680,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── R205: a página preenche a largura ──────────────────────────────────────
   const css114 = ler114('src/styles.css');
-  eq('R205 CRÍTICO: a ficha usa .pagina-larga — a mesma conta da sangria (50% - 50vw + rail/2) nos dois lados, padding constante — e dentro dela a grade própria (.ficha-grid, R209) é quem distribui a largura',
+  // R239 (U122): a sangria por viewport saiu — quem abre mão do teto é o
+  // <main>, por :has(), e a margem lateral é a régua do sistema (--gutter).
+  // A ficha do cliente e a tela da atividade passaram a ler a MESMA receita.
+  eq('R205/R239 CRÍTICO: a ficha usa .pagina-larga, e página larga é UMA receita só — o <main> solta o teto por :has() e a margem lateral é --gutter, a mesma da Início; dentro dela a grade própria (.ficha-grid, R209) é quem distribui a largura',
      [/<div className="pagina-larga" style=\{\{ paddingTop: 12, paddingBottom: 48,/.test(fic114),
-      /\.pagina-larga \{ margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; \}/.test(css114),
-      /\.pagina-larga \{\s*\n\s*margin-left: calc\(50% - 50vw \+ var\(--rail\) \/ 2\);\s*\n\s*margin-right: calc\(50% - 50vw \+ var\(--rail\) \/ 2\);\s*\n\s*padding-left: 28px;\s*\n\s*padding-right: 28px;\s*\n\s*\}/.test(css114),
+      /main:has\(\.pagina-larga\), main:has\(\.pagina-trabalho\) \{ max-width: none; \}/.test(css114),
+      /\.pagina-larga, \.pagina-trabalho \{ margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; \}/.test(css114),
       /\.pagina-larga \.detalhe-grid/.test(css114),
       /className="ficha-grid"/.test(fic114)],
      [true, true, true, false, true]);
@@ -18960,7 +18964,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /R214/.test(prod117.slice(prod117.indexOf('- **R138** —'), prod117.indexOf('- **R139** —'))),
       /R212/.test(prod117.slice(prod117.indexOf('- **R209** —'), prod117.indexOf('- **R210** —'))),
       /^### 6\.21 O chat d[ae] (menções|Início)/m.test(ler117('DESIGN_SYSTEM.md')), /chat d[ae] (menções|Início)/.test(ler117('docs/manual/visao-geral.md')), // U119: §6.21 v16 e o parágrafo reescritos
-      /^## U117 /m.test(ler117('docs/PLANO_UNIFICACAO.md')), /U117/.test(ler117('docs/ESTADO_ATUAL.md')) && /\*\*Pendente: U119\*\*/.test(ler117('docs/ESTADO_ATUAL.md'))], // U119: a U117 rodou em 08/09; a pendente é a U119
+      /^## U117 /m.test(ler117('docs/PLANO_UNIFICACAO.md')), /U117/.test(ler117('docs/ESTADO_ATUAL.md')) && /\*\*Rodadas até a U121\*\*/.test(ler117('docs/ESTADO_ATUAL.md'))], // U122: não há mais pendente — a U119 e a U121 rodaram em 08/09
      [true, true, true, true, true, true, true, true, true]);
 }
 
@@ -19264,7 +19268,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /recado para todos/.test(ler119('docs/manual/visao-geral.md')) && /Agendado/.test(ler119('docs/manual/visao-geral.md')),
       /VERSOES\.md/.test(ler119('CLAUDE.md')) && /^## v0\.0\.1 /m.test(ler119('docs/VERSOES.md')),
       /^## P63 /m.test(ler119('docs/PENDENCIAS_TECNICAS.md')),
-      /^## U119 /m.test(ler119('docs/PLANO_UNIFICACAO.md')), /\*\*Pendente: U119\*\*/.test(ler119('docs/ESTADO_ATUAL.md'))],
+      // U122: a U119 rodou em 08/09/2026 — o ESTADO a lista entre as rodadas
+      /^## U119 /m.test(ler119('docs/PLANO_UNIFICACAO.md')), /^- \*\*U119\*\* \(/m.test(ler119('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true, true, true]);
 }
 
@@ -19332,22 +19337,27 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /className="pagina-trabalho" style=\{\{ paddingTop: 12, paddingBottom: 48,/.test(ler120('src/features/chamados/DetalheCampo.tsx')),
       /className="pagina-(trabalho|larga)"[^>]*style=\{\{ padding: /.test(di120 + ler120('src/features/chamados/DetalheCampo.tsx') + ler120('src/routes/_authenticated/clientes.$id.tsx'))],
      [true, true, false]);
-  eq('R234 CRÍTICO: a largura vem de o <main> soltar o teto por `:has()` — NÃO de sangria com 100vw, que conta a barra de rolagem e deixava a margem esquerda 15px menor que a direita (medido em 1920px); o miolo tem teto de 1880px',
-     [/main:has\(\.pagina-trabalho\) \{ max-width: none; \}/.test(css120),
-      /\.pagina-trabalho \{ padding-left: 24px; padding-right: 24px; \}/.test(css120),
-      /50vw/.test(css120.slice(css120.indexOf('main:has(.pagina-trabalho)'), css120.indexOf('.atividade-grade'))),
+  eq('R234/R239 CRÍTICO: a largura vem de o <main> soltar o teto por `:has()` — NÃO de sangria por viewport, que conta a barra de rolagem e deixava a margem esquerda menor que a direita (medido em 1920px); a margem lateral é a régua --gutter (24px no desktop), e o miolo tem teto de 1880px',
+     [/main:has\(\.pagina-larga\), main:has\(\.pagina-trabalho\) \{ max-width: none; \}/.test(css120),
+      // R239: a página larga NÃO tem padding próprio — a margem é a do <main>
+      /\.pagina-larga, \.pagina-trabalho \{ margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; \}/.test(css120),
+      /50vw/.test(css120.slice(css120.indexOf('/* ── PÁGINA LARGA'), css120.indexOf('/* ── A grade da ficha do cliente'))),
       /\.pagina-trabalho > \.trabalho-miolo \{\s*max-width: 1880px; margin: 0 auto;/.test(css120),
       /className="trabalho-miolo"/.test(di120)],
      [true, true, false, true, true]);
   // U121 (R234 aprovada): a faixa da U120 virou a FICHA — uma linha rótulo | valor
   // por propriedade, 96px de rótulo, 40px de altura, sticky ao rolar
-  eq('R234: as propriedades são LINHAS da ficha (rótulo 96px | valor, 40px, uma borda entre elas) — nove linhas, nem card "Propriedades" nem "Pessoas"; a ficha acompanha a rolagem só na página (no diálogo o scroll é do diálogo)',
+  // R239 (U122): a ficha DEIXOU de ser sticky com rolagem própria — Davi: "o
+  // scroll da página deve ser uma coisa só". Quem rola é a página (ou o
+  // diálogo). E o rótulo alinha pelo TOPO: com três chips empilhados no valor,
+  // um rótulo centrado no meio da linha não aponta para nada.
+  eq('R234/R239: as propriedades são LINHAS da ficha (rótulo 96px | valor, 40px, borda entre elas, rótulo alinhado ao topo) — nove linhas, nem card "Propriedades" nem "Pessoas"; e a ficha NÃO rola por dentro: um scroll só',
      [/const linha = \(rotulo: string, filho: ReactNode\)/.test(di120),
-      /\.ficha-linha \{ display: grid; grid-template-columns: 96px minmax\(0, 1fr\); gap: 10px; align-items: center; min-height: 40px;/.test(css120),
+      /\.ficha-linha \{ display: grid; grid-template-columns: 96px minmax\(0, 1fr\); gap: 12px; align-items: start; min-height: 40px;/.test(css120),
       (di120.match(/linha\("/g) ?? []).length,
       /<span style=\{SEC\}>Propriedades<\/span>/.test(di120), /<span style=\{SEC\}>Pessoas<\/span>/.test(di120),
-      /\.pagina-trabalho \.atividade-ficha \{\s*\n\s*position: sticky;/.test(css120), /\.atividade-props/.test(css120)],
-     [true, true, 9, false, false, true, false]);
+      /position: sticky/.test(css120.slice(css120.indexOf('.atividade-grade {'), css120.indexOf('.ficha-linhas {'))), /\.atividade-props/.test(css120)],
+     [true, true, 9, false, false, false, false]);
   eq('R234: os DOIS textos são o miolo da tela — altura mínima de 400px cada na corretiva (480 quando é um só), lado a lado só a partir de 1700px (medido: em 1440 cada um ficava com 382px)',
      [/minAltura=\{ehCorretiva \? 440 : 520\}/.test(di120), /minAltura=\{440\}/.test(di120),  // U121: 520 quando é um só, 440 cada quando são dois
       /@media \(min-width: 1700px\) \{\s*\n\s*\.atividade-textos\.duplo/.test(css120),
@@ -19404,7 +19414,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, false, true, false, true, true]);
   eq('R235: a tela DIZ em qual campo o checklist conta — o convite fica no card que conta, não numa legenda solta',
      [(di120.match(/Cada item de checklist daqui conta no progresso da atividade\./g) ?? []).length,
-      /prog\.campo === "descricao" && \(/.test(di120), /prog\.campo === "solucao" && \(/.test(di120)],
+      // R239: a dica é o segundo argumento do cabeçalho do bloco, na mesma linha do rótulo
+      /prog\.campo === "descricao" \? "Cada item de checklist/.test(di120), /prog\.campo === "solucao" \? "Cada item de checklist/.test(di120)],
      [2, true, true]);
 
   // ── R236: o arrasto dos equipamentos ──────────────────────────────────────
@@ -19465,12 +19476,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const mig119b = ler121('supabase/migrations/20260921090000_u119_v002_visibilidade_chat_agenda_equipamentos.sql');
 
   // ── R234 (aprovada): a grade e a ficha ────────────────────────────────────
-  eq('R234 CRÍTICO: a tela é DOCUMENTO | FICHA — grade 1fr | 340px (360 a partir de 1700), o documento antes da ficha no fonte, a ficha sticky só na página (top = --topo + 4px, teto 100vh − --topo − 28px) e estática no diálogo',
+  eq('R234/R239 CRÍTICO: a tela é DOCUMENTO | FICHA — grade 1fr | 340px (360 a partir de 1700), o documento antes da ficha no fonte, e a ficha rola COM a página (nem sticky nem overflow próprio: um scroll só)',
      [/className="atividade-grade"/.test(di121), di121.indexOf('className="atividade-documento"') < di121.indexOf('className="atividade-ficha"'),
       /@media \(min-width: 1024px\) \{ \.atividade-grade \{ grid-template-columns: minmax\(0, 1fr\) 340px; \} \}/.test(css121),
-      /@media \(min-width: 1700px\) \{ \.atividade-grade \{ grid-template-columns: minmax\(0, 1fr\) 360px; gap: 20px; \} \}/.test(css121),
-      /\.pagina-trabalho \.atividade-ficha \{\s*\n\s*position: sticky; top: calc\(var\(--topo\) \+ 4px\);\s*\n\s*max-height: calc\(100vh - var\(--topo\) - 28px\); overflow-y: auto;/.test(css121),
-      /\.atividade-embutida \.atividade-ficha/.test(css121)],
+      // R239: o gap é 16 em toda largura (a escala 8/12/16/24), e a ficha não rola por dentro
+      /@media \(min-width: 1700px\) \{ \.atividade-grade \{ grid-template-columns: minmax\(0, 1fr\) 360px; \} \}/.test(css121),
+      /\.atividade-ficha \{ display: flex; flex-direction: column; gap: 16px; min-width: 0; \}/.test(css121),
+      /overflow-y: auto/.test(css121.slice(css121.indexOf('.atividade-grade {'), css121.indexOf('.ficha-linhas {')))],
      [true, true, true, true, true, false]);
   eq('R234 CRÍTICO: a ficha abre com o PROGRESSO e as propriedades são nove LINHAS rótulo | valor (Status, Tipo, Impacto, Quando, Responsável, Apoio, Equipes, Proposta, Cliente), todas por `linha(…)`; a etiqueta de status saiu do título',
      [di121.indexOf('<RoscaDeProgresso') < di121.indexOf('className="ficha-linhas"'),
@@ -19490,16 +19502,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R238 CRÍTICO: o card do quadro e a menção do chat abrem a MESMA tela num diálogo largo (DialogDaAtividade, 1600px) — DetalheInterno embutido; o configurador rápido saiu da Início e perdeu o modo central; Calendário e Operacional continuam com a folha lateral',
      [/import \{ DialogDaAtividade \} from "@\/features\/chamados\/DialogDaAtividade";/.test(dash121), /PainelChamado/.test(dash121),
       /<DialogDaAtividade\s*\n\s*chamadoId=\{painelId\}/.test(dash121), /setPainelId\(a\.registroId\);/.test(dash121),
-      /width: "min\(1600px, 96vw\)"/.test(dlg121), /<DetalheInterno id=\{chamadoId\} embutido aoAbrirPagina=\{aoAbrirPagina\} \/>/.test(dlg121),
+      /width: "min\(1600px, 96vw\)"/.test(dlg121), /<DetalheInterno id=\{chamadoId\} embutido \/>/.test(dlg121),
       /chamado\.natureza === "interno"/.test(dlg121) && /<DetalheCampo id=\{chamadoId\} \/>/.test(dlg121),
       /posicao/.test(cod121(pc121)), /ui\/dialog/.test(pc121),
       /<PainelChamado/.test(ler121('src/routes/_authenticated/calendario.tsx')) && /<PainelChamado/.test(ler121('src/routes/_authenticated/painel.operacional.tsx'))],
      [true, false, true, true, true, true, true, false, false, true]);
-  eq('R238: embutido, a página não tem a casca de página — .atividade-embutida, sem o botão voltar (vira "abrir em página inteira")',
+  // R239 (U122): "Página inteira" e o X moram na BARRA do diálogo, não no
+  // conteúdo — o X é absoluto no canto e caía em cima do card do progresso.
+  eq('R238/R239: embutido, a tela não tem casca de página nem chapelaria — .atividade-embutida com a régua --gutter, sem o botão voltar; "Página inteira" é da barra do diálogo',
      [/if \(embutido\) \{\s*\n\s*return <div className="atividade-embutida" style=\{\{ color: textPrimary \}\}>\{conteudo\}<\/div>;/.test(di121),
-      /aria-label="Abrir em página inteira"/.test(di121), /\.atividade-embutida \{ padding: 18px 22px 28px; \}/.test(css121),
+      /Abrir em página inteira/.test(di121), /\.atividade-embutida \{ padding: var\(--gutter\); padding-bottom: 28px; \}/.test(css121),
+      /title="Abrir em página inteira"/.test(dlg121), /height: 48, paddingLeft: "var\(--gutter\)", paddingRight: 48,/.test(dlg121),
       /embutido\?: boolean;/.test(di121)],
-     [true, true, true, true]);
+     [true, false, true, true, true, true]);
 
   // ── R237: equipamento entra no cliente só pelo QAP ────────────────────────
   const EQ2 = carregar('src/features/chamados/equipamentos-atividade.ts');
@@ -19534,15 +19549,101 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // regra 7
   const prod121 = ler121('docs/PRODUTO.md');
-  eq('U121 (regra 7): R237 e R238 existem com a frase do Davi, última atualização R238, o DS tem a §6.23 v18 (documento | ficha), o manual conta a ficha e o pop-up, P65 fechou e P66 abriu, a U121 está no diário e o ESTADO aponta U119 e U121 como pendentes',
+  eq('U121 (regra 7): R237 e R238 existem com a frase do Davi, o DS tem a §6.23 (documento | ficha), o manual conta a ficha e o pop-up, P65 fechou e P66 abriu, a U121 está no diário e o ESTADO a lista entre as migrations rodadas',
      [['R237', 'R238'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod121)),
       Number((prod121.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 238,
-      /^### 6\.23 A tela da atividade — documento à esquerda, ficha à direita \(v18/m.test(ler121('DESIGN_SYSTEM.md')),
+      /^### 6\.23 A tela da atividade — documento à esquerda, ficha à direita \(v19/m.test(ler121('DESIGN_SYSTEM.md')),  // U122: v19
       /ficha/i.test(ler121('docs/manual/visao-geral.md')) && /pop-up/i.test(ler121('docs/manual/visao-geral.md')),
       /^## P65 — ~~MÉDIO~~ FECHADA/m.test(ler121('docs/PENDENCIAS_TECNICAS.md')), /^## P66 /m.test(ler121('docs/PENDENCIAS_TECNICAS.md')),
       /^## U121 /m.test(ler121('docs/PLANO_UNIFICACAO.md')),
-      /\*\*Pendente: U119\*\*/.test(ler121('docs/ESTADO_ATUAL.md')) && /U121/.test(ler121('docs/ESTADO_ATUAL.md'))],
+      // U122: as duas rodaram — o ESTADO diz até onde e não aponta pendente
+      /^- \*\*U121\*\* \(/m.test(ler121('docs/ESTADO_ATUAL.md')) && /\*\*Rodadas até a U121\*\*/.test(ler121('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true, true, true]);
+}
+
+
+// ── U122 — a revisão geral da tela da atividade (R239) ──────────────────────
+{
+  const fs122 = require('fs');
+  const ler122 = (f) => fs122.readFileSync(f, 'utf8');
+  const cod122 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const css122 = ler122('src/styles.css');
+  const rota122 = ler122('src/routes/_authenticated/route.tsx');
+  const dlg122 = ler122('src/features/chamados/DialogDaAtividade.tsx');
+  const di122 = ler122('src/features/chamados/DetalheInterno.tsx');
+  const eq122 = ler122('src/features/chamados/EquipamentosDaAtividade.tsx');
+
+  // ── R239.1: o modal cobre a casca inteira ─────────────────────────────────
+  eq('R239 CRÍTICO: um diálogo é MODAL — véu e caixa acima da casca (z-70), acima do menu lateral (55), da barra inferior (50) e do botão flutuante (60). Era o menu que pintava por cima do pop-up da atividade e cortava 232px dele',
+     [(ler122('src/components/ui/dialog.tsx').match(/ z-\[70\] /g) ?? []).length,
+      (ler122('src/components/ui/sheet.tsx').match(/ z-\[70\] /g) ?? []).length,
+      / z-50 /.test(ler122('src/components/ui/dialog.tsx')), / z-50 /.test(ler122('src/components/ui/sheet.tsx')),
+      /zIndex: 55/.test(ler122('src/components/SideNav.tsx'))],
+     [2, 2, false, false, true]);
+
+  // ── R239.2: UMA régua de margem ───────────────────────────────────────────
+  eq('R239 CRÍTICO: a margem lateral do sistema é UMA — --gutter (16px no celular, 24px no desktop). O <main>, a sangria do quadro e as páginas largas leem a MESMA variável; nenhuma tela tem padding lateral próprio (havia quatro: 16, 24, 28 e 40)',
+     [/    --gutter: 16px;/.test(css122), /      --gutter: 24px;/.test(css122),
+      /paddingLeft: "var\(--gutter\)", paddingRight: "var\(--gutter\)"/.test(rota122),
+      /padding-left: var\(--gutter\);\n    padding-right: var\(--gutter\);/.test(css122),
+      /main:has\(\.pagina-larga\), main:has\(\.pagina-trabalho\) \{ max-width: none; \}/.test(css122),
+      /\.pagina-larga, \.pagina-trabalho \{ margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; \}/.test(css122),
+      /\.pagina-trabalho \{ padding-left: 24px/.test(css122), /padding-left: 28px/.test(css122),
+      /\.atividade-embutida \{ padding: var\(--gutter\); padding-bottom: 28px; \}/.test(css122)],
+     [true, true, true, true, true, true, false, false, true]);
+  eq('R239: a meia barra de rolagem, que fazia o quadro da Início começar 7px antes da tela da atividade (MEDIDO em 1920: 249 contra 256) — o layout mede innerWidth − clientWidth em --barra (piso 0px) e a sangria desconta metade dela nos dois lados',
+     [/    --barra: 0px;/.test(css122),
+      /"--barra", `\$\{window\.innerWidth - document\.documentElement\.clientWidth\}px`/.test(rota122),
+      /window\.addEventListener\("resize", medir, \{ passive: true \}\)/.test(rota122),
+      /margin-left: calc\(50% - 50vw \+ var\(--barra\) \/ 2 \+ var\(--rail\) \/ 2\);/.test(css122),
+      /margin-right: calc\(50% - 50vw \+ var\(--barra\) \/ 2 - var\(--rail\) \/ 2 \+ var\(--rail\)\);/.test(css122)],
+     [true, true, true, true, true]);
+
+  // ── R239.3: um scroll só ──────────────────────────────────────────────────
+  eq('R239 CRÍTICO: o scroll da tela é UM — a ficha não é sticky nem rola por dentro, os painéis de equipamento perderam o teto de altura (maxHeight: "none") e a rolagem própria (ROLAGEM_DO_PAINEL saiu da atividade); no pop-up quem rola é um container só',
+     [/position: sticky/.test(css122.slice(css122.indexOf('.atividade-grade {'), css122.indexOf('.ficha-linhas {'))),
+      /overflow-y: auto/.test(css122.slice(css122.indexOf('.atividade-grade {'), css122.indexOf('.ficha-linhas {'))),
+      /ROLAGEM_DO_PAINEL/.test(eq122), /maxHeight: "none"/.test(eq122),
+      (dlg122.match(/overflowY: "auto"/g) ?? []).length],
+     [false, false, false, true, 1]);
+
+  // ── R239.4: os equipamentos vêm recolhidos ────────────────────────────────
+  eq('R239 CRÍTICO: o campo Equipamentos vem RECOLHIDO, com o botão que expande na extremidade direita do cabeçalho (aria-expanded), e recolhido mostra o resumo do que tem dentro; a lista "Sem bloco" cresce em colunas, com os primeiros 24 e "mostrar todos"',
+     [/const \[aberto, setAberto\] = useState\(false\);/.test(eq122),
+      /aria-expanded=\{aberto\}/.test(eq122), /aria-controls="equipamentos-da-atividade"/.test(eq122),
+      /\{aberto \? "Recolher" : "Abrir"\}/.test(eq122),
+      /sem bloco`,/.test(eq122) && /"movimentos"\} nesta atividade`/.test(eq122),
+      /const PRIMEIROS = 24;/.test(eq122), /Mostrar todos \(\{semBloco\.length\}\)/.test(eq122),
+      /className="atividade-equip-grade"/.test(eq122),
+      /\.atividade-equip-grade \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(220px, 1fr\)\); gap: 8px; \}/.test(css122)],
+     [true, true, true, true, true, true, true, true, true]);
+
+  // ── R239: a barra do diálogo e o cabeçalho padrão de bloco ────────────────
+  eq('R239: o "X" do diálogo é absoluto no canto e caía sobre o card do progresso — o diálogo ganhou uma barra de 48px (número à esquerda, "Página inteira" à direita, 48px reservados ao X), e a tela embutida ficou sem chapelaria nenhuma',
+     [/height: 48, paddingLeft: "var\(--gutter\)", paddingRight: 48,/.test(dlg122),
+      /title="Abrir em página inteira"/.test(dlg122), /Página inteira/.test(dlg122),
+      /Abrir em página inteira/.test(di122), /aoAbrirPagina/.test(di122),
+      /\{!embutido && \(/.test(di122)],
+     [true, true, true, false, false, true]);
+  eq('R239: todo bloco da tela abre igual — cabecalho(titulo, dica) põe o rótulo e a dica na MESMA linha (a dica do checklist estava pendurada por um marginTop negativo)',
+     [/const cabecalho = \(titulo: string, dica\?: string \| null\)/.test(di122),
+      /marginTop: -6/.test(di122),
+      (di122.match(/\{cabecalho\(/g) ?? []).length >= 2,
+      /\.ficha-linha > span:first-child \{ padding-top: 8px; \}/.test(css122)],
+     [true, false, true, true]);
+
+  // ── regra 7 ───────────────────────────────────────────────────────────────
+  const prod122 = ler122('docs/PRODUTO.md');
+  eq('U122 (regra 7): a R239 existe com a frase do Davi e as quatro partes, o DS tem a §6.23 v19 e a régua no §5b, o manual conta o recolhido e o scroll único, o diário tem a U122, o ESTADO diz que não há migration pendente e a P67 está aberta',
+     [/^- \*\*R239\*\* —/m.test(prod122), /Corrija este bug/.test(prod122), /o scroll da página deve ser uma coisa só/.test(prod122),
+      Number((prod122.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 239,
+      /^### 6\.23 A tela da atividade — documento à esquerda, ficha à direita \(v19/m.test(ler122('DESIGN_SYSTEM.md')),
+      /A RÉGUA DE MARGEM \(`--gutter`/.test(ler122('DESIGN_SYSTEM.md')),
+      /recolhido/.test(ler122('docs/manual/visao-geral.md')),
+      /^## U122 /m.test(ler122('docs/PLANO_UNIFICACAO.md')),
+      /nenhuma\n?\s*migration pendente/.test(ler122('docs/ESTADO_ATUAL.md')),
+      /^## P67 /m.test(ler122('docs/PENDENCIAS_TECNICAS.md'))],
+     [true, true, true, true, true, true, true, true, true, true]);
 }
 
 

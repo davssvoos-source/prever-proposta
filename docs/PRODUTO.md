@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R238 (9)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R239 (10)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-08 (R238). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-08 (R239). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4371,3 +4371,35 @@ adaptado."
   Operacional. O chamado de campo, no pop-up, continua com a tela de campo
   (não foi redesenhada nesta leva). *(Davi, 08/09/2026, ao aprovar a
   estrutura: "1. Aprovo. 2. Faça a adaptação na tela do pop up também.")*
+
+- **R239** — **A revisão geral da tela da atividade: uma régua de margem, um
+  scroll, o pop-up por cima de tudo e os equipamentos recolhidos.** Quatro
+  coisas, ditadas juntas:
+  1. **O pop-up cobre a janela inteira.** Um diálogo é modal: fica acima da
+     casca do app — menu lateral, barra inferior, botão flutuante — e escurece
+     tudo. Estava o contrário: o menu (232px) pintava por cima do diálogo da
+     atividade e comia o começo do título e dos textos.
+  2. **O sistema tem UMA régua de margem lateral**, e todas as telas a seguem:
+     a Início, a tela da atividade e a ficha do cliente começam no mesmo
+     prumo. Uma variável (`--gutter`: 16px no celular, 24px no desktop) é a
+     única fonte — não existe tela com padding próprio. O mesmo vale para o
+     espaçamento por dentro: uma escala de quatro (8 entre controles vizinhos,
+     12 dentro do card, 16 entre cards, 24 na margem da página), inclusive
+     entre os botões e entre os tópicos.
+  3. **O scroll da tela é um só.** Nada de rolagem dentro da rolagem: a ficha
+     das propriedades e os painéis de equipamento deixaram de ter barra
+     própria. Na página quem rola é a página; no pop-up, o pop-up.
+  4. **O campo Equipamentos vem recolhido**, com o botão que expande na
+     extremidade direita do cabeçalho. Recolhido ele mostra o resumo (quantos
+     sem bloco, quantos em blocos, quantos movimentos esta atividade fez).
+  *(Davi, 08/09/2026: "Veja no print que a tela está cortada na tela de
+  configuração da atividade em pop up. Corrija este bug. Além disso, as margens
+  laterais da tela de configuração não estão seguindo o padrão, por exemplo a
+  margem da tela Inicio está diferente das margens da tela de configuração.
+  Lembre-se que o nosso sistema deve seguir um padrão. Além disso, o campo de
+  EQUIPAMENTOS na tela de configuração da atividade, por padrão deve vir
+  recolhido, com um botão na extremidade direita que expande o campo. Além
+  disso, o scroll da página deve ser uma coisa só. Além disso, eu quero que a
+  página siga o padrão das margens em tudo, inclusive no espaço entre os
+  botões, entre os tópicos, enfim.. Faça uma revisão geral do design, aplique e
+  corrija todos os erros apontados.")*

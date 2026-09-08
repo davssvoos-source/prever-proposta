@@ -256,6 +256,20 @@
     /* PRISMA.amarelo — o principal. Espelha src/lib/paleta.ts. */
     --amarelo-principal: #F8C811;
     --rail: 0px;
+    /* A RÉGUA DE MARGEM DO SISTEMA (R239, U122). Davi, 08/09/2026: "eu quero
+       que a página siga o padrão das margens em tudo […] o nosso sistema deve
+       seguir um padrão." Havia quatro números soltos — o <main> com 16, a
+       .sangra-x do quadro com 24, a .pagina-larga da ficha com 28 e a
+       .pagina-trabalho da atividade com 24/40. Agora existe UM: todo mundo lê
+       --gutter, e as telas largas começam no mesmo prumo. */
+    --gutter: 16px;
+    /* A LARGURA DA BARRA DE ROLAGEM (R239, U122), medida pelo route.tsx.
+       `100vw` conta a barra e `100%` não: a sangria do quadro escorregava
+       meia barra para a esquerda e a Início começava 7px antes da tela da
+       atividade (MEDIDO em 1920: 249 contra 256). O CSS não sabe esta
+       largura — o navegador sabe. Piso 0: sem o JS, o comportamento é o de
+       antes, não um layout quebrado. */
+    --barra: 0px;
     /* altura reservada ao header fixo. No desktop o header não existe (a
        identidade mora na sidebar e as notificações no painel da Início),
        então o conteúdo sobe. */
@@ -270,6 +284,7 @@
     :root {
       --rail: 232px;
       --topo: 24px;
+      --gutter: 24px;
       --vidro-blur: blur(22px) saturate(150%);
     }
     /* sidebar recolhida (lib/sidebar-recolhida.ts — LARGURA_RAIL_RECOLHIDA):
@@ -559,10 +574,11 @@ input::placeholder, textarea::placeholder {
     /* Com a sidebar, o conteúdo é centrado em (100vw - rail): o centro do
        elemento fica rail/2 à direita do centro da janela, e a margem esquerda
        precisa devolver essa metade — senão o trilho invade o rail por baixo. */
-    margin-left: calc(50% - 50vw + var(--rail) / 2);
-    margin-right: calc(50% - 50vw - var(--rail) / 2 + var(--rail));
-    padding-left: 24px;
-    padding-right: 24px;
+    margin-left: calc(50% - 50vw + var(--barra) / 2 + var(--rail) / 2);
+    margin-right: calc(50% - 50vw + var(--barra) / 2 - var(--rail) / 2 + var(--rail));
+    /* R239: a mesma régua de todas as telas */
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
   }
   /* No desktop a coluna respira: 300px de piso, e cresce até 360 quando cabe.
      Em telas largas isso troca "sete colunas espremidas com espaço morto ao
@@ -1237,48 +1253,33 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   .detalhe-grid { grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr); }
 }
 
-/* ── A TELA DA ATIVIDADE — documento à esquerda, ficha à direita (R234/R238, U120–U121) ──
+/* ── A TELA DA ATIVIDADE — documento à esquerda, ficha à direita ────────────
+   (R234/R238, U120–U121; revisão geral R239, U122)
+
    Aprovado pelo Davi em 08/09/2026 sobre o mockup "Layout da Atividade": a
    atividade é um DOCUMENTO (os textos, largos) com uma FICHA de 340px ao lado
    que abre com o progresso e lista as propriedades em linhas rótulo | valor.
 
-   SEM SANGRIA, de propósito. A `.pagina-larga` (R205) puxa o conteúdo para fora
-   do <main> com `margin: calc(50% - 50vw …)`, e isso tem um defeito MEDIDO
-   (U120, em 1920px): `100vw` inclui a barra de rolagem, mas o <main> é
-   centrado na largura ÚTIL — a faixa escorrega ~8px e a margem sai 41px de um
-   lado e 56px do outro. Aqui quem abre mão do teto é o PRÓPRIO <main>, por
-   `:has()`, e as margens saem exatas e iguais: os 16px do <main> mais o
-   respiro desta página. Estilo inline nesta página mexe só no eixo VERTICAL
-   (anti-padrão nº 10). */
-main:has(.pagina-trabalho) { max-width: none; }
-.pagina-trabalho { padding-left: 0; padding-right: 0; }
-@media (min-width: 1024px) {
-  .pagina-trabalho { padding-left: 24px; padding-right: 24px; }
-}
-@media (min-width: 1600px) {
-  .pagina-trabalho { padding-left: 40px; padding-right: 40px; }
-}
-.pagina-trabalho > .trabalho-miolo { max-width: 1880px; margin: 0 auto; }
-/* R238: a mesma tela dentro do diálogo da Início — a casca é a do diálogo */
-.atividade-embutida { padding: 18px 22px 28px; }
+   A CASCA é a receita de página larga acima — a margem lateral é a régua do
+   sistema (--gutter), igual à da Início. Estilo inline nesta página mexe só no
+   eixo VERTICAL (anti-padrão nº 10). No diálogo (R238) a casca é
+   `.atividade-embutida`, com a MESMA régua por dentro.
 
-/* A GRADE: documento (1fr) | ficha (340px; 360 no monitor grande). Uma coluna
-   no celular — a ficha desce para baixo do documento, na mesma ordem. */
+   UM SCROLL SÓ (R239). Davi: "o scroll da página deve ser uma coisa só." Até a
+   U121 a ficha era `position: sticky` com `overflow-y: auto`: passava da
+   altura da janela e virava uma segunda barra de rolagem dentro da primeira —
+   e os painéis de equipamento tinham a terceira. Agora quem rola é a página
+   (na tela cheia) ou o diálogo (no pop-up), e nada mais.
+
+   ESPAÇAMENTO: uma escala de quatro — 8 (controles vizinhos), 12 (dentro do
+   card), 16 (entre cards e entre colunas), 24 (a margem da página). */
+.atividade-embutida { padding: var(--gutter); padding-bottom: 28px; }
+
 .atividade-grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 @media (min-width: 1024px) { .atividade-grade { grid-template-columns: minmax(0, 1fr) 340px; } }
-@media (min-width: 1700px) { .atividade-grade { grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; } }
+@media (min-width: 1700px) { .atividade-grade { grid-template-columns: minmax(0, 1fr) 360px; } }
 .atividade-documento { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.atividade-ficha { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-/* A ficha ACOMPANHA a rolagem: status, prazo e responsável ficam à vista
-   enquanto se lê um texto longo; passando da altura da janela, rola por dentro.
-   No diálogo não: o scroll é do diálogo, e a ficha corre com o documento. */
-@media (min-width: 1024px) {
-  .pagina-trabalho .atividade-ficha {
-    position: sticky; top: calc(var(--topo) + 4px);
-    max-height: calc(100vh - var(--topo) - 28px); overflow-y: auto;
-    padding-right: 2px; scrollbar-width: thin;
-  }
-}
+.atividade-ficha { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
 /* Os textos: um ocupa o documento inteiro; na corretiva são DOIS, e a partir de
    1700px ficam lado a lado — é lendo o Problema que se escreve a Solução.
@@ -1290,14 +1291,20 @@ main:has(.pagina-trabalho) { max-width: none; }
 }
 
 /* As LINHAS da ficha: rótulo (96px) | valor, 40px de altura mínima, uma borda
-   entre elas — o formato de ficha que Linear, Jira e Notion usam. */
+   entre elas — o formato de ficha que Linear, Jira e Notion usam. O rótulo
+   alinha pelo TOPO (R239): quando o valor tem três chips empilhados, um rótulo
+   centrado no meio da linha não aponta para nada. */
 .ficha-linhas { display: flex; flex-direction: column; }
-.ficha-linha { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: center; min-height: 40px; padding: 5px 0; border-top: 1px solid var(--border-color); }
+.ficha-linha { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: start; min-height: 40px; padding: 5px 0; border-top: 1px solid var(--border-color); }
 .ficha-linha:first-child { border-top: 0; }
+.ficha-linha > span:first-child { padding-top: 8px; }
 
 /* Os equipamentos anotados à mão (atividade interna ou de grupo): uma lista de
    uma coluna no celular vira grade no desktop, em vez de uma fila de 1600px. */
-.atividade-equip-lista { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+/* A lista "Sem bloco" (R239): sem rolagem própria — cresce em COLUNAS, que é o
+   que cabe num painel de meia largura sem virar uma fila de 134 linhas. */
+.atividade-equip-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.atividade-equip-lista { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 @media (min-width: 1024px) { .atividade-equip-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1600px) { .atividade-equip-lista { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
@@ -1317,22 +1324,19 @@ main:has(.pagina-trabalho) { max-width: none; }
 .fachada-card.pronta { opacity: 0.55; }
 [data-theme="light"] .fachada-card.pronta { opacity: 0.45; }
 
-/* ── A ficha do cliente preenche a largura (R205, U114) ──────────────────────
+/* ── PÁGINA LARGA: uma receita só (R205/R239, U114–U122) ────────────────────
    O <main> é mx-auto max-w-7xl: num monitor de 1920 sobravam ~200px mortos de
-   cada lado da ficha. A mesma conta da .sangra-x (a metade do que sobra fora
-   do container, compensando o rail da sidebar) leva a página até a borda da
-   janela; o padding é uma constante pequena. Dentro dela a grade da ficha
-   troca 3fr|2fr por "o que sobrar | uma coluna de identidade com teto": a
-   coluna larga (os dois painéis do vínculo) é quem cresce com a tela. */
-.pagina-larga { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
-@media (min-width: 1024px) {
-  .pagina-larga {
-    margin-left: calc(50% - 50vw + var(--rail) / 2);
-    margin-right: calc(50% - 50vw + var(--rail) / 2);
-    padding-left: 28px;
-    padding-right: 28px;
-  }
-}
+   cada lado. Quem abre mão do teto é o PRÓPRIO <main>, por :has() — e a margem
+   lateral continua sendo a régua do sistema (--gutter), a mesma da Início.
+
+   A sangria por unidade de viewport que fazia isto até a U121 saiu das duas
+   páginas: a largura da janela conta a barra de rolagem e a do container
+   não, então a faixa escorregava e a margem saía diferente de um lado para
+   o outro (MEDIDO na U120: 41px contra 56px). Com :has() são a mesma conta. */
+main:has(.pagina-larga), main:has(.pagina-trabalho) { max-width: none; }
+.pagina-larga, .pagina-trabalho { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+/* teto para o monitor gigante: passando disto o texto vira uma linha infinita */
+.pagina-trabalho > .trabalho-miolo { max-width: 1880px; margin: 0 auto; }
 
 /* ── A grade da ficha do cliente (R209, U116) ────────────────────────────────
    Três áreas com a FORMA do conteúdo: a identidade (cards curtos), o local (os
