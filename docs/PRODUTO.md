@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R236 (7)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R237 (8)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-08 (R236). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-08 (R237). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4336,3 +4336,26 @@ adaptado."
   equipamentos nos campos de equipamentos instalados/removidos, enfim a gente
   deve otimizar o sistema para o usuário conseguir usar com praticidade no dia
   a dia.")*
+
+- **R237** — **Equipamento entra no cliente só pelo QAP; numa atividade só se
+  move para dentro de um bloco ou se remove do cliente.** O que chega a um
+  cliente chega pelo QAP (o sistema lê pelo sincronismo, R160) e chega **sem
+  bloco**. Na atividade existem exatamente dois gestos: **mover** um equipamento
+  do cliente para dentro de um bloco — dizer onde ele foi instalado — e
+  **remover** um equipamento do cliente. O removido vai para a **lista de
+  equipamentos removidos** no Administrativo › Catálogo de equipamentos, com um
+  checklist (mecanismo a estruturar em breve). Nada entra num cliente por esta
+  tela: **não existe "instalar de fora"** — nem pela tela, nem pela RPC. Isto
+  corrige a leitura que a R226/R236 fizeram de "equipamentos que não estão
+  vinculados a nenhum bloco do cliente": são os **do cliente** sem bloco, não os
+  de fora dele. O painel "Fora do cliente" da v0.0.3 sai na v0.0.4, e o banco
+  passa a recusar a instalação de item que não seja do cliente (migration
+  U121). *(Davi, 08/09/2026: "Em uma atividade, o usuário só pode movimentar um
+  equipamento para dentro de um bloco ou então clicar em remover um equipamento
+  do cliente. Os equipamentos que vão para o cliente vão sempre
+  OBRIGATORIAMENTE pelo QAP, e o sistema lê isso a partir do sincronismo. No
+  nosso sistema, o que é possível fazer é mover o equipamento para dentro de um
+  bloco ou removê-lo do cliente. Sempre que um usuário remove um equipamento do
+  cliente, no painel administrativo no catálogo de equipamentos fica uma lista
+  de equipamentos removidos e um checklist. Em breve estruturaremos esse
+  mecanismo do painel administrativo melhor.")*

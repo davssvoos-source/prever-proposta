@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-08** · última regra: **R236** · último diário:
-**U120** · verificador: **3.161 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-08** · última regra: **R237** (ditada, implementação
+na v0.0.4 — ver P65) · último diário: **U120** · verificador: **3.161 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U117** (U106 e U109 em 07/09/2026; U110 e
 **U117** em 08/09/2026) · **pendente: U119** (entregue na v0.0.2 e ainda não
 rodada) · **versão instalada no servidor: v0.0.1** (o pacote da U118); **esta
@@ -275,7 +275,9 @@ Das 23 perguntas do plano, ficam duas:
    H.5) — depois vem a API do QAP (R160: diária + botão Sincronizar; contato:
    Lopes, desenvolvedor do QAP ERP; só quando o sistema estiver redondo). Em
    08/09/2026 ele repetiu: o botão de forçar sincronismo com o QAP fica "para
-   mais pra frente" (P63).
+   mais pra frente" (P63). E, à noite, a R237: equipamento entra no cliente
+   **só pelo QAP** — o **mecanismo dos removidos** no Administrativo › Catálogo
+   (a lista e o checklist) ele "estrutura em breve".
 4. **A leitura da proposta aprovada (PDF) pela IA** para criar as atividades
    da implantação (R148, H.6).
 
