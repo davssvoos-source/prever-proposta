@@ -81,7 +81,11 @@ Por script (sem janela), para instalação automatizada:
 
 ## Depois de instalar — o Supabase precisa saber o endereço novo
 
-No painel do Supabase, **Authentication → URL Configuration**:
+Isto NÃO é SQL: é uma configuração do painel do Supabase, em **supabase.com**
+(a Lovable é quem constrói e hospeda o site; o Supabase é onde moram o banco e
+o login — o SQL Editor da Lovable é só uma janela para esse banco). Entre em
+supabase.com com a conta da empresa, abra o projeto `jtyautqmftpwzinvhfck` e vá
+em **Authentication → URL Configuration**:
 
 - **Site URL** = o endereço do sistema (o mesmo SITE_URL);
 - **Redirect URLs** += `http://<servidor>:<porta>/**`.

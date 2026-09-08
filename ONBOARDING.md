@@ -80,9 +80,11 @@ Esta seção existe pronta para o dia em que a saída valer a pena. A ordem
 importa, e o primeiro passo é o único perigoso de tudo:
 
 1. **CONFIRME QUE O PROJETO SUPABASE É SEU.** O banco
-   (`lrepuyaootngrbotmvhn.supabase.co`) hoje é acessado pelo painel da
-   Lovable. Entre em **supabase.com** com a conta da empresa e veja se o
-   projeto aparece na sua organização.
+   (`jtyautqmftpwzinvhfck.supabase.co` — o id está no `.env` e em
+   `supabase/config.toml`; um id antigo, `lrepuyaootngrbotmvhn`, aparece em
+   entradas velhas do diário) hoje é acessado pelo SQL Editor da Lovable.
+   Entre em **supabase.com** com a conta da empresa e veja se o projeto
+   aparece na sua organização.
    - **Aparece** → cancelar a Lovable não toca no banco. Siga.
    - **NÃO aparece** → o projeto é gerenciado por ela e **pode ser destruído
      no cancelamento**. Antes: exporte tudo (Database → Backups, ou
