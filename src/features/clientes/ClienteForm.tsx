@@ -11,10 +11,11 @@
 // dentro do card, e grava só os campos daquele card. O resto da página
 // continua visível o tempo todo.
 //
-//   · CardLocal     — nome, CNPJ/CPF, tipo de local, situação, endereço (com o
-//                     "Localizar no mapa" e as guardas da U84), complemento.
+//   · CardLocal     — nome, CNPJ/CPF, tipo de local, situação, serviço prestado
+//                     (R210), endereço (com o "Localizar no mapa" e as guardas da
+//                     U84), complemento, e a ESTRUTURA — apartamentos, acessos
+//                     controlados, observações (R211: era um card à parte).
 //   · CardContatos  — síndico/proprietário, zelador/encarregado(a), financeiro.
-//   · CardEstrutura — apartamentos, acessos controlados, observações.
 //
 // O nome do arquivo ficou (ClienteForm.tsx) de propósito: é onde o verificador
 // cobra, letra por letra, as guardas do endereço da U84 — editar o texto zera
@@ -22,7 +23,7 @@
 // nome do lugar que o mapa respondeu é impresso para um humano ler.
 
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { MapPin, Loader2, Pencil, Phone, Mail, Users, Building2, LayoutGrid, Copy, MessageCircle } from "lucide-react";
+import { MapPin, Loader2, Pencil, Phone, Mail, Users, Building2, Copy, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { geocode } from "@/features/gerencial/data";
@@ -181,6 +182,11 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
   // R210: o serviço prestado é um item do card O local (era etiqueta no
   // cabeçalho, R41/R173). A gravação continua mandando o ARRAY inteiro.
   const [servicos, setServicos] = useState<string[]>([]);
+  // R211: a ESTRUTURA (apartamentos, acessos, observações) também é item de
+  // O local — era um card à parte (CardEstrutura) até a U116.
+  const [qtdAptos, setQtdAptos] = useState("");
+  const [qtdAcessos, setQtdAcessos] = useState("");
+  const [observacoes, setObservacoes] = useState("");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [geocodificando, setGeocodificando] = useState(false);
@@ -211,6 +217,9 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
     setEndereco(cliente.endereco ?? "");
     setComplemento(cliente.complemento ?? "");
     setServicos([...((cliente.servicos_prestados ?? []) as string[])]);
+    setQtdAptos(cliente.qtd_apartamentos?.toString() ?? "");
+    setQtdAcessos(cliente.qtd_acessos?.toString() ?? "");
+    setObservacoes(cliente.observacoes ?? "");
     setLat(cliente.latitude ?? null);
     setLng(cliente.longitude ?? null);
     setResolvido(null);
@@ -256,6 +265,10 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
     // documento é opcional, mas errado não passa: é a chave que concilia o
     // cliente com o QAP e sai impressa no fechamento para o financeiro
     if (!validarDocumento(documento)) { toast.error("CNPJ/CPF inválido. Confira os dígitos ou deixe o campo em branco."); return; }
+    const nAptos = qtdAptos.trim() === "" ? null : Number(qtdAptos);
+    const nAcessos = qtdAcessos.trim() === "" ? null : Number(qtdAcessos);
+    if (nAptos !== null && (!Number.isFinite(nAptos) || nAptos < 0)) { toast.error("Quantidade de apartamentos inválida."); return; }
+    if (nAcessos !== null && (!Number.isFinite(nAcessos) || nAcessos < 0)) { toast.error("Quantidade de acessos inválida."); return; }
     try {
       await onSalvar({
         nome: nome.trim(),
@@ -268,6 +281,9 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
         servicos_prestados: servicos,
         latitude: lat,
         longitude: lng,
+        qtd_apartamentos: nAptos,
+        qtd_acessos: nAcessos,
+        observacoes: observacoes.trim() || null,
       });
       setEditando(false);
     } catch { /* o toast é da página; o card fica aberto para corrigir */ }
@@ -333,6 +349,19 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
           )}
           {/* R210: a linha "Coordenadas" saiu — dois números não dizem nada a quem
               lê a ficha; o mapa continua sendo conferido na edição ("O mapa entendeu") */}
+          {/* R211: a estrutura do local mora aqui — apartamentos, acessos e as observações */}
+          {cliente.qtd_apartamentos != null && (
+            <div style={s.linha}><span style={s.linhaLabel}>Apartamentos / unidades</span><span style={s.linhaValor}>{cliente.qtd_apartamentos}</span></div>
+          )}
+          {cliente.qtd_acessos != null && (
+            <div style={s.linha}><span style={s.linhaLabel}>Acessos controlados</span><span style={s.linhaValor}>{cliente.qtd_acessos}</span></div>
+          )}
+          {cliente.observacoes && (
+            <div style={{ ...s.linha, gridTemplateColumns: "minmax(0, 1fr)", rowGap: 4 }}>
+              <span style={s.linhaLabel}>Observações</span>
+              <span style={{ ...s.linhaValor, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{cliente.observacoes}</span>
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -465,6 +494,21 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
               Se o endereço acima mudou, use “Localizar no mapa” e leia o que o mapa responder.
             </span>
           )}
+          {/* R211: a estrutura — antes um card próprio, agora o fim de O local */}
+          <div style={{ ...s.DUAS, borderTop: `1px solid ${s.c.divisoria}`, paddingTop: 12 }}>
+            <div>
+              <label style={s.LABEL}>Apartamentos / unidades</label>
+              <input style={s.INPUT} value={qtdAptos} onChange={(e) => setQtdAptos(e.target.value)} inputMode="numeric" placeholder="0" />
+            </div>
+            <div>
+              <label style={s.LABEL}>Acessos controlados</label>
+              <input style={s.INPUT} value={qtdAcessos} onChange={(e) => setQtdAcessos(e.target.value)} inputMode="numeric" placeholder="0" />
+            </div>
+          </div>
+          <div>
+            <label style={s.LABEL}>Observações</label>
+            <textarea style={s.TEXTAREA} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Particularidades do local, acesso da equipe, histórico relevante…" />
+          </div>
         </>
       )}
     </CascaDoCard>
@@ -652,80 +696,6 @@ export function CardContatos({ cliente, podeEditar, salvando, onSalvar, veFinanc
               </div>
             </div>
           )}
-        </>
-      )}
-    </CascaDoCard>
-  );
-}
-
-// ── ESTRUTURA E OBSERVAÇÕES ────────────────────────────────────────────────
-
-export function CardEstrutura({ cliente, podeEditar, salvando, onSalvar }: CardDoClienteProps) {
-  const s = useEstilosDoCard();
-  const [editando, setEditando] = useState(false);
-  const [qtdAptos, setQtdAptos] = useState("");
-  const [qtdAcessos, setQtdAcessos] = useState("");
-  const [observacoes, setObservacoes] = useState("");
-
-  function abrir() {
-    setQtdAptos(cliente.qtd_apartamentos?.toString() ?? "");
-    setQtdAcessos(cliente.qtd_acessos?.toString() ?? "");
-    setObservacoes(cliente.observacoes ?? "");
-    setEditando(true);
-  }
-
-  async function salvar() {
-    const nAptos = qtdAptos.trim() === "" ? null : Number(qtdAptos);
-    const nAcessos = qtdAcessos.trim() === "" ? null : Number(qtdAcessos);
-    if (nAptos !== null && (!Number.isFinite(nAptos) || nAptos < 0)) { toast.error("Quantidade de apartamentos inválida."); return; }
-    if (nAcessos !== null && (!Number.isFinite(nAcessos) || nAcessos < 0)) { toast.error("Quantidade de acessos inválida."); return; }
-    try {
-      await onSalvar({ qtd_apartamentos: nAptos, qtd_acessos: nAcessos, observacoes: observacoes.trim() || null });
-      setEditando(false);
-    } catch { /* o toast é da página */ }
-  }
-
-  const vazio = cliente.qtd_apartamentos == null && cliente.qtd_acessos == null && !cliente.observacoes;
-
-  return (
-    <CascaDoCard titulo="Estrutura e observações" icone={<LayoutGrid size={15} />} podeEditar={podeEditar} editando={editando} salvando={salvando}
-      aoAbrir={abrir} aoCancelar={() => setEditando(false)} aoSalvar={salvar}>
-      {!editando ? (
-        vazio ? (
-          <div style={{ fontFamily: FONT, fontSize: 12.5, color: s.c.textoSecundario, paddingTop: 10 }}>
-            Nada registrado{podeEditar ? " — use o lápis para preencher." : "."}
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {cliente.qtd_apartamentos != null && (
-              <div style={{ ...s.linha, borderTop: "none", paddingTop: 0 }}><span style={s.linhaLabel}>Apartamentos / unidades</span><span style={s.linhaValor}>{cliente.qtd_apartamentos}</span></div>
-            )}
-            {cliente.qtd_acessos != null && (
-              <div style={{ ...s.linha, ...(cliente.qtd_apartamentos == null ? { borderTop: "none", paddingTop: 0 } : {}) }}><span style={s.linhaLabel}>Acessos controlados</span><span style={s.linhaValor}>{cliente.qtd_acessos}</span></div>
-            )}
-            {cliente.observacoes && (
-              <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 400, color: s.c.texto, marginTop: 8, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
-                {cliente.observacoes}
-              </div>
-            )}
-          </div>
-        )
-      ) : (
-        <>
-          <div style={s.DUAS}>
-            <div>
-              <label style={s.LABEL}>Apartamentos / unidades</label>
-              <input style={s.INPUT} value={qtdAptos} onChange={(e) => setQtdAptos(e.target.value)} inputMode="numeric" placeholder="0" />
-            </div>
-            <div>
-              <label style={s.LABEL}>Acessos controlados</label>
-              <input style={s.INPUT} value={qtdAcessos} onChange={(e) => setQtdAcessos(e.target.value)} inputMode="numeric" placeholder="0" />
-            </div>
-          </div>
-          <div>
-            <label style={s.LABEL}>Observações</label>
-            <textarea style={s.TEXTAREA} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Particularidades do local, acesso da equipe, histórico relevante…" />
-          </div>
         </>
       )}
     </CascaDoCard>

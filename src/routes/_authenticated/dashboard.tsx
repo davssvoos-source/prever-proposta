@@ -52,6 +52,7 @@ import { EQUIPES, EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
 import { CardAtividade } from "@/features/home/CardAtividade";
 import { TabelaAtividades } from "@/features/home/TabelaAtividades";
 import { PainelChamado } from "@/features/chamados/PainelChamado";
+import { ChatDeMencoes } from "@/features/home/ChatDeMencoes";
 import { CampoBusca } from "@/features/home/CampoBusca";
 import { GraficoDemanda, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
 import { atividadesDaSelecao, rotuloDaSelecao, type SelecaoPainel } from "@/features/home/metricas";
@@ -104,6 +105,8 @@ function Home() {
   const navigate = useNavigate();
   /** chamado aberto no painel lateral (null = fechado) */
   const [painelId, setPainelId] = useState<string | null>(null);
+  /** R215: aberto pelo chat de menções, o painel vem no MEIO da tela */
+  const [painelCentral, setPainelCentral] = useState(false);
   const location = useLocation();
   const { isLight } = useTheme();
   const qc = useQueryClient();
@@ -334,6 +337,7 @@ function Home() {
       const v = visitas.find((x) => x.id === a.registroId);
       navigate({ ...visitaRouteFor((v?.status ?? "pendente") as any, a.registroId), state: { from: location.pathname } } as any);
     } else {
+      setPainelCentral(false);
       setPainelId(a.registroId);
     }
   }
@@ -875,11 +879,16 @@ function Home() {
 
       <PainelChamado
         chamadoId={painelId}
-        aoFechar={() => setPainelId(null)}
+        posicao={painelCentral ? "central" : "lateral"}
+        aoFechar={() => { setPainelId(null); setPainelCentral(false); }}
         aoAbrirPagina={abrirPagina}
       />
 
       <NovaAtividadeDialog aberto={novaAberta} aoFechar={() => setNovaAberta(false)} />
+
+      {/* R215–R217: o botão circular fixo do chat de menções; clicar numa menção
+          abre a atividade no Configurador rápido CENTRALIZADO */}
+      <ChatDeMencoes aoAbrirAtividade={(id) => { setPainelCentral(true); setPainelId(id); }} />
     </>
   );
 }

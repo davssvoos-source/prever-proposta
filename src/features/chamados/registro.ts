@@ -48,3 +48,20 @@ export function fraseDoProgresso(e: EtapasDoRegistro): string {
   if (e.diagnostico) return "Diagnóstico registrado sem o problema escrito";
   return "Nada registrado ainda";
 }
+
+// ── R213 (U117): PROBLEMA e DIAGNÓSTICO são da manutenção CORRETIVA ──────────
+//
+// Davi, 2026-09-08: "o esquema de Problema e Diagnóstico (1, 2), deve ser
+// somente para manutenções corretivas (Tipo de demanda)." Os demais tipos
+// (preventiva, implantação, operacional, vistoria, melhoria, proposta) têm um
+// único campo, a Descrição, sobre a mesma coluna `descricao_problema` — e o
+// Diagnóstico só aparece neles quando JÁ tem texto (o técnico o escreve na
+// execução de campo, DetalheCampo), para nada escrito ficar escondido.
+//
+// O mesmo mecanismo de `TIPOS_COM_IMPACTO`/`temImpacto` (chamado-status.ts): a
+// lista é a regra, a função é a pergunta.
+export const TIPOS_COM_DIAGNOSTICO: string[] = ["corretiva"];
+
+export function temDiagnostico(tipo: string | null | undefined): boolean {
+  return !!tipo && TIPOS_COM_DIAGNOSTICO.includes(tipo);
+}

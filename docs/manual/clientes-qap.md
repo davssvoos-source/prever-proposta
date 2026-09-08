@@ -166,17 +166,19 @@ A seção **Atividades** da ficha passou a incluir as atividades de **grupo**
 local extra (R143) — marcadas como tal —, com teto declarado e "ver todas".
 
 Desde a U112 (R203) a ficha é **uma página só**: não há tela nem modo de
-configuração. Os cards **O local**, **Contatos** e **Estrutura** têm um lápis
+configuração. Os cards **O local** (com serviço prestado, apartamentos, acessos e
+observações dentro — R210/R211) e **Contatos** têm um lápis
 (só para quem pode editar); a edição abre dentro do card, com Salvar e
 Cancelar, e grava só os campos daquele card. As etiquetas de serviço prestado,
 no cabeçalho, continuam sendo o próprio controle.
 
 Na U116 (R209) a ficha ficou em **três colunas de desktop**: à esquerda a
-identidade (fachada, O local — onde agora mora o **serviço prestado**, R210 —,
-contatos, contratos, estrutura), no centro os sistemas instalados e as visitas,
-à direita a coluna alta de **atividades** (cards em fila, rolando por dentro) e
-o plantão. Em tela menor a identidade vai à direita e o resto empilha; no
-celular é uma coluna.
+identidade (fachada, O local — onde agora moram o **serviço prestado** e a
+**estrutura**, R210/R211 —, contatos, contratos), no centro os sistemas
+instalados e as visitas, à direita a coluna alta de **atividades** — os mesmos
+cards da Início (R212: cor da borda pelo prazo, status no chip), rolando por
+dentro — e o plantão. Em tela menor a identidade vai à direita e o resto
+empilha; no celular é uma coluna.
 
 Na U114 a ficha passou a **preencher a largura da janela** (R205) — a coluna dos
 sistemas cresce com o monitor, a da identidade tem teto — e os contatos

@@ -72,6 +72,9 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink, Loader2, X, Building2, Send, MessageSquare, Layers, Trash2, ChevronRight } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useReacoesDoChamado, SEM_REACOES } from "./reacoes";
+import { FileiraDeReacoes } from "./FileiraDeReacoes";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -106,7 +109,7 @@ import {
 import { EQUIPE_LABEL, equipeCores, equipesDePessoas, type Equipe } from "@/lib/equipes";
 import { AgendaDoChamado } from "@/features/programacao/AgendaDoChamado";
 import { especieDoApoio } from "@/features/programacao/modelo";
-import { etapasDoRegistro, fraseDoProgresso, type EtapasDoRegistro } from "@/features/chamados/registro";
+import { etapasDoRegistro, fraseDoProgresso, temDiagnostico, textoPreenchido, type EtapasDoRegistro } from "@/features/chamados/registro";
 
 /**
  * O estado de um campo que grava sozinho.
@@ -391,6 +394,8 @@ function Comentarios({ chamadoId, pessoasPorId, pessoas }: {
   const est = useEstiloCampo();
   const qc = useQueryClient();
   const { data: eventos = [] } = useChamadoEventos(chamadoId, "asc");
+  // R217: as reações de todos os comentários desta atividade, num SELECT
+  const { data: reacoes = SEM_REACOES } = useReacoesDoChamado(chamadoId);
   const comentarios = useMemo(() => eventos.filter((e) => e.tipo === "comentario"), [eventos]);
   const [texto, setTexto] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -482,6 +487,8 @@ function Comentarios({ chamadoId, pessoasPorId, pessoas }: {
                     texto={c.descricao ?? ""}
                     estilo={{ fontSize: 13.5, color: est.textPrimary, lineHeight: 1.55, marginTop: 2, gap: 2 }}
                   />
+                  {/* R217: reagir ao comentário — aqui e no chat de menções, a mesma fileira */}
+                  <FileiraDeReacoes chamadoId={chamadoId} eventoId={c.id} reacoes={reacoes.reacoes} faltaMigration={reacoes.faltaMigration} euId={euId} />
                 </div>
               </div>
             ))}
@@ -668,9 +675,11 @@ interface Props {
   aoFechar: () => void;
   /** leva para a página completa — onde ficam execução, fotos e assinatura */
   aoAbrirPagina: (id: string) => void;
+  /** R215: "central" = aberto pelo chat de menções, no meio da tela; o padrão é a folha lateral (R183) */
+  posicao?: "lateral" | "central";
 }
 
-export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
+export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina, posicao = "lateral" }: Props) {
   const est = useEstiloCampo();
   const { isLight } = useTheme();
   const qc = useQueryClient();
@@ -893,23 +902,8 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
     [pessoasOrdenadas],
   );
 
-  return (
-    <Sheet open={!!chamadoId} onOpenChange={(aberto) => { if (!aberto) aoFechar(); }}>
-      <SheetContent
-        side="right"
-        className="p-0"
-        style={{
-          // Mais largo a pedido do Davi, mantendo o teto de 60% da tela: o
-          // painel informa sobre um item do quadro que continua atrás — cobrir
-          // tudo transformaria a consulta rápida em troca de página. O piso de
-          // 380px é o mínimo em que os campos ainda cabem no celular.
-          width: "min(60vw, 880px)",
-          maxWidth: "60vw",
-          minWidth: "min(380px, 100vw)",
-          background: superficie,
-          borderLeft: est.borda,
-        }}
-      >
+  const miolo = (
+    <>
         {isLoading || !chamado ? (
           <div style={{ padding: 28, fontFamily: FONT, fontSize: 14, color: est.textSecondary }}>
             {isLoading ? "Carregando…" : "Chamado não encontrado."}
@@ -1273,6 +1267,9 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
               flex: 1, minHeight: 0, overflowY: "auto",
               padding: "16px 22px 32px", display: "flex", flexDirection: "column", gap: 16,
             }}>
+              {/* R213: a barra 1→2 e o par Problema/Diagnóstico são da CORRETIVA */}
+              {temDiagnostico(chamado.tipo) ? (
+                <>
               <ProgressoDoRegistro etapas={etapasDoRegistro(chamado.descricao_problema, chamado.diagnostico)} />
 
               <DescricaoComFerramentas
@@ -1304,6 +1301,42 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   campo: "diagnostico", patch: { diagnostico: v || null },
                 })}
               />
+                </>
+              ) : (
+                <>
+                  {/* R213: os demais tipos têm UM campo — a Descrição, sobre a mesma
+                      coluna; o mesmo rótulo da página interna (R149) */}
+                  <DescricaoComFerramentas
+                    titulo="Descrição"
+                    destaque
+                    minAltura={160}
+                    placeholder="O que é esta atividade, o que precisa ser feito…"
+                    estado={estados.descricao_problema}
+                    chaveReset={chamadoId}
+                    pessoas={pessoasMencao}
+                    valor={chamado.descricao_problema ?? ""}
+                    aoSalvar={(v) => salvar.mutate({
+                      campo: "descricao_problema", patch: { descricao_problema: v || null },
+                    })}
+                  />
+                  {/* o técnico grava `diagnostico` na execução de campo mesmo fora da
+                      corretiva (DetalheCampo) — o que ele escreveu não fica escondido */}
+                  {textoPreenchido(chamado.diagnostico) && (
+                    <DescricaoComFerramentas
+                      titulo="Diagnóstico"
+                      idAlvo="painel-diagnostico-texto"
+                      minAltura={100}
+                      estado={estados.diagnostico}
+                      chaveReset={chamadoId}
+                      pessoas={pessoasMencao}
+                      valor={chamado.diagnostico ?? ""}
+                      aoSalvar={(v) => salvar.mutate({
+                        campo: "diagnostico", patch: { diagnostico: v || null },
+                      })}
+                    />
+                  )}
+                </>
+              )}
 
               {/* A proposta tem fluxo próprio (visita → orçamento → envio) e
                   este painel não o substitui: mexer no funil pelo atalho das
@@ -1334,6 +1367,49 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
             </div>
           </div>
         )}
+    </>
+  );
+
+  // R215 (U117): aberto pelo chat de menções, o painel vem CENTRALIZADO — um
+  // Dialog no meio da tela, com o MESMO miolo (cabeçalho R183, registro R184,
+  // comentários com as reações R217, linha do tempo). Da Início, do calendário
+  // e do painel operacional continua a folha lateral (R183).
+  if (posicao === "central") {
+    return (
+      <Dialog open={!!chamadoId} onOpenChange={(aberto) => { if (!aberto) aoFechar(); }}>
+        <DialogContent
+          className="p-0"
+          aria-describedby={undefined}
+          style={{
+            width: "min(1120px, 96vw)", maxWidth: "96vw", height: "min(92vh, 900px)", maxHeight: "92vh",
+            overflow: "hidden", borderRadius: 18, background: superficie, border: est.borda,
+            display: "flex", flexDirection: "column",
+          }}
+        >
+          {miolo}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Sheet open={!!chamadoId} onOpenChange={(aberto) => { if (!aberto) aoFechar(); }}>
+      <SheetContent
+        side="right"
+        className="p-0"
+        style={{
+          // Mais largo a pedido do Davi, mantendo o teto de 60% da tela: o
+          // painel informa sobre um item do quadro que continua atrás — cobrir
+          // tudo transformaria a consulta rápida em troca de página. O piso de
+          // 380px é o mínimo em que os campos ainda cabem no celular.
+          width: "min(60vw, 880px)",
+          maxWidth: "60vw",
+          minWidth: "min(380px, 100vw)",
+          background: superficie,
+          borderLeft: est.borda,
+        }}
+      >
+        {miolo}
       </SheetContent>
     </Sheet>
   );

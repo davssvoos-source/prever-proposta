@@ -8,9 +8,9 @@
 //
 // Não existe "modo de configuração": cada card da coluna de identidade tem o
 // próprio lápis e edita no lugar, com Salvar/Cancelar dentro dele (CardLocal,
-// CardContatos, CardEstrutura — features/clientes/ClienteForm.tsx). O serviço
-// prestado é um item do card O local (R210). A foto da fachada sobe pelo card
-// dela (R146).
+// CardContatos — features/clientes/ClienteForm.tsx). O serviço prestado e a
+// estrutura são itens do card O local (R210/R211). A foto da fachada sobe pelo
+// card dela (R146).
 //
 // ── R209 (U116): TRÊS COLUNAS DE DESKTOP, CADA UMA COM A FORMA DO CONTEÚDO ──
 // Davi, 2026-09-08: "os campos devem ser planejados, devem ser dinamizados e
@@ -18,8 +18,9 @@
 // por exemplo, estrategicamente deveria ser um campo maior na vertical do que
 // na horizontal, listando cards de atividades."
 //
-//   · IDENTIDADE (esquerda, 320–400px): a fachada, O local, Contatos,
-//     Contratos (só quem vê financeiro), Estrutura e observações.
+//   · IDENTIDADE (esquerda, 320–400px): a fachada, O local (com o serviço
+//     prestado e a estrutura — R210/R211), Contatos, Contratos (só quem vê
+//     financeiro).
 //   · O LOCAL (centro, o que sobrar): Sistemas instalados — os dois painéis do
 //     vínculo por arrasto (R206) — e o Histórico de visitas.
 //   · ATIVIDADES (direita, 320–420px): a coluna ALTA — os cards de atividade
@@ -34,7 +35,7 @@
 // espaço, adaptando a largura da tela."
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useRef, useState, type CSSProperties } from "react";
+import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Camera, FileText, MapPin, CalendarDays, Wrench, Trash2, Home, Image as ImagemIcone,
@@ -47,12 +48,14 @@ import { getStatusInfo } from "@/lib/visita-status";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { FONT, card, etiqueta } from "@/lib/ui";
 import { PRISMA, cinzas } from "@/lib/paleta";
-import { CardLocal, CardContatos, CardEstrutura } from "@/features/clientes/ClienteForm";
+import { CardLocal, CardContatos } from "@/features/clientes/ClienteForm";
 import { InventarioCliente } from "@/features/clientes/InventarioCliente";
-import { useChamadosDoCliente } from "@/features/chamados/data";
+import { useChamadosDoCliente, usePessoas, mapaDePessoas } from "@/features/chamados/data";
 import { useAtendimentosDoCliente, TETO_DA_LISTA as TETO_PLANTAO } from "@/features/plantao/data";
 import { diaCurto, horaCurta, TIPO_LABEL as PLANTAO_TIPO_LABEL } from "@/features/plantao/modelo";
-import { chamadoStatusInfo } from "@/lib/chamado-status";
+// R212: o card de atividade da Início (R136) e o montador que a ficha compartilha com ela
+import { CardAtividade } from "@/features/home/CardAtividade";
+import { atividadesDaFicha } from "@/features/clientes/ficha";
 import {
   useContratosDoCliente, contratoVigente,
   MODALIDADE_LABEL, STATUS_CONTRATO_LABEL, STATUS_CONTRATO_CORES,
@@ -95,6 +98,14 @@ function ClienteDetalhePage() {
   // R143: inclui as atividades de GRUPO a que este cliente pertence, e as em
   // que ele é local extra — não só as em que é o cliente principal
   const { data: ordens = [] } = useChamadosDoCliente(id, cliente?.servicos_prestados);
+  // R212: os chamados viram `Atividade` pelo MESMO montador da Início — o card
+  // da coluna alta é o CardAtividade, com a regra de cor da R136 dentro dele
+  const { data: pessoas } = usePessoas();
+  const pessoasPorId = useMemo(() => mapaDePessoas(pessoas), [pessoas]);
+  const atividades = useMemo(
+    () => atividadesDaFicha(ordens, id, { userId: null, apoios: new Set<string>() }),
+    [ordens, id],
+  );
   const plantao = useAtendimentosDoCliente(id);
   const { data: contratos = [] } = useContratosDoCliente(id);
   const { data: fotoUrl } = useFachadaUrl(cliente?.foto_fachada_url);
@@ -129,13 +140,6 @@ function ClienteDetalhePage() {
     background: c.campo, border: `1px solid ${c.divisoria}`,
     borderLeft: corDaBorda ? `3px solid ${corDaBorda}` : `1px solid ${c.divisoria}`,
     color: textPrimary,
-  });
-  /** o CARD de atividade da coluna alta (R209): título em cima, meta embaixo, status à direita */
-  const cardAtividade = (corDaBorda: string): CSSProperties => ({
-    display: "flex", flexDirection: "column", gap: 6, width: "100%", textAlign: "left",
-    padding: "10px 12px", borderRadius: 12, cursor: "pointer",
-    background: c.campo, border: `1px solid ${c.divisoria}`, borderLeft: `3px solid ${corDaBorda}`,
-    color: textPrimary, flexShrink: 0,
   });
   const chipStatus = (cor: { dark: string; light: string; bg: string }): CSSProperties => ({
     padding: "3px 8px", borderRadius: 999, flexShrink: 0,
@@ -213,7 +217,7 @@ function ClienteDetalhePage() {
   }
 
   const cor = SITUACAO_CORES[cliente.situacao] ?? SITUACAO_CORES.ativo;
-  const chamadosVisiveis = todosOsChamados ? ordens : ordens.slice(0, TETO_CHAMADOS);
+  const chamadosVisiveis = todosOsChamados ? atividades : atividades.slice(0, TETO_CHAMADOS);
   const enderecoCurto = [cliente.endereco, [cliente.cidade, cliente.uf].filter(Boolean).join(" / ")].filter(Boolean).join(" · ");
   const propsDosCards = { cliente, podeEditar: isGerente, salvando: salvar.isPending, onSalvar: (p: ClientePatch) => salvar.mutateAsync(p) };
 
@@ -252,7 +256,7 @@ function ClienteDetalhePage() {
               {enderecoCurto || "endereço não informado"}
             </span>
             <span style={{ opacity: 0.6 }}>·</span>
-            <span>{ordens.length} atividade{ordens.length === 1 ? "" : "s"} · {visitas.length} visita{visitas.length === 1 ? "" : "s"}</span>
+            <span>{atividades.length} atividade{atividades.length === 1 ? "" : "s"} · {visitas.length} visita{visitas.length === 1 ? "" : "s"}</span>
           </div>
         </div>
       </div>
@@ -385,8 +389,6 @@ function ClienteDetalhePage() {
               )}
             </div>
           )}
-
-          <CardEstrutura {...propsDosCards} />
         </div>
 
         {/* ══ O LOCAL — o que está instalado, e as visitas ═══════════════════ */}
@@ -444,7 +446,7 @@ function ClienteDetalhePage() {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Wrench size={15} color={gold} />
               <span style={SEC_LABEL}>Atividades</span>
-              <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>{ordens.length}</span>
+              <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>{atividades.length}</span>
               <span style={{ flex: 1 }} />
               {isGerente && (
                 <button onClick={() => navigate({ to: "/chamados/novo" })} style={{ ...botaoLeve, height: 28, padding: "0 10px", fontSize: 11.5 }}>
@@ -452,40 +454,31 @@ function ClienteDetalhePage() {
                 </button>
               )}
             </div>
-            {ordens.length === 0 ? (
+            {atividades.length === 0 ? (
               <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary }}>
                 Nenhuma atividade registrada para este cliente.
               </div>
             ) : (
               <div className="rolagem-fina" style={{ ...rolagem, flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-                {chamadosVisiveis.map((o) => {
-                  const info = chamadoStatusInfo(o.status);
-                  const corSt = isLight ? info.colorLight : info.color;
-                  // veio pelo grupo ou como local extra — a ficha diz, para a
-                  // pessoa não estranhar uma atividade "de outro cliente" aqui
-                  const indireta = o.cliente_id !== id;
-                  return (
-                    <button
-                      key={o.id}
-                      onClick={() => navigate({ to: "/chamados/$id", params: { id: o.id } })}
-                      style={cardAtividade(corSt)}
-                    >
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, width: "100%" }}>
-                        <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, lineHeight: 1.35 }}>
-                          {o.titulo}
-                        </span>
-                        <span style={chipStatus({ dark: info.color, light: info.colorLight, bg: info.bg })}>
-                          {info.labelUpper}
-                        </span>
-                      </div>
-                      <div style={{ fontFamily: FONT, fontSize: 11, color: textSecondary }}>
-                        {o.numero ?? "—"} · {new Date(o.created_at).toLocaleDateString("pt-BR")}
-                        {indireta ? " · pelo grupo de clientes ou como local extra" : ""}
-                      </div>
-                    </button>
-                  );
-                })}
-                {ordens.length > TETO_CHAMADOS && (
+                {/* R212: o MESMO card da Início — a cor estratégica só na borda,
+                    pela faixa de prazo (R136); o status no chip preenchido (R177) */}
+                {chamadosVisiveis.map(({ a, indireta }) => (
+                  <div key={a.id} style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                    <CardAtividade
+                      a={a}
+                      pessoas={pessoasPorId}
+                      onClick={() => navigate({ to: "/chamados/$id", params: { id: a.registroId } })}
+                    />
+                    {/* veio pelo grupo ou como local extra — a ficha diz, para a
+                        pessoa não estranhar uma atividade "de outro cliente" aqui */}
+                    {indireta && (
+                      <span style={{ fontFamily: FONT, fontSize: 10.5, color: textSecondary, paddingLeft: 6 }}>
+                        pelo grupo de clientes ou como local extra
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {atividades.length > TETO_CHAMADOS && (
                   /* O TETO É DECLARADO — a lição da seção de plantão. */
                   <button
                     onClick={() => setTodosOsChamados((v) => !v)}
@@ -496,7 +489,7 @@ function ClienteDetalhePage() {
                   >
                     {todosOsChamados
                       ? "Mostrar só as mais recentes"
-                      : `Mostrando ${TETO_CHAMADOS} de ${ordens.length} · ver todas`}
+                      : `Mostrando ${TETO_CHAMADOS} de ${atividades.length} · ver todas`}
                   </button>
                 )}
               </div>

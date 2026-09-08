@@ -49,6 +49,8 @@ export function useNotificacoes() {
           { event: "*", schema: "public", table: "notificacoes" },
           () => {
             qc.invalidateQueries({ queryKey: ["notificacoes"] });
+            // R215: toda menção nova gera uma notificação — o chat de menções recarrega junto
+            qc.invalidateQueries({ queryKey: ["minhas-mencoes"] });
           },
         )
         .subscribe();

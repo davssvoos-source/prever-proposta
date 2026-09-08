@@ -14,7 +14,7 @@
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
-- [22. O patrimônio do QAP e a ficha do cliente (R196–R210, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-e-a-ficha-do-cliente-r196r210-davi-2026-09-04-a-2026-09-08) · R196–R210 (15)
+- [22. O patrimônio do QAP, a ficha do cliente e a Início revista (R196–R217, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-e-a-início-revista-r196r217-davi-2026-09-04-a-2026-09-08) · R196–R217 (22)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -28,7 +28,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-08 (R210). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-08 (R217). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3101,7 +3101,9 @@ trabalho".
   "o campo que surge em pop up no meio da tela deve começar com duas perguntas
   iniciais: QUAL O TIPO DE DEMANDA? […] e também QUEM É O RESPONSÁVEL? […] para
   cada opção, o campo se expande para tela inteira porém com os campos da
-  maneira condizente".)*
+  maneira condizente".)* *Revista pela **R214** (08/09/2026): a Proposta
+  Comercial também EXPANDE no pop-up — o formulário da visita é embutido, não
+  se navega mais para o fluxo.*
 
 - **R139** — **Equipe não é campo: as equipes de uma atividade são as das
   PESSOAS nela.** A do responsável primeiro, depois a de cada apoio, pelo
@@ -3616,7 +3618,9 @@ trabalho".
   *(Davi, 04/09/2026: "A área principal terá dois campos principais, um espaço
   para PROBLEMA e outro para DIAGNÓSTICO. Crie uma barra de progresso com dois
   círculos, o 1 e o 2. Ao preencher o PROBLEMA o 1 fica amarelo, e ao preencher
-  o diagnóstico, a barra e o 2 ficam amarelos".)*
+  o diagnóstico, a barra e o 2 ficam amarelos".)* *Revista pela **R213**
+  (08/09/2026): o par Problema/Diagnóstico e a barra valem para a manutenção
+  CORRETIVA; os demais tipos têm um único campo, Descrição.*
 
 - **R185** — **Abaixo do registro vêm os comentários e, por último, a linha do
   tempo.** A linha do tempo mostra os eventos que não são comentário — a mesma
@@ -3721,7 +3725,7 @@ trabalho".
   e 6 de 800). *(Davi, 04/09/2026, revisão manual: pediu tipografia
   estratégica — pesos mais grossos onde cabe, mais finos em outros lugares.)*
 
-## 22. O patrimônio do QAP e a ficha do cliente (R196–R210, Davi, 2026-09-04 a 2026-09-08)
+## 22. O patrimônio do QAP, a ficha do cliente e a Início revista (R196–R217, Davi, 2026-09-04 a 2026-09-08)
 
 O controle patrimonial da Prever vive no **QAP ERP**, em *Patrimônio >
 Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
@@ -3854,7 +3858,9 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   **Estrutura** (apartamentos, acessos, observações) — abrem a edição dentro
   do card, com Salvar/Cancelar, e cada um grava só os seus campos. O lápis só
   aparece para quem pode editar. A fachada sobe pelo card dela (R146). A R201
-  fica revista: a "configuração em duas colunas" não existe mais. *(Davi,
+  fica revista: a "configuração em duas colunas" não existe mais. *Revista
+  pela **R211** (08/09/2026): a Estrutura deixou de ser card e virou parte de
+  O local — são dois cards editáveis.* *(Davi,
   07/09/2026: "na página do cliente, eu quero que tenha tudo, não deve conter
   outra página para configurar o cliente, deve estar tudo na mesma página.
   Quero que seja uma página só, com layout bem estruturado, design clean".)*
@@ -3941,7 +3947,8 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   campo Atividades por exemplo, estrategicamente deveria ser um campo maior na
   vertical do que na horizontal, listando cards de atividades. Eu quero que
   você crie uma página harmonica, uma página com layout otimizado mesmo para
-  desktop!!")*
+  desktop!!")* *Revista pela **R212** (mesmo dia): o card de atividade da
+  coluna alta é o `CardAtividade` da Início, não um card local.*
 
 - **R210** — **O serviço prestado é um item do card O local; a linha
   "Coordenadas" sai.** As etiquetas de serviço deixam o cabeçalho da página e
@@ -3952,3 +3959,97 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   lugar continua sendo conferido na edição, pelo nome que o mapa responde
   (U84). *(Davi, 08/09/2026: "Remova o item Coordenadas. Serviço prestado deve
   ser um dos itens do campo O Local.")*
+
+- **R211** — **A estrutura do local (apartamentos, acessos, observações) é
+  parte do card O local — não um card à parte.** Em leitura, entram como
+  linhas depois do CNPJ/CPF, e as observações como texto corrido; em edição,
+  vêm no fim do card, depois do endereço e do "Localizar no mapa", e gravam
+  com o mesmo Salvar. O card "Estrutura e observações" da R203 deixa de
+  existir; a coluna da identidade fica com fachada, O local, Contatos e
+  Contratos. *(Davi, 08/09/2026: "Em Clientes, a Estrutura deve estar contida
+  no campo O Local.")*
+
+- **R212** — **Na ficha do cliente, a coluna Atividades usa o MESMO card da
+  Início.** Os chamados do cliente passam pelo montador da Início
+  (`atividadeDoChamado`) e viram `CardAtividade`: fundo neutro, a cor
+  estratégica só na borda em degradê pela faixa de prazo (R136), o status no
+  chip preenchido (R177), as pessoas na pilha de avatares. A borda passa a
+  significar PRAZO, não status — é a regra da Início, e a ficha não tem mais
+  card próprio. A capa da proposta (natureza comercial) fica de fora da coluna:
+  a visita já está no Histórico de visitas da mesma ficha. Atividade que veio
+  pelo grupo de clientes ou como local extra (R143) ganha a nota embaixo do
+  card. A R209 fica revista neste ponto (o card local que ela descrevia saiu).
+  *(Davi, 08/09/2026: "O campo Atividades deve seguir a regra de cores nos
+  cards das atividades.")*
+
+- **R213** — **Problema e Diagnóstico, com a barra 1→2, são só da manutenção
+  CORRETIVA.** No Configurador rápido, o par da R184 aparece quando o tipo de
+  demanda é corretiva; nos demais tipos (preventiva, implantação, operacional,
+  vistoria, melhoria, proposta) o corpo tem um único campo, **Descrição**,
+  sobre a mesma coluna `descricao_problema` — o mesmo rótulo que a página
+  interna já usa (R149). O Diagnóstico só aparece nesses tipos quando já tem
+  texto (o técnico o escreve na execução de campo), para nada escrito ficar
+  escondido. A lista dos tipos com diagnóstico é uma só
+  (`TIPOS_COM_DIAGNOSTICO`, em `features/chamados/registro.ts`), no mesmo
+  mecanismo de `TIPOS_COM_IMPACTO`. A R184 fica revista: vale para a
+  corretiva. *(Davi, 08/09/2026: "Em Início, na configuração da atividade, o
+  esquema de Problema e Diagnostico (1, 2), deve ser somente para manutenções
+  corretivas (Tipo de demanda).")*
+
+- **R214** — **A Proposta Comercial expande no próprio "+" da Início, como os
+  outros tipos de demanda.** Respondidas as duas perguntas (R138) com o tipo
+  Proposta Comercial, o pop-up cresce e mostra o formulário inteiro da visita —
+  o MESMO da rota `/gerencial/nova` (local, contatos e serviços propostos,
+  agendamento; R194), agora um componente (`NovaVisitaTecnica`) embutido, com o
+  técnico da segunda pergunta já escolhido quando o responsável é da equipe
+  Técnica. A rota continua existindo, como casca. Dentro do pop-up as colunas
+  são no máximo duas. Quem não tem a tela `gerencial.nova` vê o aviso em vez do
+  formulário (a RLS de `visitas_tecnicas` não protege a escrita; o portão é de
+  tela). Nada mudou no que a visita grava nem no gatilho que cria a capa da
+  proposta (R170). A R138 fica revista: "abre o fluxo da visita" virou "expande
+  o formulário da visita". *(Davi, 08/09/2026: "ao criar uma atividade do tipo
+  de demanda Proposta Comercial, os campos para criação da proposta devem
+  expandir no campo de criação igual aos outros tipos de demanda.")*
+
+- **R215** — **A Início tem um CHAT DE MENÇÕES: um botão circular fixo no canto
+  inferior direito abre a lista de tudo em que a pessoa foi mencionada.** Cada
+  card é uma menção: quem mencionou e quando, o título da atividade (clicar
+  abre a atividade no Configurador rápido, **no meio da tela**), e o texto —
+  o comentário inteiro quando a menção está num comentário, ou o **parágrafo**
+  com a menção quando está na descrição da atividade. O selo do botão conta as
+  notificações de menção ainda não lidas (o sino da U95). A lista vem de uma
+  função do banco (`minhas_mencoes`, migration U117) que reusa a regra da
+  menção da U95 e é filtrada pela mesma RLS das atividades: só aparece o que a
+  pessoa pode ler. Toda menção nova recarrega o chat (pelo canal do sino). O
+  botão fica acima da barra inferior no celular. *(Davi, 08/09/2026: "Adicione
+  um botão circular de Chat, na tela Início, este botão deve estar localizado
+  no canto inferior direito e deve ter localização fixa com o scroll da tela. O
+  botão deve expandir um campo de chat, onde aparecerá todas as menções a
+  aquele usuário […] o titulo será a atividade que eu comentei, onde ao clicar
+  abre um popup da atividade no meio da tela. Mas caso seja uma menção na
+  descrição de uma atividade, deve aparecer o paragrafo da menção no chat.")*
+
+- **R216** — **"Responder aqui", no chat, vira um COMENTÁRIO na atividade,
+  mencionando quem mencionou.** A resposta sai do próprio card, sem abrir a
+  atividade, e é gravada como comentário no feed dela — com `@quem mencionou`
+  na frente, para o sino avisar a pessoa certa pelo gatilho que já existe. Vale
+  para menção em comentário E em descrição: a descrição é um texto único da
+  atividade, e uma resposta dentro dele não teria autor nem hora — o comentário
+  tem. Quem não pode editar a atividade também consegue responder (comentar
+  exige só poder vê-la). *(Davi, 08/09/2026: "no card que aparece isso dentro
+  do chat deve ter um botão de responder aqui, que ele responde no próprio
+  chat, sem abrir o pop up, e a resposta dele no chat vai direto pro comentário
+  daquela atividade ou direto pra descrição daquela atividade." A resposta à
+  menção em descrição vai como comentário — decisão registrada aqui, e o Davi
+  pode revê-la.)*
+
+- **R217** — **Comentário aceita REAÇÃO (emoji) — no chat e na própria
+  atividade, e é a mesma reação.** Lista fechada de oito emojis (👍 ❤️ 😂 😮
+  😢 🙏 ✅ 👀), uma reação por pessoa+comentário+emoji, clicar de novo tira. A
+  fileira aparece embaixo do comentário no Configurador rápido, na página da
+  atividade e no card do chat (só em menção de comentário — descrição não tem
+  reação). Tabela própria (`chamado_reacoes`, U117): quem vê a atividade vê as
+  reações; só o próprio cria e apaga a sua; o banco recusa emoji fora da lista,
+  e a lista do banco é a mesma do app. Até a U117 rodar, as reações não
+  aparecem. *(Davi, 08/09/2026: "no chat deve dar para reagir se for
+  comentário, reagindo no comentário da atividade.")*

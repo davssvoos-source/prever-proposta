@@ -13,7 +13,9 @@ visita aprovada é venda; achar que proposta cria cliente).
 ## O funil, na ordem em que acontece
 
 1. **Visita técnica é agendada** — pelo comercial ou pelo SAC (R24/R26: o SAC
-   agenda a visita de proposta pela triagem). Nasce em `/gerencial/nova`.
+   agenda a visita de proposta pela triagem). Nasce em `/gerencial/nova` — ou
+   direto no "+" da Início, escolhendo o tipo Proposta Comercial: o mesmo
+   formulário expande ali (R214).
 2. **O técnico faz a visita** — fotos, levantamento. A visita é um chamado
    para ele (R12): aparece na Início dele como qualquer trabalho.
 3. **Orçamento por blocos** — wizard em `/visita/$id/orcamento/*`

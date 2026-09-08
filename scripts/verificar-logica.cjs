@@ -5305,10 +5305,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/Qual o tipo de demanda\?/.test(nad), /Quem é o responsável\?/.test(nad), /TIPOS_DE_DEMANDA\.map/.test(nad),
       /const ehTecnico = equipeDoResponsavel === "tecnica"/.test(nad), /const ehProposta = tipo === "prospeccao"/.test(nad)],
      [true, true, true, true, true]);
-  eq('R138: técnico responsável abre o formulário de campo já com tipo e técnico; proposta abre o fluxo da visita',
+  eq('R138/R214: técnico responsável abre o formulário de campo já com tipo e técnico; a proposta EXPANDE o formulário da visita no diálogo (embutido, com o técnico da segunda pergunta e o portão gerencial.nova) — não navega mais para /gerencial/nova',
      [/<FormularioChamadoTecnico\s*\n\s*tipoInicial=\{tipo!\}\s*\n\s*tecnicoInicial=\{responsavelId\}/.test(nad),
-      /navigate\(\{ to: "\/gerencial\/nova" \}\)/.test(nad)],
-     [true, true]);
+      /navigate\(\{ to: "\/gerencial\/nova" \}\)/.test(nad),
+      /podeVer\("gerencial\.nova"\) !== false \? \(\s*\n\s*<NovaVisitaTecnica\s*\n\s*embutido\s*\n\s*tecnicoInicial=\{ehTecnico \? responsavelId : null\}/.test(nad)],
+     [true, false, true]);
   eq('R142/R148: trocar o tipo limpa o impacto (só corretiva/operacional têm) e a proposta (só implantação tem) — nada vai escondido para o banco',
      /if \(!temImpacto\(tipo\)\) setImpacto\(null\);\s*\n\s*if \(tipo !== "implantacao"\) setPropostaId\(null\);/.test(nad), true);
   eq('R143: escolher um GRUPO no diálogo põe o checklist dos clientes dele na descrição',
@@ -8045,9 +8046,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     .sort();
   eq('CRÍTICO: CENSO — os ÚNICOS arquivos que escrevem data_hora_agendada são os CINCO comerciais (visitas_tecnicas, gatilho da U41). Nenhum caminho de CAMPO escreve a coluna direto',
      escritores79,
-     ['src/features/gerencial/VisitaForm.tsx',
+     ['src/features/gerencial/NovaVisitaTecnica.tsx', // U117 (R214): era a rota gerencial.nova.tsx
+      'src/features/gerencial/VisitaForm.tsx',
       'src/features/visitas/NovaVisitaDialog.tsx',
-      'src/routes/_authenticated/gerencial.nova.tsx',
       'src/routes/_authenticated/visita.$id.pendente.tsx',
       'src/routes/_authenticated/visita.$id.reagendar.tsx']);
 
@@ -11869,9 +11870,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [chamamGeocode84.map(([p]) => p).sort(),
       chamamGeocode84.filter(([, s]) => /display_name/.test(s) && /setResolvido\(/.test(s)).length],
      [['src/features/clientes/ClienteForm.tsx',
+       'src/features/gerencial/NovaVisitaTecnica.tsx', // U117 (R214): era a rota gerencial.nova.tsx
        'src/features/gerencial/VisitaForm.tsx',
-       'src/features/visitas/NovaVisitaDialog.tsx',
-       'src/routes/_authenticated/gerencial.nova.tsx'], 4]);
+       'src/features/visitas/NovaVisitaDialog.tsx'], 4]);
   eq('CRÍTICO: e os quatro IMPRIMEM o que o mapa entendeu na tela — guardar em estado sem pintar seria o mesmo descarte com um passo a mais',
      chamamGeocode84.filter(([, s]) => /O mapa entendeu/.test(s)).length, 4);
   eq('CRÍTICO: nenhum `geocode()` roda dentro de uma mutação de gravar — o gesto que geocodifica e o gesto que grava são DOIS, e entre eles existe o instante em que um humano lê o lugar e diz "não é esse". Sem o clique, a visita nasce sem coordenada: o estado VISÍVEL, não o plausível e errado',
@@ -11892,7 +11893,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     ['src/features/clientes/ClienteForm.tsx', /setEndereco\(e\.target\.value\);[\s\S]{0,300}?setResolvido\(null\)/],
     ['src/features/gerencial/VisitaForm.tsx', /set\("endereco", e\.target\.value\);[\s\S]{0,300}?setResolvido\(null\)/],
     ['src/features/visitas/NovaVisitaDialog.tsx', /endereco: e\.target\.value[\s\S]{0,300}?setResolvido\(null\)/],
-    ['src/routes/_authenticated/gerencial.nova.tsx', /setEndereco\(e\.target\.value\);[\s\S]{0,300}?setResolvido\(null\)/],
+    ['src/features/gerencial/NovaVisitaTecnica.tsx', /setEndereco\(e\.target\.value\);[\s\S]{0,300}?setResolvido\(null\)/],
   ];
   eq('CRÍTICO: as QUATRO telas LIMPAM a conferência no `onChange` do endereço — a frase impressa manda "corrija o endereço e localize de novo", e sem isto ela continua descrevendo o texto ANTIGO enquanto a coordenada de X é gravada com o endereço Y. Presença da frase não vê o valor obsoleto (regra 2); duas das quatro não limpavam nada',
      limpamAoEditar84.filter(([p, re]) => !re.test(semComentarios(fs84.readFileSync(p, 'utf8')))).map(([p]) => p),
@@ -11901,7 +11902,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [['src/features/clientes/ClienteForm.tsx', /setResolvido\(null\);[\s\S]{0,120}?setLat\(null\);[\s\S]{0,60}?setLng\(null\)/],
       ['src/features/gerencial/VisitaForm.tsx', /setResolvido\(null\);[\s\S]{0,120}?setCoords\(null\)/],
       ['src/features/visitas/NovaVisitaDialog.tsx', /setCoords\(null\);[\s\S]{0,120}?setResolvido\(null\)/],
-      ['src/routes/_authenticated/gerencial.nova.tsx', /setLat\(null\);[\s\S]{0,120}?setLng\(null\);[\s\S]{0,120}?setResolvido\(null\)/]]
+      ['src/features/gerencial/NovaVisitaTecnica.tsx', /setLat\(null\);[\s\S]{0,120}?setLng\(null\);[\s\S]{0,120}?setResolvido\(null\)/]]
        .filter(([p, re]) => !re.test(semComentarios(fs84.readFileSync(p, 'utf8')))).map(([p]) => p),
      []);
   // ── A CORRIDA: O CAMPO TRAVA ENQUANTO A BUSCA ESTÁ NO AR ─────────────────
@@ -11925,7 +11926,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [['src/features/clientes/ClienteForm.tsx', /value=\{endereco\}\s*\n\s*disabled=\{geocodificando\}/],
       ['src/features/gerencial/VisitaForm.tsx', /value=\{form\.endereco\}\s*\n\s*disabled=\{geocoding\}/],
       ['src/features/visitas/NovaVisitaDialog.tsx', /value=\{form\.endereco\}\s*\n\s*disabled=\{localizando\}/],
-      ['src/routes/_authenticated/gerencial.nova.tsx', /value=\{endereco\}\s*\n\s*disabled=\{geoStatus === "loading"\}/]]
+      ['src/features/gerencial/NovaVisitaTecnica.tsx', /value=\{endereco\}\s*\n\s*disabled=\{geoStatus === "loading"\}/]]
        .filter(([p, re]) => !re.test(semComentarios(fs84.readFileSync(p, 'utf8')))).map(([p]) => p),
      []);
   // E O BOTÃO É OUTRO ELEMENTO. Contar "o arquivo tem um `disabled`" ficava
@@ -11936,7 +11937,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [['src/features/clientes/ClienteForm.tsx', /onClick=\{buscarCoordenadas\}\s*\n\s*disabled=\{geocodificando\}/],
       ['src/features/gerencial/VisitaForm.tsx', /onClick=\{handleGeocode\}\s*\n\s*disabled=\{geocoding \|\|/],
       ['src/features/visitas/NovaVisitaDialog.tsx', /disabled=\{localizando \|\|[^\n]*\}\s*\n\s*onClick=\{async/],
-      ['src/routes/_authenticated/gerencial.nova.tsx', /onClick=\{geocodificar\}\s*\n\s*disabled=\{geoStatus === "loading"\}/]]
+      ['src/features/gerencial/NovaVisitaTecnica.tsx', /onClick=\{geocodificar\}\s*\n\s*disabled=\{geoStatus === "loading"\}/]]
        .filter(([p, re]) => !re.test(semComentarios(fs84.readFileSync(p, 'utf8')))).map(([p]) => p),
      []);
   // E EXISTE UMA TERCEIRA PORTA, SÓ NO /gerencial/nova: o SELETOR DE CLIENTE.
@@ -11949,7 +11950,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // travadas mediu a tela, não as PORTAS dela.
   eq('CRÍTICO: no /gerencial/nova o seletor de cliente também trava durante a busca — ele é a terceira porta que troca o endereço, e sem ela a coordenada do endereço antigo cai no cliente recém-escolhido',
      /disabled=\{geoStatus === "loading"\}\s*\n\s*onClick=\{\(\) => aplicarCliente\(c\)\}/
-       .test(semComentarios(fs84.readFileSync('src/routes/_authenticated/gerencial.nova.tsx', 'utf8'))),
+       .test(semComentarios(fs84.readFileSync('src/features/gerencial/NovaVisitaTecnica.tsx', 'utf8'))),
      true);
   // AS GUARDAS ASSIMÉTRICAS DO `aplicarCliente`: o endereço era SUBSTITUÍDO e a
   // coordenada só era substituída quando o cliente TINHA uma. Vincular um
@@ -11958,7 +11959,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // do cliente vinculado. O gatilho não pega: `NEW.endereco` é igual a
   // `OLD.endereco` (veio do próprio cliente) e a perna 1 é falsa.
   eq('CRÍTICO: `aplicarCliente` do /gerencial/nova herda do cliente TAMBÉM a ausência de coordenada — as guardas `if (c.latitude != null)` eram assimétricas com o endereço (que é sempre substituído), e vincular um cliente SEM coordenada depois de uma busca deixava a coordenada da busca ser escrita no cadastro DELE. O gatilho da U84 não pega: o endereço não mudou, veio do próprio cliente',
-     (() => { const g = semComentarios(fs84.readFileSync('src/routes/_authenticated/gerencial.nova.tsx', 'utf8'));
+     (() => { const g = semComentarios(fs84.readFileSync('src/features/gerencial/NovaVisitaTecnica.tsx', 'utf8'));
               return [/setLat\(c\.latitude \?\? null\);/.test(g),
                       /setLng\(c\.longitude \?\? null\);/.test(g),
                       /if \(c\.latitude != null\) setLat/.test(g),
@@ -11978,7 +11979,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      arvore84.filter(([, s]) => /mapUrl =\s*\n?\s*lat && lng/.test(s)).map(([p]) => p), []);
   eq('U84: …e os dois que faltavam agora decidem por `!= null`',
      arvore84.filter(([, s]) => /mapUrl =\s*\n?\s*lat != null && lng != null/.test(s)).map(([p]) => p).sort(),
-     ['src/routes/_authenticated/gerencial.nova.tsx', 'src/routes/_authenticated/visita.$id.tsx']);
+     ['src/features/gerencial/NovaVisitaTecnica.tsx', 'src/routes/_authenticated/visita.$id.tsx']);
   // A FRASE DE FALHA NÃO PODE AFIRMAR QUE O ENDEREÇO NÃO EXISTE. A casca de
   // `gerencial/data.ts` colapsa `nao_encontrado` e `servico_falhou` num `null`
   // só (P43), e o bloqueio do Nominatim é POR IP: "este endereço não existe" é a
@@ -12022,7 +12023,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // assim, porque o app rompe uma camada ACIMA do gatilho — regra 10.
   // Uma bateria de mutação mostrou que este conserto não tinha UMA asserção.
   {
-    const gn84 = fs84.readFileSync('src/routes/_authenticated/gerencial.nova.tsx', 'utf8');
+    const gn84 = fs84.readFileSync('src/features/gerencial/NovaVisitaTecnica.tsx', 'utf8');
     const vivoGn = gn84.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
     eq('CRÍTICO: /gerencial/nova só nomeia latitude/longitude no patch do cliente quando TEM as duas — mandá-las sempre apaga a coordenada do cadastro mestre com NULL, em silêncio e para sempre, num cliente cujo endereço não mudou',
        [/\.\.\.\(lat != null && lng != null \? \{ latitude: lat, longitude: lng \} : \{\}\),/.test(vivoGn),
@@ -12364,7 +12365,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('CRÍTICO: a migration imprime o CHECK vivo de `clientes.situacao` (conferência 7), e NENHUM dos dois escritores de "prospecto" existe mais — nem o de criar prédio novo, nem o da consolidação, que ainda por cima escrevia fora do preservar',
      [/pg_get_constraintdef/.test(u84Vivo),
       /clientes_situacao_check/.test(u84Vivo),
-      /situacao: "prospecto"/.test(fs84.readFileSync('src/routes/_authenticated/gerencial.nova.tsx', 'utf8')),
+      /situacao: "prospecto"/.test(fs84.readFileSync('src/features/gerencial/NovaVisitaTecnica.tsx', 'utf8')),
       // AS DUAS PERNAS DE BAIXO MEDEM LINHA VIVA, e a distinção não é zelo: a
       // primeira versão delas casou o COMENTÁRIO que explica o conserto
       // (`Isto escrevia \`situacao: g.situacaoSugerida\``) e ficou vermelha
@@ -12513,7 +12514,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       const nomeDaTela = {
         'src/features/clientes/ClienteForm.tsx': 'ficha do cliente',
         'src/features/visitas/NovaVisitaDialog.tsx': 'nova visita',
-        'src/routes/_authenticated/gerencial.nova.tsx': '/gerencial/nova',
+        'src/features/gerencial/NovaVisitaTecnica.tsx': '/gerencial/nova',
         'src/features/gerencial/VisitaForm.tsx': 'edição da visita',
       };
       const iR114 = prod84.indexOf('**R114**');
@@ -16844,7 +16845,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R146: o formulário do cliente chama o telefone de WhatsApp (síndico e zelador)',
      (ler96('src/features/clientes/ClienteForm.tsx').match(/<label style=\{s\.LABEL\}>WhatsApp<\/label>/g) ?? []).length, 2); // U112: estilos vêm de useEstilosDoCard
   eq('R147: escolher o cliente na proposta herda a fachada como arquivo (o mesmo caminho de upload da foto tirada na hora)',
-     /baixarFachadaComoArquivo\(c\.foto_fachada_url\)/.test(ler96('src/routes/_authenticated/gerencial.nova.tsx')), true);
+     /baixarFachadaComoArquivo\(c\.foto_fachada_url\)/.test(ler96('src/features/gerencial/NovaVisitaTecnica.tsx')), true);
 
   // ── a migration U96 ──────────────────────────────────────────────────────
   const mig96 = ler96('supabase/migrations/20260914090000_u96_estrutura_das_atividades.sql');
@@ -17356,7 +17357,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('ESTADO_ATUAL: diz qual migration está pendente, lista os quatro lembretes do Davi e as perguntas que sobraram',
      // U106: "pendente" pode ser uma migration nomeada (**Pendente: Uxxx**) ou nenhuma
      [/Nenhuma\s+migration pendente|\*\*[Pp]endente: U\d+\*\*/.test(estado), /## 7\. O que o Davi disse que vai mandar/.test(estado),
-      /Q8/.test(estado) && /Q13/.test(estado), /Rodadas até a U100/.test(estado)],
+      /Q8/.test(estado) && /Q13/.test(estado), /Rodadas até a U1\d\d/.test(estado)], // U117: até a U110 (08/09/2026)
      [true, true, true, true]);
   eq('ONBOARDING e o manual apontam para o ESTADO_ATUAL, e o README do manual cita a faixa atual de regras',
      [/ESTADO_ATUAL\.md/.test(ler100('ONBOARDING.md')), /ESTADO_ATUAL\.md/.test(ler100('docs/manual/README.md')),
@@ -17905,7 +17906,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const fs107 = require('fs');
   const ler107 = (f) => fs107.readFileSync(f, 'utf8');
   const cod107 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
-  const nv = ler107('src/routes/_authenticated/gerencial.nova.tsx');
+  const nv = ler107('src/features/gerencial/NovaVisitaTecnica.tsx');
   const nvc = cod107(nv);
 
   eq('R194: as duas etapas morreram — sem `step`, sem stepper, sem "Próximo"; a tela é UMA',
@@ -18026,7 +18027,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/fontSize: compacto \? 13 : 14, fontWeight: 400,/.test(ler108('src/components/CampoComBusca.tsx')),
       /fontSize: 14, fontWeight: 400, color: textPrimary, lineHeight: 1\.55/.test(ler108('src/components/EditorDeDescricao.tsx')),
       /fontSize: 14, fontWeight: 400, color: textPrimary,/.test(ler108('src/features/chamados/PainelChamado.tsx')),
-      /fontFamily: FONT, fontWeight: 400, fontSize: 14, padding: "11px 13px",/.test(ler108('src/routes/_authenticated/gerencial.nova.tsx'))],
+      /fontFamily: FONT, fontWeight: 400, fontSize: 14, padding: "11px 13px",/.test(ler108('src/features/gerencial/NovaVisitaTecnica.tsx'))],
      [true, true, true, true]);
   eq('R195: rótulo pequeno (≤ 10,5px) que era 500 virou 600 — texto pequeno precisa de peso para existir',
      [/fontWeight: 600, fontSize: 9,/.test(ler108('src/features/paineis/PainelBase.tsx')),
@@ -18415,11 +18416,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   {
     // U116 (R209): três colunas — identidade | local | atividades — nesta ordem no fonte
     const ordem = ['Adicionar foto da fachada', '<CardLocal {...propsDosCards} />', '<CardContatos {...propsDosCards} veFinanceiro={veFinanceiro} />',
-      '<span style={SEC_LABEL}>Contratos</span>', '<CardEstrutura {...propsDosCards} />',
+      '<span style={SEC_LABEL}>Contratos</span>',
       '<InventarioCliente clienteId={id} podeEditar={isGerente} />', '<span style={SEC_LABEL}>Histórico de visitas</span>',
       '<span style={SEC_LABEL}>Atividades</span>', '<span style={SEC_LABEL}>Plantão</span>']
       .map((t) => fic111c.indexOf(t));
-    eq('R201/R203/R209: IDENTIDADE (fachada → o local → contatos → contratos → estrutura) → O LOCAL (sistemas com o vínculo dentro → visitas) → ATIVIDADES (a coluna alta → plantão), nesta ordem',
+    eq('R201/R203/R209/R211: IDENTIDADE (fachada → o local, com a estrutura dentro → contatos → contratos) → O LOCAL (sistemas com o vínculo dentro → visitas) → ATIVIDADES (a coluna alta → plantão), nesta ordem',
        ordem.every((p, i) => p >= 0 && (i === 0 || ordem[i - 1] < p)), true);
   }
   eq('R201: `Contato` é componente de MÓDULO (dentro do pai remontaria a cada render) — hoje exportado pelo ClienteForm, ao lado dos cards; a ficha está na grade própria .ficha-grid (R209)',
@@ -18488,21 +18489,23 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const fic112 = ler112('src/routes/_authenticated/clientes.$id.tsx');
   const fic112c = cod112(fic112);
   const form112 = ler112('src/features/clientes/ClienteForm.tsx');
-  eq('R203 CRÍTICO: a ficha não tem mais modo de configuração — sem `editando`, sem botão "Configurar", sem `<ClienteForm>` inteiro; os três cards editáveis entram no lugar, na coluna da identidade',
+  eq('R203 CRÍTICO: a ficha não tem mais modo de configuração — sem `editando`, sem botão "Configurar", sem `<ClienteForm>` inteiro; os cards editáveis entram no lugar, na coluna da identidade (R211: a estrutura fundiu em O local — CardEstrutura não existe mais)',
      [/editando/.test(fic112c), /Configurar cliente|Configurar<\/button>|\n\s*Configurar\n/.test(fic112c), /<ClienteForm\b/.test(fic112c),
-      /import \{ CardLocal, CardContatos, CardEstrutura \} from "@\/features\/clientes\/ClienteForm";/.test(fic112),
+      /import \{ CardLocal, CardContatos \} from "@\/features\/clientes\/ClienteForm";/.test(fic112),
       /<CardLocal \{\.\.\.propsDosCards\} \/>/.test(fic112), /<CardContatos \{\.\.\.propsDosCards\} veFinanceiro=\{veFinanceiro\} \/>/.test(fic112),
-      /<CardEstrutura \{\.\.\.propsDosCards\} \/>/.test(fic112)],
-     [false, false, false, true, true, true, true]);
+      /<CardEstrutura/.test(fic112c), /export function CardEstrutura/.test(form112)],
+     [false, false, false, true, true, true, false, false]);
   eq('R203: cada card tem o próprio lápis e Salvar/Cancelar dentro dele (CascaDoCard) e grava SÓ os campos dele — o patch é parcial de propósito, e a mutação da página aceita o patch parcial',
      [/^function CascaDoCard\(/m.test(form112),
       /aria-label=\{`Editar \$\{titulo\.toLowerCase\(\)\}`\}/.test(form112),
       /\{salvando \? "Salvando…" : rotuloSalvar\}/.test(form112),
       (form112.match(/await onSalvar\(\{/g) ?? []).length,
-      (form112.match(/^export function (CardLocal|CardContatos|CardEstrutura)\(/gm) ?? []).length,
+      (form112.match(/^export function (CardLocal|CardContatos)\(/gm) ?? []).length,
       /mutationFn: \(patch: ClientePatch\) => atualizarCliente\(id, patch\),/.test(fic112),
-      /onSalvar: \(p: ClientePatch\) => salvar\.mutateAsync\(p\)/.test(fic112)],
-     [true, true, true, 3, 3, true, true]);
+      /onSalvar: \(p: ClientePatch\) => salvar\.mutateAsync\(p\)/.test(fic112),
+      // R211: a estrutura grava pelo card O local
+      /qtd_apartamentos: nAptos,\s*\n\s*qtd_acessos: nAcessos,\s*\n\s*observacoes: observacoes\.trim\(\) \|\| null,/.test(form112)],
+     [true, true, true, 2, 2, true, true, true]);
   eq('R203: só quem pode editar vê o lápis — o card em leitura é o mesmo para todos',
      [/podeEditar && !editando && \(/.test(form112), /podeEditar: isGerente/.test(fic112)],
      [true, true]);
@@ -18730,11 +18733,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/<div className="ficha-grid">/.test(fic116), /<div className="ficha-identidade">/.test(fic116),
       /<div className="ficha-local">/.test(fic116), /<div className="ficha-atividades">/.test(fic116)],
      [true, true, true, true]);
-  eq('R209 CRÍTICO: Atividades é a coluna ALTA — cards em fila vertical (cardAtividade: título em cima, status à direita, meta embaixo), o card com teto min(72vh, 900px) e a LISTA rolando por dentro (R208); o teto declarado de 12 continua',
+  eq('R209 CRÍTICO: Atividades é a coluna ALTA — cards em fila vertical (o CardAtividade da Início, R212), o card com teto min(72vh, 900px) e a LISTA rolando por dentro (R208); o teto declarado de 12 continua',
      [/const ALTURA_DAS_ATIVIDADES = "min\(72vh, 900px\)";/.test(fic116),
       /maxHeight: ALTURA_DAS_ATIVIDADES/.test(fic116),
-      /const cardAtividade = \(corDaBorda: string\): CSSProperties => \(\{\s*\n\s*display: "flex", flexDirection: "column"/.test(fic116),
-      /style=\{cardAtividade\(corSt\)\}/.test(fic116),
+      /import \{ CardAtividade \} from "@\/features\/home\/CardAtividade";/.test(fic116), // U117 (R212): era um card local
+      /<CardAtividade\s*\n\s*a=\{a\}/.test(fic116),
       /const TETO_CHAMADOS = 12;/.test(fic116), /ordens\.slice\(0, 8\)/.test(fic116)],
      [true, true, true, true, true, false]);
   eq('R208/R209: as três listas de histórico da ficha rolam por dentro (atividades, visitas, plantão) — a página não cresce com o histórico',
@@ -18764,6 +18767,151 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /ficha-grid/.test(sec620c) && /cardAtividade|coluna alta|coluna ALTA/i.test(sec620c) && !/clamp\(340px, 30%, 480px\)/.test(sec620c),
       /^## U116 /m.test(ler116('docs/PLANO_UNIFICACAO.md')), /U116/.test(ler116('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true]);
+}
+
+// ── U117 — a estrutura em O local, o card da Início na ficha, o registro só na corretiva (R211–R213) ──
+{
+  const fs117 = require('fs');
+  const ler117 = (f) => fs117.readFileSync(f, 'utf8');
+  const cod117 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const F = carregar('src/features/clientes/ficha.ts');
+  const REG = carregar('src/features/chamados/registro.ts');
+
+  // ── R211: a estrutura é item de O local ────────────────────────────────────
+  const form117 = ler117('src/features/clientes/ClienteForm.tsx');
+  eq('R211: apartamentos, acessos e observações são LINHAS de leitura de O local e campos no fim da edição — o card Estrutura não existe mais (os pinos da R203 já cobram a ausência)',
+     [/Apartamentos \/ unidades<\/span>/.test(form117), /Acessos controlados<\/span>/.test(form117), /Observações<\/span>/.test(form117),
+      (form117.match(/<label style=\{s\.LABEL\}>Observações<\/label>/g) ?? []).length,
+      /Estrutura e observações/.test(cod117(form117))],
+     [true, true, true, 1, false]);
+
+  // ── R212: o card da Início na ficha, pelo MESMO montador ──────────────────
+  {
+    const dentro = F.atividadesDaFicha(
+      [chamado('aberto', { natureza: 'interno', cliente_id: 'c1' }), chamado('aberto', { natureza: 'interno', cliente_id: 'c2' }),
+       chamado('aberto', { natureza: 'comercial', tipo: 'prospeccao', cliente_id: 'c1' })],
+      'c1', ctxVazio);
+    eq('R212 CRÍTICO: atividadesDaFicha passa cada chamado pelo montador da Início (atividadeDoChamado), marca como INDIRETA a que não é deste cliente e deixa a capa da proposta (comercial) de fora — ela já está no Histórico de visitas',
+       [dentro.length, dentro.map((x) => x.indireta), dentro.every((x) => x.a.fonte === 'chamado' && typeof x.a.registroId === 'string')],
+       [2, [false, true], true]);
+  }
+  const fic117 = ler117('src/routes/_authenticated/clientes.$id.tsx');
+  const fic117c = cod117(fic117);
+  eq('R212: a ficha NÃO tem mais card de atividade próprio nem pinta borda pelo status — usa <CardAtividade> com as pessoas para a pilha de avatares e navega pelo registroId; a nota "pelo grupo…" fica embaixo do card',
+     [/const cardAtividade =|chamadoStatusInfo\(/.test(fic117c), /borderLeft: `3px solid \$\{corDaBorda\}`/.test(fic117c),
+      /pessoas=\{pessoasPorId\}/.test(fic117), /params: \{ id: a\.registroId \}/.test(fic117),
+      /atividadesDaFicha\(ordens, id, \{ userId: null, apoios: new Set<string>\(\) \}\)/.test(fic117),
+      /pelo grupo de clientes ou como local extra/.test(fic117),
+      /import \{ useChamadosDoCliente, usePessoas, mapaDePessoas \} from "@\/features\/chamados\/data";/.test(fic117)],
+     [false, false, true, true, true, true, true]);
+
+  // ── R213: Problema/Diagnóstico só na corretiva ────────────────────────────
+  eq('R213: temDiagnostico é a lista TIPOS_COM_DIAGNOSTICO — só a corretiva; preventiva, implantação, operacional, vistoria, melhoria, proposta e vazio ficam fora',
+     [REG.TIPOS_COM_DIAGNOSTICO, REG.temDiagnostico('corretiva'),
+      ['preventiva', 'implantacao', 'operacional', 'vistoria', 'melhoria', 'prospeccao', null, undefined, ''].map((t) => REG.temDiagnostico(t))],
+     [['corretiva'], true, [false, false, false, false, false, false, false, false, false]]);
+  eq('R213: as três frases da barra não mudaram (a barra continua a mesma onde existe)',
+     [REG.fraseDoProgresso(REG.etapasDoRegistro(null, null)), REG.fraseDoProgresso(REG.etapasDoRegistro('x', null)), REG.fraseDoProgresso(REG.etapasDoRegistro('x', 'y'))],
+     ['Nada registrado ainda', 'Problema registrado — falta o diagnóstico', 'Problema e diagnóstico registrados']);
+  const pc117 = ler117('src/features/chamados/PainelChamado.tsx');
+  eq('R213 CRÍTICO: no Configurador rápido a barra 1→2, o Problema e o Diagnóstico ficam DENTRO de temDiagnostico(chamado.tipo); os demais tipos mostram um único campo "Descrição" sobre descricao_problema, e o Diagnóstico só quando já tem texto (textoPreenchido)',
+     [/\{temDiagnostico\(chamado\.tipo\) \? \(\s*\n\s*<>\s*\n\s*<ProgressoDoRegistro/.test(pc117),
+      /titulo="Descrição"[\s\S]{0,600}patch: \{ descricao_problema: v \|\| null \}/.test(pc117),
+      /\{textoPreenchido\(chamado\.diagnostico\) && \(\s*\n\s*<DescricaoComFerramentas\s*\n\s*titulo="Diagnóstico"/.test(pc117),
+      (pc117.match(/titulo="Diagnóstico"/g) ?? []).length,
+      /import \{ etapasDoRegistro, fraseDoProgresso, temDiagnostico, textoPreenchido, type EtapasDoRegistro \} from "@\/features\/chamados\/registro";/.test(pc117)],
+     [true, true, true, 2, true]);
+  eq('R213: a página interna (R149) e o painel usam o MESMO predicado — corretiva — para trocar "Problema" por "Descrição"',
+     /chamado\.tipo === "corretiva" \? "Problema detectado" : "Descrição"/.test(ler117('src/features/chamados/DetalheInterno.tsx')), true);
+
+  // ── R214: a Proposta Comercial expande no "+" ─────────────────────────────
+  const rota117 = ler117('src/routes/_authenticated/gerencial.nova.tsx');
+  const nvt117 = ler117('src/features/gerencial/NovaVisitaTecnica.tsx');
+  const nad117 = ler117('src/features/home/NovaAtividadeDialog.tsx');
+  eq('R214 CRÍTICO: o formulário da visita virou componente (NovaVisitaTecnica) e a rota é só a casca — nenhum geocode, nenhum estado na rota; o componente aceita o técnico inicial, avisa ao concluir e, embutido, perde sangria e cabeçalho',
+     [/<NovaVisitaTecnica aoConcluir=\{voltar\} aoVoltar=\{voltar\} \/>/.test(rota117), /\bgeocode\(|useState\(/.test(rota117),
+      /export function NovaVisitaTecnica\(\{ tecnicoInicial = null, aoConcluir, aoVoltar, embutido = false \}: NovaVisitaTecnicaProps\)/.test(nvt117),
+      /useState\(tecnicoInicial \?\? ""\)/.test(nvt117), /aoConcluir\?\.\(\);/.test(nvt117),
+      /\{!embutido && \(/.test(nvt117), /className=\{embutido \? "nova-visita-embutida" : "sangra-x"\}/.test(nvt117),
+      /<div className="nova-visita-colunas">/.test(nvt117)],
+     [true, false, true, true, true, true, true, true]);
+  eq('R214: o diálogo do "+" embute o formulário no tipo Proposta Comercial atrás do portão da tela gerencial.nova, e não navega mais; o embutido tem no máximo duas colunas (CSS)',
+     [/import \{ NovaVisitaTecnica \} from "@\/features\/gerencial\/NovaVisitaTecnica";/.test(nad117),
+      /podeVer\("gerencial\.nova"\) !== false \? \(/.test(nad117), /Abrir o fluxo da proposta/.test(cod117(nad117)),
+      /\.nova-visita-embutida \.nova-visita-colunas \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/.test(ler117('src/styles.css'))],
+     [true, true, false, true]);
+
+  // ── R215–R217: o chat de menções — a lógica pura ───────────────────────────
+  const CH = carregar('src/features/home/chat.ts');
+  eq('R215: paragrafoComMencao devolve a LINHA com o token do meu id (sem diferenciar maiúsculas); sem a linha, a primeira não vazia; sem nada, vazio',
+     [CH.paragrafoComMencao('primeira\nOlha @[Nick](user:ABC-1) aqui\nfim', 'abc-1'),
+      CH.paragrafoComMencao('\n  só isto  \noutra', 'zz'), CH.paragrafoComMencao(null, 'x'), CH.paragrafoComMencao('', null)],
+     ['Olha @[Nick](user:ABC-1) aqui', 'só isto', '', '']);
+  eq('R216: a resposta vira comentário com a MENÇÃO a quem mencionou na frente (o token da U95); sem autor conhecido, o texto puro; vazio não sai',
+     [CH.respostaComMencao('Davi Voos', 'id-1', '  oi  '), CH.respostaComMencao(null, null, 'oi'), CH.respostaComMencao('Davi', 'id-1', '   ')],
+     ['@[Davi Voos](user:id-1) oi', 'oi', '']);
+  {
+    const rs = [{ evento_id: 'e1', profile_id: 'p1', emoji: '👍' }, { evento_id: 'e1', profile_id: 'p2', emoji: '👍' },
+      { evento_id: 'e1', profile_id: 'p1', emoji: '❤️' }, { evento_id: 'e2', profile_id: 'p1', emoji: '👀' }];
+    eq('R217: agruparReacoes conta por emoji só do comentário pedido, na ordem da lista, e diz se EU reagi',
+       [CH.agruparReacoes(rs, 'e1', 'p1'), CH.agruparReacoes(rs, 'e1', 'p2'), CH.agruparReacoes(rs, 'e3', 'p1')],
+       [[{ emoji: '👍', total: 2, eu: true }, { emoji: '❤️', total: 1, eu: true }], [{ emoji: '👍', total: 2, eu: true }, { emoji: '❤️', total: 1, eu: false }], []]);
+  }
+  eq('R215: o selo do botão conta só as notificações de MENÇÃO não lidas',
+     CH.contarMencoesNaoLidas([{ tipo: 'mencao', lida: false }, { tipo: 'mencao', lida: true }, { tipo: 'chamado_comentario', lida: false }]), 1);
+  const mig117 = ler117('supabase/migrations/20260920090000_u117_reacoes_e_minhas_mencoes.sql');
+  eq('R217 CRÍTICO: a lista de emojis do CHECK no banco é a MESMA de EMOJIS_REACAO no app',
+     (mig117.match(/CHECK \(emoji IN \(([^)]*)\)\)/) ?? [])[1]?.split(',').map((s) => s.trim().replace(/^'|'$/g, '')),
+     [...CH.EMOJIS_REACAO]);
+  eq('U117 migration: tabela idempotente, unicidade por CONSTRAINT (não índice parcial — o 42P10 da U110), RLS pela régua pode_acessar_chamado, nenhuma policy USING (true), função SECURITY INVOKER que REUSA mencoes_em, nenhum gatilho novo, nada escrito em chamado_eventos, pré-voo, conferência com veredito e DESFAZER',
+     [/CREATE TABLE IF NOT EXISTS public\.chamado_reacoes/.test(mig117), /CONSTRAINT chamado_reacoes_unica UNIQUE \(evento_id, profile_id, emoji\)/.test(mig117),
+      (mig117.match(/USING \(public\.pode_acessar_chamado\(chamado_id\)\)/g) ?? []).length, /USING \(true\)/.test(mig117),
+      /LANGUAGE sql STABLE SECURITY INVOKER/.test(mig117), (mig117.match(/public\.mencoes_em\(coalesce\(/g) ?? []).length,
+      /CREATE TRIGGER|INSERT INTO public\.chamado_eventos/.test(mig117), /to_regprocedure\('public\.mencoes_em\(text\)'\)/.test(mig117),
+      /veredito/.test(mig117) && />>> OLHAR <<</.test(mig117), /DESFAZER/.test(mig117)],
+     [true, true, 1, false, true, 2, false, true, true, true]);
+
+  // ── R215–R217: a tela ──────────────────────────────────────────────────────
+  const chatDados117 = ler117('src/features/home/chat-data.ts');
+  const reac117 = ler117('src/features/chamados/reacoes.ts');
+  const chatUi117 = ler117('src/features/home/ChatDeMencoes.tsx');
+  eq('R215 CRÍTICO: o chat lê pela função minhas_mencoes (rpc) — NUNCA um SELECT de chamado_eventos entre chamados — e trata a função ausente (42883/PGRST202) como "a migration ainda não rodou"; as reações tratam 42P01 do mesmo jeito',
+     [/supabase\.rpc\("minhas_mencoes" as any/.test(chatDados117), /42883/.test(chatDados117) && /PGRST202/.test(chatDados117),
+      /\.from\("chamado_eventos"/.test(chatDados117 + reac117 + chatUi117),
+      /\.from\("chamado_reacoes" as any\)/.test(reac117), /e\?\.code === "42P01"/.test(reac117), /faltaMigration: true/.test(reac117)],
+     [true, true, false, true, true, true]);
+  const dash117 = ler117('src/routes/_authenticated/dashboard.tsx');
+  const pc117b = ler117('src/features/chamados/PainelChamado.tsx');
+  eq('R215: a Início monta o botão do chat e, ao clicar numa menção, abre o Configurador rápido CENTRALIZADO (posicao="central" → Dialog no meio da tela, mesmo miolo); abrir pelo quadro continua lateral',
+     [/<ChatDeMencoes aoAbrirAtividade=\{\(id\) => \{ setPainelCentral\(true\); setPainelId\(id\); \}\} \/>/.test(dash117),
+      /posicao=\{painelCentral \? "central" : "lateral"\}/.test(dash117), /setPainelCentral\(false\);\s*\n\s*setPainelId\(a\.registroId\);/.test(dash117),
+      /if \(posicao === "central"\) \{/.test(pc117b), /<DialogContent\s*\n\s*className="p-0"/.test(pc117b), /\{miolo\}/.test(pc117b),
+      (pc117b.match(/\{miolo\}/g) ?? []).length],
+     [true, true, true, true, true, true, 2]);
+  eq('R216/R217: o card do chat tem "Responder aqui" (comentário na atividade via comentarChamado) e a fileira de reações só em menção de comentário; a MESMA fileira está no painel e na página da atividade',
+     [/Responder aqui/.test(chatUi117), /await comentarChamado\(m\.chamadoId, t\);/.test(chatUi117),
+      /m\.origem === "comentario" && m\.eventoId && \(\s*\n\s*<FileiraDeReacoes/.test(chatUi117),
+      /<FileiraDeReacoes chamadoId=\{chamadoId\} eventoId=\{c\.id\}/.test(pc117b),
+      /<FileiraDeReacoes chamadoId=\{id\} eventoId=\{c\.id\}/.test(ler117('src/features/chamados/DetalheInterno.tsx'))],
+     [true, true, true, true, true]);
+  eq('R215: o botão é fixo no canto inferior direito — acima da BottomNav no celular (84px), no canto no desktop, z-index 60 (acima da nav e da sidebar, abaixo dos diálogos); o canal do sino recarrega as menções',
+     [/\.fab-chat \{\s*\n\s*position: fixed;\s*\n\s*right: max\(16px, env\(safe-area-inset-right\)\);\s*\n\s*bottom: calc\(max\(16px, env\(safe-area-inset-bottom\)\) \+ 84px\);\s*\n\s*z-index: 60;/.test(ler117('src/styles.css')),
+      /\.fab-chat \{ right: 24px; bottom: 24px; \}/.test(ler117('src/styles.css')),
+      /qc\.invalidateQueries\(\{ queryKey: \["minhas-mencoes"\] \}\);/.test(ler117('src/hooks/useNotificacoes.ts')),
+      /className="fab-chat"/.test(chatUi117) && /className="fab-chat-painel"/.test(chatUi117)],
+     [true, true, true, true]);
+
+  // regra 7
+  const prod117 = ler117('docs/PRODUTO.md');
+  eq('U117 (regra 7): R211–R217 existem com a frase do Davi, a última atualização aponta para a R217, a R184/R138/R209 remetem à revisão, o DS tem a §6.21 do chat, o manual conta o chat, a U117 está no diário e no ESTADO (com a migration pendente)',
+     [['R211', 'R212', 'R213', 'R214', 'R215', 'R216', 'R217'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod117)),
+      Number((prod117.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 217,
+      /R213/.test(prod117.slice(prod117.indexOf('- **R184** —'), prod117.indexOf('- **R185** —'))),
+      /R214/.test(prod117.slice(prod117.indexOf('- **R138** —'), prod117.indexOf('- **R139** —'))),
+      /R212/.test(prod117.slice(prod117.indexOf('- **R209** —'), prod117.indexOf('- **R210** —'))),
+      /^### 6\.21 O chat de menções/m.test(ler117('DESIGN_SYSTEM.md')), /chat de menções/.test(ler117('docs/manual/visao-geral.md')),
+      /^## U117 /m.test(ler117('docs/PLANO_UNIFICACAO.md')), /U117/.test(ler117('docs/ESTADO_ATUAL.md')) && /\*\*Pendente: U117\*\*/.test(ler117('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

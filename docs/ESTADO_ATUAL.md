@@ -8,12 +8,11 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-08** · última regra: **R210** · último diário:
-**U116** · verificador: **3.078 asserções, 0 falharam** · `tsc`: baseline
-**57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
-`mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
-entra na matriz, a tela "Catálogo" sai). A **U110** (os 4.241 equipamentos do
-QAP) **já existe** — a extração rodou em 07/09/2026.
+Última atualização: **2026-09-08** · última regra: **R217** · último diário:
+**U117** · verificador: **3.098 asserções, 0 falharam** · `tsc`: baseline
+**57** · migrations rodadas até a **U110** (U106 e U109 em 07/09/2026; a
+**U110**, os 4.241 equipamentos do QAP, em 08/09/2026) · **pendente: U117**
+(reações a comentário e a função do chat de menções).
 
 ---
 
@@ -93,6 +92,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U114 | a ficha do cliente **preenche a largura** (`.pagina-larga`, R205); o vínculo equipamento → bloco é **por arrasto** em dois painéis, Blocos com sub-itens | Sem bloco (R206, lógica pura em `vinculo.ts`); botões **WhatsApp / copiar e-mail / copiar endereço** nos cards (R207) |
 | U115 | os painéis Blocos e Sem bloco **rolam por dentro** (teto min(64vh, 720px), mesma altura no desktop, só a lista rola) — a página não cresce com os equipamentos (R208) |
 | U116 | a ficha em **três colunas de desktop** (`.ficha-grid`: identidade \| local \| atividades, com a forma do conteúdo — Atividades é a coluna alta de cards, rolando por dentro) (R209); o **serviço prestado vira item do card O local** e a linha Coordenadas sai (R210) |
+| U117 | a **estrutura dentro de O local** (R211); a coluna Atividades da ficha usa o **card da Início** (R212); **Problema/Diagnóstico só na corretiva** (R213); a **Proposta Comercial expande no "+"** (R214, o formulário da visita virou componente); o **chat de menções** na Início — botão fixo, painel, atividade no meio da tela, responder aqui, reações (R215–R217); migration U117 |
 
 ## 4. Banco: migrations
 
@@ -100,27 +100,31 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **Rodadas até a U100** (confirmado pelo Davi em 04/09/2026).
-- **Pendente: U106** (`20260917090000_u106_mapa_sai.sql`) — um DELETE
-  idempotente da chave `mapa` em `permissoes_tela`, com conferência e
-  DESFAZER. Independe das anteriores e da ordem de deploy; até rodar, a linha
-  órfã fica no banco sem ninguém ler.
-- **Pendente: U109** (`20260918090000_u109_patrimonio_do_qap.sql`) — cria
-  `catalogo_equipamentos` e `equipamentos_patrimonio` (com RLS), põe a tela
-  `equipamentos` na matriz e apaga a chave `admin`. Até rodar, a tela
-  "Equipamentos cadastrados" mostra o aviso de que a estrutura não existe (o
-  42P01 é tratado) e o bloco de equipamentos da ficha do cliente não aparece.
-- **Pendente: U110** (`20260919090000_u110_equipamentos_do_qap.sql`, 533 KB) —
-  os 4.241 equipamentos e as 429 variações de catálogo. **Rodar DEPOIS da
-  U109.** Idempotente (variação por `chave`, item por `chave_importacao`
-  `qap:<id>`); os dois UPDATEs de vínculo só preenchem o que está nulo, então
-  rodar de novo não desfaz correção feita à mão. A última consulta dela
-  imprime a relação dos locais que não casaram com a base. Para regerar:
-  `node scripts/gerar-migration-equipamentos.cjs` (lê
-  `docs/importacao/qap-equipamentos.json`, o retrato cru do QAP).
-  A **U109 já rodou** em 07/09/2026 (dez itens de conferência ok). A primeira
-  tentativa da U110 abortou em **42P10** — índice parcial exige o predicado
-  repetido no `ON CONFLICT` — e está corrigida; nada foi aplicado por ela.
+- **Rodadas até a U110** (08/09/2026).
+- **Pendente: U117** (`20260920090000_u117_reacoes_e_minhas_mencoes.sql`) —
+  a tabela `chamado_reacoes` (reação por emoji a comentário, RLS pela régua
+  `pode_acessar_chamado`, lista fechada de oito emojis igual à do app) e a
+  função `minhas_mencoes()` (a leitura do chat de menções, SECURITY INVOKER,
+  reusa `mencoes_em` da U95). Exige a U95 (rodou); independe das outras. Até
+  rodar, as reações não aparecem e o chat avisa que espera a migration — sem
+  tela vermelha (regra 5). Doze itens de conferência.
+- **U106** (`20260917090000_u106_mapa_sai.sql`, rodada em 07/09/2026) — o
+  DELETE idempotente da chave `mapa` em `permissoes_tela`.
+- **U109** (`20260918090000_u109_patrimonio_do_qap.sql`, rodada em 07/09/2026,
+  dez itens de conferência ok) — `catalogo_equipamentos` e
+  `equipamentos_patrimonio` (com RLS), a tela `equipamentos` na matriz, a chave
+  `admin` apagada.
+- **U110** (`20260919090000_u110_equipamentos_do_qap.sql`, 533 KB, rodada em
+  08/09/2026) — os 4.241 equipamentos e as 429 variações de catálogo.
+  Idempotente (variação por `chave`, item por `chave_importacao` `qap:<id>`);
+  os dois UPDATEs de vínculo só preenchem o que está nulo, então rodar de novo
+  não desfaz correção feita à mão. A última consulta dela imprime a relação
+  dos locais que não casaram com a base. Para regerar: `node
+  scripts/gerar-migration-equipamentos.cjs` (lê
+  `docs/importacao/qap-equipamentos.json`, o retrato cru do QAP). A primeira
+  tentativa abortou em **42P10** — índice parcial exige o predicado repetido
+  no `ON CONFLICT` — e foi corrigida no lugar antes de rodar (cicatriz na
+  skill do banco).
 - **O mecanismo da regra 5** (o push publica antes da migration rodar): uma
   coluna ou valor novo que dependa de CHECK nasce em duas listas — a que o app
   RENDERIZA e a que ele OFERECE para gravar (`TIPOS_SISTEMA_NAO_OFERECIDOS`
@@ -212,6 +216,14 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   atividades), cada uma com a forma do conteúdo; Atividades é a coluna ALTA de
   cards, rolando por dentro. O **serviço prestado** é item do card O local
   (edição pelo lápis, grava com o card); a linha Coordenadas saiu.
+- **R211–R217** — a estrutura entra em O local; a coluna Atividades usa o
+  **card da Início** (borda pelo prazo); **Problema/Diagnóstico só na
+  corretiva** (os outros tipos têm Descrição); a **Proposta Comercial expande
+  no "+"** (o formulário da visita é componente, a rota é casca); o **chat de
+  menções** na Início: botão fixo, menções de comentário e de descrição, a
+  atividade abre no meio da tela, "Responder aqui" vira comentário com menção
+  (decisão a rever se o Davi quiser), reações por emoji (lista fechada, tabela
+  própria). Pendência: **rodar a U117**.
 
 ## 6. Perguntas em aberto
 

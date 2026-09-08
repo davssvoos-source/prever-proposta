@@ -11103,3 +11103,105 @@ E edição) e a ausência de "Coordenadas" e do controle no cabeçalho.
 
 **Números.** Verificador: 3.078 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.
+
+## U117 — a ficha fecha (estrutura em O local, o card da Início), o registro só na corretiva, a proposta no "+", e o chat de menções (R211–R217)
+
+Uma leva de sete pedidos do Davi em 08/09/2026, três frentes. Na ficha do
+cliente: "a Estrutura deve estar contida no campo O Local" e "o campo
+Atividades deve seguir a regra de cores nos cards das atividades". Na Início:
+"o esquema de Problema e Diagnostico (1, 2), deve ser somente para manutenções
+corretivas" e "ao criar uma atividade do tipo de demanda Proposta Comercial,
+os campos para criação da proposta devem expandir no campo de criação igual
+aos outros tipos". E o chat: "um botão circular de Chat […] canto inferior
+direito […] localização fixa com o scroll […] onde aparecerá todas as menções a
+aquele usuário […] responder aqui […] reagir se for comentário". No meio do
+caminho, "otimize os créditos" — o mapeamento foi feito por cinco leitores em
+paralelo (comentários/menções, a Início, o card, os pinos do verificador, o
+banco) e o resto foi feito à mão, sem mais agentes.
+
+**A estrutura em O local (R211).** Apartamentos, acessos e observações eram um
+card à parte (R203). Viraram linhas de leitura no fim de O local e campos no
+fim da edição, gravando pelo mesmo Salvar. `CardEstrutura` deixou de existir;
+a coluna da identidade ficou com fachada, O local, Contatos e Contratos.
+
+**O card da Início na ficha (R212).** A coluna Atividades tinha um card
+próprio — borda esquerda na cor do STATUS, a regra do calendário. O Davi
+pediu a regra dos cards de atividade, que é a R136: fundo neutro, a cor
+estratégica só na borda, em degradê, pela faixa de PRAZO; o status no chip
+preenchido. Em vez de copiar as duas camadas de fundo, o degradê e o glow para
+a ficha (a segunda cópia que a §6.12 existe para impedir), a ficha passou a
+usar o `CardAtividade` com o mesmo montador da Início (`atividadeDoChamado`,
+o precedente pinado do painel operacional), por uma função pura em `ficha.ts`
+que também marca a atividade "indireta" (veio pelo grupo ou como local extra)
+e deixa a capa da proposta de fora — a visita já está no Histórico de visitas
+da mesma ficha. A borda mudou de significado: era status, é prazo. Está dito
+na regra.
+
+**Problema/Diagnóstico só na corretiva (R213).** O Configurador rápido
+renderizava a barra 1→2, o Problema e o Diagnóstico para TODO tipo. A decisão
+é pura: `TIPOS_COM_DIAGNOSTICO`/`temDiagnostico` em `registro.ts`, o mesmo
+mecanismo de `TIPOS_COM_IMPACTO`. Nos outros tipos fica um único campo,
+"Descrição", sobre a mesma coluna — o rótulo que a página interna já usava
+(R149, mesmo predicado) — e o Diagnóstico só aparece se já tiver texto: o
+técnico o escreve na execução de campo mesmo fora da corretiva, e esconder um
+texto escrito seria pior que mostrar um campo a mais.
+
+**A proposta no "+" (R214).** O formulário da visita vivia inteiro na rota
+`/gerencial/nova` (958 linhas), e o diálogo do "+" só tinha um botão que
+navegava até lá. Extração mecânica: o corpo virou `NovaVisitaTecnica` em
+`features/gerencial/` (com `tecnicoInicial`, `aoConcluir`, `aoVoltar`,
+`embutido`), a rota virou casca de oito linhas, e o diálogo embute o
+componente atrás de `podeVer("gerencial.nova")` — a RLS de `visitas_tecnicas`
+não protege o INSERT e o redirect do `beforeLoad` da rota não passa por
+dentro do diálogo. Embutido, o cabeçalho e a sangria somem e as colunas ficam
+em no máximo duas (`.nova-visita-embutida` sobrescreve a media query da
+janela). As guardas do endereço da U84 viajaram intactas: os pinos que as
+cobram por caminho foram REAPONTADOS para o arquivo novo (quinze ocorrências,
+mais as três listas ordenadas onde o caminho aparece).
+
+**O chat de menções (R215–R217).** Comentários e menções já existiam (R135,
+U95): o token `@[Nome](user:<id>)` gravado no texto, `mencoes_em` no banco com
+a regex gêmea do TS, o gatilho que toca o sino. Faltava a leitura "quem me
+mencionou" e a reação. A leitura é uma função do banco, `minhas_mencoes()`,
+SECURITY INVOKER — a RLS de chamados e de chamado_eventos filtra sozinha, a
+régua S4 — que REUSA `mencoes_em` (a regex continua em um lugar) e devolve
+os comentários e as descrições que mencionam quem chama. Não é um SELECT de
+`chamado_eventos` entre chamados no app (o verificador proíbe, com razão), e
+não é uma tabela de menções: a menção continua sendo o texto, e o sino
+continua sendo `notificacoes`. A reação é tabela própria, `chamado_reacoes`,
+com `chamado_id` desnormalizado para a policy usar `pode_acessar_chamado` sem
+subselect, unicidade por CONSTRAINT (não índice parcial — a cicatriz 42P10 da
+U110), e lista fechada de oito emojis no CHECK, igual à do app, com asserção
+comparando as duas. Na tela: o botão circular fixo (`goldButton`, 54px, acima
+da BottomNav no celular), o painel com um card por menção (autor, quando, o
+título da atividade em dourado, o comentário inteiro ou o PARÁGRAFO da
+descrição que traz a menção, as reações e "Responder aqui"), e o Configurador
+rápido ganhou `posicao="central"` — o mesmo miolo dentro de um Dialog no meio
+da tela, aberto só pelo chat. "Responder aqui" vira COMENTÁRIO na atividade
+com `@quem mencionou` na frente, para o gatilho da U95 avisar a pessoa certa;
+para menção em descrição também vai como comentário — a descrição é um texto
+único, sem autor nem hora por parágrafo — e essa decisão está escrita na R216
+para o Davi rever. A mesma `FileiraDeReacoes` entrou no Configurador rápido,
+na página interna e no chat: reagir no chat É reagir na atividade.
+
+**O que se recusou a fazer.** Copiar a regra de cor da R136 para a ficha.
+Esconder o Diagnóstico escrito em campo nos tipos não-corretivos. Deixar o
+formulário da proposta duplicado (rota e diálogo): um componente, duas
+molduras. Uma tabela de menções persistidas com "lida": o pedido é a lista e a
+resposta; o sino já tem a leitura, e a função cobre a lista sem registro
+novo. Emojis livres: lista fechada no banco e no app. Mandar o chat abrir a
+atividade em nova rota: o Davi pediu o pop-up no meio da tela.
+
+**O que a verificação pegou.** No Windows, `reacoes.ts` e `Reacoes.tsx` no
+mesmo diretório são o MESMO arquivo para o resolvedor do TypeScript (TS1149,
+"differs only in casing") — o componente virou `FileiraDeReacoes.tsx`. A
+conferência da migration dizia "nenhuma policy USING (true)" num rótulo, e o
+pino que procura o literal no arquivo acusou o rótulo — reescrito como "qual =
+true". Vinte e poucos pinos reapontados, nenhum afrouxado: R199/R200 (a fila
+virou painel, U114), R203 (CardEstrutura), R209 (o card local), R146/R201/R205
+(a grade), R138 (a navegação para /gerencial/nova, que era exatamente o que o
+Davi mandou mudar), o censo de `etiqueta()` (a ficha 1 + o ClienteForm 1), e
+os quinze caminhos de `gerencial.nova.tsx`.
+
+**Números.** Verificador: 3.098 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa. Migration **U117** para o Davi rodar.

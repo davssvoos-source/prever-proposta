@@ -108,8 +108,11 @@ pílula troca o valor — cada uma salva sozinha e mostra o selo de gravado. **O
 corpo é o registro do trabalho:** a barra com os círculos **1** e **2** diz em
 que pé está — o 1 acende quando o **Problema** está escrito, a barra e o 2
 quando o **Diagnóstico** está escrito. O Diagnóstico é o mesmo que o técnico
-escreve na execução. Abaixo vêm os comentários e, por último, a linha do tempo
-(o que o sistema e as pessoas fizeram, do mais antigo ao mais novo).
+escreve na execução. **Isso vale para a manutenção corretiva** (R213): nos
+outros tipos de demanda o corpo tem um único campo, **Descrição**, e o
+Diagnóstico só aparece se o técnico já o tiver escrito em campo. Abaixo vêm os
+comentários e, por último, a linha do tempo (o que o sistema e as pessoas
+fizeram, do mais antigo ao mais novo).
 
 **O Calendário (R187–R191, U105).** Cada card tem o **fundo na cor do
 status**, bem esmaecido (atrasado = vermelho), e os rostos de quem toca sem

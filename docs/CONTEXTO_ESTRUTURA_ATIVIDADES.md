@@ -274,7 +274,8 @@ O pop-up de nova atividade da Início começa pequeno, com duas perguntas —
 **Qual o tipo de demanda?** (os seis) e **Quem é o responsável?** — e cresce
 quando as duas estão respondidas. O corpo que abre:
 
-1. tipo **Proposta Comercial** → o fluxo da visita (`/gerencial/nova`), que já
+1. tipo **Proposta Comercial** → o formulário da visita (o mesmo de
+   `/gerencial/nova`, embutido no pop-up desde a R214), que já
    tem local, tipo de local, síndico/proprietário, técnico e data;
 2. responsável da equipe **Técnica** → o formulário de campo (R126), com tipo
    e técnico já preenchidos;

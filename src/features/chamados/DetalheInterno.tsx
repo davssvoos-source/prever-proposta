@@ -55,6 +55,8 @@ import {
   adicionarClienteChamado, removerClienteChamado, adicionarSetorChamado, removerLocalChamado,
   type ChamadoPatch,
 } from "@/features/chamados/data";
+import { useReacoesDoChamado, SEM_REACOES } from "./reacoes";
+import { FileiraDeReacoes } from "./FileiraDeReacoes";
 import { useClientes, SERVICO_LABEL, SERVICO_CORES, SERVICOS_OFERECIDOS, type ServicoCliente } from "@/features/clientes/data";
 import { checklistDoGrupo, acrescentarChecklist, rotuloDoGrupo, valorDoGrupo, setorDoValor } from "@/features/chamados/grupos";
 import {
@@ -80,6 +82,8 @@ export function DetalheInterno({ id }: { id: string }) {
   const { data: isGerente = false } = useIsGerente();
   const { data: chamado, isLoading } = useChamado(id);
   const { data: eventos = [] } = useChamadoEventos(id, "asc");
+  // R217: as reações dos comentários desta atividade
+  const { data: reacoes = SEM_REACOES } = useReacoesDoChamado(id);
   const { data: apoios = [] } = useChamadoApoios(id);
   const { data: equipamentos = [] } = useChamadoEquipamentos(id);
   const { data: locais = [] } = useChamadoLocais(id);
@@ -581,6 +585,8 @@ export function DetalheInterno({ id }: { id: string }) {
                     texto={c.descricao ?? ""}
                     estilo={{ fontSize: 13, color: textPrimary, lineHeight: 1.55, marginTop: 2 }}
                   />
+                  {/* R217: a mesma fileira de reações do painel e do chat */}
+                  <FileiraDeReacoes chamadoId={id} eventoId={c.id} reacoes={reacoes.reacoes} faltaMigration={reacoes.faltaMigration} euId={userId} />
                 </div>
               </div>
             ))}

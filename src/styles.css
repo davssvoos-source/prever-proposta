@@ -1274,3 +1274,37 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
 @media (min-width: 1024px) {
   .painel-vinculo { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
 }
+
+/* ── A Nova Visita embutida no "+" da Início (R214, U117) ─────────────────
+   Dentro do diálogo (1120px) não cabem três colunas legíveis: no máximo duas,
+   com o agendamento embaixo. As media queries de .nova-visita-colunas olham a
+   JANELA, por isso a classe do embutido as sobrescreve a partir de 1360px. */
+@media (min-width: 1360px) {
+  .nova-visita-embutida .nova-visita-colunas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nova-visita-embutida .nova-visita-colunas > section:last-child { grid-column: 1 / -1; }
+}
+
+/* ── O chat de menções da Início (R215, U117) ────────────────────────────────
+   Botão circular FIXO no canto inferior direito. No celular ele sobe 84px para
+   não cair embaixo da BottomNav (que fica a max(16px, safe-area) do fundo e tem
+   ~64px de altura — o precedente é a barra de gravação de Permissoes.tsx). No
+   desktop, o canto. z-index 60: acima da BottomNav (50) e da sidebar (55),
+   abaixo dos diálogos (100) — abrir uma atividade fecha o chat antes. */
+.fab-chat {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px);
+  z-index: 60;
+}
+.fab-chat-painel {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px);
+  z-index: 60;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(72vh, 760px);
+}
+@media (min-width: 1024px) {
+  .fab-chat { right: 24px; bottom: 24px; }
+  .fab-chat-painel { right: 24px; bottom: 24px; }
+}

@@ -11,7 +11,8 @@
 //
 // Então o diálogo tem DOIS momentos. Antes das duas respostas ele é pequeno e
 // só pergunta. Depois ele cresce e mostra o corpo certo:
-//   · tipo "Proposta Comercial" → o fluxo da visita (/gerencial/nova), que já
+//   · tipo "Proposta Comercial" → o formulário da visita EMBUTIDO aqui (R214,
+//     U117 — antes navegava para /gerencial/nova), o mesmo da rota, que já
 //     tem local, tipo de local, síndico/proprietário, técnico e data (R147);
 //   · responsável da equipe TÉCNICA → o formulário de campo (R126), que já
 //     sabe de cliente, sistema, dupla e agenda — a estrutura da área técnica
@@ -55,6 +56,7 @@ import {
 } from "@/lib/chamado-status";
 import { EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 import { FormularioChamadoTecnico } from "@/features/chamados/FormularioChamadoTecnico";
+import { NovaVisitaTecnica } from "@/features/gerencial/NovaVisitaTecnica";
 import { PainelDePlantao } from "@/features/plantao/PainelDePlantao";
 
 // A lista dos SEIS tipos de demanda (R137) mora em chamado-status.ts
@@ -269,7 +271,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
     : !pronto
       ? "Duas perguntas decidem o resto: o tipo de demanda e quem é o responsável."
       : ehProposta
-        ? "A proposta comercial tem fluxo próprio: local, técnico e data da visita."
+        ? "Proposta Comercial — o local, os contatos, os serviços propostos e a visita, aqui mesmo."
         : ehTecnico
           ? "Responsável da equipe Técnica — o chamado é de campo, com cliente, sistema e agenda."
           : `${TIPO_LABEL[tipo!]} · ${equipeDoResponsavel ? EQUIPE_LABEL[equipeDoResponsavel] : "sem equipe no cadastro"}`;
@@ -399,23 +401,25 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
             </div>
 
             {/* ── O CORPO, decidido pelas duas respostas ───────────────────── */}
+            {/* R214 (U117): a Proposta Comercial EXPANDE aqui, como os outros tipos —
+                é o MESMO formulário da rota /gerencial/nova, embutido. O portão de
+                tela é a chave da rota (gerencial.nova): a RLS de visitas_tecnicas
+                não protege o INSERT, e o redirect do beforeLoad não passa por aqui. */}
             {pronto && ehProposta && (
-              <div style={{
-                display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px", borderRadius: 14,
-                background: isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-              }}>
+              podeVer("gerencial.nova") !== false ? (
+                <NovaVisitaTecnica
+                  embutido
+                  tecnicoInicial={ehTecnico ? responsavelId : null}
+                  aoConcluir={() => {
+                    qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
+                    fechar();
+                  }}
+                />
+              ) : (
                 <span style={{ fontFamily: FONT, fontSize: 13, color: textPrimary, lineHeight: 1.5 }}>
-                  A <strong>Proposta Comercial</strong> nasce no fluxo da visita: o local (cliente ou prédio
-                  que ainda não é cliente), o tipo de local, o síndico ou proprietário, os serviços propostos,
-                  o técnico responsável pela visita e a data. O card aparece na Início como "Proposta Comercial".
+                  Agendar a visita de uma proposta é do Comercial e da gestão — peça a alguém com acesso.
                 </span>
-                <button
-                  onClick={() => { fechar(); navigate({ to: "/gerencial/nova" }); }}
-                  style={{ ...goldButton(), padding: "11px 20px", borderRadius: 12, fontSize: 12.5, alignSelf: "flex-start" }}
-                >
-                  Abrir o fluxo da proposta
-                </button>
-              </div>
+              )
             )}
 
             {pronto && !ehProposta && ehTecnico && (

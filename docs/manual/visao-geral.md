@@ -154,8 +154,15 @@ Ditada pelo Davi em 03/09/2026 e transcrita em
   Manutenção Preventiva, Operacional, Proposta Comercial, Implantação e
   Melhoria. Cada um tem os seus campos (a matriz está no documento).
 - **Criar uma atividade** começa com duas perguntas — o tipo de demanda e o
-  responsável. Proposta Comercial abre o fluxo da visita; responsável da equipe
-  Técnica abre o chamado de campo; o resto abre o formulário do tipo.
+  responsável. Proposta Comercial expande o formulário da visita no próprio
+  pop-up (R214); responsável da equipe Técnica abre o chamado de campo; o resto
+  abre o formulário do tipo.
+- **O chat de menções** (R215–R217): o botão redondo no canto inferior direito
+  da Início lista tudo em que você foi mencionado — o comentário inteiro ou o
+  parágrafo da descrição. Clicar no título abre a atividade no meio da tela;
+  **Responder aqui** grava a resposta como comentário na atividade, mencionando
+  quem mencionou; e dá para **reagir** com emoji ao comentário (a reação
+  aparece também na atividade).
 - **Equipe não se escolhe**: a etiqueta é a das pessoas na atividade
   (responsável e apoios), pelo cadastro. **Sprint não existe mais**: o prazo diz
   a semana e o mês. **Pedido de compra não existe mais**: demanda do

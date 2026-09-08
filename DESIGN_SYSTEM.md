@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 47 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 48 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -37,6 +37,7 @@
   - [6.19 Formulário em colunas — a Nova Visita (v12 — 2026-09-04, R194)](#619-formulário-em-colunas-a-nova-visita-v12-2026-09-04-r194)
   - [6.20 Ficha do cliente — três colunas de desktop, os dois painéis do vínculo e os cards editáveis (v15 — 2026-09-08, R200–R210)](#620-ficha-do-cliente-três-colunas-de-desktop-os-dois-painéis-do-vínculo-e-os-cards-editáveis-v15-2026-09-08-r200r210)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
+  - [6.21 O chat de menções — botão flutuante, painel e reações (v15 — 2026-09-08, R215–R217)](#621-o-chat-de-menções-botão-flutuante-painel-e-reações-v15-2026-09-08-r215r217)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
 - [9. Visualização de dados](#9-visualização-de-dados)
@@ -831,6 +832,12 @@ O que a barra decide não mora na tela: `etapasDoRegistro(problema, diagnostico)
 (`features/chamados/registro.ts`) diz o que acende, `fraseDoProgresso` dá o
 texto do `aria-label` — cor nunca fala sozinha (§6, "status nunca só por cor").
 
+**Só na corretiva (R213, 2026-09-08).** A barra 1→2 e o par Problema/Diagnóstico
+aparecem quando `temDiagnostico(chamado.tipo)` (lista `TIPOS_COM_DIAGNOSTICO`,
+hoje só `corretiva`). Nos outros tipos o corpo tem um único `Campo destaque`
+**Descrição** (sobre `descricao_problema`, altura mínima 160) e o Diagnóstico só
+entra, sem destaque, quando já tem texto.
+
 ### 6.17 Calendário — o card tingido e a dica expandida (v12 — 2026-09-04, R187–R191)
 
 O card de atividade do calendário (mensal e semanal) tem **fundo na cor do
@@ -910,6 +917,13 @@ O que saiu, e não volta: a paleta local `L` (um segundo tema claro só daquela
 tela) e o "vidro dourado" dos campos no escuro — um design system por tela é o
 primeiro anti-padrão da skill de designer.
 
+**Embutido no "+" da Início (R214, 2026-09-08).** O formulário virou o
+componente `NovaVisitaTecnica` (`features/gerencial/`), e a rota é só a casca.
+Com `embutido`, ele perde a sangria e o cabeçalho de página (o diálogo já tem
+os seus) e as colunas ficam em no máximo DUAS (`.nova-visita-embutida`
+sobrescreve `.nova-visita-colunas` a partir de 1360px, com o agendamento
+embaixo): três colunas em 1120px de diálogo seriam ilegíveis.
+
 ### 6.20 Ficha do cliente — três colunas de desktop, os dois painéis do vínculo e os cards editáveis (v15 — 2026-09-08, R200–R210)
 
 A ficha é a página que se trabalha por mais tempo, e o desenho segue a ordem
@@ -934,13 +948,14 @@ do trabalho — no desktop, que é onde ela é usada (R205):
   linha de meta 12,5 secundária (endereço · contagens). O serviço prestado
   saiu daqui para o card O local (R210). Não há botão de configurar: a edição
   é no lugar, card a card (R203).
-- **Coluna de atividades** (R209): o card tem `max-height: min(72vh, 900px)`
-  e a lista rola por dentro (`.rolagem-fina`). Cada atividade é um **card**
-  (`cardAtividade`): coluna, gap 6, padding 10×12, raio 12, fundo `campo`,
-  borda `divisoria` com 3px à esquerda na cor do status; título 13/600 com o
-  chip de status 9/700 à direita, meta 11 secundário embaixo. Teto declarado
-  de 12 com "ver todas". Plantão e Histórico de visitas rolam por dentro com
-  `max-height` 320 e 360.
+- **Coluna de atividades** (R209/R212): o card tem `max-height: min(72vh,
+  900px)` e a lista rola por dentro (`.rolagem-fina`). Cada atividade é o
+  **`CardAtividade` da Início** (§6.12): fundo neutro, a cor estratégica só na
+  borda em degradê pela faixa de prazo, chip de status preenchido, pilha de
+  avatares — a coluna ALTA da ficha não tem card próprio. Atividade que veio
+  pelo grupo ou como local extra leva a nota 10,5 secundária embaixo. Teto
+  declarado de 12 com "ver todas". Plantão e Histórico de visitas rolam por
+  dentro com `max-height` 320 e 360.
 - **Card**: `card(isLight)`, raio 18, padding 18, micro-rótulo dourado 10,5/700
   com ícone 15px e a contagem em 11,5 secundário ao lado.
 - **Linha de lista clicável** (atividade, visita, contrato): fundo
@@ -976,7 +991,7 @@ do trabalho — no desktop, que é onde ela é usada (R205):
     tirar do bloco" ocupa o painel "Sem bloco". A linha em arrasto fica a 45%
     de opacidade; o cursor é `grab`. Só o tipo MIME próprio
     (`application/x-prever-equipamentos`) abre as zonas.
-- **Card editável** (`CardLocal` · `CardContatos` · `CardEstrutura`, em
+- **Card editável** (`CardLocal` · `CardContatos`, em
   `features/clientes/ClienteForm.tsx`): em leitura, cada linha é uma GRADE
   `minmax(96px, 30%) | 1fr` — rótulo 12/600 secundário, valor 13/400 texto,
   alinhado à esquerda, 7px de altura de linha, divisória entre linhas. O
@@ -1015,6 +1030,34 @@ com `position: relative; z-index: 1`. A classe `.pronta` entra no `onLoad` da
 imagem — sem ela a foto não aparece, e é isso que faz a entrada ser uma
 transição e não um salto. A opacidade final é menor no claro, onde a foto
 competiria com o texto escuro sobre branco.
+
+### 6.21 O chat de menções — botão flutuante, painel e reações (v15 — 2026-09-08, R215–R217)
+
+- **Botão flutuante** (`.fab-chat`): círculo de 54px em `goldButton()` (a ação
+  principal da tela — a única cor saturada que a R174 permite), ícone
+  `MessageCircle` 22, sombra discreta. `position: fixed`, canto inferior
+  direito: no celular `bottom: calc(max(16px, safe-area) + 84px)` para ficar
+  acima da BottomNav; no desktop 24px. `z-index: 60` — acima da BottomNav (50)
+  e da sidebar (55), abaixo dos diálogos (100). O selo de não lidas é um disco
+  20px em `texto` sobre `superficie`, 11/700, com borda na cor da página.
+- **Painel** (`.fab-chat-painel`): `card(isLight)` raio 18, largura
+  `min(420px, 100vw − 24px)`, altura máxima `min(72vh, 760px)`, no lugar do
+  botão; cabeçalho com micro-rótulo dourado "Menções" e contagem; a lista rola
+  por dentro (`.rolagem-fina`). Não é modal — abrir uma atividade fecha o chat.
+- **Card de menção**: fundo `campo`, borda `divisoria`, raio 14, padding 10×12.
+  Linha 1: `AvatarCirculo` 22 · nome 12/600 · "· há 2 h" 400 secundário · à
+  direita o rótulo 10/600 caixa alta "comentário" ou "descrição". Linha 2: o
+  título da atividade em dourado 13/700 (é o botão que abre o Configurador
+  rápido centralizado — um `Dialog` de `min(1120px, 96vw)` × `min(92vh,
+  900px)` com o mesmo miolo da folha lateral). Depois o texto
+  (`TextoComChecklist` para o comentário; `LinhaRica` do parágrafo com a menção
+  para a descrição), a fileira de reações e "Responder aqui" (botão leve 28px
+  com `Reply` dourado), que abre a `TextareaComMencoes` e Enviar dourado.
+- **Reações** (`FileiraDeReacoes`): um chip por emoji usado — `botaoSelecao`
+  sem brilho, 24px, pílula, emoji + contagem tabular; o meu acende. O "+"
+  (`SmilePlus`) é um círculo tracejado 26×24 que abre a lista fechada
+  `EMOJIS_REACAO` numa pílula flutuante em `superficie`. A mesma fileira no
+  Configurador rápido, na página da atividade e no chat.
 
 ## 7. Arquitetura de tema
 
