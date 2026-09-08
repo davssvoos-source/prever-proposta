@@ -11205,3 +11205,96 @@ os quinze caminhos de `gerencial.nova.tsx`.
 
 **Números.** Verificador: 3.098 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa. Migration **U117** para o Davi rodar.
+
+## U118 — visitas na lista de atividades, colunas alinhadas embaixo, e o pacote para Windows Server (R218–R220)
+
+Três pedidos do Davi em 08/09/2026, e uma revisão. Na ficha: "Ajuste o conteúdo
+da tela de cliente para que os campos fiquem alinhados no limite inferior.
+Além disso, visitas técnicas, chamados, atividades devem estar tudo listado no
+mesmo campo." E a mudança de casa: "Eu quero hospedar o sistema em um servidor
+Windows, rodando Windows Server 2016. Preciso que no Setup seja configurável a
+porta pois rodam varios serviços em portas distintas, me faça um arquivo
+executável de instalação. Antes disso, rode uma revisão completa no sistema,
+atualize os documentos que forem necessários."
+
+**Uma lista só (R218).** O card "Histórico de visitas" saiu do centro da
+ficha; a visita entrou na coluna de Atividades pelo montador que a Início já
+usa para ela (`atividadeDaVisita`), ao lado dos chamados (`atividadeDoChamado`,
+R212). A consulta das visitas do cliente passou a trazer a capa (número e
+prioridade, U29) e a proposta, como a da Início — sem isso o card sairia sem
+número. A capa da proposta (chamado comercial) fica de fora da lista para a
+visita não aparecer duas vezes. Clicar numa visita abre a tela dela pelo
+status (`visitaRouteFor`), como no quadro. A ordem é da mais recente para a
+mais antiga, e o teto declarado de 12 com "ver todas" continua.
+
+**Alinhadas embaixo (R219).** Três colunas de alturas diferentes deixavam
+espaço morto abaixo das mais curtas. Nos dois breakpoints de desktop a grade
+passou a esticar (`align-items: stretch`) e o último card de cada coluna cresce
+até o fim dela — na coluna de atividades é o PRIMEIRO card, a lista alta, que
+rola por dentro (R208), e o Plantão fica com a altura própria; no card dos
+sistemas os dois painéis do vínculo crescem juntos. A altura da linha é a da
+coluna mais alta; a lista de atividades continua com o teto de 72% da janela,
+para a página não crescer com o histórico.
+
+**O pacote para Windows Server (R220).** O build da Lovable sai para
+Cloudflare porque o wrapper dela (`@lovable.dev/vite-tanstack-config`) passa
+`defaultPreset: "cloudflare-module"` ao Nitro — um DEFAULT, que a variável
+`NITRO_PRESET` vence. `npm run build:windows` (`scripts/build-windows.cjs`)
+roda o mesmo `vite build` com `NITRO_PRESET=node-server` e confere o resultado
+(o servidor lê `PORT`/`HOST` do ambiente; nada de `wrangler.json`), monta
+`dist-windows/Prever-<versão>/` e fecha um zip. Dentro: o build (`app\`), o
+instalador `instalar.ps1` — compilado para `Instalar-Prever.exe` com pedido de
+elevação pelo módulo PowerShell `ps2exe` quando ele está na máquina —, o
+ponto de entrada do serviço (`iniciar.mjs`: lê `config.env` para o
+`process.env` e importa o servidor, que abre a porta ao ser importado), os
+scripts de atualizar e desinstalar, e o `config.padrao.env` com as chaves
+PÚBLICAS do `.env` (o build aborta se achar service role ou Anthropic no
+`.env`). O instalador: janela com porta, pasta, URL e as chaves opcionais (ou
+parâmetros, com `-SemInterface`), confere administrador e a porta livre,
+garante o Node 20+ (baixa o MSI e instala em silêncio se faltar), copia o
+build, grava o `config.env` (só administradores leem — `icacls`), registra o
+serviço "Prever — Sistema" pelo WinSW (reinício automático, logs rotativos,
+`node iniciar.mjs`), libera a porta no firewall, sobe e espera responder. E
+avisa o que só o Davi faz no Supabase: a URL Configuration (Site URL e
+Redirect URLs) para o endereço novo. O WinSW é baixado na instalação (ou lido
+ao lado do instalador, para servidor sem internet). Manual completo em
+`docs/manual/hospedagem-windows.md`; a saída da Lovable propriamente dita
+continua sendo o plano do `ONBOARDING.md` §6 — o pacote coexiste com ela,
+apontando para o mesmo Supabase.
+
+**A revisão.** O que estava velho e foi acertado: o inventário da skill de
+designer não conhecia os componentes e as classes das U111–U117 (cards
+editáveis, painéis do vínculo, fileira de reações, chat, formulário da visita,
+`.pagina-larga`, `.ficha-grid`, `.painel-vinculo`, `.rolagem-fina`,
+`.fab-chat`); o `ONBOARDING.md` §6 mandava para o Cloudflare como única saída;
+o `CLAUDE.md` não sabia do segundo alvo; o manual de desenvolvimento não
+descrevia o build para Windows. Duas pendências novas registradas: P61 (os
+passos da saída da Lovable que só o Davi faz) e P62 (as lapidações do chat de
+menções — ícone do sino, "lida" da menção, realtime). O sumário dos documentos
+mestre foi regenerado.
+
+**O que se recusou a fazer.** Tocar no `vite.config.ts` para trocar o preset:
+a variável de ambiente basta e o build da Lovable continua idêntico. Embutir
+segredo no pacote. Instalar o sistema como tarefa agendada em vez de serviço:
+tarefa não reinicia sozinha nem tem logs rotativos — o WinSW é o padrão.
+Commitar o `.exe` ou o `dist-windows/`: é gerado, e está no `.gitignore`.
+
+**O que a verificação pegou.** O mais grave veio do parser do PowerShell,
+rodado sobre os três `.ps1` antes de compilar o `.exe`: gravados em UTF-8 SEM
+BOM, o Windows PowerShell 5.1 (o do Server 2016) os lê como ANSI — e o
+travessão "—" e o "✔" trazem o byte 0x94, que em cp1252 é a aspa curva ”, que
+o parser trata como aspa: a string `"Prever — Sistema"` fechava no meio e o
+instalador morria na linha 37, antes de fazer qualquer coisa. Os três arquivos
+ganharam BOM e uma asserção que o cobra byte a byte. A pasta
+`Reacoes.tsx`/`reacoes.ts` da U117 já ensinara que o Windows não diferencia
+maiúsculas; desta vez o pino da U116 que contava três listas roláveis na ficha
+acusou a segunda (a de visitas saiu) e foi reapontado para duas; a asserção de
+unidade da R212 ganhou a visita e a ordem por data. O bloco U118 trava a lista única (sem "Histórico de visitas",
+com `atividadeDaVisita` e a capa na consulta), o alinhamento (o `stretch` nos
+dois breakpoints e o `flex` dos últimos cards), e o pacote (o preset, a porta
+configurável, o serviço, o firewall, o `config.env` protegido, nenhum segredo,
+`dist-windows/` ignorado).
+
+**Números.** Verificador: 3.106 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa (Cloudflare) e `npm run build:windows` completo, com o
+`Instalar-Prever.exe` gerado.

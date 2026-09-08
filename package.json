@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "android:sync": "cap sync android",
-    "android:open": "cap open android"
+    "android:open": "cap open android",
+    "build:windows": "node scripts/build-windows.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
@@ -98,5 +99,6 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.16"
-  }
+  },
+  "version": "1.0.0"
 }

@@ -175,10 +175,11 @@ no cabeçalho, continuam sendo o próprio controle.
 Na U116 (R209) a ficha ficou em **três colunas de desktop**: à esquerda a
 identidade (fachada, O local — onde agora moram o **serviço prestado** e a
 **estrutura**, R210/R211 —, contatos, contratos), no centro os sistemas
-instalados e as visitas, à direita a coluna alta de **atividades** — os mesmos
-cards da Início (R212: cor da borda pelo prazo, status no chip), rolando por
-dentro — e o plantão. Em tela menor a identidade vai à direita e o resto
-empilha; no celular é uma coluna.
+instalados, à direita a coluna alta de **atividades** — chamados e **visitas
+técnicas na mesma lista** (R218), os mesmos cards da Início (R212: cor da
+borda pelo prazo, status no chip), rolando por dentro — e o plantão. As três
+colunas terminam na mesma linha (R219). Em tela menor a identidade vai à
+direita e o resto empilha; no celular é uma coluna.
 
 Na U114 a ficha passou a **preencher a largura da janela** (R205) — a coluna dos
 sistemas cresce com o monitor, a da identidade tem teto — e os contatos

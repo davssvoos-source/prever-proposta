@@ -164,7 +164,13 @@ export function useVisitasDoCliente(clienteId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("visitas_tecnicas")
-        .select("id, status, data_hora_agendada, created_at, titulo, nome_predio, tecnico_id")
+        // R218: a ficha lista a visita na MESMA coluna das atividades, pelo montador
+        // da Início — que lê o número e a prioridade da capa (U29) e a proposta
+        .select(
+          "id, status, data_hora_agendada, created_at, titulo, nome_predio, tecnico_id, " +
+          "proposta_enviada_em, proposta_resultado, prioridade, clientes(nome), " +
+          "chamado:chamados!visitas_e_chamado(numero, prioridade)",
+        )
         .eq("cliente_id", clienteId as string)
         .order("created_at", { ascending: false });
       if (error) throw error;

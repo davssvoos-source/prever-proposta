@@ -18417,10 +18417,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // U116 (R209): três colunas — identidade | local | atividades — nesta ordem no fonte
     const ordem = ['Adicionar foto da fachada', '<CardLocal {...propsDosCards} />', '<CardContatos {...propsDosCards} veFinanceiro={veFinanceiro} />',
       '<span style={SEC_LABEL}>Contratos</span>',
-      '<InventarioCliente clienteId={id} podeEditar={isGerente} />', '<span style={SEC_LABEL}>Histórico de visitas</span>',
+      '<InventarioCliente clienteId={id} podeEditar={isGerente} />',
       '<span style={SEC_LABEL}>Atividades</span>', '<span style={SEC_LABEL}>Plantão</span>']
       .map((t) => fic111c.indexOf(t));
-    eq('R201/R203/R209/R211: IDENTIDADE (fachada → o local, com a estrutura dentro → contatos → contratos) → O LOCAL (sistemas com o vínculo dentro → visitas) → ATIVIDADES (a coluna alta → plantão), nesta ordem',
+    eq('R201/R203/R209/R211/R218: IDENTIDADE (fachada → o local, com a estrutura dentro → contatos → contratos) → O LOCAL (sistemas com o vínculo dentro) → ATIVIDADES (a coluna alta, com as visitas dentro → plantão), nesta ordem',
        ordem.every((p, i) => p >= 0 && (i === 0 || ordem[i - 1] < p)), true);
   }
   eq('R201: `Contato` é componente de MÓDULO (dentro do pai remontaria a cada render) — hoje exportado pelo ClienteForm, ao lado dos cards; a ficha está na grade própria .ficha-grid (R209)',
@@ -18740,8 +18740,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /<CardAtividade\s*\n\s*a=\{a\}/.test(fic116),
       /const TETO_CHAMADOS = 12;/.test(fic116), /ordens\.slice\(0, 8\)/.test(fic116)],
      [true, true, true, true, true, false]);
-  eq('R208/R209: as três listas de histórico da ficha rolam por dentro (atividades, visitas, plantão) — a página não cresce com o histórico',
-     (fic116.match(/className="rolagem-fina" style=\{\{ \.\.\.rolagem/g) ?? []).length, 3);
+  eq('R208/R209/R218: as duas listas de histórico da ficha rolam por dentro (atividades — com as visitas — e plantão) — a página não cresce com o histórico',
+     (fic116.match(/className="rolagem-fina" style=\{\{ \.\.\.rolagem/g) ?? []).length, 2);
 
   // ── R210: O local ──────────────────────────────────────────────────────────
   eq('R210 CRÍTICO: o serviço prestado é um item do card O local — em leitura, etiquetas sólidas por serviço marcado (ou "nenhum"); em edição, chips que ligam/desligam e gravam com o card; o cabeçalho da página não tem mais o controle',
@@ -18787,20 +18787,24 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── R212: o card da Início na ficha, pelo MESMO montador ──────────────────
   {
+    // U118 (R218): as visitas entram na MESMA lista, pelo montador delas
     const dentro = F.atividadesDaFicha(
-      [chamado('aberto', { natureza: 'interno', cliente_id: 'c1' }), chamado('aberto', { natureza: 'interno', cliente_id: 'c2' }),
+      [chamado('aberto', { natureza: 'interno', cliente_id: 'c1', created_at: '2026-03-01T00:00:00Z' }),
+       chamado('aberto', { natureza: 'interno', cliente_id: 'c2', created_at: '2026-02-01T00:00:00Z' }),
        chamado('aberto', { natureza: 'comercial', tipo: 'prospeccao', cliente_id: 'c1' })],
+      [visita('pendente', { id: 'v1', created_at: '2026-04-01T00:00:00Z' })],
       'c1', ctxVazio);
-    eq('R212 CRÍTICO: atividadesDaFicha passa cada chamado pelo montador da Início (atividadeDoChamado), marca como INDIRETA a que não é deste cliente e deixa a capa da proposta (comercial) de fora — ela já está no Histórico de visitas',
-       [dentro.length, dentro.map((x) => x.indireta), dentro.every((x) => x.a.fonte === 'chamado' && typeof x.a.registroId === 'string')],
-       [2, [false, true], true]);
+    eq('R212/R218 CRÍTICO: atividadesDaFicha passa cada chamado pelo montador da Início (atividadeDoChamado) e cada visita pelo dela (atividadeDaVisita), marca como INDIRETA a que não é deste cliente, deixa a capa da proposta (comercial) de fora — a visita já está na lista — e ordena da mais recente para a mais antiga',
+       [dentro.length, dentro.map((x) => x.a.fonte), dentro.map((x) => x.indireta), dentro.map((x) => x.visitaStatus),
+        dentro.every((x) => typeof x.a.registroId === 'string')],
+       [3, ['visita', 'chamado', 'chamado'], [false, false, true], ['pendente', null, null], true]);
   }
   const fic117 = ler117('src/routes/_authenticated/clientes.$id.tsx');
   const fic117c = cod117(fic117);
   eq('R212: a ficha NÃO tem mais card de atividade próprio nem pinta borda pelo status — usa <CardAtividade> com as pessoas para a pilha de avatares e navega pelo registroId; a nota "pelo grupo…" fica embaixo do card',
      [/const cardAtividade =|chamadoStatusInfo\(/.test(fic117c), /borderLeft: `3px solid \$\{corDaBorda\}`/.test(fic117c),
       /pessoas=\{pessoasPorId\}/.test(fic117), /params: \{ id: a\.registroId \}/.test(fic117),
-      /atividadesDaFicha\(ordens, id, \{ userId: null, apoios: new Set<string>\(\) \}\)/.test(fic117),
+      /atividadesDaFicha\(ordens, visitas, id, \{ userId: null, apoios: new Set<string>\(\) \}\)/.test(fic117), // U118: com as visitas
       /pelo grupo de clientes ou como local extra/.test(fic117),
       /import \{ useChamadosDoCliente, usePessoas, mapaDePessoas \} from "@\/features\/chamados\/data";/.test(fic117)],
      [false, false, true, true, true, true, true]);
@@ -18912,6 +18916,75 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /^### 6\.21 O chat de menções/m.test(ler117('DESIGN_SYSTEM.md')), /chat de menções/.test(ler117('docs/manual/visao-geral.md')),
       /^## U117 /m.test(ler117('docs/PLANO_UNIFICACAO.md')), /U117/.test(ler117('docs/ESTADO_ATUAL.md')) && /\*\*Pendente: U117\*\*/.test(ler117('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true, true, true, true]);
+}
+
+// ── U118 — visitas na lista de atividades, colunas alinhadas embaixo, o pacote para Windows Server (R218–R220) ──
+{
+  const fs118 = require('fs');
+  const ler118 = (f) => fs118.readFileSync(f, 'utf8');
+  const cod118 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const fic118 = ler118('src/routes/_authenticated/clientes.$id.tsx');
+  const fic118c = cod118(fic118);
+
+  // ── R218: uma lista só ────────────────────────────────────────────────────
+  eq('R218 CRÍTICO: a ficha não tem mais o card "Histórico de visitas" — a visita entra na coluna de Atividades pelo montador dela (atividadeDaVisita), a consulta traz a capa (número/prioridade), e o clique abre a tela da visita pelo status ou a atividade',
+     [/Histórico de visitas/.test(fic118c), /getStatusInfo\(/.test(fic118c),
+      /a\.fonte === "visita"\s*\n?\s*\? navigate\(visitaRouteFor\(\(visitaStatus \?\? "pendente"\) as any, a\.registroId\) as any\)/.test(fic118),
+      /atividadeDaVisita\(v, ctx\)/.test(ler118('src/features/clientes/ficha.ts')),
+      /chamado:chamados!visitas_e_chamado\(numero, prioridade\)/.test(ler118('src/features/clientes/data.ts'))],
+     [false, false, true, true, true]);
+  eq('R218: o cabeçalho conta UMA lista (atividades), não "N atividades · N visitas"',
+     [/\{atividades\.length\} atividade/.test(fic118), /visita\{visitas\.length === 1/.test(fic118)],
+     [true, false]);
+
+  // ── R219: as colunas terminam na mesma linha ──────────────────────────────
+  const css118 = ler118('src/styles.css');
+  eq('R219 CRÍTICO: a grade estica as colunas (align-items: stretch nos dois breakpoints de desktop) e o último card de cada coluna cresce — na de atividades o PRIMEIRO (a lista alta) — e o painel do vínculo cresce dentro do card de sistemas',
+     [(css118.match(/grid-template-areas: "(?:local identidade" "atividades identidade|identidade local atividades)";\s*\n\s*align-items: stretch;/g) ?? []).length,
+      /\.ficha-identidade > :last-child, \.ficha-local > :last-child \{ flex: 1 1 auto; min-height: 0; \}/.test(css118),
+      /\.ficha-atividades > :first-child \{ flex: 1 1 auto; min-height: 0; \}/.test(css118),
+      /\.ficha-local \.painel-vinculo \{ flex: 1 1 auto; min-height: 0; \}/.test(css118),
+      /maxHeight: ALTURA_DAS_ATIVIDADES/.test(fic118)],
+     [2, true, true, true, true]);
+
+  // ── R220: o pacote para Windows Server ─────────────────────────────────────
+  const inst118 = ler118('deploy/windows/instalar.ps1');
+  const build118 = ler118('scripts/build-windows.cjs');
+  eq('R220 CRÍTICO: o pacote existe — build com o preset node-server (a PORTA vem do ambiente), instalador com a porta configurável (janela ou -Porta), serviço WinSW com reinício e logs, firewall, ponto de entrada lendo config.env, atualizar e desinstalar; dist-windows fora do git',
+     [/NITRO_PRESET: "node-server"/.test(build118), /"build:windows": "node scripts\/build-windows\.cjs"/.test(ler118('package.json')),
+      /\[int\]\s+\$Porta = 0/.test(inst118), /Porta em que o sistema vai atender/.test(inst118), /A porta \$Porta já está em uso/.test(inst118),
+      /netsh advfirewall firewall add rule/.test(inst118), /<id>\$NOME_SERVICO<\/id>/.test(inst118) && /<onfailure action="restart"/.test(inst118),
+      /process\.env\.NITRO_PORT \?\?= process\.env\.PORT;/.test(ler118('deploy/windows/iniciar.mjs')),
+      fs118.existsSync('deploy/windows/atualizar.ps1') && fs118.existsSync('deploy/windows/desinstalar.ps1'),
+      /^dist-windows\/$/m.test(ler118('.gitignore'))],
+     [true, true, true, true, true, true, true, true, true, true]);
+  eq('R220 CRÍTICO: o pacote nunca leva segredo — o build copia só as chaves PÚBLICAS do .env para o config.padrao.env e aborta se achar service role ou Anthropic; o build aborta se o alvo sair para Cloudflare',
+     [/\/\^\(SUPABASE_URL\|SUPABASE_PUBLISHABLE_KEY\|SUPABASE_PROJECT_ID\)=\//.test(build118),
+      /SERVICE_ROLE\|ANTHROPIC/.test(build118), /wrangler\.json/.test(build118),
+      /SERVICE_ROLE|ANTHROPIC/.test(ler118('.env'))],
+     [true, true, true, false]);
+  eq('R220: o config.env fica só para administradores, e o instalador diz o que falta fazer no Supabase (URL Configuration)',
+     [/icacls \$config \/inheritance:r/.test(inst118), /URL Configuration/.test(inst118), /Redirect URLs/.test(inst118)],
+     [true, true, true]);
+  // O Windows PowerShell 5.1 lê .ps1 SEM BOM como ANSI: o "—" e o "✔" trazem o
+  // byte 0x94 (a aspa curva ” em cp1252), que o parser trata como aspa e fecha a
+  // string no meio — o instalador quebrava na linha 37 antes de fazer nada.
+  eq('R220 CRÍTICO: os três .ps1 do pacote começam com BOM UTF-8 — sem ele o PowerShell 5.1 do Server 2016 lê o travessão como aspa e o instalador não passa do cabeçalho',
+     ['deploy/windows/instalar.ps1', 'deploy/windows/atualizar.ps1', 'deploy/windows/desinstalar.ps1']
+       .filter((f) => !fs118.readFileSync(f).subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf]))),
+     []);
+
+  // regra 7
+  const prod118 = ler118('docs/PRODUTO.md');
+  eq('U118 (regra 7): R218–R220 existem com a frase do Davi, última atualização R220, o manual de hospedagem existe e está no índice, o ONBOARDING §6 e o CLAUDE.md apontam para ele, o inventário da skill conhece as classes novas, P61/P62 registradas, a U118 está no diário e no ESTADO',
+     [['R218', 'R219', 'R220'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod118)),
+      Number((prod118.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 220,
+      /^# Hospedagem em servidor Windows/m.test(ler118('docs/manual/hospedagem-windows.md')),
+      /hospedagem-windows\.md/.test(ler118('docs/manual/README.md')), /hospedagem-windows\.md/.test(ler118('ONBOARDING.md')), /hospedagem-windows\.md/.test(ler118('CLAUDE.md')),
+      /\.ficha-grid/.test(ler118('.claude/skills/designer/references/inventario.md')) && /\.fab-chat/.test(ler118('.claude/skills/designer/references/inventario.md')),
+      /^## P61 /m.test(ler118('docs/PENDENCIAS_TECNICAS.md')) && /^## P62 /m.test(ler118('docs/PENDENCIAS_TECNICAS.md')),
+      /^## U118 /m.test(ler118('docs/PLANO_UNIFICACAO.md')), /U118/.test(ler118('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

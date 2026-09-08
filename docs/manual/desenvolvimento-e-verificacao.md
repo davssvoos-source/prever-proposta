@@ -102,3 +102,15 @@ impede o bug de voltar sem ninguém notar.
   escrever asserção nova
 - `.gitignore` — o comentário do `.env`
 - `docs/PENDENCIAS_TECNICAS.md` — S10 (CSP) e os defeitos conhecidos
+
+## O build para Windows Server (R220, U118)
+
+`npm run build:windows` roda o `vite build` com `NITRO_PRESET=node-server` — o
+mesmo código, outro alvo do Nitro (o build normal, da Lovable, sai para
+Cloudflare) — e monta `dist-windows/Prever-<versão>/` com o build, o instalador
+(`deploy/windows/instalar.ps1`, compilado para `Instalar-Prever.exe` quando o
+módulo PowerShell `ps2exe` está instalado: `Install-Module ps2exe`), o ponto de
+entrada do serviço e os scripts de manutenção. A pasta é gerada e está no
+`.gitignore`. O que o pacote faz no servidor está em
+`docs/manual/hospedagem-windows.md`. O verificador cobra que o pacote nunca
+leva segredo (só as chaves públicas do `.env` vão para o `config.padrao.env`).

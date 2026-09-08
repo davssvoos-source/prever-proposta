@@ -91,12 +91,16 @@ importa, e o primeiro passo é o único perigoso de tudo:
 
    Vale fazer essa verificação **hoje**, mesmo sem cancelar nada — é 2
    minutos e responde se os dados da empresa dependem de uma assinatura.
-2. **Hospedagem substituta** — o build já sai pronto para **Cloudflare
-   Workers** (o nitro gera `.output/` + `wrangler.json`). Menor atrito: conta
-   Cloudflare + `npx wrangler deploy`, ou uma GitHub Action no push. Testar
-   ANTES de cancelar.
-3. **Variáveis** no novo host: as `VITE_*` públicas (hoje no `.env`) e os
-   segredos (SERVICE key, ANTHROPIC) só no painel, nunca com prefixo VITE_.
+2. **Hospedagem substituta — o servidor Windows da empresa (R220, U118).**
+   `npm run build:windows` gera o pacote com o `Instalar-Prever.exe`: porta
+   configurável, serviço do Windows, firewall, logs. O passo a passo inteiro
+   está em `docs/manual/hospedagem-windows.md`. Instale, teste com todo mundo
+   pelo endereço novo e ajuste a URL Configuration do Supabase — ANTES de
+   cancelar. (A alternativa em nuvem continua valendo: o build normal sai
+   pronto para **Cloudflare Workers** — `npx wrangler deploy`.)
+3. **Variáveis** no novo host: as `VITE_*` públicas (hoje no `.env`) vão
+   embutidas no build; os segredos (SERVICE key, ANTHROPIC) ficam só no
+   `config.env` do servidor (ou no painel da nuvem), nunca com prefixo VITE_.
 4. **Cancelar a Lovable** — só com o passo 1 confirmado e o deploy novo no ar.
 5. **Faxina pós-saída** (commit próprio): remover `AGENTS.md` (boilerplate
    da Lovable) e `.lovable/`; avaliar tirar o `.env` do versionamento — a

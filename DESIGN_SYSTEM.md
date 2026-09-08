@@ -948,14 +948,20 @@ do trabalho — no desktop, que é onde ela é usada (R205):
   linha de meta 12,5 secundária (endereço · contagens). O serviço prestado
   saiu daqui para o card O local (R210). Não há botão de configurar: a edição
   é no lugar, card a card (R203).
-- **Coluna de atividades** (R209/R212): o card tem `max-height: min(72vh,
-  900px)` e a lista rola por dentro (`.rolagem-fina`). Cada atividade é o
-  **`CardAtividade` da Início** (§6.12): fundo neutro, a cor estratégica só na
-  borda em degradê pela faixa de prazo, chip de status preenchido, pilha de
+- **Coluna de atividades** (R209/R212/R218): o card tem `max-height:
+  min(72vh, 900px)` e a lista rola por dentro (`.rolagem-fina`). Cada item é
+  o **`CardAtividade` da Início** (§6.12) — chamados E visitas técnicas na
+  mesma lista, pelos montadores da Início: fundo neutro, a cor estratégica só
+  na borda em degradê pela faixa de prazo, chip de status preenchido, pilha de
   avatares — a coluna ALTA da ficha não tem card próprio. Atividade que veio
   pelo grupo ou como local extra leva a nota 10,5 secundária embaixo. Teto
-  declarado de 12 com "ver todas". Plantão e Histórico de visitas rolam por
-  dentro com `max-height` 320 e 360.
+  declarado de 12 com "ver todas". O Plantão rola por dentro com `max-height`
+  320.
+- **Colunas alinhadas embaixo** (R219): nos dois breakpoints de desktop a
+  grade tem `align-items: stretch`; o último card da identidade e o card dos
+  sistemas crescem (`flex: 1 1 auto; min-height: 0`), e na coluna de
+  atividades cresce o PRIMEIRO (a lista). Dentro do card dos sistemas o
+  `.painel-vinculo` cresce junto. As três colunas terminam na mesma linha.
 - **Card**: `card(isLight)`, raio 18, padding 18, micro-rótulo dourado 10,5/700
   com ícone 15px e a contagem em 11,5 secundário ao lado.
 - **Linha de lista clicável** (atividade, visita, contrato): fundo

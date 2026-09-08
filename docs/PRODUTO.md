@@ -14,7 +14,7 @@
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
-- [22. O patrimônio do QAP, a ficha do cliente e a Início revista (R196–R217, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-e-a-início-revista-r196r217-davi-2026-09-04-a-2026-09-08) · R196–R217 (22)
+- [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -28,7 +28,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-08 (R217). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-08 (R220). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3725,7 +3725,7 @@ trabalho".
   e 6 de 800). *(Davi, 04/09/2026, revisão manual: pediu tipografia
   estratégica — pesos mais grossos onde cabe, mais finos em outros lugares.)*
 
-## 22. O patrimônio do QAP, a ficha do cliente e a Início revista (R196–R217, Davi, 2026-09-04 a 2026-09-08)
+## 22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)
 
 O controle patrimonial da Prever vive no **QAP ERP**, em *Patrimônio >
 Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
@@ -4053,3 +4053,39 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   e a lista do banco é a mesma do app. Até a U117 rodar, as reações não
   aparecem. *(Davi, 08/09/2026: "no chat deve dar para reagir se for
   comentário, reagindo no comentário da atividade.")*
+
+- **R218** — **Na ficha do cliente, visitas técnicas, chamados e atividades
+  ficam na MESMA lista.** A coluna Atividades lista os chamados do cliente (de
+  todas as naturezas, menos a capa da proposta) e as visitas técnicas dele,
+  cada um pelo montador da Início (chamado → `atividadeDoChamado`, visita →
+  `atividadeDaVisita`), como cards da Início (R212), da mais recente para a
+  mais antiga. Clicar num card de visita abre a tela da visita pelo status
+  dela; num chamado, abre a atividade. O card "Histórico de visitas" saiu; a
+  capa da proposta fica de fora porque a visita já é o registro. *(Davi,
+  08/09/2026: "visitas técnicas, chamados, atividades devem estar tudo listado
+  no mesmo campo.")*
+
+- **R219** — **As colunas da ficha terminam na mesma linha.** A grade estica
+  as colunas à altura da mais alta, e o último card de cada coluna cresce até
+  o fim dela — na coluna de atividades é a lista (que rola por dentro, R208),
+  o Plantão fica com a altura própria; no card dos sistemas, os dois painéis
+  do vínculo crescem. Nenhuma coluna acaba com espaço morto enquanto a vizinha
+  continua. *(Davi, 08/09/2026: "Ajuste o conteúdo da tela de cliente para que
+  os campos fiquem alinhados no limite inferior.")*
+
+- **R220** — **O sistema é hospedável em servidor Windows próprio, como
+  serviço, na porta que o setup escolher.** `npm run build:windows` gera o
+  pacote (`dist-windows/Prever-<versão>/`): o build para Node (preset
+  `node-server` do Nitro — o build normal, da Lovable, sai para Cloudflare),
+  o instalador `Instalar-Prever.exe` (e o `instalar.ps1` que ele embrulha), o
+  ponto de entrada do serviço e os scripts de atualizar e desinstalar. O
+  instalador pede a **porta**, a pasta e a URL do site (e, opcionais, as chaves
+  service role e Anthropic), garante o Node 20+, grava o `config.env`, registra
+  o serviço Windows "Prever — Sistema" (WinSW: reinício automático, logs
+  rotativos), libera a porta no firewall e confere que o sistema responde. O
+  pacote nunca leva segredo: só as chaves públicas do `.env`. O banco continua
+  no Supabase; a Lovable pode coexistir até ser desligada (ONBOARDING §6;
+  manual `hospedagem-windows.md`). *(Davi, 08/09/2026: "Eu quero hospedar o
+  sistema em um servidor Windows, rodando Windows Server 2016. Preciso que no
+  Setup seja configurável a porta pois rodam varios serviços em portas
+  distintas, me faça um arquivo executável de instalação.")*

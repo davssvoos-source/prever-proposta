@@ -1257,12 +1257,20 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   .ficha-grid {
     grid-template-columns: minmax(0, 1fr) clamp(320px, 32%, 400px); gap: 18px;
     grid-template-areas: "local identidade" "atividades identidade";
+    align-items: stretch;
   }
+  /* R219 (U118): as colunas terminam na MESMA linha — o último card de cada
+     coluna cresce até o fim dela (na de atividades é o PRIMEIRO, a lista alta,
+     que rola por dentro; o Plantão fica com a altura dele). */
+  .ficha-identidade > :last-child, .ficha-local > :last-child { flex: 1 1 auto; min-height: 0; }
+  .ficha-atividades > :first-child { flex: 1 1 auto; min-height: 0; }
+  .ficha-local .painel-vinculo { flex: 1 1 auto; min-height: 0; }
 }
 @media (min-width: 1440px) {
   .ficha-grid {
     grid-template-columns: clamp(320px, 24%, 400px) minmax(0, 1fr) clamp(320px, 26%, 420px);
     grid-template-areas: "identidade local atividades";
+    align-items: stretch;
   }
 }
 

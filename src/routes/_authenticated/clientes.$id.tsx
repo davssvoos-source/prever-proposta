@@ -22,9 +22,12 @@
 //     prestado e a estrutura — R210/R211), Contatos, Contratos (só quem vê
 //     financeiro).
 //   · O LOCAL (centro, o que sobrar): Sistemas instalados — os dois painéis do
-//     vínculo por arrasto (R206) — e o Histórico de visitas.
-//   · ATIVIDADES (direita, 320–420px): a coluna ALTA — os cards de atividade
-//     em fila vertical, rolando por dentro (R208), e o Plantão embaixo.
+//     vínculo por arrasto (R206).
+//   · ATIVIDADES (direita, 320–420px): a coluna ALTA — chamados E visitas
+//     técnicas na MESMA lista (R218), como cards da Início (R212), rolando por
+//     dentro (R208), e o Plantão embaixo.
+// R219: as três colunas terminam na MESMA linha — a grade estica as colunas e o
+// último card de cada uma cresce (styles.css, .ficha-grid).
 // A grade é `.ficha-grid` (styles.css): três colunas a partir de 1440px, duas
 // entre 1024 e 1439 (identidade à direita, o resto empilhado), uma no celular
 // (local → atividades → identidade). Toda lista longa rola dentro do próprio
@@ -38,13 +41,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Camera, FileText, MapPin, CalendarDays, Wrench, Trash2, Home, Image as ImagemIcone,
+  ArrowLeft, Camera, FileText, MapPin, Wrench, Trash2, Home, Image as ImagemIcone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsGerente, useVeFinanceiro } from "@/features/gerencial/data";
 import { TIPO_LABEL } from "@/features/gerencial/constants";
-import { getStatusInfo } from "@/lib/visita-status";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { FONT, card, etiqueta } from "@/lib/ui";
 import { PRISMA, cinzas } from "@/lib/paleta";
@@ -102,9 +104,10 @@ function ClienteDetalhePage() {
   // da coluna alta é o CardAtividade, com a regra de cor da R136 dentro dele
   const { data: pessoas } = usePessoas();
   const pessoasPorId = useMemo(() => mapaDePessoas(pessoas), [pessoas]);
+  // R218: visitas técnicas, chamados e atividades na MESMA lista, pelos montadores da Início
   const atividades = useMemo(
-    () => atividadesDaFicha(ordens, id, { userId: null, apoios: new Set<string>() }),
-    [ordens, id],
+    () => atividadesDaFicha(ordens, visitas, id, { userId: null, apoios: new Set<string>() }),
+    [ordens, visitas, id],
   );
   const plantao = useAtendimentosDoCliente(id);
   const { data: contratos = [] } = useContratosDoCliente(id);
@@ -256,7 +259,7 @@ function ClienteDetalhePage() {
               {enderecoCurto || "endereço não informado"}
             </span>
             <span style={{ opacity: 0.6 }}>·</span>
-            <span>{atividades.length} atividade{atividades.length === 1 ? "" : "s"} · {visitas.length} visita{visitas.length === 1 ? "" : "s"}</span>
+            <span>{atividades.length} atividade{atividades.length === 1 ? "" : "s"}</span>
           </div>
         </div>
       </div>
@@ -397,44 +400,6 @@ function ClienteDetalhePage() {
               e o vínculo por arrasto em dois painéis (Blocos | Sem bloco). */}
           <InventarioCliente clienteId={id} podeEditar={isGerente} />
 
-          {/* Histórico de visitas */}
-          <div style={{ ...CARD, display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <CalendarDays size={15} color={gold} />
-              <span style={SEC_LABEL}>Histórico de visitas</span>
-              <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>{visitas.length}</span>
-            </div>
-            {visitas.length === 0 ? (
-              <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary }}>
-                Nenhuma visita técnica registrada para este cliente.
-              </div>
-            ) : (
-              <div className="rolagem-fina" style={{ ...rolagem, maxHeight: 360, display: "flex", flexDirection: "column", gap: 8 }}>
-                {visitas.map((v: any) => {
-                  const info = getStatusInfo(v.status);
-                  const corVisita = isLight ? info.colorLight : info.color;
-                  const quando = v.data_hora_agendada ?? v.created_at;
-                  return (
-                    <button
-                      key={v.id}
-                      onClick={() => navigate(visitaRouteFor(v.status, v.id) as any)}
-                      style={{ ...itemLista(corVisita), flexShrink: 0 }}
-                    >
-                      <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 12.5, fontWeight: 600 }}>
-                        {quando
-                          ? new Date(quando).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
-                          : "sem data"}
-                        {v.nome_predio || v.titulo ? <span style={{ fontWeight: 400, color: textSecondary }}> · {v.nome_predio ?? v.titulo}</span> : null}
-                      </span>
-                      <span style={chipStatus({ dark: info.color, light: info.colorLight, bg: info.bg })}>
-                        {info.labelUpper}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* ══ ATIVIDADES — a coluna alta (R209) ═════════════════════════════ */}
@@ -462,12 +427,14 @@ function ClienteDetalhePage() {
               <div className="rolagem-fina" style={{ ...rolagem, flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
                 {/* R212: o MESMO card da Início — a cor estratégica só na borda,
                     pela faixa de prazo (R136); o status no chip preenchido (R177) */}
-                {chamadosVisiveis.map(({ a, indireta }) => (
+                {chamadosVisiveis.map(({ a, indireta, visitaStatus }) => (
                   <div key={a.id} style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 3 }}>
                     <CardAtividade
                       a={a}
                       pessoas={pessoasPorId}
-                      onClick={() => navigate({ to: "/chamados/$id", params: { id: a.registroId } })}
+                      onClick={() => (a.fonte === "visita"
+                        ? navigate(visitaRouteFor((visitaStatus ?? "pendente") as any, a.registroId) as any)
+                        : navigate({ to: "/chamados/$id", params: { id: a.registroId } }))}
                     />
                     {/* veio pelo grupo ou como local extra — a ficha diz, para a
                         pessoa não estranhar uma atividade "de outro cliente" aqui */}

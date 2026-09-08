@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 64 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **56 em aberto, 8 fechadas.**
+> **Sumário** — 66 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **58 em aberto, 8 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -67,6 +67,8 @@
 - [P58 — ~~BAIXO~~ FECHADA (U100b, 2026-09-04) · Liberar os grupos novos de clientes quando a U100 rodar](#p58-baixo-fechada-u100b-2026-09-04-liberar-os-grupos-novos-de-clientes-quando-a-u100-rodar)
 - [P59 — BAIXO · `importar-notion.ts` ficou sem tela (2026-09-04, U99)](#p59-baixo-importar-notionts-ficou-sem-tela-2026-09-04-u99)
 - [P60 — ~~BAIXO~~ FECHADA (U100b, 2026-09-04) · `comFallbackDaU96` pode sair: a U96 rodou](#p60-baixo-fechada-u100b-2026-09-04-comfallbackdau96-pode-sair-a-u96-rodou)
+- [P61 — MÉDIO · A saída da Lovable depende de passos que só o Davi faz (2026-09-08, U118)](#p61-médio-a-saída-da-lovable-depende-de-passos-que-só-o-davi-faz-2026-09-08-u118)
+- [P62 — BAIXO · O chat de menções ainda é a primeira versão (2026-09-08, U117)](#p62-baixo-o-chat-de-menções-ainda-é-a-primeira-versão-2026-09-08-u117)
 <!-- sumario:fim -->
 
 Registro formal do que a revisão adversarial encontrou.
@@ -2179,3 +2181,27 @@ O SELECT que repetia sem `impacto_operacional`/`proposta_id` num 42703
 (`features/chamados/data.ts`) existia só para a janela entre o push e a
 migration. A U96 rodou em 04/09/2026; o fallback é código morto. Remover pede
 reapontar as asserções da U96 que o fixam — leva de limpeza, não urgência.
+
+## P61 — MÉDIO · A saída da Lovable depende de passos que só o Davi faz (2026-09-08, U118)
+
+O pacote para Windows Server existe (R220, `npm run build:windows`,
+`docs/manual/hospedagem-windows.md`) e pode rodar em paralelo à Lovable. O que
+falta é do Davi, na ordem do `ONBOARDING.md` §6: (1) confirmar que o projeto
+Supabase é da empresa; (2) instalar o pacote no servidor e conferir o acesso
+de todo mundo pelo endereço novo; (3) pôr o endereço novo na URL Configuration
+do Supabase (Site URL + Redirect URLs); (4) só então cancelar a Lovable; (5) a
+faxina pós-saída (`AGENTS.md`, `.lovable/`, o `.env` versionado e as duas
+asserções que o cobram). Enquanto a Lovable estiver ligada, nada disto é
+urgente — o push continua publicando lá.
+
+## P62 — BAIXO · O chat de menções ainda é a primeira versão (2026-09-08, U117)
+
+Três lapidações conhecidas: (a) o sino (`NotifIcon`, NotificationPanel.tsx) não
+tem ícone para os tipos `mencao` e `chamado_comentario` — cai no genérico;
+(b) a menção não tem "lida" própria — o selo do botão do chat conta as
+notificações de menção não lidas (limite 20 do `useNotificacoes`), e abrir o
+chat não as marca; (c) os comentários e as reações não estão na publicação
+realtime — o chat recarrega pelo canal de `notificacoes` (toda menção gera
+uma) e as reações pelo `invalidateQueries`, não ao vivo. E a decisão da R216
+("Responder aqui" em menção de descrição vira comentário) está registrada para
+o Davi rever.

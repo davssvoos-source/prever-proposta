@@ -83,6 +83,21 @@ Fora de `components/`, mas compartilhados:
   primeira mudança de design.
 - `src/features/home/MenuFiltro.tsx` · `CampoBusca.tsx` — filtro e busca.
 - `src/features/home/CardAtividade.tsx` — o card com cor só na borda (R136).
+  É o card de atividade em TODO lugar — a Início, o painel operacional e a
+  ficha do cliente (R212) — sempre via `atividadeDoChamado`/`atividadeDaVisita`.
+- `src/features/clientes/ClienteForm.tsx` — `CardLocal` · `CardContatos`
+  (cards editáveis com lápis e Salvar/Cancelar no lugar, R203) · `Contato`
+  (com os botões WhatsApp/copiar, R207) · a casca `CascaDoCard`.
+- `src/features/clientes/InventarioCliente.tsx` · `EquipamentosDoCliente.tsx`
+  — os dois painéis do vínculo por arrasto (R206): `estiloDoPainel`,
+  `CabecalhoDoPainel`, `LinhaDoPatrimonio`, `SeletorDeSistema`.
+- `src/features/chamados/FileiraDeReacoes.tsx` — a fileira de reações de um
+  comentário (R217), a mesma no painel, na página e no chat.
+- `src/features/home/ChatDeMencoes.tsx` — o botão flutuante e o painel do chat
+  de menções (R215); `PainelChamado` com `posicao="central"` é o Dialog no
+  meio da tela.
+- `src/features/gerencial/NovaVisitaTecnica.tsx` — o formulário da proposta
+  (R194), com `embutido` para viver dentro do "+" da Início (R214).
 
 ## 4. shadcn/ui — `src/components/ui/` (45 arquivos)
 
@@ -116,6 +131,12 @@ serve de carregando.
 | `.campo-degrade` | o campo de IA com fundo em degradê |
 | `.so-desktop` / `.so-celular` | troca por CSS no breakpoint 1024px — **nunca por JS** (media query não pisca no primeiro render) |
 | `.clientes-duas-colunas`, `.clientes-lista`, `.fachada-card` | a tela de clientes |
+| `.pagina-larga` | a página sangra até a borda da janela (a conta da `.sangra-x`) — a ficha do cliente (R205); use `paddingTop/Bottom`, nunca o atalho `padding` |
+| `.ficha-grid` (+ `.ficha-identidade/-local/-atividades`) | as três áreas da ficha: uma coluna no celular, duas de 1024 a 1439, três a partir de 1440; colunas esticadas e alinhadas embaixo (R209/R219) |
+| `.painel-vinculo` | os dois painéis do vínculo por arrasto, lado a lado e da mesma altura no desktop (R206/R208) |
+| `.rolagem-fina` | barra de rolagem fina no desktop — todo contêiner que rola por dentro |
+| `.fab-chat` · `.fab-chat-painel` | o botão flutuante do chat e o painel, acima da BottomNav no celular (R215) |
+| `.nova-visita-colunas` · `.nova-visita-embutida` | as colunas do formulário da visita; embutido no "+", no máximo duas (R194/R214) |
 | `.checklist-check`, `.editor-linha`, `.mencao-chip`, `.mencao-lista` | o editor |
 | `@utility badge-pill`, `btn-gold`, `stat-card`, `section-eyebrow`… | utilitários Tailwind da casa |
 

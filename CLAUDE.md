@@ -17,7 +17,10 @@ o histórico do lado dela).
 Sair da Lovable é uma possibilidade FUTURA, não um plano em andamento: o
 passo a passo está guardado em `ONBOARDING.md` §6. Até lá, nada de "arrumar"
 o que existe por causa dela — `.env` versionado, `AGENTS.md` e `.lovable/`
-ficam como estão.
+ficam como estão. Existe, desde a U118, um **segundo alvo do mesmo código**: o
+pacote para **Windows Server** (`npm run build:windows` → `dist-windows/`, com
+o instalador de porta configurável e o serviço — `docs/manual/hospedagem-windows.md`,
+R220). Ele pode rodar em paralelo à Lovable apontando para o mesmo Supabase.
 
 O usuário é o **Davi** — dita regras de produto em conversa, em português.
 Todo o repo (nomes, comentários, docs) é em **português**.

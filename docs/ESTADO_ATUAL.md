@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-08** · última regra: **R217** · último diário:
-**U117** · verificador: **3.098 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-08** · última regra: **R220** · último diário:
+**U118** · verificador: **3.106 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U110** (U106 e U109 em 07/09/2026; a
 **U110**, os 4.241 equipamentos do QAP, em 08/09/2026) · **pendente: U117**
 (reações a comentário e a função do chat de menções).
@@ -93,6 +93,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U115 | os painéis Blocos e Sem bloco **rolam por dentro** (teto min(64vh, 720px), mesma altura no desktop, só a lista rola) — a página não cresce com os equipamentos (R208) |
 | U116 | a ficha em **três colunas de desktop** (`.ficha-grid`: identidade \| local \| atividades, com a forma do conteúdo — Atividades é a coluna alta de cards, rolando por dentro) (R209); o **serviço prestado vira item do card O local** e a linha Coordenadas sai (R210) |
 | U117 | a **estrutura dentro de O local** (R211); a coluna Atividades da ficha usa o **card da Início** (R212); **Problema/Diagnóstico só na corretiva** (R213); a **Proposta Comercial expande no "+"** (R214, o formulário da visita virou componente); o **chat de menções** na Início — botão fixo, painel, atividade no meio da tela, responder aqui, reações (R215–R217); migration U117 |
+| U118 | na ficha, **visitas, chamados e atividades numa lista só** (R218) e as **colunas alinhadas embaixo** (R219); o **pacote para Windows Server** — `npm run build:windows`, `Instalar-Prever.exe` com porta configurável, serviço WinSW, manual `hospedagem-windows.md` (R220); revisão: inventário da skill, P61/P62, ONBOARDING §6 |
 
 ## 4. Banco: migrations
 
@@ -125,6 +126,11 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   tentativa abortou em **42P10** — índice parcial exige o predicado repetido
   no `ON CONFLICT` — e foi corrigida no lugar antes de rodar (cicatriz na
   skill do banco).
+- **Hospedagem (R220, U118):** além da Lovable (push em `main` publica), existe
+  o pacote para **Windows Server** — `npm run build:windows` → `dist-windows/`
+  com `Instalar-Prever.exe` (porta configurável, serviço "Prever — Sistema").
+  Manual: `docs/manual/hospedagem-windows.md`. O que ainda depende do Davi para
+  sair da Lovable está em P61.
 - **O mecanismo da regra 5** (o push publica antes da migration rodar): uma
   coluna ou valor novo que dependa de CHECK nasce em duas listas — a que o app
   RENDERIZA e a que ele OFERECE para gravar (`TIPOS_SISTEMA_NAO_OFERECIDOS`
@@ -224,6 +230,12 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   atividade abre no meio da tela, "Responder aqui" vira comentário com menção
   (decisão a rever se o Davi quiser), reações por emoji (lista fechada, tabela
   própria). Pendência: **rodar a U117**.
+- **R218–R220** — na ficha, visitas técnicas entram na **mesma lista** das
+  atividades (o card Histórico de visitas saiu) e as colunas terminam na mesma
+  linha; o sistema ganhou o **pacote para Windows Server** (`npm run
+  build:windows`): instalador `.exe` com porta configurável, serviço do
+  Windows, firewall, `config.env` — a Lovable pode coexistir até o Davi
+  desligá-la (`ONBOARDING.md` §6, P61).
 
 ## 6. Perguntas em aberto
 

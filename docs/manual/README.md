@@ -21,6 +21,7 @@ na mesma leva.
 | [desenvolvimento-e-verificacao.md](desenvolvimento-e-verificacao.md) | O toolchain real (tsc com baseline), as asserções, routeTree, .env/Lovable |
 | [seguranca.md](seguranca.md) | Blindagem RLS, riscos aceitos S4–S11, lições pagas, checklists |
 | [codigos-de-erro.md](codigos-de-erro.md) | Como ler o código (`PRV-ÁREA-CLASSE-ORIGEM`), as 7 classes e o que fazer com cada uma |
+| [hospedagem-windows.md](hospedagem-windows.md) | O servidor Windows próprio (R220): o pacote `build:windows`, o instalador com porta configurável, o serviço WinSW, atualizar, logs, o que ajustar no Supabase |
 
 Leitura recomendada para alguém novo: `../ESTADO_ATUAL.md` (onde o projeto
 está) → `../CONTEXTO_OPERACAO_TECNICA.md` e `../CONTEXTO_ESTRUTURA_ATIVIDADES.md`

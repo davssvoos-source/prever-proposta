@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 .output
+# o pacote para Windows Server (npm run build:windows) — gerado, nunca commitado
+dist-windows/
 .vinxi
 .tanstack/**
 .nitro
