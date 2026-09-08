@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 48 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 49 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -37,7 +37,8 @@
   - [6.19 Formulário em colunas — a Nova Visita (v12 — 2026-09-04, R194)](#619-formulário-em-colunas-a-nova-visita-v12-2026-09-04-r194)
   - [6.20 Ficha do cliente — três colunas de desktop, os dois painéis do vínculo e os cards editáveis (v15 — 2026-09-08, R200–R210)](#620-ficha-do-cliente-três-colunas-de-desktop-os-dois-painéis-do-vínculo-e-os-cards-editáveis-v15-2026-09-08-r200r210)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
-  - [6.21 O chat de menções — botão flutuante, painel e reações (v15 — 2026-09-08, R215–R217)](#621-o-chat-de-menções-botão-flutuante-painel-e-reações-v15-2026-09-08-r215r217)
+  - [6.21 O chat da Início — botão flutuante, a conversa 9:16, as bolhas por prazo (v16 — 2026-09-08, R215–R217, R222–R223)](#621-o-chat-da-início-botão-flutuante-a-conversa-916-as-bolhas-por-prazo-v16-2026-09-08-r215r217-r222r223)
+  - [6.22 O editor de texto — uma área, blocos com marcador próprio, menção como chip (v16 — 2026-09-08, R135, R224)](#622-o-editor-de-texto-uma-área-blocos-com-marcador-próprio-menção-como-chip-v16-2026-09-08-r135-r224)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
 - [9. Visualização de dados](#9-visualização-de-dados)
@@ -1037,33 +1038,85 @@ imagem — sem ela a foto não aparece, e é isso que faz a entrada ser uma
 transição e não um salto. A opacidade final é menor no claro, onde a foto
 competiria com o texto escuro sobre branco.
 
-### 6.21 O chat de menções — botão flutuante, painel e reações (v15 — 2026-09-08, R215–R217)
+### 6.21 O chat da Início — botão flutuante, a conversa 9:16, as bolhas por prazo (v16 — 2026-09-08, R215–R217, R222–R223)
 
 - **Botão flutuante** (`.fab-chat`): círculo de 54px em `goldButton()` (a ação
-  principal da tela — a única cor saturada que a R174 permite), ícone
-  `MessageCircle` 22, sombra discreta. `position: fixed`, canto inferior
-  direito: no celular `bottom: calc(max(16px, safe-area) + 84px)` para ficar
-  acima da BottomNav; no desktop 24px. `z-index: 60` — acima da BottomNav (50)
-  e da sidebar (55), abaixo dos diálogos (100). O selo de não lidas é um disco
-  20px em `texto` sobre `superficie`, 11/700, com borda na cor da página.
-- **Painel** (`.fab-chat-painel`): `card(isLight)` raio 18, largura
-  `min(420px, 100vw − 24px)`, altura máxima `min(72vh, 760px)`, no lugar do
-  botão; cabeçalho com micro-rótulo dourado "Menções" e contagem; a lista rola
-  por dentro (`.rolagem-fina`). Não é modal — abrir uma atividade fecha o chat.
-- **Card de menção**: fundo `campo`, borda `divisoria`, raio 14, padding 10×12.
-  Linha 1: `AvatarCirculo` 22 · nome 12/600 · "· há 2 h" 400 secundário · à
-  direita o rótulo 10/600 caixa alta "comentário" ou "descrição". Linha 2: o
-  título da atividade em dourado 13/700 (é o botão que abre o Configurador
-  rápido centralizado — um `Dialog` de `min(1120px, 96vw)` × `min(92vh,
-  900px)` com o mesmo miolo da folha lateral). Depois o texto
-  (`TextoComChecklist` para o comentário; `LinhaRica` do parágrafo com a menção
-  para a descrição), a fileira de reações e "Responder aqui" (botão leve 28px
-  com `Reply` dourado), que abre a `TextareaComMencoes` e Enviar dourado.
+  principal da tela), ícone `MessageCircle` 22, sombra discreta. `position:
+  fixed`, canto inferior direito: no celular `bottom: calc(max(16px,
+  safe-area) + 84px)` para ficar acima da BottomNav; no desktop 24px. `z-index:
+  60` — acima da BottomNav (50) e da sidebar (55), abaixo dos diálogos (100).
+  O **selo de não lidas** (R222) é um disco 20px **vermelho**
+  (`PRISMA.vermelho.dark`/`.light`) com fonte **branca** 11/700, no canto
+  **superior esquerdo** (`top: -4, left: -4`), borda 2px na cor da página. Conta
+  menções não lidas + recados para todos chegados depois da última abertura.
+- **A conversa** (`.fab-chat-painel`): `card(isLight)` raio 18, **9:16** —
+  `width: min(380px, 100vw − 24px)`, `height: min(676px, 100vh − 120px)` (no
+  desktop `100vh − 48px`). Três faixas: a **alça** (`.fab-chat-alca`:
+  `cursor: grab`, `touch-action: none`; `GripHorizontal` 16 secundário, "Chat"
+  11/700 caixa alta em `texto`, "menções e recados para todos" 11 secundário,
+  e o botão **recolher** 30×30 `ChevronDown` à direita) — segurar e arrastar
+  move o painel (`left/top` gravados em `localStorage`, `prever-chat-posicao`,
+  sempre dentro da tela por `posicaoDentroDaTela`); o **corpo** rola por
+  dentro (`.rolagem-fina`) sobre o fundo da PÁGINA (`cinzas.pagina`) — é o
+  contraste bolha × fundo do celular —, da mensagem mais antiga em cima à mais
+  nova embaixo; o **rodapé** fixo em `superficie` com o campo
+  (`TextareaComMencoes`, raio 14, fundo `campo`) e o botão **enviar** 40×40
+  redondo em `goldButton()` — o único degradê amarelo da conversa.
+- **A mensagem** (menção): `AvatarCirculo` 28 de quem escreveu (o nome fica
+  no `title`) · à direita, o **título da atividade** 12/600 em `texto` (é o
+  botão que abre o Configurador rápido centralizado) · a **data/hora**
+  `dd/mm HH:mm` 11 secundário · e, abaixo, a **bolha** raio `4 14 14 14`,
+  padding 8×11, pintada pela cor estratégica do prazo — `PRISMA[cor].bg` de
+  fundo e `PRISMA[cor].border` de borda (a MESMA régua do card, R136:
+  vermelho/amarelo/azul/verde); sem prazo, `superficie` + `divisoria`. Mensagem
+  ainda não respondida: filete `inset 3px` na cor e um ponto 7px ao lado da
+  hora. Em menção de comentário, abaixo da bolha: **responder** (botão 28×28
+  `Reply` 14, fundo `superficie`) e a `FileiraDeReacoes`. Em menção de campo
+  (descrição/diagnóstico/solução) a bolha é o botão que abre a atividade, com
+  `ExternalLink` 12 no canto. Nenhum código de atividade aparece.
+- **O recado para todos**: nome de quem escreveu 12/600 · "· para todos ·
+  data/hora" 11 secundário · bolha neutra (`superficie`); o meu fica à direita
+  (`row-reverse`, bolha `elevada`, raio `14 4 14 14`).
+- **A resposta armada**: um chip pílula com `Reply` 12 e o `#Código`, pintado
+  como a bolha daquela atividade (fundo `.bg`, texto `.dark`/`.light`), com o
+  botão × 24px ao lado; o envio vira comentário na atividade (R223).
 - **Reações** (`FileiraDeReacoes`): um chip por emoji usado — `botaoSelecao`
   sem brilho, 24px, pílula, emoji + contagem tabular; o meu acende. O "+"
   (`SmilePlus`) é um círculo tracejado 26×24 que abre a lista fechada
-  `EMOJIS_REACAO` numa pílula flutuante em `superficie`. A mesma fileira no
-  Configurador rápido, na página da atividade e no chat.
+  `EMOJIS_REACAO`. A mesma fileira no Configurador rápido, na página da
+  atividade e no chat.
+
+### 6.22 O editor de texto — uma área, blocos com marcador próprio, menção como chip (v16 — 2026-09-08, R135, R224)
+
+- **A área** (`.editor-rico-area`): um `contentEditable` só, `role="textbox"`,
+  texto 14/400 em `textPrimary`, `line-height 1.55`, padding `10 13 12`,
+  `min-height` por campo (220 na descrição, 160 na solução, 40 na caixa de
+  comentário); cresce com o texto, sem scroll interno. Vazia, mostra o convite
+  em `--text-muted` por `::before` (`data-placeholder`).
+- **O bloco** (`[data-bloco]`): parágrafo, `lista` ou `checklist`; padding
+  `3px 0`, `min-height 1.55em`; lista e checklist recuam 30px à esquerda e o
+  **marcador** (`.editor-marcador`, `contenteditable=false`, `position:
+  absolute`) mora nesse recuo: a caixa `.checklist-check` 19px (a mesma do
+  texto de leitura, Uiverse) ou o `.lista-ponto` 6px dourado. Item marcado
+  (`[data-marcado="1"]`): riscado, opacidade 0,7, caixa com o traço dourado e
+  o "pop" de escala 1,14 (o mesmo CSS do `.checklist-input:checked`, escrito
+  para o atributo; `prefers-reduced-motion` tira o pop).
+- **A menção** é um `.mencao-chip` `contenteditable=false` com "@Nome" — o
+  token `@[Nome](user:id)` só existe no texto gravado (`data-mencao`,
+  `data-nome`). Backspace apaga o chip inteiro. A lista do "@"
+  (`SugestoesDeMencao`, `.mencao-lista`) abre sob a área.
+- **A barra** (só no editor, não na caixa de comentário): dentro da borda do
+  campo, cinco `.ferramenta-botao` 44×44 — Negrito, Itálico | Checklist,
+  Lista | Mencionar — com dois divisores de 1×22px, e a dica à direita
+  10,5 secundário: "@ menciona · Enter nova linha · selecione várias linhas e
+  clique em Checklist". Checklist/Lista agem em TODOS os blocos da seleção;
+  Negrito/Itálico são `execCommand` (a seleção fica). Atalhos Ctrl+B / Ctrl+I.
+- **O campo** (`EditorDeDescricao`): borda 1px (`rgba(0,0,0,0.14)` /
+  `rgba(255,255,255,0.14)`), raio 12, fundo `#fff` / `rgba(255,255,255,0.055)`,
+  barra em cima, área embaixo; grava pelo `useRascunhoSalvo` (R90). A caixa de
+  comentário (`TextareaComMencoes`) é a mesma área sem barra, com o estilo de
+  entrada do lugar (raio 14 no chat, `est.entrada` no painel), e o Enter é de
+  quem a usa (envia).
 
 ## 7. Arquitetura de tema
 

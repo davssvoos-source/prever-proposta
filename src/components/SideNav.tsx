@@ -25,7 +25,6 @@
 // (nav-itens.ts) e a mesma matriz de permissões.
 
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import type { CSSProperties } from "react";
 import { PanelLeftClose, PanelLeftOpen, Moon, Sun } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -38,6 +37,7 @@ import { LogoPrever } from "@/components/LogoPrever";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificacoesSidebar } from "@/components/NotificacoesSidebar";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
+import { VERSAO } from "@/lib/versao";
 import { SUPERNOVA, SOBRE_PRIMARIA } from "@/lib/paleta";
 import {
   useSidebarRecolhida, alternarSidebar,
@@ -172,7 +172,7 @@ export function SideNav() {
           overflow: "hidden",
         }}>
           <img
-            src={isLight ? "/banner-home-light.jpg" : bannerAsset.url}
+            src={isLight ? "/banner-home-light.jpg" : "/banner-home.jpg"}
             alt=""
             style={{
               position: "absolute", inset: 0,
@@ -206,6 +206,17 @@ export function SideNav() {
             largura fica ~53px, dentro dos 52px que sobram do rail recolhido. */}
         <LogoPrever altura={recolhida ? 34 : 74} />
       </Link>
+      {/* R229 (U119): a versão do sistema, discreta, sob o logotipo — é o que
+          o suporte pergunta primeiro ("qual versão está no servidor?") */}
+      {!recolhida && (
+        <span title={`Prever v${VERSAO}`} style={{
+          alignSelf: "center", marginTop: -10, marginBottom: 8,
+          fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+          color: "var(--text-muted)",
+        }}>
+          v{VERSAO}
+        </span>
+      )}
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {itens.map(({ to, label, icon: Icon }) => {

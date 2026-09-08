@@ -1,7 +1,7 @@
 # Prever App — Documento Mestre do Produto
 
 <!-- sumario:inicio -->
-> **Sumário** — 12 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 13 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Papéis (permissão) e equipes (roteamento)](#2-papéis-permissão-e-equipes-roteamento)
@@ -15,6 +15,7 @@
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
+- [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -28,7 +29,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-08 (R220). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-08 (R229). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4089,3 +4090,145 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   sistema em um servidor Windows, rodando Windows Server 2016. Preciso que no
   Setup seja configurável a porta pois rodam varios serviços em portas
   distintas, me faça um arquivo executável de instalação.")*
+
+## 23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)
+
+O sistema subiu no servidor Windows da empresa em 08/09/2026 e as pessoas
+começaram a usar. Davi, 08/09/2026: "A partir de hoje as pessoas começarão a
+usar o sistema, qualquer alteração que façamos será executada via
+versionamento do sistema, para preservar o banco de dados. Então atualmente
+estamos executando a atualização do sistema, que nos levará para a versão
+v0.0.2." As regras desta seção são o conteúdo da v0.0.2 (migration U119).
+
+- **R221** — **Todos os usuários veem todas as atividades.** A leitura de
+  `chamados` e de `visitas_tecnicas` é aberta a qualquer pessoa logada
+  (`USING (true)`, com o motivo escrito no censo do verificador), e a régua
+  `pode_acessar_chamado()` — que abre comentários, reações e movimentos de
+  equipamento — passa a ser "estou logado e a atividade existe". O recorte
+  "só o meu" que a Início aplicava ao técnico saiu; a lente **Meu dia** e o
+  filtro por pessoa continuam sendo o jeito de olhar só o seu — escolha de
+  quem olha, não imposição do cargo. O que continua fechado: valores (cobrança,
+  fechamento, blocos e itens da proposta — `pode_ver_financeiro`, R13), a
+  escala de sobreaviso e a **escrita** em `chamados`, que não mudou. *(Davi,
+  08/09/2026: "Todos os usuários devem poder visualizar todas as atividades do
+  sistema — o Nicholas não vê.")*
+
+- **R222** — **O chat da Início é uma conversa de celular.** Tamanho fixo em
+  9:16 (380 × 676 px no desktop; no celular a largura da tela menos as
+  margens). Cada mensagem tem só: a foto de perfil de quem escreveu, o título
+  da atividade (ou o nome de quem escreveu, no recado para todos), a data/hora
+  e, abaixo, o conteúdo numa bolha cuja cor é a **cor estratégica do prazo**
+  daquela atividade, em opacidade reduzida — a MESMA régua do card (R136):
+  atrasado vermelho, concluído verde, mais de uma semana azul, dentro da
+  semana amarelo; agendada não tem prazo (R225), o que vence é o dia marcado.
+  Abaixo do conteúdo, e só em menção de **comentário**, os botões **responder**
+  (ícone) e **reagir** (emoji); menção em descrição, diagnóstico ou solução
+  não se responde — a bolha é o botão que abre o pop-up da atividade. O código
+  da atividade não aparece na mensagem. O amarelo saiu do painel: título, hora
+  e conteúdo são tons de branco no escuro e de preto no claro; o degradê
+  amarelo fica só no botão de enviar (e no botão flutuante, que é a ação da
+  tela). O selo de não lidas é um círculo **vermelho** com fonte branca no
+  canto **superior esquerdo** do botão. A parte de cima é uma **alça**: segurar
+  e arrastar reposiciona o chat livremente (o navegador lembra a posição); o
+  botão **recolher** no canto superior direito volta ao botão flutuante e, ao
+  reabrir, a posição volta. O campo de texto é fixo embaixo. Mensagem nova ou
+  ainda não respondida ganha destaque (o filete na cor do prazo e o ponto ao
+  lado da hora). *(Davi, 08/09/2026: "O chat deve ter um tamanho fixo em
+  proporção 9:16. Cada mensagem deve conter apenas a foto de perfil do autor,
+  o título da atividade, a data/hora e abaixo o conteúdo. O fundo de cada
+  mensagem deve ter uma opacidade reduzida na cor estratégica por prazo […]
+  algo que remeta a um celular com chat de texto […] reduza o amarelo […] o
+  badge de não lidas deve ser um círculo vermelho com fonte branca no canto
+  superior esquerdo do botão […] uma alça superior para arrastar e reposicionar
+  o chat livremente […] botão recolher […] campo de texto fixo embaixo.")*
+
+- **R223** — **Recado para todos, e a resposta vai pelo #Código.** Toda
+  mensagem escrita no chat que não responde a nada vai para **todo mundo**
+  (`mensagens_chat`, ao vivo pelo canal realtime; bolha neutra, sem título).
+  Clicar em **responder** arma a resposta: o `#Código-Da-Atividade` aparece no
+  campo, na cor do prazo, e o que se escreve vira **comentário** naquela
+  atividade, mencionando quem mencionou (R216). Digitar `#Código` no começo de
+  uma mensagem tem o mesmo efeito. *(Davi, 08/09/2026: "qualquer mensagem
+  enviada no chat que não seja uma resposta a nada, deve ser enviada para
+  todos os usuários […] ao clicar em responder, o botão insere
+  '#Código-Da-Atividade' na cor do prazo no campo de texto, e o envio vai para
+  o comentário daquela atividade.")*
+
+- **R224** — **O editor de texto é uma área só, com blocos e chips.** Problema
+  detectado / Descrição, Diagnóstico, Solução aplicada, os comentários e o
+  chat usam o mesmo editor: uma área `contentEditable` em que cada linha é um
+  bloco (parágrafo, item de lista, item de checklist) com o marcador em UI do
+  design system, e a menção é um **chip com o nome** — o token
+  `@[Nome](user:id)` só existe no texto gravado. Botões inteligentes:
+  **selecionar várias linhas** e clicar em Checklist (ou Lista) transforma
+  todas — um item por linha; clicar de novo desfaz. Negrito e itálico são os
+  comandos nativos (Ctrl+B / Ctrl+I) e **não perdem a seleção**. Enter herda o
+  tipo da linha; Enter numa linha vazia de lista sai da lista; Backspace no
+  começo de um item tira o marcador. O texto continua Markdown puro no banco —
+  nada que lê a descrição hoje muda. *(Davi, 08/09/2026: "os campos 'Problema
+  Detectado', 'Solução Aplicada' e 'Solução' devem ter um sistema de edição de
+  texto bem elaborado no design system, com botões inteligentes […] sem os
+  bugs atuais […] ao mencionar alguém o campo mostra @[Breno Goes](user:hash) —
+  deve mostrar só o nome.")*
+
+- **R225** — **Toda atividade pode ser agendada — e a agendada não tem
+  prazo.** O quadro ganha a coluna **Agendado**, logo depois de Aguardando
+  início: é onde vive a atividade com dia marcado que ainda não começou, venha
+  de que natureza vier (o técnico do T.I. agenda a reunião dele). Agenda-se
+  no "+" (Agendar para), no Configurador rápido (Agendar) e arrastando o card
+  para a coluna — soltar em Agendado pede o dia. Atividade agendada **não tem
+  prazo**: o campo Prazo dá lugar ao dia marcado, e a cor do card vem do dia.
+  Remarcar conta: o card diz **"Re-agendado"**, **"Re-agendado 2x"**,
+  **"3x"**… (o banco conta, `chamados.reagendamentos`). Arrastar de Agendado
+  para Aguardando início limpa o dia. Todo dia às **08h** (Brasília) o
+  responsável e os apoios de cada atividade agendada para o dia recebem o
+  aviso "Agendada para hoje" (job `agenda-de-hoje`). *(Davi, 08/09/2026: "toda
+  atividade deve poder ser agendada (ex.: o Nicholas do T.I. agenda uma
+  reunião) […] crie uma nova coluna no Kanban chamada 'Agendado' […] uma
+  atividade agendada, não deve ter prazo […] caso seja re-agendada, deve
+  aparecer 'Re-agendado 2x, 3x…' […] uma notificação diariamente às 08h das
+  atividades agendadas para o dia.")*
+
+- **R226** — **Equipamentos removidos e instalados pela atividade — só com
+  cliente único.** O card "Equipamentos envolvidos" vira dois, quando a
+  atividade é de UM cliente (não interna, não grupo): **Equipamentos
+  removidos** lista os blocos do cliente; expandir o bloco mostra os
+  equipamentos e o botão Remover — o equipamento passa a **"Retirado do
+  cliente"** (sai do bloco e do cliente, guarda de onde saiu). **Equipamentos
+  instalados** busca entre os equipamentos que não estão em cliente nenhum
+  (com uma pessoa, no almoxarifado, retirados) e, ao escolher, pede **para qual
+  bloco** foi instalado. Cada movimento fica registrado na atividade
+  (`equipamento_movimentos`) e pode ser desfeito por quem o fez ou por um
+  gestor. Atividade interna ou de grupo continua com "Equipamentos envolvidos".
+  O botão de forçar o sincronismo com o QAP fica para depois (P63). *(Davi,
+  08/09/2026: "o campo 'Equipamentos envolvidos' deve virar 'Equipamentos
+  Removidos' […] o equipamento passa a ser 'Retirado do cliente' […] e
+  'Equipamentos Instalados' […] escolher para qual bloco ele foi instalado
+  […] somente quando o cliente da atividade for um cliente único […] o botão
+  de forçar sincronismo com o QAP fica para mais pra frente.")*
+
+- **R227** — **As etiquetas do card ficam empilhadas: Cliente → Tipo de
+  demanda → Risco Operacional.** Uma acima da outra, nesta ordem, no card da
+  Início (e onde mais o card aparece — a ficha do cliente, R212). Era uma
+  fileira que quebrava em ordem imprevisível conforme a largura da coluna.
+  *(Davi, 08/09/2026: "na Início as etiquetas dos cards devem estar empilhadas
+  (uma acima da outra) na ordem: Cliente → Tipo de demanda → Risco
+  Operacional.")*
+
+- **R228** — **A tela da atividade ocupa a largura do desktop.** A página da
+  atividade (interna e de campo) usa a mesma sangria da ficha do cliente
+  (`.pagina-larga`, R205): o conteúdo preenche a largura disponível em vez de
+  ficar num miolo estreito. *(Davi, 08/09/2026: "a tela de configuração da
+  atividade deve estar ajustada à largura da tela — desktop, usabilidade.")*
+
+- **R229** — **O sistema é versionado; esta é a v0.0.2.** A versão mora num
+  lugar só (`package.json`, espelhada em `src/lib/versao.ts` e gravada em
+  `VERSAO.txt` pelo pacote) e aparece discreta sob o logotipo. Cada versão tem
+  a lista do que entrou em `docs/VERSOES.md`. O banco muda **só** por migration
+  numerada (U-série), rodada pelo Davi; o servidor muda **só** por pacote
+  (`npm run build:windows` → `atualizar.ps1`). Toda imagem do sistema é
+  arquivo do repositório (`public/`): o banner escuro vinha de um endereço da
+  Lovable e não carregava no servidor — passou a ser `/banner-home.jpg`.
+  *(Davi, 08/09/2026: "qualquer alteração que façamos será executada via
+  versionamento do sistema, para preservar o banco de dados […] as imagens não
+  carregaram no servidor (ex.: foto de banner da fachada) — arrumar.")*

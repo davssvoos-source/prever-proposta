@@ -43,6 +43,7 @@ import { card, etiqueta } from "@/lib/ui";
 import { TextoComChecklist } from "@/components/TextoComChecklist";
 import { SeletorDeOpcao, type OpcaoDoSeletor } from "@/components/SeletorDeOpcao";
 import { EditorDeDescricao, TextareaComMencoes, type PessoaParaMencao } from "@/components/EditorDeDescricao";
+import { EquipamentosDaAtividade } from "@/features/chamados/EquipamentosDaAtividade";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
 import { useIsGerente } from "@/features/gerencial/data";
@@ -87,6 +88,10 @@ export function DetalheInterno({ id }: { id: string }) {
   const { data: apoios = [] } = useChamadoApoios(id);
   const { data: equipamentos = [] } = useChamadoEquipamentos(id);
   const { data: locais = [] } = useChamadoLocais(id);
+  // R226 (U119): os equipamentos removidos/instalados só valem para CLIENTE
+  // ÚNICO — nem interna (sem cliente), nem grupo (mais de um local com cliente)
+  const clienteUnico = !!chamado?.cliente_id
+    && !locais.some((l) => !!l.cliente_id && l.cliente_id !== chamado?.cliente_id);
   const { data: fotos = [] } = useChamadoFotos(id);
   const { data: pessoas = [] } = usePessoas();
   const { data: clientes = [] } = useClientes();
@@ -378,7 +383,7 @@ export function DetalheInterno({ id }: { id: string }) {
   };
 
   return (
-    <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
+    <div className="pagina-larga" style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
         <button
@@ -897,7 +902,21 @@ export function DetalheInterno({ id }: { id: string }) {
             </div>
           </div>
 
-          {/* Equipamentos envolvidos — a lacuna do Notion */}
+          {/* R226 (U119): cliente ÚNICO → Equipamentos removidos / instalados,
+              pelo patrimônio (QAP, R196) e com rastro na atividade */}
+          {clienteUnico && chamado.cliente_id && (
+            <EquipamentosDaAtividade
+              chamadoId={id}
+              clienteId={chamado.cliente_id}
+              podeEditar={podeEditar}
+              estiloCard={CARD}
+              estiloSecao={SEC}
+            />
+          )}
+          {/* Equipamentos envolvidos — a lacuna do Notion. Fica para a atividade
+              interna ou de grupo (R226 só vale para cliente único) e para o que
+              já foi anotado à mão em atividades antigas */}
+          {(!clienteUnico || equipamentos.length > 0) && (
           <div style={CARD}>
             <span style={SEC}>Equipamentos envolvidos</span>
             {equipamentos.length === 0 && (
@@ -936,7 +955,7 @@ export function DetalheInterno({ id }: { id: string }) {
                 )}
               </div>
             ))}
-            {podeEditar && (
+            {podeEditar && !clienteUnico && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 44px", gap: 8 }}>
                 <input
                   style={INPUT}
@@ -965,6 +984,7 @@ export function DetalheInterno({ id }: { id: string }) {
               </div>
             )}
           </div>
+          )}
 
           {isGerente && (
             <button

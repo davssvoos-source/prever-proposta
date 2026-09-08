@@ -110,6 +110,7 @@ import { EQUIPE_LABEL, equipeCores, equipesDePessoas, type Equipe } from "@/lib/
 import { AgendaDoChamado } from "@/features/programacao/AgendaDoChamado";
 import { especieDoApoio } from "@/features/programacao/modelo";
 import { etapasDoRegistro, fraseDoProgresso, temDiagnostico, textoPreenchido, type EtapasDoRegistro } from "@/features/chamados/registro";
+import { rotuloReagendado } from "@/features/atividades/modelo";
 
 /**
  * O estado de um campo que grava sozinho.
@@ -870,6 +871,10 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina, posicao = "l
   const atrasado = chamado
     ? situacaoPrazo(chamado.prazo_limite, chamado.status) === "estourado"
     : false;
+  // R225 (U119): agendada = dia marcado e ainda não começou — e agendada NÃO tem prazo
+  const agendada = !!chamado && !!(chamado.data_agendada || chamado.data_hora_agendada)
+    && (chamado.status === "aberto" || chamado.status === "agendado");
+  const reagendado = rotuloReagendado(chamado?.reagendamentos);
 
   // opções de cliente/pessoa no formato que CampoComBusca espera. R143 (U96):
   // os GRUPOS ("Clientes de Portaria Remota", "Clientes de Monitoramento…")
@@ -1004,6 +1009,8 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina, posicao = "l
                     aoMudar={(v) => salvar.mutate({ campo: "impacto_operacional", patch: { impacto_operacional: (v ?? null) as ImpactoOperacional | null } })}
                   />
                 )}
+                {/* R225: agendada NÃO tem prazo — o grupo Prazo dá lugar ao dia marcado */}
+                {!agendada && (
                 <Grupo rotulo="Prazo" estado={estados.prazo_limite}>
                   <input
                     type="date"
@@ -1024,6 +1031,21 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina, posicao = "l
                       borderColor: atrasado ? est.vermelho : undefined,
                     }}
                   />
+                </Grupo>
+                )}
+                {/* R225 (U119): TODA atividade pode ser agendada — o dia marcado a leva
+                    para a coluna "Agendado"; remarcar conta ("Re-agendado Nx", o banco conta) */}
+                <Grupo rotulo={agendada ? "Agendada para" : "Agendar"} estado={estados.data_agendada} titulo={reagendado ?? undefined}>
+                  <input
+                    type="date"
+                    aria-label="Agendar para"
+                    value={chamado.data_agendada ?? ""}
+                    onChange={(e) => salvar.mutate({ campo: "data_agendada", patch: { data_agendada: e.target.value || null } })}
+                    style={{ ...est.entrada, width: "auto", minHeight: 30, padding: "0 10px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}
+                  />
+                  {reagendado && (
+                    <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: est.textSecondary, whiteSpace: "nowrap" }}>{reagendado}</span>
+                  )}
                 </Grupo>
                 {/* R139: as equipes das pessoas — derivadas, não escolhidas */}
                 {equipesEnvolvidas.map((e) => (

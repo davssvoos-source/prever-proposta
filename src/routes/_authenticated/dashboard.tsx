@@ -29,7 +29,6 @@ import { ArrowUpDown, ChevronsDownUp, ChevronsUpDown, Inbox, KanbanSquare, List 
 import { NovaAtividadeDialog } from "@/features/home/NovaAtividadeDialog";
 import { usePermissoes } from "@/features/gerencial/permissoes";
 
-import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
@@ -41,7 +40,8 @@ import {
   usePessoas, mapaDePessoas, useChamadosRealtime,
   atualizarChamado, GravacaoRecusada,
 } from "@/features/chamados/data";
-import { atividadesDeHoje, type Atividade, type ColunaQuadro } from "@/features/atividades/modelo";
+import { atividadesDeHoje, patchDoMovimento, patchDeAgendamento, type Atividade, type ColunaQuadro } from "@/features/atividades/modelo";
+import { AgendarDialog } from "@/features/home/AgendarDialog";
 import { useSessao, useAtividades } from "@/features/home/data";
 import {
   aplicarLentes, recorteDosPaineis, ordenar, ordemDoPreset, focoDoPreset, PRESETS, presetPadrao,
@@ -366,7 +366,8 @@ function Home() {
    */
   const moverAtividade = useMutation({
     mutationFn: async ({ a, para }: { a: Atividade; para: ColunaQuadro }) => {
-      await atualizarChamado(a.registroId, { status: para as any });
+      // R225: sair de "Agendado" para a fila limpa o dia marcado (patchDoMovimento)
+      await atualizarChamado(a.registroId, patchDoMovimento(a.coluna, para) as any);
     },
     onMutate: async ({ a, para }) => {
       await qc.cancelQueries({ queryKey: ["home-chamados"] });
@@ -374,7 +375,7 @@ function Home() {
       // mexe no BRUTO, que é o que a query guarda — a Atividade é derivada
       qc.setQueriesData({ queryKey: ["home-chamados"] }, (velho: any) =>
         Array.isArray(velho)
-          ? velho.map((c: any) => (c.id === a.registroId ? { ...c, status: para } : c))
+          ? velho.map((c: any) => (c.id === a.registroId ? { ...c, ...patchDoMovimento(a.coluna, para) } : c))
           : velho,
       );
       return { antes };
@@ -409,6 +410,24 @@ function Home() {
     },
   });
 
+  // R225 (U119): soltar um card em "Agendado" pede o DIA — a coluna é a data.
+  // Vale para qualquer natureza (o técnico do T.I. agenda a reunião dele).
+  const [agendando, setAgendando] = useState<Atividade | null>(null);
+  const agendar = useMutation({
+    mutationFn: async ({ a, dia }: { a: Atividade; dia: string }) => {
+      await atualizarChamado(a.registroId, patchDeAgendamento(a.statusCru, dia) as any);
+    },
+    onSuccess: (_r, { a }) => {
+      setAgendando(null);
+      toast.success(a.agendada ? "Atividade reagendada." : "Atividade agendada.");
+    },
+    onError: (e: Error) => toast.error(e.message || "Não consegui agendar a atividade."),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["home-chamados"] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+    },
+  });
+
   function pedirMover(a: Atividade, para: ColunaQuadro) {
     if (para === "sem_status") {
       toast.error('"Sem status" não é um destino — é onde caem atividades com status desconhecido.');
@@ -420,6 +439,10 @@ function Home() {
     // dela — então a recusa é explícita, em vez de um arrasto que não pega.
     if (a.fonte !== "chamado") {
       toast.error("A proposta comercial muda de etapa pelo fluxo da visita, não pelo quadro.");
+      return;
+    }
+    if (para === "agendado") {
+      setAgendando(a);
       return;
     }
     const natureza = a.natureza ?? "campo";
@@ -459,7 +482,7 @@ function Home() {
         position: "relative", height: "28vh", minHeight: 180, overflow: "hidden",
       }}>
         <img
-          src={isLight ? "/banner-home-light.jpg" : bannerAsset.url}
+          src={isLight ? "/banner-home-light.jpg" : "/banner-home.jpg"}
           alt="Frota Prever"
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 60%" }}
         />
@@ -888,6 +911,12 @@ function Home() {
 
       {/* R215–R217: o botão circular fixo do chat de menções; clicar numa menção
           abre a atividade no Configurador rápido CENTRALIZADO */}
+      <AgendarDialog
+        atividade={agendando}
+        aoFechar={() => setAgendando(null)}
+        aoConfirmar={(dia) => { if (agendando) agendar.mutate({ a: agendando, dia }); }}
+        salvando={agendar.isPending}
+      />
       <ChatDeMencoes aoAbrirAtividade={(id) => { setPainelCentral(true); setPainelId(id); }} />
     </>
   );

@@ -90,6 +90,9 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
   const [locais, setLocais] = useState<string[]>([]);
   const [impacto, setImpacto] = useState<ImpactoOperacional | null>(null);
   const [prazo, setPrazo] = useState("");
+  // R225 (U119): toda atividade pode nascer AGENDADA — com dia marcado ela
+  // vai para a coluna "Agendado" e não tem prazo
+  const [agendarPara, setAgendarPara] = useState("");
   const [apoios, setApoios] = useState<string[]>([]);
   const [propostaId, setPropostaId] = useState<string | null>(null);
   const [arquivos, setArquivos] = useState<File[]>([]);
@@ -185,7 +188,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
 
   function limpar() {
     setTipo(null); setTitulo(""); setDescricao(""); setLocais([]);
-    setImpacto(null); setPrazo(""); setApoios([]); setPropostaId(null); setArquivos([]);
+    setImpacto(null); setPrazo(""); setAgendarPara(""); setApoios([]); setPropostaId(null); setArquivos([]);
     setModoPlantao(false);
   }
   function fechar() { limpar(); aoFechar(); }
@@ -209,7 +212,8 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
         // da tela sai das pessoas. Sem equipe no cadastro, o balde de sempre.
         equipe: equipeDoResponsavel ?? "outras",
         cliente_id: clientesIds[0] ?? null,
-        prazo_limite: prazo ? dataParaPrazo(prazo) : null,
+        prazo_limite: prazo && !agendarPara ? dataParaPrazo(prazo) : null,
+        data_agendada: agendarPara || null,
         impacto_operacional: temImpacto(tipo) ? impacto : null,
         proposta_id: tipo === "implantacao" ? propostaId : null,
       });
@@ -569,7 +573,10 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
                     )}
                     <div>
                       <label style={rotulo} htmlFor="nova-prazo">Prazo <span style={{ fontWeight: 400 }}>(opcional)</span></label>
-                      <input id="nova-prazo" type="date" style={entrada} value={prazo} onChange={(e) => setPrazo(e.target.value)} />
+                      <input id="nova-prazo" type="date" style={entrada} value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!!agendarPara} />
+                      {/* R225: agendada não tem prazo — o campo acima apaga quando há dia marcado */}
+                      <label style={{ ...rotulo, marginTop: 8 }} htmlFor="nova-agendar">Agendar para <span style={{ fontWeight: 400 }}>(opcional — vai para a coluna Agendado, sem prazo)</span></label>
+                      <input id="nova-agendar" type="date" style={entrada} value={agendarPara} onChange={(e) => setAgendarPara(e.target.value)} />
                     </div>
                     <div>
                       <label style={rotulo}>Apoio <span style={{ fontWeight: 400 }}>(opcional)</span></label>

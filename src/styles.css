@@ -1189,8 +1189,40 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   display: inline-block; width: 6px; height: 6px; border-radius: 3px;
   background: var(--gold-primary); margin-top: 0.62em; flex-shrink: 0;
 }
-.editor-linha { display: flex; align-items: flex-start; gap: 9px; }
-.editor-linha-vista { cursor: text; min-height: 1.55em; white-space: pre-wrap; word-break: break-word; }
+/* R224 (U119): o editor de UMA área — cada linha é um bloco [data-bloco]; o
+   marcador (.editor-marcador) é a caixa do design system ou o ponto, fora do
+   fluxo do texto; o chip da menção (.mencao-chip) é atômico. O estado
+   "marcado" é atributo do bloco, não um <input>: o CSS espelha o do checklist
+   de leitura (.checklist-input:checked + .checklist-check). */
+.editor-rico-area { outline: none; white-space: pre-wrap; word-break: break-word; position: relative; }
+.editor-rico-area[data-vazio="1"]::before {
+  content: attr(data-placeholder); position: absolute; left: 13px; top: 14px; right: 13px;
+  color: var(--text-muted); pointer-events: none; white-space: pre-wrap;
+}
+.editor-rico-area > [data-bloco] { position: relative; padding: 3px 0; min-height: 1.55em; }
+.editor-rico-area > [data-bloco="checklist"],
+.editor-rico-area > [data-bloco="lista"] { padding-left: 30px; }
+.editor-marcador { position: absolute; left: 0; top: 4px; display: inline-flex; align-items: center; user-select: none; }
+.editor-rico-area > [data-bloco="lista"] > .editor-marcador { left: 8px; top: 3px; }
+.editor-rico-area > [data-bloco="checklist"][data-marcado="1"] { text-decoration: line-through; opacity: 0.7; }
+.editor-rico-area > [data-bloco="checklist"][data-marcado="1"] > .editor-marcador .checklist-check svg {
+  stroke: var(--gold-primary);
+  transform: translate3d(0, 0, 0) scale(1.14);
+}
+.editor-rico-area > [data-bloco="checklist"][data-marcado="1"] > .editor-marcador .checklist-check svg path {
+  stroke-dashoffset: 60;
+  transition: stroke-dashoffset 0.3s linear, stroke 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.editor-rico-area > [data-bloco="checklist"][data-marcado="1"] > .editor-marcador .checklist-check svg polyline {
+  stroke-dashoffset: 42;
+  transition: stroke-dashoffset 0.2s linear, stroke 0.2s ease;
+  transition-delay: 0.15s;
+}
+.editor-rico-area .mencao-chip { cursor: default; }
+.editor-rico-area b, .editor-rico-area strong { font-weight: 700; }
+@media (prefers-reduced-motion: reduce) {
+  .editor-rico-area > [data-bloco="checklist"][data-marcado="1"] > .editor-marcador .checklist-check svg { transform: none; }
+}
 .mencao-lista {
   margin: 2px 0 4px; padding: 4px; border-radius: 12px;
   background: var(--bg-elevated);
@@ -1304,15 +1336,21 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px);
   z-index: 60;
 }
+/* R222 (U119): a CONVERSA tem tamanho fixo em 9:16 — 380 × 676 no desktop;
+   no celular a largura é a da tela menos as margens, e a altura só encolhe
+   quando a tela não tem os 676px. A posição padrão é o canto do botão; a
+   alça (.fab-chat-alca) deixa arrastar, e o componente grava left/top. */
 .fab-chat-painel {
   position: fixed;
   right: max(12px, env(safe-area-inset-right));
   bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px);
   z-index: 60;
-  width: min(420px, calc(100vw - 24px));
-  max-height: min(72vh, 760px);
+  width: min(380px, calc(100vw - 24px));
+  height: min(676px, calc(100vh - 120px));
 }
+.fab-chat-alca { cursor: grab; touch-action: none; user-select: none; }
+.fab-chat-alca:active { cursor: grabbing; }
 @media (min-width: 1024px) {
   .fab-chat { right: 24px; bottom: 24px; }
-  .fab-chat-painel { right: 24px; bottom: 24px; }
+  .fab-chat-painel { right: 24px; bottom: 24px; height: min(676px, calc(100vh - 48px)); }
 }

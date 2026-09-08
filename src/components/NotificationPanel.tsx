@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "@tanstack/react-router";
-import { Bell, CheckCircle2, CalendarCheck, Settings, Info, Trash2, Clock, XCircle, Wrench, KanbanSquare, MessageSquare, CalendarClock, UserPlus } from "lucide-react";
+import { Bell, CheckCircle2, CalendarCheck, Settings, Info, Trash2, Clock, XCircle, Wrench, KanbanSquare, MessageSquare, CalendarClock, UserPlus, AtSign } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -27,6 +27,14 @@ function NotifIcon({ tipo, isLight }: { tipo: string; isLight: boolean }) {
       return <CheckCircle2 {...s} color="#059676" />;
     case 'lembrete_visita':
       return <Clock {...s} color={gold} />;
+    case 'agenda_hoje':
+      // R225 (U119): "Agendada para hoje" — o aviso das 08h
+      return <CalendarClock {...s} color={gold} />;
+    case 'mencao':
+      // R215/U95: "Você foi mencionado" (P62a, fechada na U119)
+      return <AtSign {...s} color={gold} />;
+    case 'chamado_comentario':
+      return <MessageSquare {...s} color={azul} />;
     case 'demanda_atribuida':
     case 'sprint_virada':
     case 'resumo_semana':

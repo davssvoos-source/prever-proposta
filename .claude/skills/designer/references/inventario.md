@@ -67,7 +67,7 @@ Regras de cor desta casa:
 | `PessoaComFoto` · `AvatarCirculo` | um rosto, com degradê estável quando não há foto |
 | `StatusBadge` | chip de status |
 | `TelaDeErro` | a tela de erro da casa, com código `PRV-ÁREA-CLASSE-ORIGEM` |
-| `EditorDeDescricao` · `TextareaComMencoes` · `useMencao` | descrição em blocos, checklist real, menção com `@` |
+| `EditorDeDescricao` · `EditorRico` · `TextareaComMencoes` · `useMencao` | o editor de UMA área contentEditable (R224): blocos com marcador próprio, menção como chip com o nome, seleção de várias linhas → checklist; a caixa de comentário é a mesma área sem barra |
 | `TextoComChecklist` | leitura de texto com checklist |
 | `ThemeToggle` | alternador claro/escuro |
 | `SideNav` (≥1024px) · `BottomNav` (<1024px) | navegação — leem `nav-itens.ts` e a matriz de permissões |
@@ -93,7 +93,9 @@ Fora de `components/`, mas compartilhados:
   `CabecalhoDoPainel`, `LinhaDoPatrimonio`, `SeletorDeSistema`.
 - `src/features/chamados/FileiraDeReacoes.tsx` — a fileira de reações de um
   comentário (R217), a mesma no painel, na página e no chat.
-- `src/features/home/ChatDeMencoes.tsx` — o botão flutuante e o painel do chat
+- `src/features/home/ChatDeMencoes.tsx` — o botão flutuante e a conversa 9:16 (R222–R223): bolhas na cor do prazo, recado para todos, chip `#Código`
+- `src/features/home/AgendarDialog.tsx` — o diálogo do dia marcado (soltar em "Agendado", R225)
+- `src/features/chamados/EquipamentosDaAtividade.tsx` — Equipamentos removidos / instalados na página da atividade (R226)
   de menções (R215); `PainelChamado` com `posicao="central"` é o Dialog no
   meio da tela.
 - `src/features/gerencial/NovaVisitaTecnica.tsx` — o formulário da proposta
@@ -135,7 +137,8 @@ serve de carregando.
 | `.ficha-grid` (+ `.ficha-identidade/-local/-atividades`) | as três áreas da ficha: uma coluna no celular, duas de 1024 a 1439, três a partir de 1440; colunas esticadas e alinhadas embaixo (R209/R219) |
 | `.painel-vinculo` | os dois painéis do vínculo por arrasto, lado a lado e da mesma altura no desktop (R206/R208) |
 | `.rolagem-fina` | barra de rolagem fina no desktop — todo contêiner que rola por dentro |
-| `.fab-chat` · `.fab-chat-painel` | o botão flutuante do chat e o painel, acima da BottomNav no celular (R215) |
+| `.fab-chat` · `.fab-chat-painel` · `.fab-chat-alca` | o botão flutuante do chat, a conversa 9:16 (380×676) e a alça que arrasta (R215, R222) |
+| `.editor-rico-area` · `[data-bloco]` · `.editor-marcador` | a área única do editor, o bloco (parágrafo/lista/checklist, `data-marcado`) e o marcador fora do fluxo (R224) |
 | `.nova-visita-colunas` · `.nova-visita-embutida` | as colunas do formulário da visita; embutido no "+", no máximo duas (R194/R214) |
 | `.checklist-check`, `.editor-linha`, `.mencao-chip`, `.mencao-lista` | o editor |
 | `@utility badge-pill`, `btn-gold`, `stat-card`, `section-eyebrow`… | utilitários Tailwind da casa |

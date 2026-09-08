@@ -117,6 +117,7 @@ ordem ler o resto.
 | Onde | O quê |
 |---|---|
 | `docs/ESTADO_ATUAL.md` | ONDE ESTAMOS: última regra e diário, migrations rodadas e pendentes, decisões recentes, perguntas abertas, o que o Davi vai mandar, quem é quem, a ordem de leitura — atualizado a cada entrega (passo 7) |
+| `docs/VERSOES.md` | o que entrou em cada VERSÃO instalada no servidor (R229) e a migration que ela exige; a versão mora em `package.json` = `src/lib/versao.ts` (o verificador compara) e vai em `VERSAO.txt` no pacote |
 | `docs/CONTEXTO_OPERACAO_TECNICA.md` | o contexto da operação técnica DITADO PELO DAVI (quem é quem, as três atividades, cliente como centro, QAP só lido, validação do gestor) — leia antes de mexer em campo/técnica |
 | `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md` | a estrutura das atividades DITADA PELO DAVI (os seis tipos e a matriz de campos, as duas perguntas da criação, equipe das pessoas, impacto operacional, grupos de clientes, o que saiu: pedido de compra e sprint) — leia antes de mexer em atividade/chamado interno, no pop-up de criação ou na ficha do cliente |
 | `docs/PLANO_V0.1.md` | o plano de ação rumo à v0.1: fases A–G, inventário do que já existe, perguntas em aberto |

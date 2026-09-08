@@ -157,12 +157,28 @@ Ditada pelo Davi em 03/09/2026 e transcrita em
   responsável. Proposta Comercial expande o formulário da visita no próprio
   pop-up (R214); responsável da equipe Técnica abre o chamado de campo; o resto
   abre o formulário do tipo.
-- **O chat de menções** (R215–R217): o botão redondo no canto inferior direito
-  da Início lista tudo em que você foi mencionado — o comentário inteiro ou o
-  parágrafo da descrição. Clicar no título abre a atividade no meio da tela;
-  **Responder aqui** grava a resposta como comentário na atividade, mencionando
-  quem mencionou; e dá para **reagir** com emoji ao comentário (a reação
-  aparece também na atividade).
+- **O chat da Início** (R215–R217, R222–R223): o botão redondo no canto
+  inferior direito abre uma conversa em 9:16, como um chat de celular. Cada
+  mensagem traz a foto de quem escreveu, o título da atividade, a data/hora e
+  o conteúdo numa bolha na cor do prazo daquela atividade (vermelho atrasada,
+  amarelo esta semana, azul mais adiante, verde concluída). Menção num
+  comentário tem **responder** e **reagir** embaixo; menção na descrição, no
+  diagnóstico ou na solução abre a atividade ao clicar. Escrever no campo de
+  baixo sem responder a nada manda um **recado para todos**; clicar em
+  responder põe o `#Código` da atividade no campo e a resposta vira comentário
+  nela. A alça de cima arrasta o chat para onde você quiser; o botão do canto
+  recolhe (e ao reabrir ele volta ao mesmo lugar). O selo vermelho no botão
+  conta o que chegou.
+- **Toda atividade pode ser agendada** (R225): a coluna **Agendado** do quadro
+  guarda o que tem dia marcado e ainda não começou — agenda-se no "+"
+  (Agendar para), no Configurador (Agendar) ou arrastando o card para a
+  coluna. Atividade agendada não tem prazo. Remarcar mostra "Re-agendado Nx"
+  no card, e às 08h do dia o responsável e os apoios recebem o aviso.
+- **Equipamentos removidos e instalados** (R226): na página de uma atividade
+  de UM cliente, o que a equipe tirou e o que instalou fica registrado por
+  bloco — "Remover equipamento…" lista os blocos do cliente; "Instalar
+  equipamento…" busca entre os que não estão em cliente nenhum e pede o
+  bloco. O patrimônio do cliente reflete na hora.
 - **Equipe não se escolhe**: a etiqueta é a das pessoas na atividade
   (responsável e apoios), pelo cadastro. **Sprint não existe mais**: o prazo diz
   a semana e o mês. **Pedido de compra não existe mais**: demanda do

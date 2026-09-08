@@ -41,6 +41,8 @@ export interface Chamado {
   impacto_operacional: ImpactoOperacional | null;
   /** R168 (U99): o dia em que a atividade INTERNA vai ser feita — separado de data_hora_agendada (agenda de campo, R101). Tela pendente. */
   data_agendada: string | null;
+  /** R225 (U119): quantas vezes a data agendada mudou. Chega undefined até a U119 rodar (lido à parte, com fallback). */
+  reagendamentos?: number | null;
   /** R148 (U96) — a proposta comercial aprovada que origina a implantação. */
   proposta_id: string | null;
 
@@ -158,7 +160,13 @@ export function useChamado(id: string | undefined) {
         .eq("id", id as string)
         .maybeSingle();
       if (error) throw error;
-      return (data as any) ?? null;
+      if (!data) return null;
+      // R225 (U119) — REGRA 5: `reagendamentos` é lido à parte, porque até a
+      // migration rodar a coluna não existe (42703) e derrubaria a consulta
+      // inteira. Sem a coluna, o painel só não mostra "Re-agendado Nx".
+      const extra = await supabase.from("chamados" as any).select("reagendamentos").eq("id", id as string).maybeSingle();
+      const reagendamentos = extra.error ? null : ((extra.data as any)?.reagendamentos ?? 0);
+      return { ...(data as any), reagendamentos } as Chamado;
     },
   });
 }
@@ -279,6 +287,8 @@ export interface NovoChamadoInput {
   // `sprint` SAIU DAQUI também (R141, U96): o sprint é cálculo sobre o prazo.
   /** Sobrescreve o prazo calculado pelo SLA (campo) ou a data combinada (interno). */
   prazo_limite?: string | null;
+  /** R225 (U119): a atividade nasce AGENDADA — com dia marcado vai para a coluna Agendado, sem prazo. */
+  data_agendada?: string | null;
 }
 
 /**

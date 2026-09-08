@@ -11298,3 +11298,143 @@ configurável, o serviço, o firewall, o `config.env` protegido, nenhum segredo,
 **Números.** Verificador: 3.106 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa (Cloudflare) e `npm run build:windows` completo, com o
 `Instalar-Prever.exe` gerado.
+
+## U119 — a v0.0.2: todos veem tudo, o chat como conversa, o editor de uma área, a coluna Agendado, equipamentos pela atividade, o sistema versionado (R221–R229)
+
+O sistema subiu no servidor Windows em 08/09/2026 e o Davi mudou o regime: "A
+partir de hoje as pessoas começarão a usar o sistema, qualquer alteração que
+façamos será executada via versionamento do sistema, para preservar o banco de
+dados. Então atualmente estamos executando a atualização do sistema, que nos
+levará para a versão v0.0.2." Vieram dois tópicos — o chat da Início e as
+atividades — com uma dúzia de pedidos cada; virou uma migration (U119), nove
+regras (R221–R229) e a primeira versão numerada de verdade.
+
+**O que quebrou no servidor, e por quê.** "As imagens não carregaram no
+servidor (ex.: foto de banner da fachada)." O banner escuro da sidebar e da
+Início vinha de `@/assets/banner-home.jpg.asset.json` — um JSON da Lovable
+cuja `url` é `/__l5e/assets-v1/<id>/banner-home.jpg`, um caminho que só o
+site dela serve. Na Lovable funcionava; no servidor da empresa é 404. O arquivo
+foi baixado do preview dela (1,8 MB, 1920×981) para `public/banner-home.jpg`,
+as duas telas passaram a apontar para o caminho local e o JSON saiu. A regra
+(R229) ficou escrita para não voltar: toda imagem do sistema é arquivo do repo.
+
+**Todos veem tudo (R221).** O Nicholas (T.I.) não via as atividades porque
+duas camadas o recortavam: a policy `chamados_select` (u29) — dono, autor, fila
+sem dono, apoio — e o filtro `soMeus` da própria Início (home/data.ts), que
+repetia o recorte no cliente "porque a policy entrega a ele todos os internos
+sem responsável". O Davi decidiu: "Todos os usuários devem poder visualizar
+todas as atividades do sistema." A migration reescreve `chamados_select` e
+`visitas_select` como `USING (true)` e `pode_acessar_chamado()` como "estou
+logado e a atividade existe" — a mesma assinatura, então as policies de
+comentários, reações e (agora) movimentos que a citam não mudam. O que se
+recusou: abrir a ESCRITA (não foi pedido e não é o que "visualizar" diz),
+abrir valores (a R13 do SAC continua: cobrança, fechamento, blocos e itens da
+proposta ficam atrás de `pode_ver_financeiro`) e abrir o sobreaviso (o par
+negativo do censo continua vermelho se alguém afrouxar). O censo de policies
+permissivas do verificador subiu de 23 para 26 — com o motivo escrito ao lado
+de cada uma das três novas, que é para isso que ele existe.
+
+**O chat como conversa (R222–R223).** O pedido veio como um redesenho inteiro:
+9:16, cada mensagem "apenas a foto de perfil do autor, o título da atividade,
+a data/hora e abaixo o conteúdo", fundo na cor estratégica do prazo, responder
+e reagir abaixo do conteúdo, sem código, "algo que remeta a um celular com chat
+de texto", menos amarelo, selo vermelho no canto superior esquerdo, alça para
+arrastar, recolher que restaura a posição, campo fixo embaixo, e "qualquer
+mensagem que não seja uma resposta a nada" vai para todo mundo. Três decisões
+de arquitetura: (1) a COR da mensagem passa pela MESMA `faixaPrazo` do card
+(R136) — `corDaMencao` monta uma Atividade parcial e chama a função, em vez de
+inventar uma segunda régua; para isso a `minhas_mencoes` ganhou v2 (status,
+prazo, agenda, "respondida", e as origens diagnóstico e solução), o que exigiu
+`DROP FUNCTION` + `CREATE` porque a assinatura de retorno muda. (2) O recado
+para todos é uma tabela nova (`mensagens_chat`, RLS aberta para leitura com o
+motivo, INSERT só do próprio autor com vínculo ativo, publicação realtime) —
+NÃO um comentário sem atividade, porque comentário sem atividade não existe no
+modelo. (3) O roteamento do envio é função pura (`rotearEnvio`): resposta
+armada → comentário na atividade com a menção a quem mencionou (R216); texto
+que começa com `#Código` de uma atividade conhecida → comentário nela; o resto
+→ todos. O `#Código` no campo virou um CHIP na cor do prazo ao lado do campo
+(um `<textarea>` não pinta metade do texto), e o texto digitado com o código
+também roteia — as duas leituras do pedido do Davi ficam de pé. O que se
+recusou: responder a menção em descrição/diagnóstico/solução pelo chat — o
+Davi foi explícito ("clica e abre o pop-up da atividade"), e a R216 da U117
+(responder em descrição virava comentário) foi revista aqui. O amarelo ficou
+só no botão de enviar e no botão flutuante; o painel usa `cinzas(isLight)`.
+
+**O editor de uma área (R224).** Os três defeitos que o Davi listou — negrito
+que perde a seleção, checklist difícil, `@[Breno Goes](user:hash)` aparecendo
+cru — eram a arquitetura da v1 (U95): um `<textarea>` por linha. Não existe
+seleção que atravesse textareas, então "selecionar várias linhas e virar
+checklist" era impossível; o clique na barra tirava o foco da linha e a
+seleção ia embora; e a linha em edição só podia mostrar texto cru. A v2 é UMA
+área `contentEditable`: cada linha é um `<div data-bloco>` com o marcador em
+UI própria (`contenteditable=false`), a menção é um chip atômico com o nome, o
+negrito é o `execCommand` nativo (não mexe na seleção), e a cada tecla o DOM é
+LIDO de volta para o mesmo Markdown de sempre (`lerBlocos` → `blocosParaTexto`).
+Nada que lê a descrição mudou de formato. O que se recusou: um editor
+rico de HTML/JSON (o cabeçalho de edicao-texto.ts continua valendo) e uma
+biblioteca externa (Tiptap/Lexical trariam 300 KB e um modelo próprio para
+resolver quatro gestos). `TextareaComMencoes` (a caixa de comentário e o chat)
+passou a ser a mesma área sem barra — a menção aparece como chip também lá.
+Sete pinos do bloco U95/U40 que descreviam a v1 (o `scrollHeight` do
+textarea, o `id` na primeira linha, o `className="checklist-check"` em JSX)
+foram reapontados para o contrato novo, com o motivo em cada um.
+
+**Toda atividade agendável (R225).** "Agendado" existia como STATUS do campo e
+era desviado para "Aguardando início" (U72) — a coluna some, a hora fica no
+card. O Davi pediu a coluna de volta, para TODA natureza: "o Nicholas do T.I.
+agenda uma reunião". A tradução ficou no modelo: `colunaDoChamado` manda para
+`agendado` o card aberto com dia marcado (`data_agendada`, da U99, ou
+`data_hora_agendada` do campo); sem dia, o status `agendado` continua fila.
+Agendada não tem prazo — `prazoLimite`, `prazoTexto` e `prazoEstourado`
+zeram no montador, e a cor vem do dia (`agendadaEm`). Remarcar conta no banco
+(`chamados.reagendamentos`, gatilho `contar_reagendamento`: só quando já havia
+data e a data virou outra) e o card diz "Re-agendado Nx" (`rotuloReagendado`).
+Arrastar para a coluna pede o dia (`AgendarDialog`) — a coluna É a data, um
+card não entra nela sem uma; arrastar de volta para a fila limpa o dia
+(`patchDoMovimento`), senão o card voltaria sozinho. O aviso das 08h é um job
+do pg_cron (`agenda-de-hoje`, `0 11 * * *` — Brasília não tem mais horário de
+verão) que insere `notificacoes` para responsável e apoios, idempotente por
+dia. Regra 5 respeitada duas vezes: `reagendamentos` NÃO entra no SELECT
+principal da Início nem do painel — até a U119 rodar a coluna não existe, e
+um 42703 derrubaria a tela inteira; ele é lido à parte (só os remarcados na
+Início; um `maybeSingle` no painel) e, sem a coluna, o card só não diz "Nx".
+
+**Equipamentos pela atividade (R226).** O gesto de campo — "tirei a câmera
+do bloco A e instalei a nova" — agora fica na atividade e reflete no
+patrimônio (QAP, U109). Duas listas quando o cliente é UM (nem interna, nem
+grupo — `clienteUnico` olha `cliente_id` e `chamado_locais`): removidos e
+instalados. A escrita é UMA RPC (`mover_equipamento`, SECURITY DEFINER) porque
+o técnico não tem UPDATE em `equipamentos_patrimonio` (U109: só gestor) e não
+deve ter — o que ele pode é ESTE gesto, validado no banco (cliente único,
+bloco do cliente, item no cliente) e com rastro em `equipamento_movimentos`
+(que guarda o estado ANTES, para o desfazer). As leituras também são RPCs
+DEFINER: a policy de leitura do patrimônio só mostra ao técnico o cliente que
+ele "vê", e com a R221 toda pessoa vê toda atividade. O que ficou para depois,
+por pedido: o botão de forçar sincronismo com o QAP (P63).
+
+**As pequenas.** Etiquetas do card empilhadas Cliente → Tipo → Risco (R227):
+a fileira virou coluna, e o chip de tipo mudou de lugar no JSX para a ordem
+ser a ditada — os pinos da R136 sobre fundo e borda não mexeram. A página da
+atividade (interna e de campo) ganhou `.pagina-larga` (R228), a mesma sangria
+da ficha. A versão (R229) mora em `package.json` (0.0.2 — o pacote v0.0.1 saiu
+com 1.0.0 e a contagem começa aqui), espelhada em `src/lib/versao.ts` (o
+verificador compara as duas), visível sob o logotipo, com `docs/VERSOES.md`
+nascendo. O sino ganhou ícones para `mencao`, `chamado_comentario` e
+`agenda_hoje` (metade da P62).
+
+**O que a verificação pegou.** O censo de gatilhos AFTER UPDATE de `chamados`
+acendeu com o novo `trg_notify_mencao_registro` (menção no diagnóstico e na
+solução) — foi declarado, com o motivo (só insere em notificacoes, conjunto
+disjunto). O censo de `is_gestor` acendeu por causa do `desfazer_movimento` —
+declarado: é função, não policy, e vem com o teste de autoria. O pino "cada
+status cai na coluna homônima" acendeu para `agendado`, que sem data agora é
+fila — o pino ganhou a data e um par negativo. E o pino da área única pegou o
+`<textarea>` do PRÓPRIO cabeçalho do editor, em prosa — o regex passou a exigir
+espaço depois da tag. O `tsc` acusou 11 erros novos: 9 do narrowing de `never`
+nos type guards do editor (guards que devolvem `n is HTMLElement` num nó que JÁ
+é HTMLElement estreitam o ramo falso a `never`) — viraram funções booleanas;
+um cast do PostgREST no chat; e `data_agendada` faltando em `NovoChamadoInput`.
+Voltou ao baseline.
+
+**Números.** Verificador: 3.140 asserções, 0 falharam. `tsc`: 57 (baseline). Build
+completa; `npm run build:windows` completo (`dist-windows/Prever-0.0.2.zip`).

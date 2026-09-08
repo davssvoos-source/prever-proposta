@@ -118,6 +118,13 @@ export interface Atividade {
   prazoTexto: string | null;
   prazoEstourado: boolean;
   agendadaEm: string | null;
+  /**
+   * R225 (U119): a atividade está AGENDADA (tem dia marcado e ainda não
+   * começou). Agendada não tem prazo — o que organiza é o dia marcado.
+   */
+  agendada: boolean;
+  /** R225: quantas vezes a data agendada mudou — o card diz "Re-agendado Nx". */
+  reagendamentos: number;
   /** Eixo do filtro de período. null = a atividade NUNCA é escondida por período. */
   quando: string | null;
 
@@ -181,25 +188,75 @@ const CINZA: Cores = {
 const PRI_RANK: Record<string, number> = { urgente: 0, alta: 1, normal: 2, baixa: 3 };
 
 /**
- * As colunas do quadro. NÃO é mais STATUS_ORDEM inteiro — o quadro é a fila de
- * trabalho, e duas coisas não são fila:
+ * As colunas do quadro. NÃO é STATUS_ORDEM inteiro — o quadro é a fila de
+ * trabalho:
  *
- * · `agendado` some como coluna e cai em "Aguardando início". Um chamado com
- *   hora marcada continua esperando para começar; separá-los rendia duas
- *   colunas dizendo a mesma coisa. A hora marcada segue no card.
+ * · `agendado` É coluna desde a R225 (U119). Davi, 08/09/2026: "toda atividade
+ *   deve poder ser agendada (…) crie uma nova coluna no Kanban chamada
+ *   'Agendado'". Até a U118 o card com hora marcada caía em "Aguardando
+ *   início" (U72); agora o dia marcado tem coluna própria, venha de que
+ *   natureza vier — é o que o técnico do T.I. precisa para ver a reunião
+ *   agendada sem prazo.
  * · `cancelado` não tem coluna: trabalho cancelado não é trabalho. Continua
  *   alcançável pela visão de lista com a situação "Encerrados", e o quadro diz
  *   quantos ficaram de fora em vez de escondê-los calado.
  */
 export const COLUNAS: ColunaQuadro[] = [
-  "aberto", "em_andamento", "stand_by", "aguardando_aprovacao", "concluido",
+  "aberto", "agendado", "em_andamento", "stand_by", "aguardando_aprovacao", "concluido",
 ];
 
 /** Onde o card cai no quadro. `null` = não tem coluna (fica só na lista). */
 export function colunaVisivel(c: ColunaQuadro): ColunaQuadro | null {
-  if (c === "agendado") return "aberto";
   if (c === "cancelado") return null;
   return c;
+}
+
+/** R225: o rótulo do card — nada até a primeira remarcação, depois "Re-agendado", "Re-agendado 2x"… */
+export function rotuloReagendado(n: number | null | undefined): string | null {
+  const v = Math.max(0, Math.floor(n ?? 0));
+  if (v === 0) return null;
+  return v === 1 ? "Re-agendado" : `Re-agendado ${v}x`;
+}
+
+/** R225: a data (só dia) vira o FIM do dia no fuso local — é quando a atividade agendada "vence". */
+export function fimDoDiaAgendado(dia: string | null | undefined): string | null {
+  if (!dia) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(dia) ? `${dia}T23:59:59` : dia;
+}
+
+/** R225: "Agendada para 10/09" — o rodapé do card quando não há prazo a mostrar. */
+export function textoDoDiaAgendado(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `Agendada para ${dd}/${mm}`;
+}
+
+/** R225: a atividade tem dia marcado (data só, ou data e hora do campo)? */
+export function temAgendamento(c: Pick<BrutoChamado, "data_agendada" | "data_hora_agendada">): boolean {
+  return !!(c.data_agendada || c.data_hora_agendada);
+}
+
+/**
+ * R225: o que o ARRASTO grava. Sair de "Agendado" para a fila ("Aguardando
+ * início") LIMPA o dia marcado — senão o card voltaria sozinho para Agendado;
+ * qualquer outro destino é só o status (a data fica, como história).
+ */
+export function patchDoMovimento(colunaAtual: ColunaQuadro, para: ColunaQuadro): { status: string; data_agendada?: null; data_hora_agendada?: null } {
+  if (colunaAtual === "agendado" && para === "aberto") return { status: "aberto", data_agendada: null, data_hora_agendada: null };
+  return { status: para };
+}
+
+/**
+ * R225: agendar pelo quadro — o dia entra; uma atividade que já tinha começado
+ * (em andamento, stand-by…) volta para a fila agendada, porque "Agendado" é
+ * coluna de quem ainda não começou.
+ */
+export function patchDeAgendamento(statusAtual: string | null | undefined, dia: string): { data_agendada: string; status?: "aberto" } {
+  const volta = statusAtual !== "aberto" && statusAtual !== "agendado";
+  return volta ? { data_agendada: dia, status: "aberto" } : { data_agendada: dia };
 }
 
 export function colunaLabel(c: ColunaQuadro): string {
@@ -228,6 +285,10 @@ export interface BrutoChamado {
   equipe: string | null;
   prazo_limite: string | null;
   data_hora_agendada: string | null;
+  /** R225 (U119): o dia agendado de QUALQUER atividade (date, U99). */
+  data_agendada?: string | null;
+  /** R225 (U119): quantas vezes a data mudou — chega null antes da migration U119. */
+  reagendamentos?: number | null;
   responsavel_id: string | null;
   aberto_por: string | null;
   created_at: string;
@@ -284,6 +345,15 @@ export function colunaDoChamado(c: BrutoChamado): Traduzido {
 
   if (st === "concluido") return { coluna: "concluido", rotuloNativo: null, bolaCom: null, alerta: null };
   if (st === "cancelado") return { coluna: "cancelado", rotuloNativo: null, bolaCom: null, alerta: null };
+
+  // R225 (U119): TODA atividade pode ser agendada — o card com dia marcado
+  // (data_agendada, ou data_hora_agendada no campo) que ainda não começou vive
+  // na coluna "Agendado", venha de que natureza vier. Sem dia marcado, o
+  // status `agendado` do campo é só fila: cai em "Aguardando início".
+  if ((st === "aberto" || st === "agendado") && temAgendamento(c))
+    return { coluna: "agendado", rotuloNativo: null, bolaCom: null, alerta: c.responsavel_id ? null : "sem_responsavel" };
+  if (st === "agendado")
+    return { coluna: "aberto", rotuloNativo: null, bolaCom: null, alerta: c.responsavel_id ? null : "sem_responsavel" };
 
   if (STATUS_VALIDOS.has(st)) {
     const col = st as ChamadoStatus;
@@ -411,6 +481,10 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
   // status fora do vocabulário conta como aberto: a coluna "Sem status" seria
   // inalcançável se o filtro padrão o cortasse
   const emAberto = t.coluna === "sem_status" ? true : chamadoEmAberto(c.status);
+  // R225: agendada = está na coluna Agendado. Agendada NÃO tem prazo (Davi:
+  // "uma atividade agendada, não deve ter prazo") — o prazo some do card e da
+  // cor, e o que vence é o dia marcado.
+  const agendada = t.coluna === "agendado";
   const participantes = Array.from(new Set([
     ...(c.responsavel_id ? [c.responsavel_id] : []),
     ...(ctx.apoiosDoChamado?.get(c.id) ?? []),
@@ -469,11 +543,13 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     equipes,
     // R141 (U96): o sprint SAI DO PRAZO, sempre — a coluna morreu.
     sprint: interno ? sprintDoPrazo(c.prazo_limite) : null,
-    prazoLimite: c.prazo_limite,
-    prazoTexto: c.prazo_limite && chamadoEmAberto(c.status) ? textoPrazo(c.prazo_limite) : null,
-    prazoEstourado: situacaoPrazo(c.prazo_limite, c.status) === "estourado",
-    agendadaEm: c.data_hora_agendada,
-    quando: c.data_hora_agendada ?? c.prazo_limite ?? null,
+    prazoLimite: agendada ? null : c.prazo_limite,
+    prazoTexto: !agendada && c.prazo_limite && chamadoEmAberto(c.status) ? textoPrazo(c.prazo_limite) : null,
+    prazoEstourado: !agendada && situacaoPrazo(c.prazo_limite, c.status) === "estourado",
+    agendadaEm: c.data_hora_agendada ?? fimDoDiaAgendado(c.data_agendada),
+    agendada,
+    reagendamentos: c.reagendamentos ?? 0,
+    quando: c.data_hora_agendada ?? fimDoDiaAgendado(c.data_agendada) ?? c.prazo_limite ?? null,
     emAberto,
     aConferir: c.natureza === "campo" && c.status === "concluido"
       && (c as any).faturamento_status === "a_analisar",
@@ -574,6 +650,8 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
       && new Date(v.data_hora_agendada).getTime() < Date.now()
       && (bucket === "pendente"),
     agendadaEm: v.data_hora_agendada,
+    agendada: t.coluna === "agendado",
+    reagendamentos: 0,
     quando: v.data_hora_agendada ?? null,
     // Derivado da COLUNA traduzida, não do bucket do status cru. Vindo do
     // bucket, 'aprovada' e 'reprovada' ficavam encerradas — e a proposta na

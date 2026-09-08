@@ -8,11 +8,12 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-08** · última regra: **R220** · último diário:
-**U118** · verificador: **3.106 asserções, 0 falharam** · `tsc`: baseline
-**57** · migrations rodadas até a **U110** (U106 e U109 em 07/09/2026; a
-**U110**, os 4.241 equipamentos do QAP, em 08/09/2026) · **pendente: U117**
-(reações a comentário e a função do chat de menções).
+Última atualização: **2026-09-08** · última regra: **R229** · último diário:
+**U119** · verificador: **3.140 asserções, 0 falharam** · `tsc`: baseline
+**57** · migrations rodadas até a **U117** (U106 e U109 em 07/09/2026; U110 e
+**U117** em 08/09/2026) · **pendente: U119** (a v0.0.2) · **versão instalada no
+servidor: v0.0.1** (o pacote da U118); **esta entrega é a v0.0.2** — o que
+entrou em cada versão está em `docs/VERSOES.md`.
 
 ---
 
@@ -54,6 +55,9 @@ técnica de campo é o **Vinicius**.
 8. `docs/PLANO_UNIFICACAO.md` — o diário (U1–U100). É onde está o PORQUÊ de
    cada decisão técnica; ler a entrada citada quando um trecho de código
    parecer estranho.
+9. `docs/VERSOES.md` — o que entrou em cada versão instalada no servidor
+   (R229): a versão é o que muda no servidor; a migration é o que muda no
+   banco; os dois andam juntos.
 
 ## 3. Onde estamos (04/09/2026)
 
@@ -94,6 +98,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U116 | a ficha em **três colunas de desktop** (`.ficha-grid`: identidade \| local \| atividades, com a forma do conteúdo — Atividades é a coluna alta de cards, rolando por dentro) (R209); o **serviço prestado vira item do card O local** e a linha Coordenadas sai (R210) |
 | U117 | a **estrutura dentro de O local** (R211); a coluna Atividades da ficha usa o **card da Início** (R212); **Problema/Diagnóstico só na corretiva** (R213); a **Proposta Comercial expande no "+"** (R214, o formulário da visita virou componente); o **chat de menções** na Início — botão fixo, painel, atividade no meio da tela, responder aqui, reações (R215–R217); migration U117 |
 | U118 | na ficha, **visitas, chamados e atividades numa lista só** (R218) e as **colunas alinhadas embaixo** (R219); o **pacote para Windows Server** — `npm run build:windows`, `Instalar-Prever.exe` com porta configurável, serviço WinSW, manual `hospedagem-windows.md` (R220); revisão: inventário da skill, P61/P62, ONBOARDING §6 |
+| U119 | a **v0.0.2**: **todos veem todas as atividades** (R221); o **chat como conversa 9:16** com recado para todos e resposta pelo `#Código` (R222–R223); o **editor de uma área** (R224); a coluna **Agendado**, "Re-agendado Nx" e o aviso das 08h (R225); **equipamentos removidos/instalados pela atividade** (R226); etiquetas empilhadas (R227); página da atividade larga (R228); **versão 0.0.2**, `VERSOES.md` e o banner local (R229); migration **U119** |
 
 ## 4. Banco: migrations
 
@@ -101,14 +106,22 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **Rodadas até a U110** (08/09/2026).
-- **Pendente: U117** (`20260920090000_u117_reacoes_e_minhas_mencoes.sql`) —
-  a tabela `chamado_reacoes` (reação por emoji a comentário, RLS pela régua
-  `pode_acessar_chamado`, lista fechada de oito emojis igual à do app) e a
-  função `minhas_mencoes()` (a leitura do chat de menções, SECURITY INVOKER,
-  reusa `mencoes_em` da U95). Exige a U95 (rodou); independe das outras. Até
-  rodar, as reações não aparecem e o chat avisa que espera a migration — sem
-  tela vermelha (regra 5). Doze itens de conferência.
+- **Rodadas até a U117** (a U117 em 08/09/2026, "tudo OK" — Davi).
+- **Pendente: U119** (`20260921090000_u119_v002_visibilidade_chat_agenda_equipamentos.sql`)
+  — a v0.0.2 inteira, em quatro seções: (§1) `chamados_select` e
+  `visitas_select` viram `USING (true)` e `pode_acessar_chamado()` vira
+  "logado e existe" (R221); (§2) `mensagens_chat` (o recado para todos, com
+  realtime), `minhas_mencoes` v2 por DROP+CREATE (status/prazo/agenda/
+  respondida, origens diagnóstico e solução) e o gatilho de menção nesses dois
+  campos (R222–R223); (§3) `chamados.reagendamentos` + gatilho, a função
+  `notificar_agendadas_de_hoje()` e o job `agenda-de-hoje` às 11:00 UTC
+  (R225); (§4) `situacao`/`retirado_*` no patrimônio, `equipamento_movimentos`
+  e as cinco RPCs (R226). Pré-voo exige a U117. **Rodar ANTES de subir o
+  pacote v0.0.2** — até rodar, o app se defende (regra 5): a Início e o painel
+  leem `reagendamentos` à parte, o chat avisa, os equipamentos da atividade
+  ficam vazios. Vinte itens de conferência.
+- **U117** (`20260920090000_u117_reacoes_e_minhas_mencoes.sql`, rodada em
+  08/09/2026) — `chamado_reacoes` e a v1 de `minhas_mencoes()`.
 - **U106** (`20260917090000_u106_mapa_sai.sql`, rodada em 07/09/2026) — o
   DELETE idempotente da chave `mapa` em `permissoes_tela`.
 - **U109** (`20260918090000_u109_patrimonio_do_qap.sql`, rodada em 07/09/2026,
@@ -259,7 +272,9 @@ Das 23 perguntas do plano, ficam duas:
    (hoje é escolha de quem cria, R142/R169).
 3. **Os documentos exportados do ERP com os equipamentos por cliente** (Fase
    H.5) — depois vem a API do QAP (R160: diária + botão Sincronizar; contato:
-   Lopes, desenvolvedor do QAP ERP; só quando o sistema estiver redondo).
+   Lopes, desenvolvedor do QAP ERP; só quando o sistema estiver redondo). Em
+   08/09/2026 ele repetiu: o botão de forçar sincronismo com o QAP fica "para
+   mais pra frente" (P63).
 4. **A leitura da proposta aprovada (PDF) pela IA** para criar as atividades
    da implantação (R148, H.6).
 

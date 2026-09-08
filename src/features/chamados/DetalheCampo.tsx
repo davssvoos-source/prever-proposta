@@ -578,7 +578,7 @@ export function DetalheCampo({ id }: { id: string }) {
   const fotosDepois = fotos.filter((f) => f.etapa === "depois");
 
   return (
-    <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
+    <div className="pagina-larga" style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button

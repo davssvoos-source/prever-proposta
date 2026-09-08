@@ -35,7 +35,7 @@ export const DIAS_ENCERRADO = 7;
 const CAMPOS_DA_HOME =
   "id, numero, titulo, status, natureza, tipo, prioridade, equipe, " +
   "impacto_operacional, " +
-  "prazo_limite, data_hora_agendada, responsavel_id, aberto_por, " +
+  "prazo_limite, data_hora_agendada, data_agendada, responsavel_id, aberto_por, " +
   "concluida_em, fechada_em, faturamento_status, created_at, updated_at, " +
   // `!cliente_id` DESAMBIGUA o vínculo (U45/R54): desde que `chamado_clientes`
   // existe, há DOIS caminhos de `chamados` para `clientes` — a FK direta
@@ -102,7 +102,18 @@ export function useChamadosDaHome(s: Sessao) {
         .or(`status.not.in.(concluido,cancelado),updated_at.gte.${corte}`)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return ((data as any[]) ?? []) as BrutoChamado[];
+      const lista = ((data as any[]) ?? []) as BrutoChamado[];
+      // R225 (U119) — REGRA 5: `reagendamentos` vem numa consulta à parte, só
+      // dos que foram remarcados (poucos), porque até a migration rodar a
+      // coluna não existe (42703) e pôr o nome dela no SELECT principal
+      // derrubaria a Início inteira. Sem a coluna, os cards só não dizem
+      // "Re-agendado Nx".
+      const rem = await supabase.from("chamados" as any).select("id, reagendamentos").gt("reagendamentos", 0);
+      if (!rem.error && Array.isArray(rem.data)) {
+        const porId = new Map<string, number>((rem.data as any[]).map((r) => [r.id as string, Number(r.reagendamentos) || 0]));
+        for (const c of lista) c.reagendamentos = porId.get(c.id) ?? 0;
+      }
+      return lista;
     },
   });
 }
@@ -222,8 +233,9 @@ export function useVisitasDaHome(s: Sessao, tecnicoFiltro: string) {
     enabled: !!s.userId,
     queryFn: async (): Promise<BrutoVisita[]> => {
       let q = supabase.from("visitas_tecnicas").select(CAMPOS_VISITA);
-      if (s.cargo === "tecnico") q = q.eq("tecnico_id", s.userId as string);
-      else if (tecnicoFiltro !== "todos") q = q.eq("tecnico_id", tecnicoFiltro);
+      // R221 (U119): o técnico vê as visitas de todos — o filtro por pessoa é
+      // escolha de quem olha, não recorte do cargo
+      if (tecnicoFiltro !== "todos") q = q.eq("tecnico_id", tecnicoFiltro);
       const { data, error } = await q.order("data_hora_agendada", { ascending: true });
       if (error) throw error;
       return ((data as any[]) ?? []) as BrutoVisita[];
@@ -271,13 +283,12 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
     const corte = agora.getTime() - DIAS_ENCERRADO * 864e5;
     const lista: Atividade[] = [];
 
-    const soMeus = s.cargo === "tecnico";
+    // R221 (U119): o recorte "só o meu" do técnico SAIU. Davi, 08/09/2026:
+    // "Todos os usuários devem poder visualizar todas as atividades do
+    // sistema." A lente "Meu dia" e o filtro por pessoa continuam sendo o
+    // jeito de olhar só o seu — escolha, não imposição.
     for (const c of chamados.data ?? []) {
       const a = atividadeDoChamado(c, ctx);
-      // "todas as atividades que ENVOLVEM o usuário" — para o técnico isso é
-      // recorte, não decoração: sem ele a Home dele mostra os 537 chamados
-      // internos que a policy entrega a qualquer autenticado
-      if (soMeus && !(a.souResponsavel || a.souApoio || a.souAutor)) continue;
       // refino do corte: quando o chamado saiu da fila de verdade. A conta
       // mora no modelo (`encerradoEm`) porque o gráfico precisa do mesmo
       // número — duas contas do mesmo fato acabam discordando.
@@ -301,9 +312,8 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
    * próprio, um status novo ou uma cor nova precisaria ser ensinada duas
    * vezes, e a segunda seria esquecida.
    *
-   * O recorte do técnico é repetido aqui porque a policy entrega a ele todos
-   * os chamados internos sem responsável — sem o filtro, o gráfico dele
-   * contaria o trabalho da casa inteira.
+   * R221 (U119): sem recorte por cargo — o gráfico de todo mundo conta a casa
+   * inteira, como a Início de todo mundo mostra a casa inteira.
    */
   const historico = useMemo<Atividade[]>(() => {
     const ctx = {
@@ -313,12 +323,9 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
       locaisDoChamado: locaisDeTodos.data,
       equipeDePessoa,
     };
-    const soMeus = s.cargo === "tecnico";
     const lista: Atividade[] = [];
     for (const c of historicoBruto.data ?? []) {
-      const a = atividadeDoChamado(c, ctx);
-      if (soMeus && !(a.souResponsavel || a.souApoio || a.souAutor)) continue;
-      lista.push(a);
+      lista.push(atividadeDoChamado(c, ctx));
     }
     return lista;
   }, [historicoBruto.data, apoios.data, apoiosDeTodos.data, locaisDeTodos.data, equipeDePessoa, s.userId, s.cargo]);

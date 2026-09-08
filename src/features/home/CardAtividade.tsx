@@ -18,13 +18,13 @@
 // conclusão, a borda fica neutra.
 
 import type { CSSProperties } from "react";
-import { Building2, CalendarClock, AlertTriangle } from "lucide-react";
+import { Building2, CalendarClock, AlertTriangle, RotateCcw } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card, etiqueta } from "@/lib/ui";
 import { PRISMA, degradeDeBorda, esmaecer } from "@/lib/paleta";
 import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import {
-  BOLA_LABEL, ALERTA_LABEL, faixaPrazo,
+  BOLA_LABEL, ALERTA_LABEL, faixaPrazo, rotuloReagendado, textoDoDiaAgendado,
   type Atividade, type Cores, type FaixaPrazo,
 } from "@/features/atividades/modelo";
 
@@ -211,11 +211,13 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
         </div>
       )}
 
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 9, flexWrap: "wrap" }}>
-        {/* categoria com cor própria — o "strategic color" das referências */}
-        {a.tipoLabel && a.tipoCor && (
-          <span style={chipStyle(a.tipoCor, isLight)}>{a.tipoLabel}</span>
-        )}
+      {/* R227 (U119): as etiquetas EMPILHADAS, uma por linha, nesta ordem —
+          Cliente (o local), Tipo de demanda, Risco Operacional (impacto no
+          interno, prioridade no campo). Davi, 08/09/2026: "as etiquetas dos
+          cards devem estar empilhadas (uma acima da outra) na ordem: Cliente →
+          Tipo de demanda → Risco Operacional". Era uma fileira que quebrava
+          em ordem imprevisível conforme a largura da coluna. */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, marginTop: 9 }}>
         {/* A etiqueta "Visita técnica" que existia aqui saiu (2026-08-22,
             Davi): era redundante com o chip de tipo logo acima — toda visita
             tem natureza comercial e tipoLabel "Proposta comercial" (R29), e
@@ -271,7 +273,12 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
           </span>
         )}
 
-        {/* a régua de urgência: prioridade no campo, IMPACTO OPERACIONAL no
+        {/* 2º — categoria com cor própria — o "strategic color" das referências */}
+        {a.tipoLabel && a.tipoCor && (
+          <span style={chipStyle(a.tipoCor, isLight)}>{a.tipoLabel}</span>
+        )}
+
+        {/* 3º — a régua de urgência: prioridade no campo, IMPACTO OPERACIONAL no
             interno (R142, U96) — nunca as duas no mesmo card */}
         {a.prioridadeLabel && a.prioridadeCor && (
           <span style={chipStyle(a.prioridadeCor, isLight)}>{a.prioridadeLabel}</span>
@@ -289,12 +296,30 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
             <AlertTriangle size={12} /> {ALERTA_LABEL[a.alerta]}
           </span>
         )}
+        {/* R225 (U119): remarcou? o card diz quantas vezes */}
+        {rotuloReagendado(a.reagendamentos) && (
+          <span style={{
+            display: "flex", alignItems: "center", gap: 4,
+            fontFamily: FONT, fontWeight: 600, fontSize: PISO_TIPO, color: ambar,
+          }}>
+            <RotateCcw size={12} /> {rotuloReagendado(a.reagendamentos)}
+          </span>
+        )}
 
       </div>
 
-      {(a.participantes.length > 0 || a.prazoTexto) && (
+      {(a.participantes.length > 0 || a.prazoTexto || (a.agendada && a.agendadaEm)) && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }}>
           {pessoas && <AvatarPilha ids={a.participantes} pessoas={pessoas} />}
+          {/* R225: agendada não tem prazo — mostra o DIA marcado */}
+          {a.agendada && a.agendadaEm && !a.prazoTexto && (
+            <span style={{
+              marginLeft: "auto", display: "flex", alignItems: "center", gap: 4,
+              fontFamily: FONT, fontWeight: 400, fontSize: PISO_TIPO, color: textSecondary,
+            }}>
+              <CalendarClock size={12} /> {textoDoDiaAgendado(a.agendadaEm)}
+            </span>
+          )}
           {a.prazoTexto && (
             <span style={{
               marginLeft: "auto", display: "flex", alignItems: "center", gap: 4,

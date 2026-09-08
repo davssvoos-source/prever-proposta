@@ -138,17 +138,23 @@ const visita = (status, extra = {}) => ({
 // exaustividade: cada status do CHECK vira a coluna homônima
 const CS = carregar('src/lib/chamado-status.ts');
 for (const st of CS.STATUS_ORDEM) {
+  // R225 (U119): "agendado" só é coluna com DIA MARCADO — sem data é fila
+  const extra = st === 'agendado' ? { data_hora_agendada: '2026-01-02T10:00:00Z' } : {};
   eq(`chamado "${st}" cai na coluna homonima`,
-     A.colunaDoChamado(chamado(st), null, false).coluna, st);
+     A.colunaDoChamado(chamado(st, extra), null, false).coluna, st);
 }
+eq('R225: status agendado SEM data cai em Aguardando inicio', A.colunaDoChamado(chamado('agendado'), null, false).coluna, 'aberto');
+eq('R225: chamado ABERTO com data_agendada cai em Agendado (qualquer natureza)',
+   A.colunaDoChamado(chamado('aberto', { natureza: 'interno', data_agendada: '2026-01-02' }), null, false).coluna, 'agendado');
 eq('o vocabulario tem 7 status (executado saiu na U13)', CS.STATUS_ORDEM.length, 7);
 eq('executado nao existe mais', CS.STATUS_ORDEM.includes('executado'), false);
 
 // ── U13/U14: o quadro nao mostra tudo o que o vocabulario tem ───────────────
-eq('o quadro tem 5 colunas', A.COLUNAS.length, 5);
-eq('agendado nao e coluna', A.COLUNAS.includes('agendado'), false);
+// R225 (U119): "Agendado" virou coluna — era desviada para "Aguardando início" (U72)
+eq('o quadro tem 6 colunas (R225: Agendado entrou)', A.COLUNAS.length, 6);
+eq('agendado E coluna, logo depois de Aguardando inicio (R225)', A.COLUNAS.indexOf('agendado'), 1);
 eq('cancelado nao e coluna', A.COLUNAS.includes('cancelado'), false);
-eq('agendado cai em "Aguardando inicio"', A.colunaVisivel('agendado'), 'aberto');
+eq('agendado nao e mais desviado (R225)', A.colunaVisivel('agendado'), 'agendado');
 eq('cancelado nao tem coluna (fica na lista)', A.colunaVisivel('cancelado'), null);
 eq('os demais nao sao desviados', A.colunaVisivel('stand_by'), 'stand_by');
 eq('rotulo de aberto mudou', CS.chamadoStatusInfo('aberto').label, 'Aguardando início');
@@ -2566,11 +2572,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /className="ferramenta-botao"/.test(ed95), true);
   eq('dois divisores separam negrito/itálico, checklist/lista e a menção na barra (três grupos, não cinco botões soltos) — no EditorDeDescricao (R135)',
      /\{\(i === 2 \|\| i === 4\) && \(/.test(ed95), true);
-  eq('a Descrição cresce com o texto: sem resize manual e sem scroll interno — a linha em edição do EditorDeDescricao (R135)',
-     /resize: "none", overflow: "hidden",/.test(ed95), true);
-  eq('useLayoutEffect mede e aplica scrollHeight a cada mudança de valor — cresce ANTES da pintura, sem flash',
-     /useLayoutEffect\(\(\) => \{\s*\n\s*const el = focado === null \? null : areas\.current\[focado\];\s*\n\s*if \(!el\) return;\s*\n\s*el\.style\.height = "auto";\s*\n\s*el\.style\.height = `\$\{el\.scrollHeight\}px`;/.test(ed95),
-     true);
+  // R224 (U119): o editor virou UMA área contentEditable — não há mais um
+  // <textarea> por linha para medir; a área cresce sozinha, sem scroll interno
+  eq('a Descrição cresce com o texto: sem resize manual e sem scroll interno — a área única do EditorDeDescricao (R135; R224)',
+     /contentEditable=\{!somenteLeitura\}/.test(ed95) && !/<textarea\s/.test(ed95), true); // o cabeçalho cita "<textarea>" em prosa
+  eq('R224: nenhuma medição de scrollHeight sobrou — o contentEditable cresce sozinho',
+     /scrollHeight/.test(ed95), false);
 
   eq('.ferramenta-botao existe com borda/fundo/hover dourado, lendo os tokens de tema (não isLight em JS)',
      /\.ferramenta-botao \{[\s\S]{0,200}border: 1px solid var\(--border-color\);/.test(cssChecklist), true);
@@ -2589,7 +2596,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      true);
   eq('o textarea da Descrição tem id, e o Campo recebe idAlvo — o <label> não associa mais com o primeiro botão da barra (o id agora passa pelo EditorDeDescricao, R135)',
      // U104: o id virou parâmetro (o Problema herda o padrão, o Diagnóstico tem o seu)
-     [/idAlvo = "painel-descricao-texto"/.test(pc4), /id=\{i === 0 \? idAlvo : undefined\}/.test(ed95),
+     [/idAlvo = "painel-descricao-texto"/.test(pc4), /id=\{idAlvo\}/.test(ed95), // R224: a área única leva o id
       /<Campo titulo=\{titulo\} estado=\{estado\} idAlvo=\{idAlvo\} destaque=\{destaque\}>/.test(pc4)
       && /idAlvo="painel-diagnostico-texto"/.test(pc4)],
      [true, true, true]);
@@ -7978,7 +7985,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      chavesNovoChamado,
      // U96: `sprint` saiu (R141); `impacto_operacional` (R142) e `proposta_id`
      // (R148) entraram. `data_hora_agendada` continua FORA — é o ponto.
-     ['cliente_id', 'cliente_sistema_id', 'descricao_problema', 'equipe', 'impacto_operacional', 'natureza',
+     ['cliente_id', 'cliente_sistema_id', 'data_agendada' /* R225 (U119): nasce agendada */, 'descricao_problema', 'equipe', 'impacto_operacional', 'natureza',
       'prazo_limite', 'prioridade', 'proposta_id', 'responsavel_id', 'tipo', 'titulo',
       'visita_id'].sort());
 
@@ -9668,7 +9675,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
    *   vivo é o mesmo teste de dois eixos de `pessoasDaGrade()` movido para a
    *   fronteira, e ele é medido pela conferência 106 da própria migration.
    */
-  eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 23, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
+  eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 26, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
      censoPermissivas(),
      ['agenda_campo|agenda_campo_select',
       'blocos_itens|blocos_itens read all auth',
@@ -9680,11 +9687,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       'chamado_equipes|chamado_equipes_select',
       'chamado_locais|chamado_locais_select',
       'chamado_sla|chamado_sla_select',
+      'chamados|chamados_select',                 // R221 (U119): toda pessoa logada vê toda atividade — Davi, 08/09/2026
       'cliente_equipamento_unidades|unidades_select',
       'duplas_escala_semanas|duplas_escala_semanas_select',
       'duplas_escala|duplas_escala_select',
       'duplas|duplas_select',
       'equipamentos|equip read all auth',
+      'mensagens_chat|mensagens_chat_select',     // R223 (U119): recado para todo mundo é público por definição
       'permissoes_tela|permissoes_select',
       'profiles|profiles_select',
       'profiles|profiles_select_all_authenticated',
@@ -9692,7 +9701,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       'regras_cerca|auth read regras_cerca',
       'regras_cftv|authenticated read regras_cftv',
       'servicos|servicos read all auth',
-      'tecnico_aliases|tecnico_aliases_select']);
+      'tecnico_aliases|tecnico_aliases_select',
+      'visitas_tecnicas|visitas_select']);       // R221 (U119): a visita é atividade (R218); os VALORES ficam nas tabelas de blocos/itens
   // PAR NEGATIVO do censo, e ele é o achado desta rodada: `sobreaviso_select`
   // NÃO está na lista acima porque o predicado dela não é `true`. Se alguém
   // afrouxar a policy, a linha volta ao censo E esta asserção acende — duas
@@ -10561,7 +10571,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     'trg_chamado_sincronizar_unidades',   // u7:835 — o inventário
     'trg_notify_chamado_upd',             // u7:451 — os sinos
   ];
-  eq('CRÍTICO: CENSO — os gatilhos AFTER UPDATE de LINHA de public.chamados são exatamente estes seis (derivado das migrations × lista à mão; a menção entrou na U95, a ficha de compra saiu na U96). A ordem entre eles é indiferente porque os conjuntos escritos são DISJUNTOS, e este censo é o que faz essa frase continuar sendo sobre um conjunto conhecido',
+  eq('CRÍTICO: CENSO — os gatilhos AFTER UPDATE de LINHA de public.chamados são exatamente estes sete (derivado das migrations × lista à mão; a menção entrou na U95, a ficha de compra saiu na U96, a menção no diagnóstico/solução na U119). A ordem entre eles é indiferente porque os conjuntos escritos são DISJUNTOS, e este censo é o que faz essa frase continuar sendo sobre um conjunto conhecido',
      // U95/R135: o sétimo é o aviso de MENÇÃO na descrição. Ele só INSERE em
      // notificacoes — conjunto escrito disjunto de todos os outros, então "a
      // ordem é indiferente" continua verdadeira. TRIGS_CHAMADOS_82 fica como a
@@ -10569,7 +10579,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      // U96/R140: o gatilho da ficha de compra CAIU (DROP TRIGGER na migration
      // U96, que o censo enxerga) — a lista da época o cita, e ele sai daqui.
      trigsDeChamados82(),
-     [...TRIGS_CHAMADOS_82.filter((t) => t !== 'trg_chamado_ficha_compra_upd'), 'trg_notify_mencao_descricao'].sort());
+     // U119/R222: o oitavo é o aviso de MENÇÃO no diagnóstico e na solução —
+     // também só INSERE em notificacoes, conjunto escrito disjunto dos demais.
+     [...TRIGS_CHAMADOS_82.filter((t) => t !== 'trg_chamado_ficha_compra_upd'), 'trg_notify_mencao_descricao', 'trg_notify_mencao_registro'].sort());
   // E a conferência 120 lê a MESMA ordem do pg_trigger. Se um rename futuro
   // mudar a ordem alfabética, ela aparece — em vez de mudar em silêncio.
   eq('CRÍTICO: a conferência 120 espera exatamente a ordem alfabética desse censo — ela é a mesma lista, lida do CATÁLOGO em vez do arquivo',
@@ -13415,7 +13427,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // no censo de policies permissivas com o motivo.
        // O censo subiu de propósito: ele existe para que nenhuma política
        // nova entre sem alguém olhar esta linha (regra 3).
-       [true, false, 31, 135, 52]);
+       // U119 moveu 31→32 e 135→136 (policies ficam em 52): a RPC
+       // desfazer_movimento_equipamento deixa um GESTOR desfazer o movimento
+       // de outra pessoa — num arquivo novo, numa FUNÇÃO (não policy), e junto
+       // do teste de autoria (feito_por = auth.uid()). Nenhuma policy nova
+       // cita is_gestor: as de escrita do patrimônio continuam as da U109.
+       [true, false, 32, 136, 52]);
   }
 }
 
@@ -16529,7 +16546,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // ── o editor ────────────────────────────────────────────────────────────
   const ed = ler95('src/components/EditorDeDescricao.tsx');
   eq('U95/R135: o editor NUNCA escreve "[ ]" na tela — o marcador é a caixa do design system (.checklist-check) e o ponto (.lista-ponto)',
-     [/\[ \]/.test(semCom95(ed).replace(/\/\*[\s\S]*?\*\//g, '')), /className="checklist-check"/.test(ed), /className="lista-ponto"/.test(ed)],
+     // R224 (U119): os marcadores nascem no DOM (criarMarcador), não em JSX
+     [/\[ \]/.test(semCom95(ed).replace(/\/\*[\s\S]*?\*\//g, '')), /"checklist-check"/.test(ed), /"lista-ponto"/.test(ed)],
      [false, true, true]);
   eq('U95/R135: a barra tem o botão de menção, e o editor grava pelo rascunho automático (R90)',
      [/Icon: AtSign, titulo: "Mencionar alguém", mencao: true/.test(ed), /useRascunhoSalvo\(valor, aoSalvar, chaveReset\)/.test(ed),
@@ -18893,8 +18911,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       (pc117b.match(/\{miolo\}/g) ?? []).length],
      [true, true, true, true, true, true, 2]);
   eq('R216/R217: o card do chat tem "Responder aqui" (comentário na atividade via comentarChamado) e a fileira de reações só em menção de comentário; a MESMA fileira está no painel e na página da atividade',
-     [/Responder aqui/.test(chatUi117), /await comentarChamado\(m\.chamadoId, t\);/.test(chatUi117),
-      /m\.origem === "comentario" && m\.eventoId && \(\s*\n\s*<FileiraDeReacoes/.test(chatUi117),
+     // U119 (R222/R223): "Responder aqui" virou o ícone abaixo da bolha; a
+     // resposta passa por rotearEnvio e vira comentário pelo MESMO comentarChamado
+     [/Responder aqui/.test(chatUi117), /await comentarChamado\(destino\.chamadoId, destino\.texto\);/.test(chatUi117),
+      /\{comentario && m\.eventoId && \(\s*\n[\s\S]{0,900}<FileiraDeReacoes/.test(chatUi117),
       /<FileiraDeReacoes chamadoId=\{chamadoId\} eventoId=\{c\.id\}/.test(pc117b),
       /<FileiraDeReacoes chamadoId=\{id\} eventoId=\{c\.id\}/.test(ler117('src/features/chamados/DetalheInterno.tsx'))],
      [true, true, true, true, true]);
@@ -18913,8 +18933,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /R213/.test(prod117.slice(prod117.indexOf('- **R184** —'), prod117.indexOf('- **R185** —'))),
       /R214/.test(prod117.slice(prod117.indexOf('- **R138** —'), prod117.indexOf('- **R139** —'))),
       /R212/.test(prod117.slice(prod117.indexOf('- **R209** —'), prod117.indexOf('- **R210** —'))),
-      /^### 6\.21 O chat de menções/m.test(ler117('DESIGN_SYSTEM.md')), /chat de menções/.test(ler117('docs/manual/visao-geral.md')),
-      /^## U117 /m.test(ler117('docs/PLANO_UNIFICACAO.md')), /U117/.test(ler117('docs/ESTADO_ATUAL.md')) && /\*\*Pendente: U117\*\*/.test(ler117('docs/ESTADO_ATUAL.md'))],
+      /^### 6\.21 O chat d[ae] (menções|Início)/m.test(ler117('DESIGN_SYSTEM.md')), /chat d[ae] (menções|Início)/.test(ler117('docs/manual/visao-geral.md')), // U119: §6.21 v16 e o parágrafo reescritos
+      /^## U117 /m.test(ler117('docs/PLANO_UNIFICACAO.md')), /U117/.test(ler117('docs/ESTADO_ATUAL.md')) && /\*\*Pendente: U119\*\*/.test(ler117('docs/ESTADO_ATUAL.md'))], // U119: a U117 rodou em 08/09; a pendente é a U119
      [true, true, true, true, true, true, true, true, true]);
 }
 
@@ -18985,6 +19005,223 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /^## P61 /m.test(ler118('docs/PENDENCIAS_TECNICAS.md')) && /^## P62 /m.test(ler118('docs/PENDENCIAS_TECNICAS.md')),
       /^## U118 /m.test(ler118('docs/PLANO_UNIFICACAO.md')), /U118/.test(ler118('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true, true, true, true, true]);
+}
+
+
+// ── U119 — a v0.0.2: visibilidade total, o chat como conversa, o editor de uma área, a coluna Agendado, equipamentos pela atividade, a versão (R221–R229) ──
+{
+  const fs119 = require('fs');
+  const ler119 = (f) => fs119.readFileSync(f, 'utf8');
+  const cod119 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const mig119 = ler119('supabase/migrations/20260921090000_u119_v002_visibilidade_chat_agenda_equipamentos.sql');
+  const CH = carregar('src/features/home/chat.ts');
+  const EQ = carregar('src/features/chamados/equipamentos-atividade.ts');
+
+  // ── R221: todos veem todas as atividades ────────────────────────────────
+  eq('R221 CRÍTICO: a migration abre a LEITURA de chamados e visitas a quem está logado (USING (true)) e reescreve pode_acessar_chamado sem a régua de dono/autor/fila/apoio — sem tocar em policy de ESCRITA',
+     [/CREATE POLICY chamados_select ON public\.chamados\s*\n\s*FOR SELECT TO authenticated\s*\n\s*USING \(true\);/.test(mig119),
+      /CREATE POLICY "visitas_select" ON public\.visitas_tecnicas\s*\n\s*FOR SELECT TO authenticated\s*\n\s*USING \(true\);/.test(mig119),
+      /SELECT auth\.uid\(\) IS NOT NULL\s*\n\s*AND EXISTS \(SELECT 1 FROM public\.chamados c WHERE c\.id = _chamado_id\);/.test(mig119),
+      /chamados_update|chamados_insert|chamados_delete/.test(mig119.replace(/--.*$/gm, ''))],
+     [true, true, true, false]);
+  const homeD = ler119('src/features/home/data.ts');
+  eq('R221 CRÍTICO: a Início não recorta mais o técnico — `soMeus` saiu dos dois montadores e a consulta de visitas não filtra por cargo',
+     [/soMeus/.test(homeD), /s\.cargo === "tecnico"\) q = q\.eq\("tecnico_id"/.test(homeD), /if \(tecnicoFiltro !== "todos"\) q = q\.eq\("tecnico_id", tecnicoFiltro\);/.test(homeD)],
+     [false, false, true]);
+
+  // ── R222/R223: a lógica pura do chat ────────────────────────────────────
+  const agora119 = new Date('2026-09-08T12:00:00');
+  const base119 = { status: 'aberto', prazoLimite: null, dataAgendada: null, dataHoraAgendada: null };
+  eq('R222 CRÍTICO: corDaMencao passa pela MESMA faixaPrazo do card — atrasado (vermelho), esta semana (amarelo), adiante (azul), concluído (verde); cancelado ou sem data é neutro',
+     [CH.corDaMencao({ ...base119, prazoLimite: '2026-09-07T12:00:00' }, agora119),
+      CH.corDaMencao({ ...base119, prazoLimite: '2026-09-09T12:00:00' }, agora119),
+      CH.corDaMencao({ ...base119, prazoLimite: '2026-09-30T12:00:00' }, agora119),
+      CH.corDaMencao({ ...base119, status: 'concluido', prazoLimite: '2026-09-01T12:00:00' }, agora119),
+      CH.corDaMencao({ ...base119, status: 'cancelado' }, agora119), CH.corDaMencao(base119, agora119)],
+     ['atraso', 'esta_semana', 'adiante', 'concluido', null, null]);
+  eq('R222/R225: agendada NÃO tem prazo — o dia marcado manda na cor mesmo com prazo vencido gravado; em andamento, o prazo volta a valer',
+     [CH.corDaMencao({ ...base119, prazoLimite: '2026-09-01T12:00:00', dataAgendada: '2026-09-30' }, agora119),
+      CH.corDaMencao({ ...base119, status: 'em_andamento', prazoLimite: '2026-09-01T12:00:00', dataAgendada: '2026-09-30' }, agora119)],
+     ['adiante', 'atraso']);
+  eq('R223 CRÍTICO: rotearEnvio — resposta armada vira comentário com a menção a quem mencionou; "#código texto" vai para a atividade conhecida (sem o código); código desconhecido ou sem código vai para TODOS; vazio não vai',
+     [CH.rotearEnvio('  oi  ', { chamadoId: 'c1', numero: 'AT-1', autorId: 'p1', autorNome: 'Ana' }, []),
+      CH.rotearEnvio('#at-1 fechado', null, [{ chamadoId: 'c1', numero: 'AT-1' }]),
+      CH.rotearEnvio('#AT-9 x', null, [{ chamadoId: 'c1', numero: 'AT-1' }]),
+      CH.rotearEnvio('bom dia a todos', null, []), CH.rotearEnvio('   ', null, []), CH.rotearEnvio('#AT-1', null, [{ chamadoId: 'c1', numero: 'AT-1' }])],
+     [{ destino: 'comentario', chamadoId: 'c1', texto: '@[Ana](user:p1) oi' },
+      { destino: 'comentario', chamadoId: 'c1', texto: 'fechado' },
+      { destino: 'todos', texto: '#AT-9 x' },
+      { destino: 'todos', texto: 'bom dia a todos' }, null, null]);
+  eq('R223: hashtagDaAtividade tira espaços e devolve null sem número',
+     [CH.hashtagDaAtividade(' AT 12 '), CH.hashtagDaAtividade(null), CH.hashtagDaAtividade('')], ['#AT12', null, null]);
+  eq('R222: linhaDoTempo mescla menções e recados da MAIS ANTIGA para a mais nova (menção antes do recado no empate)',
+     CH.linhaDoTempo(
+       [{ origem: 'comentario', chamadoId: 'c', numero: null, titulo: 't', eventoId: 'e1', autorId: null, texto: '', criadoEm: '2026-09-08T10:00:00Z', status: null, prazoLimite: null, dataAgendada: null, dataHoraAgendada: null, respondida: false }],
+       [{ id: 'm1', autorId: 'p', texto: 'x', criadoEm: '2026-09-08T09:00:00Z' }, { id: 'm2', autorId: 'p', texto: 'y', criadoEm: '2026-09-08T10:00:00Z' }]).map((i) => i.chave),
+     ['t:m1', 'c:e1', 't:m2']);
+  eq('R222: o selo soma as menções não lidas e os recados de OUTROS chegados depois de lidoAte',
+     [CH.contarNaoLidasDoChat([{ tipo: 'mencao', lida: false }, { tipo: 'mencao', lida: true }],
+        [{ id: '1', autorId: 'eu', texto: '', criadoEm: '2026-09-08T10:00:00Z' }, { id: '2', autorId: 'outro', texto: '', criadoEm: '2026-09-08T10:00:00Z' }, { id: '3', autorId: 'outro', texto: '', criadoEm: '2026-09-08T08:00:00Z' }],
+        '2026-09-08T09:00:00Z', 'eu'),
+      CH.contarNaoLidasDoChat([], [{ id: '2', autorId: 'outro', texto: '', criadoEm: '2026-09-08T10:00:00Z' }], null, 'eu')],
+     [2, 1]);
+  eq('R222: posicaoDentroDaTela nunca deixa o painel sair da tela; lerPosicaoGuardada tolera lixo',
+     [CH.posicaoDentroDaTela({ x: -50, y: 5000 }, { w: 380, h: 676 }, { w: 1440, h: 900 }),
+      CH.posicaoDentroDaTela({ x: 100, y: 100 }, { w: 380, h: 676 }, { w: 375, h: 600 }),
+      CH.lerPosicaoGuardada('{"x":10,"y":20}'), CH.lerPosicaoGuardada('nada'), CH.lerPosicaoGuardada(null)],
+     [{ x: 8, y: 216 }, { x: 8, y: 8 }, { x: 10, y: 20 }, null, null]);
+  eq('R222: mencaoDaLinha tolera a v1 da função (sem as colunas novas), lê as 4 origens, origem desconhecida vira comentário; chaveDaMencao distingue o campo; só comentário se responde',
+     [CH.mencaoDaLinha({ origem: 'descricao', chamado_id: 'c', numero: null, titulo: null, evento_id: null, autor_id: null, texto: null, criado_em: 'x' }).respondida,
+      CH.mencaoDaLinha({ origem: 'solucao', chamado_id: 'c', numero: null, titulo: null, evento_id: null, autor_id: null, texto: null, criado_em: 'x', status: 'aberto', respondida: true }).origem,
+      CH.mencaoDaLinha({ origem: 'zzz', chamado_id: 'c', numero: null, titulo: null, evento_id: null, autor_id: null, texto: null, criado_em: 'x' }).origem,
+      ['descricao', 'diagnostico', 'solucao'].map((o) => CH.chaveDaMencao({ origem: o, chamadoId: 'c', eventoId: null })),
+      CH.ehComentario({ origem: 'comentario', eventoId: 'e' }), CH.ehComentario({ origem: 'comentario', eventoId: null }), CH.ehComentario({ origem: 'diagnostico', eventoId: null })],
+     [false, 'solucao', 'comentario', ['d:c', 'g:c', 's:c'], true, false, false]);
+  eq('R222: dataHoraCurta é dd/mm HH:mm no fuso local',
+     [CH.dataHoraCurta('2026-09-08T14:32:00'), CH.dataHoraCurta(null), CH.dataHoraCurta('lixo')], ['08/09 14:32', '', '']);
+
+  // ── R222/R223: a tela do chat ────────────────────────────────────────────
+  const chatUi = ler119('src/features/home/ChatDeMencoes.tsx');
+  const chatD = ler119('src/features/home/chat-data.ts');
+  const css119 = ler119('src/styles.css');
+  eq('R222 CRÍTICO: o selo é VERMELHO com fonte branca no canto SUPERIOR ESQUERDO; a conversa é 9:16 (380×676) com alça de arrastar (posição guardada) e botão recolher; nenhum texto dourado; o degradê só no FAB e no enviar',
+     [/top: -4, left: -4/.test(chatUi), /background: isLight \? PRISMA\.vermelho\.light : PRISMA\.vermelho\.dark, color: "#ffffff"/.test(chatUi),
+      /width: min\(380px, calc\(100vw - 24px\)\);\s*\n\s*height: min\(676px, calc\(100vh - 120px\)\);/.test(css119), /\.fab-chat-alca \{ cursor: grab; touch-action: none; user-select: none; \}/.test(css119),
+      /onPointerDown=\{iniciarArrasto\}/.test(chatUi), /aria-label="Recolher o chat"/.test(chatUi),
+      (chatUi.match(/goldButton\(\)/g) ?? []).length, /color: gold\b/.test(cod119(chatUi)),
+      /guardarNoNavegador\(CHAVE_POSICAO_CHAT/.test(chatUi)],
+     [true, true, true, true, true, true, 2, false, true]);
+  eq('R222: a bolha é pintada por corDaMencao (a régua do card); menção em campo abre o pop-up em vez de responder; o título vai sem código; a data/hora é absoluta',
+     [/\.\.\.estiloDaBolha\(cor, isLight, c\),/.test(chatUi), /onClick=\{comentario \? undefined : \(\) => aoAbrir\(m\.chamadoId\)\}/.test(chatUi),
+      /\{m\.numero \? `\$\{m\.numero\} · ` : ""\}/.test(chatUi), /dataHoraCurta\(m\.criadoEm\)/.test(chatUi)],
+     [true, true, false, true]);
+  eq('R223 CRÍTICO: recado para todos lê e grava em mensagens_chat (ao vivo pelo canal); a resposta armada é o chip #Código; o envio passa por rotearEnvio; abrir o chat marca as menções lidas; nada de SELECT em chamado_eventos',
+     [/\.from\("mensagens_chat" as any\)/.test(chatD), /\.channel\("mensagens-chat"\)/.test(chatD), /table: "mensagens_chat"/.test(chatD),
+      /rotearEnvio\(texto, resposta, conhecidas\)/.test(chatUi), /hashtagDaAtividade\(resposta\.numero\)/.test(chatUi),
+      /marcarLida\(n\.id\)/.test(chatUi), /\.from\("chamado_eventos"/.test(chatUi + chatD)],
+     [true, true, true, true, true, true, false]);
+  eq('U119 migration (chat): mensagens_chat idempotente com RLS, INSERT só do autor com vínculo ativo, na publicação realtime; minhas_mencoes v2 por DROP+CREATE (respondida e agenda nas colunas, 4 origens, SECURITY INVOKER, reusa mencoes_em); gatilho de menção no diagnóstico e na solução',
+     [/CREATE TABLE IF NOT EXISTS public\.mensagens_chat/.test(mig119), /WITH CHECK \(autor_id = auth\.uid\(\)/.test(mig119), /ALTER PUBLICATION supabase_realtime ADD TABLE public\.mensagens_chat/.test(mig119),
+      mig119.indexOf('DROP FUNCTION IF EXISTS public.minhas_mencoes(integer);') < mig119.indexOf('CREATE FUNCTION public.minhas_mencoes('),
+      /respondida\s+boolean\s*\n\)/.test(mig119) && /data_hora_agendada timestamptz,/.test(mig119),
+      ['comentario', 'descricao', 'diagnostico', 'solucao'].every((o) => mig119.includes(`'${o}'::text`)),
+      /LANGUAGE sql STABLE SECURITY INVOKER/.test(mig119), (mig119.match(/public\.mencoes_em\(coalesce\(/g) ?? []).length >= 4,
+      /AFTER UPDATE OF diagnostico, servico_executado ON public\.chamados/.test(mig119)],
+     [true, true, true, true, true, true, true, true, true]);
+
+  // ── R224: o editor de uma área ───────────────────────────────────────────
+  const ed119 = ler119('src/components/EditorDeDescricao.tsx');
+  eq('R224 CRÍTICO: o editor é UMA área contentEditable (não um textarea por linha): o chip mostra só "@Nome" e grava o token; o DOM lido devolve o MESMO Markdown (blocosParaTexto); Checklist/Lista agem em TODOS os blocos da seleção; negrito/itálico são o comando nativo; a caixa de comentário é a mesma área',
+     [/contentEditable=\{!somenteLeitura\}/.test(ed119), /s\.textContent = `@\$\{nome\}`;/.test(ed119), /tokenDeMencao\(n\.dataset\.nome \?\? "alguém", n\.dataset\.mencao \?\? ""\)/.test(ed119),
+      /return blocos\.length === 0 \? "" : blocosParaTexto\(blocos\);/.test(ed119), /const alvo = blocosNaSelecao\(raiz\);/.test(ed119), /r\.intersectsNode\(el\)/.test(ed119),
+      /document\.execCommand\(f\.comando\);/.test(ed119), /<textarea\s/.test(ed119),
+      /export function TextareaComMencoes/.test(ed119) && /<EditorRico\s*\n\s*id=\{id\}/.test(ed119)],
+     [true, true, true, true, true, true, true, false, true]);
+  eq('R224: os três lugares continuam no mesmo editor/caixa (página, painel, chat); o CSS da área única existe; as classes da v1 (.editor-linha) saíram',
+     [/<EditorDeDescricao/.test(ler119('src/features/chamados/DetalheInterno.tsx')), /<EditorDeDescricao/.test(ler119('src/features/chamados/PainelChamado.tsx')), /<TextareaComMencoes/.test(chatUi),
+      /\.editor-rico-area \{ outline: none; white-space: pre-wrap;/.test(css119), /\[data-bloco="checklist"\]\[data-marcado="1"\] > \.editor-marcador \.checklist-check svg \{/.test(css119),
+      /\.editor-linha\b/.test(css119)],
+     [true, true, true, true, true, false]);
+
+  // ── R225: toda atividade agendável ───────────────────────────────────────
+  eq('R225 CRÍTICO: chamado ABERTO com dia marcado cai em Agendado (qualquer natureza), sem prazo no card e com a cor pelo dia; sem dia, o status agendado é fila; em andamento com dia marcado NÃO é agendado',
+     (() => {
+       const ag = A.atividadeDoChamado(chamado('aberto', { natureza: 'interno', data_agendada: '2026-09-10', prazo_limite: '2026-09-01T00:00:00Z', reagendamentos: 2 }), ctxVazio);
+       const fila = A.atividadeDoChamado(chamado('agendado', { natureza: 'campo' }), ctxVazio);
+       const andando = A.atividadeDoChamado(chamado('em_andamento', { data_agendada: '2026-09-10' }), ctxVazio);
+       return [ag.coluna, ag.agendada, ag.prazoLimite, ag.prazoTexto, ag.prazoEstourado, ag.agendadaEm, ag.reagendamentos, ag.quando,
+               fila.coluna, fila.agendada, andando.coluna, andando.agendada, andando.reagendamentos];
+     })(),
+     ['agendado', true, null, null, false, '2026-09-10T23:59:59', 2, '2026-09-10T23:59:59', 'aberto', false, 'em_andamento', false, 0]);
+  eq('R225: rotuloReagendado, fimDoDiaAgendado, textoDoDiaAgendado, patchDoMovimento (sair de Agendado para a fila limpa o dia) e patchDeAgendamento (em andamento volta para a fila agendada)',
+     [A.rotuloReagendado(0), A.rotuloReagendado(1), A.rotuloReagendado(3), A.rotuloReagendado(null),
+      A.fimDoDiaAgendado('2026-09-10'), A.fimDoDiaAgendado('2026-09-10T08:00:00Z'), A.fimDoDiaAgendado(null),
+      A.textoDoDiaAgendado('2026-09-10T23:59:59'), A.textoDoDiaAgendado('x'),
+      A.patchDoMovimento('agendado', 'aberto'), A.patchDoMovimento('agendado', 'em_andamento'), A.patchDoMovimento('aberto', 'stand_by'),
+      A.patchDeAgendamento('aberto', '2026-09-10'), A.patchDeAgendamento('em_andamento', '2026-09-10')],
+     [null, 'Re-agendado', 'Re-agendado 3x', null, '2026-09-10T23:59:59', '2026-09-10T08:00:00Z', null, 'Agendada para 10/09', null,
+      { status: 'aberto', data_agendada: null, data_hora_agendada: null }, { status: 'em_andamento' }, { status: 'stand_by' },
+      { data_agendada: '2026-09-10' }, { data_agendada: '2026-09-10', status: 'aberto' }]);
+  eq('R225: a visita com hora marcada é agendada (coluna própria agora) e o quadro tem Agendado logo depois de Aguardando início',
+     [A.atividadeDaVisita(visita('pendente', { data_hora_agendada: '2026-09-10T10:00:00Z' }), ctxVazio).agendada,
+      A.atividadeDaVisita(visita('pendente', { data_hora_agendada: '2026-09-10T10:00:00Z' }), ctxVazio).coluna, A.COLUNAS.slice(0, 3)],
+     [true, 'agendado', ['aberto', 'agendado', 'em_andamento']]);
+  const dash119 = ler119('src/routes/_authenticated/dashboard.tsx');
+  const pc119 = ler119('src/features/chamados/PainelChamado.tsx');
+  const nad119 = ler119('src/features/home/NovaAtividadeDialog.tsx');
+  eq('R225 CRÍTICO: soltar em Agendado pede o dia (AgendarDialog); mover grava patchDoMovimento; o Configurador tem Agendar em toda natureza e esconde Prazo quando agendada; o "+" nasce agendado (e apaga o prazo); o sino tem o ícone das 08h',
+     [/if \(para === "agendado"\) \{\s*\n\s*setAgendando\(a\);/.test(dash119), /<AgendarDialog/.test(dash119), /patchDoMovimento\(a\.coluna, para\)/.test(dash119),
+      /\{!agendada && \(\s*\n\s*<Grupo rotulo="Prazo"/.test(pc119), /rotulo=\{agendada \? "Agendada para" : "Agendar"\}/.test(pc119), /campo: "data_agendada", patch: \{ data_agendada: e\.target\.value \|\| null \}/.test(pc119),
+      /data_agendada: agendarPara \|\| null,/.test(nad119), /prazo_limite: prazo && !agendarPara \? dataParaPrazo\(prazo\) : null,/.test(nad119),
+      /case 'agenda_hoje':/.test(ler119('src/components/NotificationPanel.tsx'))],
+     [true, true, true, true, true, true, true, true, true]);
+  eq('U119 migration (agenda): reagendamentos idempotente com gatilho BEFORE UPDATE que só conta data → OUTRA data; o aviso das 08h é por dia (Brasília) e o job roda às 11:00 UTC',
+     [/ADD COLUMN IF NOT EXISTS reagendamentos integer NOT NULL DEFAULT 0/.test(mig119), /BEFORE UPDATE OF data_agendada, data_hora_agendada ON public\.chamados/.test(mig119),
+      /\(OLD\.data_agendada IS NOT NULL OR OLD\.data_hora_agendada IS NOT NULL\)/.test(mig119), /'agenda_hoje'/.test(mig119),
+      /agendar_job\('agenda-de-hoje', '0 11 \* \* \*'/.test(mig119), /AT TIME ZONE 'America\/Sao_Paulo'/.test(mig119)],
+     [true, true, true, true, true, true]);
+  eq('R225 (regra 5): `reagendamentos` NÃO entra no SELECT principal da Início nem do painel — é lido à parte, e sem a coluna a tela só perde o "Nx"',
+     [/reagendamentos/.test(homeD.match(/const CAMPOS_DA_HOME =[\s\S]*?;/)[0]), /\.select\("id, reagendamentos"\)\.gt\("reagendamentos", 0\)/.test(homeD),
+      /reagendamentos/.test(ler119('src/features/chamados/data.ts').match(/export const CAMPOS_CHAMADO =.*$/m)[0]), /\.select\("reagendamentos"\)\.eq\("id", id as string\)\.maybeSingle\(\)/.test(ler119('src/features/chamados/data.ts'))],
+     [false, true, false, true]);
+
+  // ── R226: equipamentos pela atividade ────────────────────────────────────
+  eq('R226: agruparPorBloco junta por bloco com "Sem bloco" no fim; rotuloDoEquipamento junta nome, fabricante, modelo e o nº',
+     [EQ.agruparPorBloco([{ patrimonio_id: '1', identificacao: null, nome: 'a', modelo: null, fabricante: null, sistema_id: null, sistema_nome: null },
+        { patrimonio_id: '2', identificacao: '9', nome: 'b', modelo: null, fabricante: null, sistema_id: 's2', sistema_nome: 'Zeta' },
+        { patrimonio_id: '3', identificacao: null, nome: 'c', modelo: null, fabricante: null, sistema_id: 's1', sistema_nome: 'Alfa' }]).map((g) => `${g.nome}:${g.itens.length}`),
+      EQ.rotuloDoEquipamento({ nome: 'Câmera', fabricante: 'Intelbras', modelo: 'VHD 1220', identificacao: '4471' }), EQ.rotuloDoEquipamento({ nome: 'DVR', modelo: null, fabricante: null, identificacao: null })],
+     [['Alfa:1', 'Zeta:1', 'Sem bloco:1'], 'Câmera Intelbras VHD 1220 · nº 4471', 'DVR']);
+  const di119 = ler119('src/features/chamados/DetalheInterno.tsx');
+  const eqUi119 = ler119('src/features/chamados/EquipamentosDaAtividade.tsx');
+  const eqD119 = ler119('src/features/chamados/equipamentos-atividade.ts');
+  eq('R226 CRÍTICO: a página só mostra Removidos/Instalados com CLIENTE ÚNICO (cliente_id e nenhum outro cliente em chamado_locais); a escrita é só a RPC mover_equipamento; nenhum UPDATE direto no patrimônio pela tela',
+     [/const clienteUnico = !!chamado\?\.cliente_id\s*\n\s*&& !locais\.some\(\(l\) => !!l\.cliente_id && l\.cliente_id !== chamado\?\.cliente_id\);/.test(di119),
+      /\{clienteUnico && chamado\.cliente_id && \(\s*\n\s*<EquipamentosDaAtividade/.test(di119), /\{\(!clienteUnico \|\| equipamentos\.length > 0\) && \(/.test(di119),
+      /supabase\.rpc\("mover_equipamento" as any/.test(eqD119), /\.from\("equipamentos_patrimonio"/.test(eqUi119 + eqD119),
+      /Equipamentos removidos<\/span>/.test(eqUi119) && /Equipamentos instalados<\/span>/.test(eqUi119)],
+     [true, true, true, true, false, true]);
+  eq('U119 migration (equipamentos): situacao com CHECK; equipamento_movimentos só de leitura para authenticated; mover_equipamento DEFINER valida cliente único, bloco do cliente e item no cliente e guarda o estado ANTES; desfazer só de quem fez ou gestor; três leituras DEFINER',
+     [/CHECK \(situacao IN \('ativo', 'retirado'\)\)/.test(mig119), /GRANT SELECT ON public\.equipamento_movimentos TO authenticated;/.test(mig119),
+      /A atividade tem mais de um cliente \(grupo\)/.test(mig119), /O bloco escolhido não é deste cliente/.test(mig119), /Este equipamento não está no cliente da atividade/.test(mig119),
+      /antes_cliente_id, antes_sistema_id, antes_pessoa_id, antes_situacao, feito_por\)/.test(mig119), /v_m\.feito_por IS DISTINCT FROM v_uid AND NOT public\.is_gestor\(v_uid\)/.test(mig119),
+      ['equipamentos_da_atividade', 'equipamentos_do_cliente_da_atividade', 'buscar_equipamentos_livres'].every((f) => new RegExp('FUNCTION public\\.' + f + '\\(').test(mig119))],
+     [true, true, true, true, true, true, true, true]);
+
+  // ── R227/R228/R229 ───────────────────────────────────────────────────────
+  const ca119 = ler119('src/features/home/CardAtividade.tsx');
+  eq('R227 CRÍTICO: as etiquetas do card são uma COLUNA (uma por linha) na ordem Cliente (locais) → Tipo → Risco (prioridade/impacto) — a fileira com flexWrap saiu',
+     (() => {
+       const c = cod119(ca119);
+       const i = { pilha: c.indexOf('flexDirection: "column", alignItems: "flex-start", gap: 5, marginTop: 9'), locais: c.indexOf('a.locais.slice(0, LOCAIS_NO_CARD).map('), tipo: c.indexOf('chipStyle(a.tipoCor, isLight)'), imp: c.indexOf('chipStyle(a.impactoCor, isLight)'), pri: c.indexOf('chipStyle(a.prioridadeCor, isLight)') };
+       return [i.pilha > 0, i.pilha < i.locais, i.locais < i.tipo, i.tipo < i.pri, i.pri < i.imp, /gap: 7, marginTop: 9, flexWrap: "wrap"/.test(c)];
+     })(),
+     [true, true, true, true, true, false]);
+  eq('R225/R227: o card diz "Re-agendado Nx" (rotuloReagendado) e, agendada sem prazo, o dia marcado',
+     [/rotuloReagendado\(a\.reagendamentos\)/.test(ca119), /textoDoDiaAgendado\(a\.agendadaEm\)/.test(ca119)], [true, true]);
+  eq('R228: as duas páginas da atividade ocupam a largura (.pagina-larga)',
+     [/className="pagina-larga" style=\{\{ padding: "12px 0 48px"/.test(di119), /className="pagina-larga" style=\{\{ padding: "12px 0 48px"/.test(ler119('src/features/chamados/DetalheCampo.tsx'))], [true, true]);
+  const pkg119 = JSON.parse(ler119('package.json'));
+  eq('R229 CRÍTICO: a versão é UMA — package.json = src/lib/versao.ts = 0.0.2 — e aparece sob o logotipo; VERSOES.md tem a v0.0.2; o banner escuro é arquivo local e o JSON da Lovable saiu do repo',
+     [pkg119.version, (ler119('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1], /v\{VERSAO\}/.test(ler119('src/components/SideNav.tsx')),
+      /^## v0\.0\.2 /m.test(ler119('docs/VERSOES.md')), fs119.existsSync('public/banner-home.jpg'), fs119.existsSync('src/assets/banner-home.jpg.asset.json'),
+      /"\/banner-home\.jpg"/.test(ler119('src/components/SideNav.tsx')) && /"\/banner-home\.jpg"/.test(dash119), /bannerAsset/.test(ler119('src/components/SideNav.tsx') + dash119)],
+     ['0.0.2', '0.0.2', true, true, true, false, true, false]);
+  eq('U119 migration: pré-voo (exige a U117), transação, conferência com veredito e DESFAZER',
+     [/IF to_regprocedure\('public\.minhas_mencoes\(integer\)'\) IS NULL THEN/.test(mig119), /^BEGIN;$/m.test(mig119) && /^COMMIT;$/m.test(mig119), />>> OLHAR <<</.test(mig119), /DESFAZER/.test(mig119)],
+     [true, true, true, true]);
+
+  // regra 7
+  const prod119 = ler119('docs/PRODUTO.md');
+  eq('U119 (regra 7): R221–R229 existem com a frase do Davi, última atualização R229, o DS tem §6.21 (v16) e §6.22, o manual conta o chat novo e o Agendado, VERSOES.md existe (v0.0.1 e v0.0.2) e está no CLAUDE.md, P63 aberta, a U119 está no diário e no ESTADO como pendente',
+     [['R221', 'R222', 'R223', 'R224', 'R225', 'R226', 'R227', 'R228', 'R229'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod119)),
+      Number((prod119.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 229,
+      /^### 6\.21 O chat da Início/m.test(ler119('DESIGN_SYSTEM.md')) && /^### 6\.22 O editor de texto/m.test(ler119('DESIGN_SYSTEM.md')),
+      /recado para todos/.test(ler119('docs/manual/visao-geral.md')) && /Agendado/.test(ler119('docs/manual/visao-geral.md')),
+      /VERSOES\.md/.test(ler119('CLAUDE.md')) && /^## v0\.0\.1 /m.test(ler119('docs/VERSOES.md')),
+      /^## P63 /m.test(ler119('docs/PENDENCIAS_TECNICAS.md')),
+      /^## U119 /m.test(ler119('docs/PLANO_UNIFICACAO.md')), /\*\*Pendente: U119\*\*/.test(ler119('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

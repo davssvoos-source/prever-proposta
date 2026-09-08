@@ -113,8 +113,11 @@ atualiza no lugar e preserva as chaves que já estavam gravadas.
 
 ## Atualizar para uma versão nova
 
+0. **Rode antes a migration que a versão exige** (SQL Editor) — está na
+   entrada da versão em `docs/VERSOES.md` (a v0.0.2 exige a U119). O pacote
+   não toca no banco, e o app sem a migration se defende, mas fica incompleto.
 1. Gere o pacote novo (`npm run build:windows`) e leve a pasta ao servidor.
-2. Na pasta de instalação, `.\atualizar.ps1 -Pacote "C:\Downloads\Prever-1.3.0"`
+2. Na pasta de instalação, `.\atualizar.ps1 -Pacote "C:\Downloads\Prever-0.0.2"`
    (ou rode o `atualizar.ps1` de dentro do pacote novo: ele acha a `app\` ao
    lado). Ele para o serviço, troca a `app\`, preserva o `config.env` e sobe.
 3. Migrations continuam sendo do Davi, à mão, no SQL Editor — o pacote não

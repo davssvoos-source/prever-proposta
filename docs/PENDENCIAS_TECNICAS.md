@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 66 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **58 em aberto, 8 fechadas.**
+> **Sumário** — 68 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **60 em aberto, 8 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -68,7 +68,9 @@
 - [P59 — BAIXO · `importar-notion.ts` ficou sem tela (2026-09-04, U99)](#p59-baixo-importar-notionts-ficou-sem-tela-2026-09-04-u99)
 - [P60 — ~~BAIXO~~ FECHADA (U100b, 2026-09-04) · `comFallbackDaU96` pode sair: a U96 rodou](#p60-baixo-fechada-u100b-2026-09-04-comfallbackdau96-pode-sair-a-u96-rodou)
 - [P61 — MÉDIO · A saída da Lovable depende de passos que só o Davi faz (2026-09-08, U118)](#p61-médio-a-saída-da-lovable-depende-de-passos-que-só-o-davi-faz-2026-09-08-u118)
-- [P62 — BAIXO · O chat de menções ainda é a primeira versão (2026-09-08, U117)](#p62-baixo-o-chat-de-menções-ainda-é-a-primeira-versão-2026-09-08-u117)
+- [P62 — BAIXO · O chat: só falta o realtime de comentários e reações (2026-09-08, U117; revista na U119)](#p62-baixo-o-chat-só-falta-o-realtime-de-comentários-e-reações-2026-09-08-u117-revista-na-u119)
+- [P63 — BAIXO · O botão de forçar o sincronismo com o QAP fica para depois (2026-09-08, U119)](#p63-baixo-o-botão-de-forçar-o-sincronismo-com-o-qap-fica-para-depois-2026-09-08-u119)
+- [P64 — BAIXO · As duas leituras à parte de `reagendamentos` podem sair depois da U119 (2026-09-08, U119)](#p64-baixo-as-duas-leituras-à-parte-de-reagendamentos-podem-sair-depois-da-u119-2026-09-08-u119)
 <!-- sumario:fim -->
 
 Registro formal do que a revisão adversarial encontrou.
@@ -2194,14 +2196,36 @@ faxina pós-saída (`AGENTS.md`, `.lovable/`, o `.env` versionado e as duas
 asserções que o cobram). Enquanto a Lovable estiver ligada, nada disto é
 urgente — o push continua publicando lá.
 
-## P62 — BAIXO · O chat de menções ainda é a primeira versão (2026-09-08, U117)
+## P62 — BAIXO · O chat: só falta o realtime de comentários e reações (2026-09-08, U117; revista na U119)
 
-Três lapidações conhecidas: (a) o sino (`NotifIcon`, NotificationPanel.tsx) não
-tem ícone para os tipos `mencao` e `chamado_comentario` — cai no genérico;
-(b) a menção não tem "lida" própria — o selo do botão do chat conta as
-notificações de menção não lidas (limite 20 do `useNotificacoes`), e abrir o
-chat não as marca; (c) os comentários e as reações não estão na publicação
-realtime — o chat recarrega pelo canal de `notificacoes` (toda menção gera
-uma) e as reações pelo `invalidateQueries`, não ao vivo. E a decisão da R216
-("Responder aqui" em menção de descrição vira comentário) está registrada para
-o Davi rever.
+Das três lapidações da U117, duas fecharam na U119 (v0.0.2): (a) o sino tem
+ícone para `mencao`, `chamado_comentario` e `agenda_hoje`; (b) abrir o chat
+marca as menções como lidas, e o selo conta também os recados para todos
+chegados depois da última abertura (`prever-chat-lido-ate`). Fica (c): os
+comentários e as reações não estão na publicação realtime — o chat recarrega
+pelo canal de `notificacoes` (toda menção gera uma) e pelo canal de
+`mensagens_chat` (U119), e as reações pelo `invalidateQueries`; um comentário
+novo sem menção só aparece no próximo refetch. A decisão da R216 foi revista
+pelo Davi na R222: menção em descrição/diagnóstico/solução NÃO se responde
+pelo chat — abre o pop-up.
+
+## P63 — BAIXO · O botão de forçar o sincronismo com o QAP fica para depois (2026-09-08, U119)
+
+Davi, 08/09/2026, ao ditar os equipamentos removidos/instalados (R226): "o
+botão de forçar sincronismo com o QAP fica para mais pra frente". Hoje o
+patrimônio é o retrato da importação da U110 (04/09/2026) mais o que as
+atividades movimentam (`equipamento_movimentos`); um item que o QAP passou a
+ter depois disso não existe aqui até a próxima importação
+(`scripts/gerar-migration-equipamentos.cjs`). Quando vier a API (R160,
+contato Lopes), o botão entra na tela de equipamentos e o movimento feito aqui
+tem de ser conciliado com o de lá — a tabela de movimentos guarda o estado
+ANTES justamente para essa conciliação.
+
+## P64 — BAIXO · As duas leituras à parte de `reagendamentos` podem sair depois da U119 (2026-09-08, U119)
+
+Regra 5: `chamados.reagendamentos` nasce na U119, e o app é publicado antes
+dela rodar. Para a Início e o painel não caírem com 42703, a coluna NÃO está no
+SELECT principal — a Início lê `select("id, reagendamentos").gt(…, 0)` à parte
+(home/data.ts) e o painel um `maybeSingle` (chamados/data.ts). Quando o Davi
+confirmar a U119, as duas podem colapsar no SELECT principal (uma consulta a
+menos por tela) — o mesmo caminho da P60 (`comFallbackDaU96`).
