@@ -8,13 +8,13 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-09** · última regra: **R240** · último diário:
-**U123** · verificador: **3.196 asserções, 0 falharam** · `tsc`: baseline
-**57** · migrations rodadas até a **U121** (U106 e U109 em 07/09/2026; U110,
-U117, U119 e U121 em 08/09/2026 — "Eu rodei as migrations", Davi) ·
-**pendente: U123** (a ligação `responde_a` do chat — rodar antes de subir a
-v0.0.5) · **versão instalada no servidor: v0.0.1** (o pacote da U118); **esta
-entrega é a v0.0.5** — o que entrou em cada versão está em `docs/VERSOES.md`.
+Última atualização: **2026-09-09** · última regra: **R241** · último diário:
+**U124** · verificador: **3.207 asserções, 0 falharam** · `tsc`: baseline
+**57** · migrations rodadas até a **U123** (U110, U117, U119 e U121 em
+08/09/2026; **U123** em 09/09/2026 — "Já rodei a U123", Davi) ·
+**pendente: U124** (a porta da prospecção do local — rodar antes de subir a
+v0.0.6) · **versão instalada no servidor: v0.0.1** (o pacote da U118); **esta
+entrega é a v0.0.6** — o que entrou em cada versão está em `docs/VERSOES.md`.
 
 ---
 
@@ -104,6 +104,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U121 | a **v0.0.4**: a tela da atividade na estrutura **aprovada sobre o mockup** — documento à esquerda, ficha de 340px à direita, propriedades em linhas rótulo \| valor, ficha acompanhando a rolagem (R234); o **pop-up da Início mostra a mesma tela** num diálogo de 1600px (R238); equipamento **entra no cliente só pelo QAP** — painéis Blocos do cliente \| Sem bloco, botão remover, nada de "Fora do cliente" (R237). Migration **U121** (`mover_equipamento` exige item do cliente; exige a U119) |
 | U122 | a **revisão geral da tela da atividade** (R239): o pop-up deixa de ser cortado pelo menu (diálogo e folha lateral em **z-70**); **uma régua de margem** para o sistema inteiro (`--gutter`, 16/24px) — Início, atividade e ficha do cliente no mesmo prumo, com a meia barra de rolagem descontada (`--barra`); **um scroll só** (a ficha não é mais sticky, os painéis não rolam por dentro); **Equipamentos recolhido** por padrão, com o botão que expande na extremidade direita; escala de espaçamento 8/12/16/24; barra de topo no diálogo. Sem migration nova |
 | U123 | a **v0.0.5**: o chat virou **conversa** (R240) — o título da atividade mora dentro do campo colorido, e a resposta enviada pelo chat fica no chat, no mesmo campo da mensagem respondida, como uma caixa separada (foto, nome, hora). Ordena pelo último instante da conversa. Migration **U123** (`chamado_eventos.responde_a` + `respostas_do_chat`) |
+| U124 | a **v0.0.6**: a **proposta comercial volta a nascer** — prédio sem cadastro entra como **prospecção** e não como cliente (R21/R22: o INSERT em `clientes` estava sem policy desde a U27, e toda visita de prédio novo morria na RLS); o **admin faz visita técnica** e entra na lista única de responsáveis (R241); a colisão de cache `tecnicos-ativos` foi separada. Migration **U124** (`achar_ou_criar_prospeccao_do_local`) |
 
 ## 4. Banco: migrations
 
@@ -111,13 +112,23 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **Pendente: U123** (`20260923090000_u123_v005_resposta_do_chat.sql`) — a
+- **Pendente: U124** (`20260924090000_u124_v006_prospeccao_do_local.sql`) — a
+  função **`achar_ou_criar_prospeccao_do_local(text, text, jsonb)`** (SECURITY
+  DEFINER), que registra como **prospecção** o prédio da visita que ainda não é
+  cliente, com endereço, contatos e coordenada (R21/R22). Acha pelo nome
+  normalizado e só preenche o que está vazio. Pré-voo exige `prospeccoes` (U27)
+  e `normalizar_texto` (U71). **Rodar antes de subir o pacote v0.0.6** — até
+  rodar, a tela avisa que o prédio novo precisa da U124 (regra 5) e **não**
+  volta a tentar criar cliente. Seis itens de conferência; desfazer é largar a
+  função (as prospecções criadas ficam, são o registro do funil).
+- **U123** (`20260923090000_u123_v005_resposta_do_chat.sql`, rodada em
+  09/09/2026) — a
   ligação **`responde_a`** em `chamado_eventos` (FK para o próprio comentário,
   `ON DELETE SET NULL`, índice parcial e um gatilho que exige a MESMA
   atividade) e a leitura **`respostas_do_chat(uuid[])`** (SECURITY INVOKER),
   que é o que faz a resposta enviada pelo chat voltar para o chat (R240).
-  Pré-voo exige `chamado_eventos` e `minhas_mencoes` (U117/U119). **Rodar antes
-  de subir o pacote v0.0.5** — até rodar, o app se defende (regra 5): o chat
+  Pré-voo exige `chamado_eventos` e `minhas_mencoes` (U117/U119). Rodou antes do pacote
+  v0.0.5; até ela rodar, o app se defendia (regra 5): o chat
   avisa que as respostas precisam da U123 e `comentarChamado` reenvia o
   comentário sem a ligação, então a resposta continua chegando na atividade.
   Sete itens de conferência; desfazer é largar a coluna (ela é ligação, não

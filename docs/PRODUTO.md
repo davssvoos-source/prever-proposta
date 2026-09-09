@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R240 (11)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R241 (12)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-09 (R240). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-09 (R241). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -353,7 +353,15 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   sistema vem do QAP, e o único jeito de atualizar clientes e equipamentos é o
   botão **Sincronizar** na página de Clientes. O app **não cria cliente**: nem
   por formulário, nem ao montar visita, nem por proposta aceita. Cliente é
-  leitura; o ERP é quem manda. *(Davi, 2026-08-21.)*
+  leitura; o ERP é quem manda. **Proposta comercial não cria cliente**: o prédio
+  para quem se orça entra como **prospecção** (R22), e continua prospecção
+  mesmo depois de a proposta ir — quem decide que ele é cliente é o QAP. No
+  banco a regra é uma policy que NÃO existe: `clientes` não tem INSERT (U27), e
+  o prédio novo entra pela função `achar_ou_criar_prospeccao_do_local` (U124).
+  *(Davi, 2026-08-21; e em 09/09/2026: "só porque eu fiz uma proposta comercial
+  para um condomínio, não significa que ele é meu cliente, os clientes vêm
+  diretamente do QAP e não podem ser cadastrados pelo sistema Prever OS que
+  estamos criando.")*
 
 - **R22** — **Prospecto não é cliente.** Prédios e locais que orçamos e cuja
   proposta não foi aprovada não entram na base de clientes. Eles vivem numa
@@ -4424,3 +4432,16 @@ adaptado."
   vai diretamente para os comentários daquela atividade, a mensagem também deve
   ficar no chat, se juntando com a mensagem que ele respondeu, sendo caixas de
   mensagem diferentes no mesmo campo (fundo colorido) dentro do chat.")*
+
+- **R241** — **O admin também faz visita técnica.** Os usuários de cargo
+  **admin** aparecem na lista de responsáveis ao agendar uma visita, junto dos
+  técnicos, e podem ser o responsável por ela. A lista é **uma só** no sistema:
+  a mesma que a tela de agendar, a grade da programação, o painel Operacional,
+  as duplas e o chamado de campo usam — se o admin pudesse receber visita sem
+  entrar nela, a visita existiria no banco e não apareceria em agenda nenhuma.
+  Comercial e SAC continuam fora: eles **montam e agendam** a visita (é a
+  permissão `gerencial.nova`), que é outro papel. Na lista, quem não é do cargo
+  técnico aparece com o cargo entre parênteses, e os técnicos vêm primeiro.
+  *(Davi, 09/09/2026: "Gostaria também que você habilite os usuários Admin para
+  fazer a visita técnica, eles devem aparecer na lista de técnicos disponíveis
+  para agendar a visita como responsável.")*

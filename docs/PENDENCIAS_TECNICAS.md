@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 71 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **62 em aberto, 9 fechadas.**
+> **Sumário** — 72 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **63 em aberto, 9 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -74,6 +74,7 @@
 - [P65 — ~~MÉDIO~~ FECHADA (U121, 2026-09-08) · A v0.0.3 oferece "instalar de fora", que a R237 proíbe (2026-09-08, U120)](#p65-médio-fechada-u121-2026-09-08-a-v003-oferece-instalar-de-fora-que-a-r237-proíbe-2026-09-08-u120)
 - [P66 — BAIXO · No pop-up da Início, o chamado de campo ainda abre a tela de campo; a folha lateral só vive no Calendário e no Operacional (2026-09-08, U121)](#p66-baixo-no-pop-up-da-início-o-chamado-de-campo-ainda-abre-a-tela-de-campo-a-folha-lateral-só-vive-no-calendário-e-no-operacional-2026-09-08-u121)
 - [P67 — BAIXO · `--barra` só é remedida no resize (2026-09-08, U122)](#p67-baixo---barra-só-é-remedida-no-resize-2026-09-08-u122)
+- [P68 — MÉDIO · A consolidação assistida (`/clientes/migrar`) ainda chama `criarCliente`, que a RLS recusa (2026-09-09, U124)](#p68-médio-a-consolidação-assistida-clientesmigrar-ainda-chama-criarcliente-que-a-rls-recusa-2026-09-09-u124)
 <!-- sumario:fim -->
 
 Registro formal do que a revisão adversarial encontrou.
@@ -2280,3 +2281,27 @@ se incomodar, um `ResizeObserver` no `documentElement` resolve. A alternativa
 puramente CSS (`@property --barra` com `calc(100vw - 100%)` no `:root`) foi
 recusada: onde `@property` não existe, a substituição textual resolve o `100%`
 contra o elemento errado e a sangria quebra feio, em vez de degradar.
+
+## P68 — MÉDIO · A consolidação assistida (`/clientes/migrar`) ainda chama `criarCliente`, que a RLS recusa (2026-09-09, U124)
+
+A U27 (§6, R21) tirou a policy de INSERT de `clientes`: **nada no app cria
+cliente**, e é assim que a regra do Davi vive no banco ("os clientes vêm
+diretamente do QAP e não podem ser cadastrados pelo sistema Prever OS").
+
+A U124 tirou a chamada do caminho da visita técnica — prédio novo virou
+prospecção. **Sobrou uma**: `consolidarGrupo`
+(`src/features/clientes/data.ts`), no ramo em que nenhum dos cadastros do grupo
+serve de destino, faz `destinoId = await criarCliente(patch)`. Isso falha na
+RLS, sempre. A tela `/clientes/migrar` está fora do menu para técnico,
+comercial e SAC (matriz da U27), mas o **admin** ainda a alcança pela URL.
+
+Não apaguei junto porque apagar mudaria o comportamento de um fluxo que esta
+entrega não testou: consolidar duplicatas é operação de dado histórico, e a
+decisão de produto ("o que fazer quando nenhum cadastro do grupo pode ser o
+destino") é do Davi. Hoje o caminho pelo menos **explica a regra**:
+`criarCliente` devolve "o Prever OS não cadastra cliente (R21): cliente vem do
+QAP, pelo Sincronizar" no lugar da mensagem do Postgres.
+
+Quando o Davi decidir: ou a consolidação passa a exigir um destino existente
+(o mais provável — consolidar é fundir em quem JÁ é cliente), ou a tela sai de
+vez do catálogo. As duas saídas são de uma linha; o que falta é a decisão.

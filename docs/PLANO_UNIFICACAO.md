@@ -11748,3 +11748,80 @@ argumentos, o `rotearEnvio` sem a ligação) e foram reapontados com o motivo.
 
 **Números.** Verificador: 3.196 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migration **U123 pendente** — rodar antes de subir a v0.0.5.
+
+## U124 — a v0.0.6: a proposta volta a nascer (prédio novo é PROSPECÇÃO, R21/R22) e o admin faz visita (R241)
+
+O Davi mandou um print: **"Erro: new row violates row-level security policy for
+table clientes"**, ao tentar criar uma proposta comercial. E reforçou a regra na
+mensagem seguinte: "só porque eu fiz uma proposta comercial para um condomínio,
+não significa que ele é meu cliente, os clientes vêm diretamente do QAP e não
+podem ser cadastrados pelo sistema Prever OS que estamos criando."
+
+**O defeito tinha três semanas e a causa era nossa.** A proposta comercial
+nasce de uma visita técnica, e a tela Nova Visita, quando o prédio não tem
+cadastro, chamava `criarCliente`. A **U27** (21/08/2026, §6) tirou a policy de
+INSERT de `clientes` justamente para fechar a R21 — "o app não cria mais
+cliente" —, e ninguém tirou a chamada. Desde então TODA visita de prédio novo
+morre na RLS, levando a proposta junto. Pior: a **P44** (U84) já havia
+consertado um segundo defeito no MESMO INSERT (o `situacao: 'prospecto'` que o
+CHECK recusava) e este não apareceu — o primeiro erro que estoura esconde o
+outro. A lição da P44 vale de novo, de outro jeito: **conserto que não é
+testado no caminho inteiro conserta o sintoma que se viu.**
+
+**O caminho certo já existia no banco.** A U27 criou `prospeccoes` (R22) e
+`visitas_tecnicas.prospeccao_id`, com o CHECK `visitas_alvo_unico` — cliente OU
+prospecção, nunca os dois. Faltava a porta para o app escrever lá com os dados
+do local. A **U124** abre essa porta: `achar_ou_criar_prospeccao_do_local(nome,
+endereco, dados jsonb)`.
+
+Ela é SECURITY DEFINER por dois motivos medidos, não por conveniência: quem
+monta visita pode ser o **SAC** (permissão `gerencial.nova`), e o SAC **não é**
+`is_gestor` — insere em `prospeccoes` pela policy da U71, mas não atualiza, então
+o endereço e os contatos ficariam pelo caminho em silêncio; e
+`prospeccoes_select` (U71) mostra a cada um só o que lhe pertence, então uma
+busca feita pelo app responderia "não existe" para um prédio que existe, e cada
+visita criaria outra linha do mesmo lugar. A função enxerga a tabela inteira
+para DECIDIR e devolve um uuid — a mesma tese da `achar_ou_criar_prospeccao` da
+U71, que fica de pé para a triagem da Início. Ela acha pelo nome normalizado, e
+num prédio que já tem prospecção **só preenche o que está vazio**: consolidar
+não pode degradar o que alguém conferiu. O `_dados` é lido coluna por coluna —
+nada de despejar jsonb numa tabela: `situacao`, `cliente_id` e `origem` não se
+escrevem de fora.
+
+E a tela passou a **dizer a regra antes do erro**: sem cliente vinculado, uma
+linha explica que o prédio entra como prospecção porque cliente vem do QAP.
+Regra dita na tela vale mais que regra dita num toast vermelho.
+
+**O `criarCliente` ficou** — a consolidação assistida (`/clientes/migrar`) ainda
+o chama e o admin ainda alcança aquela tela. Não apaguei porque apagar mudaria
+o comportamento de um caminho que não estou testando hoje; em vez disso ele
+agora devolve a REGRA em português ("o Prever OS não cadastra cliente (R21):
+cliente vem do QAP") no lugar da mensagem do Postgres, e a P68 registra que
+aquele fluxo está bloqueado.
+
+**R241 — o admin faz visita.** "Habilite os usuários Admin para fazer a visita
+técnica, eles devem aparecer na lista de técnicos disponíveis." O que parecia um
+filtro de uma tela é uma definição do sistema: a MESMA lista alimenta a grade da
+programação, o painel Operacional, as duplas e o responsável do chamado de
+campo. Se o admin pudesse receber visita sem entrar nela, a visita existiria no
+banco e não apareceria em agenda nenhuma — o pior tipo de defeito, o que faz a
+tela mentir em silêncio. Então a lista virou uma só (`CARGOS_DE_CAMPO` em
+`features/gerencial/tecnicos.ts`, lógica pura), o `fetchTecnicos` a lê, e a tela
+de agendar deixou de ter a sua própria consulta com `cargo = 'tecnico'` colado.
+Comercial e SAC continuam fora: eles montam e agendam, não vão ao prédio. Na
+lista, técnico vem primeiro e quem não é técnico aparece com o cargo entre
+parênteses — um admin no meio dos técnicos, sem isso, parece um técnico que
+ninguém conhece.
+
+**O que a revisão pegou de graça.** Duas consultas diferentes dividiam a chave
+de cache `["tecnicos-ativos"]`: a de `useTecnicos()` (quem faz campo, colunas
+cheias) e a de `/gerencial` (TODOS os perfis ativos, só id e nome, para escrever
+o nome de quem atende no card). Quem montasse primeiro ganhava o cache — e com
+a R241 isso passaria a encher a lista de responsáveis com comercial e SAC ao
+navegar de `/gerencial` para `/gerencial/nova`. Duas perguntas diferentes, duas
+chaves: a do de-para virou `["perfis-ativos-nomes"]`, e quem muda cargo ou
+desativa alguém invalida as duas.
+
+**Números.** Verificador: 3.207 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Migration **U124 pendente** — rodar antes de subir a v0.0.6. Sem ela a tela
+avisa que o prédio novo precisa da U124; ela não volta a tentar criar cliente.

@@ -9,6 +9,21 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v0.0.6 — 2026-09-09 (U124) · migration **U124** — rodar ANTES de subir o pacote
+
+- **A proposta comercial volta a nascer** (R21/R22): a visita de um prédio que
+  ainda não é cliente registra uma **prospecção** — com endereço, contatos e
+  coordenada — em vez de tentar cadastrar um cliente. Era isto que derrubava a
+  criação com "new row violates row-level security policy for table clientes":
+  desde agosto o app não pode criar cliente (cliente vem do QAP), e a tela
+  ainda tentava. Proposta comercial não faz de um condomínio nosso cliente.
+- **O admin faz visita técnica** (R241): usuários de cargo admin aparecem na
+  lista de responsáveis ao agendar, junto dos técnicos — e a mesma lista vale
+  na programação, no painel Operacional, nas duplas e no chamado de campo.
+- **Banco:** a **U124** cria `achar_ou_criar_prospeccao_do_local`. Sem ela a
+  tela avisa que o prédio novo precisa da migration — e não volta a tentar
+  criar cliente.
+
 ## v0.0.5 — 2026-09-09 (U123) · migration **U123** — rodar ANTES de subir o pacote
 
 - **O chat virou conversa** (R240): cada mensagem é um campo na cor do prazo com

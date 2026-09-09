@@ -112,8 +112,14 @@ function GerencialPage() {
     },
   });
 
+  // R241: esta lista NÃO é a de responsáveis — é o de-para id → nome para
+  // escrever no card quem atende a visita, e por isso inclui todo mundo
+  // (uma visita antiga pode estar num perfil que hoje não é de campo). A chave
+  // era `tecnicos-ativos`, a MESMA de useTecnicos(): quem montasse primeiro
+  // ganhava o cache, e a lista de responsáveis da tela de agendar herdaria
+  // comercial e SAC. Duas perguntas diferentes, duas chaves.
   const { data: tecnicos = [] } = useQuery({
-    queryKey: ["tecnicos-ativos"],
+    queryKey: ["perfis-ativos-nomes"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")

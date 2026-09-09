@@ -38,10 +38,18 @@ visita aprovada é venda; achar que proposta cria cliente).
   `status = 'aprovada'`. O desfecho é `proposta_resultado`.
 - **R21 — cliente nasce no QAP.** O app não tem criação nem consolidação de
   cliente (as telas `/clientes/novo` e `/clientes/migrar` estão desativadas
-  no catálogo de telas de propósito).
-- **R22 — prospecto não é cliente.** Prédio orçado que ainda não aceitou vive
-  na janela **Prospecção** (`/prospeccao`, dados em
-  `src/features/prospeccao/data.ts`, colunas `proposta_*` da U8).
+  no catálogo de telas de propósito). No banco, `clientes` **não tem policy de
+  INSERT** desde a U27 — é assim que a regra se defende de qualquer tela nova.
+  E **proposta comercial não cria cliente**: o prédio orçado segue prospecção
+  mesmo depois de a proposta ir (Davi, 09/09/2026).
+- **R22 — prospecto não é cliente.** Prédio orçado vive em `prospeccoes`
+  (U27), e a visita aponta para ele por `visitas_tecnicas.prospeccao_id` — um
+  dos dois, nunca os dois (CHECK `visitas_alvo_unico`). Quem registra o prédio
+  novo é a função **`achar_ou_criar_prospeccao_do_local`** (U124), chamada por
+  `acharOuCriarProspeccao` (`src/features/clientes/data.ts`): acha pelo nome
+  normalizado, não duplica e só preenche o que está vazio. A lista de
+  prospecção não tem tela desde a R64 — o trabalho vive nos chamados de
+  natureza comercial.
 - **R23 — proposta também se faz para cliente existente.** Nesse caso o
   chamado da proposta é **vinculado** ao cliente da base.
 - **R29 — a proposta É um chamado** (natureza `comercial`, tipo

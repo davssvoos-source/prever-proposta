@@ -13434,7 +13434,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // de outra pessoa — num arquivo novo, numa FUNÇÃO (não policy), e junto
        // do teste de autoria (feito_por = auth.uid()). Nenhuma policy nova
        // cita is_gestor: as de escrita do patrimônio continuam as da U109.
-       [true, false, 32, 136, 52]);
+       // U124 (+1 arquivo, +1 ocorrência, +0 policy): a função
+       // achar_ou_criar_prospeccao_do_local NÃO cria policy nenhuma — o
+       // COMMENT dela cita is_gestor para explicar por que ela é SECURITY
+       // DEFINER (o SAC monta visita e não é gestor, então não escreveria em
+       // prospeccoes pela policy). Menção em documentação, não em decisão de
+       // acesso: o alcance da dívida P51 não cresceu.
+       [true, false, 33, 137, 52]);
   }
 }
 
@@ -17973,7 +17979,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R194: a tela usa o design system — card(isLight), cinzas(isLight), botaoSelecao, goldButton, SeletorDeOpcao — e a paleta local `L` e o vidro dourado morreram',
      [/const cz = cinzas\(isLight\);/.test(nv), /const SECAO: CSSProperties = \{ \.\.\.card\(isLight\), padding: 16 \};/.test(nv),
       (nvc.match(/\.\.\.botaoSelecao\(ativo, isLight, null\), boxShadow: "none",/g) ?? []).length,
-      /<SeletorDeOpcao[\s\S]{0,260}opcoes=\{tecnicos\.map\(\(t\) => \(\{ valor: t\.id, rotulo: t\.nome \?\? "—" \}\)\)\}/.test(nv),
+      // R241 (U124): o rótulo passa por rotuloDoResponsavel — o admin aparece
+      // na lista com o cargo entre parênteses
+      /<SeletorDeOpcao[\s\S]{0,260}opcoes=\{tecnicos\.map\(\(t\) => \(\{ valor: t\.id, rotulo: rotuloDoResponsavel\(t\) \}\)\)\}/.test(nv),
       /const L = \{|GOLD_GRADIENT_BORDER|#0d0e12|<select/.test(nvc)],
      [true, true, 2, true, false]);
   eq('R194: o que falta para agendar é dito NA TELA (lista `faltam`) e o botão só grava com o formulário válido',
@@ -19770,11 +19778,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a versão e a regra 7 ──────────────────────────────────────────────────
   const prod123 = ler123('docs/PRODUTO.md');
-  eq('R229/R240: a versão subiu para 0.0.5 nas duas fontes e a v0.0.5 está no VERSOES.md exigindo a U123',
-     [JSON.parse(ler123('package.json')).version,
-      (ler123('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
+  eq('R229/R240: a versão é UMA (package.json = src/lib/versao.ts) e a v0.0.5 está no VERSOES.md exigindo a U123 — o número atual é pino da última U (a U124 pinou 0.0.6)',
+     [JSON.parse(ler123('package.json')).version === (ler123('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
       /^## v0\.0\.5 [^\n]*U123/m.test(ler123('docs/VERSOES.md'))],
-     ['0.0.5', '0.0.5', true]);
+     [true, true]);
   eq('U123 (regra 7): a R240 existe com as duas frases do Davi, o DS tem a §6.21 v17 (campo + caixas), o manual conta a conversa, a U123 está no diário e o ESTADO a aponta como PENDENTE',
      [/^- \*\*R240\*\* —/m.test(prod123),
       // o .md quebra a linha no meio da citação — comparar com o texto corrido
@@ -19785,8 +19792,110 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /CaixaDeMensagem/.test(ler123('DESIGN_SYSTEM.md')),
       /caixa/i.test(ler123('docs/manual/visao-geral.md')),
       /^## U123 /m.test(ler123('docs/PLANO_UNIFICACAO.md')),
-      /\*\*Pendente: U123\*\*/.test(ler123('docs/ESTADO_ATUAL.md'))],
+      // U124: a U123 rodou em 09/09/2026 ("Já rodei a U123", Davi)
+      /^- \*\*U123\*\* \(/m.test(ler123('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true, true, true, true]);
+}
+
+
+// ── U124 — a v0.0.6: prédio novo é PROSPECÇÃO (R21/R22) e o admin faz visita (R241) ──
+{
+  const fs124 = require('fs');
+  const ler124 = (f) => fs124.readFileSync(f, 'utf8');
+  const cod124 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const nv124 = ler124('src/features/gerencial/NovaVisitaTecnica.tsx');
+  const cli124 = ler124('src/features/clientes/data.ts');
+  const ger124 = ler124('src/features/gerencial/data.ts');
+  const mig124 = ler124('supabase/migrations/20260924090000_u124_v006_prospeccao_do_local.sql');
+  const TEC = carregar('src/features/gerencial/tecnicos.ts');
+
+  // ── R21/R22: o app NÃO cria cliente; prédio novo é prospecção ─────────────
+  eq('R21/R22 CRÍTICO: a tela da visita NÃO cria cliente — prédio sem cadastro entra como PROSPECÇÃO e a visita aponta para ela (prospeccao_id). Era `criarCliente` aqui, e desde a U27 (que tirou a policy de INSERT de clientes para fechar a R21) toda visita de prédio novo morria na RLS, levando a proposta junto',
+     [/criarCliente/.test(cod124(nv124)),
+      /prospeccaoIdFinal = await acharOuCriarProspeccao\(nomePredio, endereco, dadosDoLocal\);/.test(nv124),
+      /clienteIdFinal = null;/.test(nv124),
+      /prospeccao_id: prospeccaoIdFinal,/.test(nv124),
+      /const dadosDoLocal = \{/.test(nv124),
+      /nome_predio/.test(nv124.slice(nv124.indexOf('const dadosDoLocal = {'), nv124.indexOf('let clienteIdFinal')))],
+     [false, true, true, true, true, false]);
+  eq('R21 CRÍTICO: existe UM só INSERT em `clientes` no app (o de `criarCliente`, que a consolidação ainda chama — P68), e ele devolve a REGRA em português quando a RLS recusa, não a mensagem do Postgres',
+     [(cli124.match(/\.from\("clientes"\)\s*\n\s*\.insert\(/g) ?? []).length,
+      /O Prever OS não cadastra cliente \(R21\): cliente vem do QAP, pelo Sincronizar\./.test(cli124),
+      /cod === "42501" \|\| \/row-level security\/i\.test\(error\.message\)/.test(cli124),
+      /export async function acharOuCriarProspeccao\(/.test(cli124),
+      /achar_ou_criar_prospeccao_do_local/.test(cli124),
+      /precisa da migration U124/.test(cli124)],
+     [1, true, true, true, true, true]);
+  eq('R21: a tela DIZ a regra antes de qualquer erro — sem cliente vinculado, uma linha explica que o prédio entra como prospecção porque cliente vem do QAP',
+     [/este prédio entra como <strong style=\{\{ fontWeight: 600 \}\}>prospecção<\/strong>/.test(nv124),
+      /proposta comercial não faz de um condomínio nosso cliente/.test(nv124),
+      /\{!clienteSelecionado && \(/.test(nv124)],
+     [true, true, true]);
+  eq('U124 migration CRÍTICO: a função do local é SECURITY DEFINER, acha pelo nome normalizado, só preenche o VAZIO (coalesce), lê o jsonb COLUNA POR COLUNA (não escreve situacao/cliente_id/origem de fora), tem pré-voo, conferência e DESFAZER — e NÃO recria policy de INSERT em clientes',
+     [/CREATE OR REPLACE FUNCTION public\.achar_ou_criar_prospeccao_do_local\(/.test(mig124),
+      /LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = public/.test(mig124),
+      /WHERE public\.normalizar_texto\(nome\) = public\.normalizar_texto\(v_nome\)/.test(mig124),
+      /endereco         = coalesce\(p\.endereco,         v_end\),/.test(mig124),
+      /'visita_tecnica', auth\.uid\(\)/.test(mig124),
+      /jsonb_populate_record|to_jsonb\(p\.\*\)/.test(mig124),
+      /CREATE POLICY[\s\S]{0,80}clientes[\s\S]{0,40}INSERT/i.test(mig124),
+      /to_regclass\('public\.prospeccoes'\) IS NULL/.test(mig124),
+      /to_regprocedure\('public\.normalizar_texto\(text\)'\) IS NULL/.test(mig124),
+      />>> OLHAR <<</.test(mig124), /DESFAZER/.test(mig124),
+      /GRANT EXECUTE ON FUNCTION public\.achar_ou_criar_prospeccao_do_local\(text, text, jsonb\) TO authenticated, service_role;/.test(mig124)],
+     [true, true, true, true, true, false, false, true, true, true, true, true]);
+  eq('U124: a conferência olha o que importa — a policy de INSERT de clientes continua em ZERO, o CHECK visitas_alvo_unico está vivo e nenhuma visita tem cliente E prospecção',
+     [/tablename = 'clientes' AND cmd = 'INSERT'\), '0'/.test(mig124),
+      /conname = 'visitas_alvo_unico'\), '1'/.test(mig124),
+      /WHERE cliente_id IS NOT NULL AND prospeccao_id IS NOT NULL\), '0'/.test(mig124),
+      /achar_ou_criar_prospeccao\(text\)'\) IS NOT NULL\)::text, 'true'/.test(mig124)],
+     [true, true, true, true]);
+
+  // ── R241: quem responde por trabalho técnico ──────────────────────────────
+  eq('R241 CRÍTICO: os cargos de campo são o técnico e o ADMIN — comercial e SAC montam a visita mas não vão ao prédio',
+     [TEC.CARGOS_DE_CAMPO, TEC.ehCargoDeCampo('tecnico'), TEC.ehCargoDeCampo('admin'),
+      TEC.ehCargoDeCampo('comercial'), TEC.ehCargoDeCampo('sac'), TEC.ehCargoDeCampo(null)],
+     [['tecnico', 'admin'], true, true, false, false, false]);
+  eq('R241: na lista, técnico vem primeiro (cada grupo em ordem alfabética) e quem não é técnico mostra o cargo entre parênteses',
+     [TEC.ordenarResponsaveis([
+        { nome: 'Zeca', cargo: 'tecnico' }, { nome: 'Ana', cargo: 'admin' }, { nome: 'Bia', cargo: 'tecnico' },
+      ]).map((p) => p.nome),
+      TEC.rotuloDoResponsavel({ nome: 'Erik Freitas', cargo: 'tecnico' }),
+      TEC.rotuloDoResponsavel({ nome: 'Davi Voos', cargo: 'admin' }),
+      TEC.rotuloDoResponsavel({ nome: null, cargo: 'admin' })],
+     [['Bia', 'Zeca', 'Ana'], 'Erik Freitas', 'Davi Voos (admin)', '— (admin)']);
+  eq('R241 CRÍTICO: a lista de responsáveis é UMA — fetchTecnicos lê CARGOS_DE_CAMPO e a tela de agendar usa useTecnicos(), sem consulta própria com o cargo colado',
+     [/\.in\("cargo", CARGOS_DE_CAMPO as unknown as string\[\]\)/.test(ger124),
+      /return ordenarResponsaveis\(data \?\? \[\]\);/.test(ger124),
+      /const \{ data: tecnicos = \[\] \} = useTecnicos\(\);/.test(nv124),
+      /\.eq\("cargo", "tecnico"\)/.test(nv124 + ger124),
+      /rotulo: rotuloDoResponsavel\(t\)/.test(nv124)],
+     [true, true, true, false, true]);
+  eq('R241: as duas listas de gente do Comercial deixaram de dividir a chave de cache — useTecnicos() é "quem faz campo"; /gerencial lê TODOS os perfis ativos só para escrever o nome de quem atende no card',
+     [/queryKey: \["tecnicos-ativos"\], queryFn: fetchTecnicos/.test(ger124),
+      /queryKey: \["perfis-ativos-nomes"\]/.test(ler124('src/routes/_authenticated/gerencial.tsx')),
+      /queryKey: \["tecnicos-ativos"\]/.test(ler124('src/routes/_authenticated/gerencial.tsx')),
+      (ler124('src/features/administrativo/Usuarios.tsx').match(/queryKey: \["perfis-ativos-nomes"\]/g) ?? []).length],
+     [true, true, false, 2]);
+
+  // ── a versão e a regra 7 ──────────────────────────────────────────────────
+  const prod124 = ler124('docs/PRODUTO.md');
+  eq('R229/R241: a versão subiu para 0.0.6 nas duas fontes e a v0.0.6 está no VERSOES.md exigindo a U124',
+     [JSON.parse(ler124('package.json')).version,
+      (ler124('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
+      /^## v0\.0\.6 [^\n]*U124/m.test(ler124('docs/VERSOES.md'))],
+     ['0.0.6', '0.0.6', true]);
+  eq('U124 (regra 7): a R241 existe com a frase do Davi, a R21 guarda a frase nova dele sobre proposta ≠ cliente, o manual comercial aponta a porta certa da prospecção, a U124 está no diário, o ESTADO a aponta como pendente e a P68 registra o que sobrou',
+     [/^- \*\*R241\*\* —/m.test(prod124),
+      /habilite os usuários Admin para fazer a visita técnica/.test(prod124.replace(/\s+/g, ' ')),
+      /não significa que ele é meu cliente/.test(prod124.replace(/\s+/g, ' ')),
+      Number((prod124.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 241,
+      /achar_ou_criar_prospeccao_do_local/.test(ler124('docs/manual/comercial.md')),
+      /src\/features\/prospeccao\/data\.ts/.test(ler124('docs/manual/comercial.md')),
+      /^## U124 /m.test(ler124('docs/PLANO_UNIFICACAO.md')),
+      /\*\*Pendente: U124\*\*/.test(ler124('docs/ESTADO_ATUAL.md')),
+      /^## P68 /m.test(ler124('docs/PENDENCIAS_TECNICAS.md'))],
+     [true, true, true, true, true, false, true, true, true]);
 }
 
 

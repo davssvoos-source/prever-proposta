@@ -182,6 +182,71 @@ export function useVisitasDoCliente(clienteId: string | undefined) {
 /** Campos editáveis pelo formulário de cliente. */
 export type ClientePatch = Partial<Omit<Cliente, "id" | "created_at">>;
 
+/**
+ * O PRÉDIO QUE AINDA NÃO É CLIENTE (R21/R22, U124).
+ *
+ * Davi, 09/09/2026: "só porque eu fiz uma proposta comercial para um
+ * condomínio, não significa que ele é meu cliente, os clientes vêm diretamente
+ * do QAP e não podem ser cadastrados pelo sistema Prever OS que estamos
+ * criando."
+ *
+ * Então a visita de um prédio sem cadastro registra uma PROSPECÇÃO — com o
+ * endereço, os contatos e a coordenada — e aponta para ela
+ * (`visitas_tecnicas.prospeccao_id`). A função do banco acha pelo nome
+ * normalizado (não duplica) e só preenche o que está vazio (não degrada o que
+ * alguém conferiu). É SECURITY DEFINER porque quem monta visita pode ser o SAC,
+ * que não é `is_gestor` e não escreveria em `prospeccoes` pela policy.
+ */
+export interface DadosDoLocal {
+  tipo_local?: string | null;
+  complemento?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+  cep?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  nome_sindico?: string | null;
+  telefone_sindico?: string | null;
+  email_sindico?: string | null;
+  nome_zelador?: string | null;
+  telefone_zelador?: string | null;
+  email_zelador?: string | null;
+  qtd_apartamentos?: number | null;
+  observacoes?: string | null;
+  foto_fachada_url?: string | null;
+}
+
+export async function acharOuCriarProspeccao(
+  nome: string,
+  endereco: string | null,
+  dados: DadosDoLocal = {},
+): Promise<string> {
+  // só o que tem valor — a função lê coluna por coluna e `null` não apaga nada,
+  // mas mandar menos deixa o payload legível no log de rede
+  const limpos = Object.fromEntries(
+    Object.entries(dados).filter(([, v]) => v !== null && v !== undefined && v !== ""),
+  );
+  const { data, error } = await supabase.rpc("achar_ou_criar_prospeccao_do_local" as any, {
+    _nome: nome, _endereco: endereco, _dados: limpos,
+  } as any);
+  if (error) {
+    // Regra 5: sem a U124 a função não existe. Dizer o que fazer, em português.
+    const cod = (error as { code?: string }).code;
+    if (cod === "42883" || cod === "PGRST202" || /function .* does not exist|Could not find the function/i.test(error.message)) {
+      throw new Error("Este prédio ainda não é cliente, e registrar a prospecção precisa da migration U124.");
+    }
+    throw error;
+  }
+  if (!data) throw new Error("Não foi possível registrar a prospecção do prédio.");
+  return data as unknown as string;
+}
+
+/**
+ * R21: O APP NÃO CRIA CLIENTE — quem cria é o QAP, pelo Sincronizar. A U27
+ * tirou a policy de INSERT de `clientes`, então isto SEMPRE falha na RLS; a
+ * função fica só para o caminho da consolidação assistida (P68), e o que ela
+ * devolve agora é a regra escrita em português em vez da mensagem do Postgres.
+ */
 export async function criarCliente(patch: ClientePatch): Promise<string> {
   const { data: u } = await supabase.auth.getUser();
   const { data, error } = await supabase
@@ -189,7 +254,16 @@ export async function criarCliente(patch: ClientePatch): Promise<string> {
     .insert({ ...patch, created_by: u.user?.id ?? null } as any)
     .select("id")
     .single();
-  if (error) throw error;
+  if (error) {
+    const cod = (error as { code?: string }).code;
+    if (cod === "42501" || /row-level security/i.test(error.message)) {
+      throw new Error(
+        "O Prever OS não cadastra cliente (R21): cliente vem do QAP, pelo Sincronizar. " +
+        "Prédio que ainda não é cliente entra como prospecção.",
+      );
+    }
+    throw error;
+  }
   return (data as any).id as string;
 }
 

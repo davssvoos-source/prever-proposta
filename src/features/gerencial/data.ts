@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { CARGOS_DE_CAMPO, ordenarResponsaveis } from "@/features/gerencial/tecnicos";
 import { geocodificarEndereco, type EnderecoResolvido } from "@/lib/geocodificar.functions";
 
 /**
@@ -46,15 +47,20 @@ export async function geocode(endereco: string): Promise<EnderecoResolvido | nul
 }
 
 /** Perfis atribuíveis como técnico responsável — só quem tem cargo de técnico. */
+/**
+ * Quem pode ser responsável por trabalho técnico (R241): o técnico e o ADMIN.
+ * A lista é UMA — a visita, o chamado de campo, a grade da programação, o
+ * painel Operacional e as duplas bebem dela. Ver features/gerencial/tecnicos.ts.
+ */
 export async function fetchTecnicos() {
   const { data, error } = await supabase
     .from("profiles")
     .select("id, nome, email, cargo, avatar_url, telefone, ativo")
     .eq("ativo", true)
-    .eq("cargo", "tecnico")
+    .in("cargo", CARGOS_DE_CAMPO as unknown as string[])
     .order("nome");
   if (error) throw error;
-  return data ?? [];
+  return ordenarResponsaveis(data ?? []);
 }
 export type Tecnico = Awaited<ReturnType<typeof fetchTecnicos>>[number];
 

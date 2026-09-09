@@ -29,13 +29,14 @@ import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   useClientes,
-  criarCliente,
+  acharOuCriarProspeccao,
   atualizarCliente,
   acharClienteEquivalente,
   baixarFachadaComoArquivo,
   type Cliente,
 } from "@/features/clientes/data";
-import { geocode } from "@/features/gerencial/data";
+import { geocode, useTecnicos } from "@/features/gerencial/data";
+import { rotuloDoResponsavel } from "@/features/gerencial/tecnicos";
 import { FONT, card, botaoSelecao, goldButton, GOLD_GRAD } from "@/lib/ui";
 import { PRISMA, cinzas, misturar } from "@/lib/paleta";
 import { SeletorDeOpcao } from "@/components/SeletorDeOpcao";
@@ -242,19 +243,12 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
     }
   }
 
-  const { data: tecnicos = [] } = useQuery({
-    queryKey: ["tecnicos-lista"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, nome, cargo")
-        .eq("ativo", true)
-        .eq("cargo", "tecnico")
-        .order("nome");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  // R241: a lista de quem pode ser responsável pela visita — técnico e ADMIN —
+  // vem de useTecnicos(), a MESMA que a programação, o painel Operacional e as
+  // duplas usam. Esta tela tinha a sua própria consulta com o filtro
+  // `cargo = 'tecnico'` colado: duas definições do mesmo conceito, e a lista
+  // daqui não acompanharia a mudança da regra.
+  const { data: tecnicos = [] } = useTecnicos();
 
   const { data: visitasTecnico = [] } = useQuery({
     queryKey: ["visitas-tecnico", tecnicoId],
@@ -345,7 +339,23 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
         email_zelador: emailZelador || null,
       };
 
+      // R21/R22: os dados do LOCAL para a prospecção — a tabela `prospeccoes`
+      // não tem `nome_predio`, `email` nem `telefone`: o nome do prédio É o
+      // nome dela, e os contatos são os do síndico e do zelador.
+      const dadosDoLocal = {
+        tipo_local: tipoLocal || null,
+        complemento: complemento || null,
+        ...(lat != null && lng != null ? { latitude: lat, longitude: lng } : {}),
+        nome_sindico: nomeSindico || null,
+        telefone_sindico: telefoneSindico || null,
+        email_sindico: emailSindico || null,
+        nome_zelador: nomeZelador || null,
+        telefone_zelador: telefoneZelador || null,
+        email_zelador: emailZelador || null,
+      };
+
       let clienteIdFinal = clienteId;
+      let prospeccaoIdFinal: string | null = null;
       if (clienteIdFinal) {
         // Cliente vinculado: se o gestor corrigiu algo aqui, o cadastro
         // acompanha — senão a OS leria o dado velho na ficha do cliente.
@@ -360,18 +370,22 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
           clienteIdFinal = equivalente.id;
           await atualizarCliente(equivalente.id, dadosDoCliente);
         } else {
-          // SEM `situacao`, E A DELEÇÃO CONSERTA UM DEFEITO VIVO. Esta linha
-          // gravava `situacao: 'prospecto'` — valor que a U27 APAGOU do CHECK
-          // (`clientes_situacao_check` aceita só 'ativo' e 'inativo', u27:218).
-          // Todo cadastro de prédio novo por esta tela batia em 23514 e
-          // derrubava a criação da visita inteira, que é a mesma mutação.
-          // O `tsc` já acusava (TS2322: '"prospecto"' não é `SituacaoCliente`),
-          // e o erro estava escondido dentro do baseline de 78 — um defeito de
-          // produção morando numa contagem que a casa aprendeu a não olhar.
-          // Não é escolher entre duas saídas: a R21/R22 fechou 'prospecto' com
-          // argumento, e `SITUACAO_LABEL['prospecto']` é `undefined` em toda
-          // tela que renderize o valor. Sem a chave, vale o DEFAULT 'ativo'.
-          clienteIdFinal = await criarCliente(dadosDoCliente);
+          // R21/R22 (U124): PRÉDIO NOVO NÃO É CLIENTE. Davi, 09/09/2026: "só
+          // porque eu fiz uma proposta comercial para um condomínio, não
+          // significa que ele é meu cliente, os clientes vêm diretamente do QAP
+          // e não podem ser cadastrados pelo sistema Prever OS."
+          //
+          // Aqui morava `criarCliente(dadosDoCliente)`, e desde a U27 — que
+          // tirou a policy de INSERT de `clientes` para fechar a R21 — TODA
+          // visita de prédio novo morria na RLS ("new row violates row-level
+          // security policy for table clientes"), levando a proposta junto. A
+          // P44 consertou um segundo defeito no MESMO INSERT sem que este
+          // aparecesse: o primeiro erro esconde o outro.
+          //
+          // A visita passa a apontar para uma PROSPECÇÃO (o CHECK
+          // `visitas_alvo_unico` da U27 exige um dos dois, nunca os dois).
+          prospeccaoIdFinal = await acharOuCriarProspeccao(nomePredio, endereco, dadosDoLocal);
+          clienteIdFinal = null;
         }
       }
 
@@ -394,6 +408,8 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
 
       const payload = {
         cliente_id: clienteIdFinal,
+        // R22: um dos dois, nunca os dois (CHECK visitas_alvo_unico, U27)
+        prospeccao_id: prospeccaoIdFinal,
         titulo: nomePredio,
         nome_predio: nomePredio,
         tipo_local: tipoLocal,
@@ -504,6 +520,13 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
                 </button>
               </div>
             ) : null}
+            {!clienteSelecionado && (
+              // R21: dizer a regra ANTES, na tela — não depois, num erro de RLS
+              <span style={{ fontFamily: FONT, fontSize: 11.5, color: cz.textoSecundario, lineHeight: 1.5 }}>
+                Sem cliente vinculado, este prédio entra como <strong style={{ fontWeight: 600 }}>prospecção</strong> —
+                proposta comercial não faz de um condomínio nosso cliente. Cliente vem do QAP, pelo Sincronizar.
+              </span>
+            )}
             {clienteSelecionado && clienteDivergente && (
               <button
                 onClick={() => setSincronizarCliente((v) => !v)}
@@ -868,7 +891,7 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
             <SeletorDeOpcao
               valor={tecnicoId || null}
               vazio="— Sem técnico definido —"
-              opcoes={tecnicos.map((t) => ({ valor: t.id, rotulo: t.nome ?? "—" }))}
+              opcoes={tecnicos.map((t) => ({ valor: t.id, rotulo: rotuloDoResponsavel(t) }))}
               aoMudar={(v) => setTecnicoId(v ?? "")}
             />
 

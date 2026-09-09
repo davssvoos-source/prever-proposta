@@ -280,6 +280,7 @@ export function GestaoDeUsuarios() {
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
       qc.invalidateQueries({ queryKey: ["pessoas-ativas"] });
       qc.invalidateQueries({ queryKey: ["tecnicos-ativos"] });
+      qc.invalidateQueries({ queryKey: ["perfis-ativos-nomes"] });
       qc.invalidateQueries({ queryKey: ["painel-admin-numeros"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -310,6 +311,7 @@ export function GestaoDeUsuarios() {
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
       qc.invalidateQueries({ queryKey: ["bottomnav-cargo"] });
       qc.invalidateQueries({ queryKey: ["tecnicos-ativos"] });
+      qc.invalidateQueries({ queryKey: ["perfis-ativos-nomes"] });
       qc.invalidateQueries({ queryKey: ["painel-admin-numeros"] });
     },
     onError: (e: Error) => {
