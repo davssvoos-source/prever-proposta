@@ -23,8 +23,9 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  mencaoDaLinha, mensagemDaLinha,
-  type LinhaDeMencao, type LinhaDeMensagem, type Mencao, type MensagemParaTodos,
+  mencaoDaLinha, mensagemDaLinha, respostaDaLinha,
+  type LinhaDeMencao, type LinhaDeMensagem, type LinhaDeResposta,
+  type Mencao, type MensagemParaTodos, type RespostaDoChat,
 } from "./chat";
 
 export interface MencoesCarregadas {
@@ -57,6 +58,37 @@ export function useMinhasMencoes(ativo = true) {
         throw error;
       }
       return { mencoes: ((data as LinhaDeMencao[]) ?? []).map(mencaoDaLinha), faltaMigration: false };
+    },
+  });
+}
+
+export interface RespostasCarregadas {
+  respostas: RespostaDoChat[];
+  faltaMigration: boolean;
+}
+
+export const TETO_DE_RESPOSTAS = 500;
+
+/**
+ * As RESPOSTAS (R240) das atividades que o chat está mostrando — a função
+ * `respostas_do_chat` (U123) devolve os comentários que respondem a outro
+ * comentário, e a tela agrupa cada um sob a sua mensagem.
+ *
+ * Regra 5: sem a U123 a função não existe (42883/PGRST202) — `faltaMigration`,
+ * e o chat segue mostrando as menções sem as respostas.
+ */
+export function useRespostasDoChat(chamadoIds: readonly string[], ativo = true) {
+  return useQuery({
+    queryKey: ["respostas-chat", chamadoIds],
+    enabled: ativo && chamadoIds.length > 0,
+    staleTime: 30_000,
+    queryFn: async (): Promise<RespostasCarregadas> => {
+      const { data, error } = await supabase.rpc("respostas_do_chat" as any, { _chamados: chamadoIds } as any);
+      if (error) {
+        if (semFuncao(error)) return { respostas: [], faltaMigration: true };
+        throw error;
+      }
+      return { respostas: ((data as LinhaDeResposta[]) ?? []).map(respostaDaLinha), faltaMigration: false };
     },
   });
 }

@@ -9,6 +9,19 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v0.0.5 — 2026-09-09 (U123) · migration **U123** — rodar ANTES de subir o pacote
+
+- **O chat virou conversa** (R240): cada mensagem é um campo na cor do prazo com
+  o **título da atividade dentro dele**, e a **resposta que você manda pelo chat
+  fica no chat**, no mesmo campo da mensagem que respondeu, como uma caixa de
+  mensagem separada (com foto, nome e hora de quem falou). O campo que recebe
+  resposta vai para o fim da lista.
+- Antes, responder pelo chat mandava o recado para os comentários da atividade e
+  a mensagem desaparecia da sua tela — ela aparecia só para a outra pessoa.
+- **Banco:** a **U123** acrescenta a ligação `responde_a` em `chamado_eventos` e
+  a leitura `respostas_do_chat`. Sem ela o chat avisa e a resposta continua indo
+  para os comentários da atividade, só não volta para o chat.
+
 ## v0.0.4 — 2026-09-08 (U121–U122) · migrations **U119** e **U121** — rodadas em 08/09/2026, nada a fazer no banco
 
 - **A tela da atividade na estrutura aprovada** (R234): documento à esquerda

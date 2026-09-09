@@ -192,16 +192,18 @@ Ditada pelo Davi em 03/09/2026 e transcrita em
   responsável. Proposta Comercial expande o formulário da visita no próprio
   pop-up (R214); responsável da equipe Técnica abre o chamado de campo; o resto
   abre o formulário do tipo.
-- **O chat da Início** (R215–R217, R222–R223): o botão redondo no canto
+- **O chat da Início** (R215–R217, R222–R223, R240): o botão redondo no canto
   inferior direito abre uma conversa em 9:16, como um chat de celular. Cada
-  mensagem traz a foto de quem escreveu, o título da atividade, a data/hora e
-  o conteúdo numa bolha na cor do prazo daquela atividade (vermelho atrasada,
-  amarelo esta semana, azul mais adiante, verde concluída). Menção num
-  comentário tem **responder** e **reagir** embaixo; menção na descrição, no
-  diagnóstico ou na solução abre a atividade ao clicar. Escrever no campo de
-  baixo sem responder a nada manda um **recado para todos**; clicar em
-  responder põe o `#Código` da atividade no campo e a resposta vira comentário
-  nela. A alça de cima arrasta o chat para onde você quiser; o botão do canto
+  atividade mencionada é **um campo na cor do prazo** dela (vermelho atrasada,
+  amarelo esta semana, azul mais adiante, verde concluída), com o **título da
+  atividade dentro do campo** e, embaixo, uma **caixa por mensagem** — a foto,
+  o nome e a hora de quem falou, e o que ele disse. Menção num comentário tem
+  **responder** e **reagir** no pé do campo; menção na descrição, no
+  diagnóstico ou na solução abre a atividade ao clicar na caixa. Escrever no
+  campo de baixo sem responder a nada manda um **recado para todos**; clicar em
+  responder põe o `#Código` da atividade no campo, e a resposta vira comentário
+  na atividade **e fica no chat**, como uma caixa nova no mesmo campo — o campo
+  que recebeu resposta vai para o fim da conversa. A alça de cima arrasta o chat para onde você quiser; o botão do canto
   recolhe (e ao reabrir ele volta ao mesmo lugar). O selo vermelho no botão
   conta o que chegou.
 - **Toda atividade pode ser agendada** (R225): a coluna **Agendado** do quadro

@@ -32,6 +32,19 @@
 //
 // SUBCOMPONENTES DE MÓDULO (lição do PainelChamado): o texto do campo não pode
 // sumir quando a lista atualiza por trás.
+//
+// R240 (U123, 09/09/2026) — o CAMPO e as CAIXAS. Davi: "No chat, as mensagens
+// devem conter o titulo junto com o fundo colorido. Além disso, quando um
+// usuário manda uma mensagem no chat que vai diretamente para os comentários
+// daquela atividade, a mensagem também deve ficar no chat, se juntando com a
+// mensagem que ele respondeu, sendo caixas de mensagem diferentes no mesmo
+// campo (fundo colorido) dentro do chat."
+//
+// Então cada conversa é UM CAMPO na cor do prazo, e dentro dele: o título da
+// atividade (o botão que abre o pop-up) e uma CAIXA por mensagem — a menção e
+// cada resposta, com foto, nome e hora. A resposta chega pela ligação
+// `responde_a` (U123); sem ela, a resposta virava comentário na atividade e
+// desaparecia do chat de quem respondeu.
 
 import {
   useEffect, useMemo, useRef, useState,
@@ -51,12 +64,13 @@ import { useNotificacoes } from "@/hooks/useNotificacoes";
 import { usePessoas, mapaDePessoas, comentarChamado } from "@/features/chamados/data";
 import { useReacoesDeEventos, SEM_REACOES } from "@/features/chamados/reacoes";
 import { FileiraDeReacoes } from "@/features/chamados/FileiraDeReacoes";
-import { useMinhasMencoes, useMensagensDoChat, useCanalDoChat, enviarMensagemParaTodos } from "./chat-data";
+import { useMinhasMencoes, useMensagensDoChat, useRespostasDoChat, useCanalDoChat, enviarMensagemParaTodos } from "./chat-data";
 import {
   CHAVE_LIDO_ATE_CHAT, CHAVE_POSICAO_CHAT, PRISMA_DA_MENSAGEM, ROTULO_DA_ORIGEM,
   contarNaoLidasDoChat, corDaMencao, dataHoraCurta, ehComentario, hashtagDaAtividade,
   lerPosicaoGuardada, linhaDoTempo, paragrafoComMencao, posicaoDentroDaTela, rotearEnvio,
-  type CorDaMensagem, type ItemDoChat, type Mencao, type MensagemParaTodos, type Ponto, type RespostaPara,
+  type CorDaMensagem, type ItemDoChat, type Mencao, type MensagemParaTodos, type Ponto,
+  type RespostaDoChat, type RespostaPara,
 } from "./chat";
 
 type Pessoas = Record<string, { nome: string; avatar_url: string | null }>;
@@ -107,7 +121,16 @@ export function ChatDeMencoes({ aoAbrirAtividade }: { aoAbrirAtividade: (chamado
   );
   const eventoIds = useMemo(() => mencoes.map((m) => m.eventoId).filter((x): x is string => !!x), [mencoes]);
   const { data: reacoes = SEM_REACOES } = useReacoesDeEventos(eventoIds);
-  const itens = useMemo(() => linhaDoTempo(mencoes, mensagens), [mencoes, mensagens]);
+  // R240: as respostas das atividades que estão no chat — ordenadas para a
+  // chave da query não mudar a cada render
+  const chamadoIds = useMemo(
+    () => Array.from(new Set(mencoes.map((m) => m.chamadoId))).sort(),
+    [mencoes],
+  );
+  const respostasQ = useRespostasDoChat(chamadoIds, true);
+  const respostas = respostasQ.data?.respostas ?? [];
+  const faltaRespostas = !!respostasQ.data?.faltaMigration;
+  const itens = useMemo(() => linhaDoTempo(mencoes, mensagens, respostas), [mencoes, mensagens, respostas]);
 
   // ── o selo: menções não lidas + recados que chegaram depois da última abertura ──
   const [lidoAte, setLidoAte] = useState<string | null>(() => lerDoNavegador(CHAVE_LIDO_ATE_CHAT));
@@ -255,6 +278,12 @@ export function ChatDeMencoes({ aoAbrirAtividade }: { aoAbrirAtividade: (chamado
             das mensagens não aparecem. As menções continuam chegando.
           </Aviso>
         )}
+        {faltaRespostas && (
+          <Aviso c={c}>
+            As respostas enviadas por aqui precisam da migration <strong>U123</strong> — até ela rodar, a resposta
+            vai para os comentários da atividade, mas não volta para o chat.
+          </Aviso>
+        )}
         {mencoesQ.isLoading && mensagensQ.isLoading ? (
           <Aviso c={c}>Carregando a conversa…</Aviso>
         ) : itens.length === 0 ? (
@@ -314,8 +343,9 @@ function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparRes
       const destino = rotearEnvio(texto, resposta, conhecidas);
       if (!destino) throw new Error("Escreva alguma coisa antes de enviar.");
       if (destino.destino === "comentario") {
-        // R216/R223: a resposta vira COMENTÁRIO na atividade
-        await comentarChamado(destino.chamadoId, destino.texto);
+        // R216/R223: a resposta vira COMENTÁRIO na atividade — e R240: com a
+        // ligação para a mensagem respondida, que é o que a traz de volta ao chat
+        await comentarChamado(destino.chamadoId, destino.texto, destino.respondeA);
         return { para: "atividade" as const, chamadoId: destino.chamadoId };
       }
       await enviarMensagemParaTodos(destino.texto);
@@ -327,6 +357,7 @@ function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparRes
       if (r.para === "atividade") {
         qc.invalidateQueries({ queryKey: ["chamado-eventos", r.chamadoId] });
         qc.invalidateQueries({ queryKey: ["minhas-mencoes"] });
+        qc.invalidateQueries({ queryKey: ["respostas-chat"] });   // R240: a resposta aparece no campo
         toast.success("Resposta enviada na atividade.");
       } else {
         qc.invalidateQueries({ queryKey: ["mensagens-chat"] });
@@ -403,7 +434,72 @@ function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparRes
   );
 }
 
-// ── uma mensagem da conversa ────────────────────────────────────────────────
+// ── uma conversa: UM campo na cor do prazo, N caixas de mensagem (R240) ─────
+
+/**
+ * A caixa de uma mensagem DENTRO do campo — o que separa uma fala da outra.
+ *
+ * Um poço escuro no escuro, um cartão branco no claro: nos dois casos a cor do
+ * campo continua lendo em volta da caixa, que é o que o Davi pediu. MEDIDO: a
+ * caixa contra o campo dá 1,12 no escuro e 1,25 no claro — dois tons escuros
+ * não produzem razão maior (o piso de 0,05 da fórmula domina), e é por isso que
+ * no sistema inteiro quem separa superfície de superfície é a BORDA. Aqui ela
+ * vem TINGIDA da cor do campo (`borda`), então amarra a caixa ao campo em vez
+ * de brigar com ele. O texto dentro fica com 15:1 no claro e 17:1 no escuro.
+ */
+function estiloDaCaixa(isLight: boolean, c: ReturnType<typeof cinzas>, borda?: string): CSSProperties {
+  return {
+    background: isLight ? "rgba(255,255,255,0.80)" : "rgba(0,0,0,0.30)",
+    border: `1px solid ${borda ?? c.divisoria}`,
+    borderRadius: 10, padding: "6px 9px",
+    display: "flex", gap: 8, alignItems: "flex-start", minWidth: 0,
+  };
+}
+
+function CaixaDeMensagem({ autorId, nome, pessoa, quando, borda, aoClicar, dica, children }: {
+  autorId: string | null;
+  nome: string;
+  pessoa?: { nome: string; avatar_url: string | null };
+  quando: string;
+  /** a borda da caixa, tingida da cor do campo */
+  borda?: string;
+  /** menção num campo da atividade: a caixa inteira é o botão que abre o pop-up */
+  aoClicar?: () => void;
+  dica?: string;
+  children: ReactNode;
+}) {
+  const { isLight } = useTheme();
+  const c = cinzas(isLight);
+  const clicavel = !!aoClicar;
+  return (
+    <div
+      role={clicavel ? "button" : undefined}
+      tabIndex={clicavel ? 0 : undefined}
+      onClick={aoClicar}
+      onKeyDown={clicavel ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); aoClicar?.(); } } : undefined}
+      title={dica}
+      style={{ ...estiloDaCaixa(isLight, c, borda), cursor: clicavel ? "pointer" : "default" }}
+    >
+      <span title={nome} style={{ flexShrink: 0, marginTop: 1 }}>
+        {autorId
+          ? <AvatarCirculo id={autorId} nome={nome} pessoa={pessoa} tamanho={22} />
+          : <span style={{ width: 22, height: 22, borderRadius: "50%", background: c.elevada, display: "inline-block" }} />}
+      </span>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
+          <span style={{
+            fontFamily: FONT, fontWeight: 600, fontSize: 11.5, color: c.texto,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {nome}
+          </span>
+          <span style={{ fontFamily: FONT, fontSize: 10.5, color: c.textoSecundario, flexShrink: 0 }}>{quando}</span>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function Mensagem({ item, euId, pessoasPorId, reacoes, faltaReacoes, aoAbrir, aoResponder }: {
   item: ItemDoChat;
@@ -421,91 +517,108 @@ function Mensagem({ item, euId, pessoasPorId, reacoes, faltaReacoes, aoAbrir, ao
   }
   const m = item.mencao;
   const autor = m.autorId ? pessoasPorId[m.autorId] : undefined;
-  const autorNome = autor?.nome ?? "Alguém";
   const cor = corDaMencao(m);
   const comentario = ehComentario(m);
-  const pendente = !m.respondida && comentario;
+  // R240: ter resposta no campo já é ter respondido — o ponto de atenção sai
+  const pendente = comentario && !m.respondida && item.respostas.length === 0;
   const tom = tomDaCor(cor, isLight, c.texto);
+  const nomeDe = (id: string | null): string =>
+    (id && id === euId) ? "Você" : ((id ? pessoasPorId[id]?.nome : null) ?? "Alguém");
+  const bordaDaCaixa = cor ? PRISMA[PRISMA_DA_MENSAGEM[cor]].border : c.divisoria;
+  const textoDaCaixa: CSSProperties = { fontSize: 13, color: c.texto, lineHeight: 1.5, gap: 2 } as CSSProperties;
 
   return (
-    <article style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-      <span title={autorNome} style={{ flexShrink: 0, marginTop: 2 }}>
-        {m.autorId
-          ? <AvatarCirculo id={m.autorId} nome={autorNome} pessoa={autor} tamanho={28} />
-          : <span style={{ width: 28, height: 28, borderRadius: "50%", background: c.elevada, display: "inline-block" }} />}
-      </span>
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-        {/* título da atividade (abre o pop-up) · data/hora — sem código (R222) */}
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
-          <button
-            type="button"
-            onClick={() => aoAbrir(m.chamadoId)}
-            title={`Abrir a atividade (menção em ${ROTULO_DA_ORIGEM[m.origem]})`}
-            style={{
-              background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", minWidth: 0,
-              fontFamily: FONT, fontWeight: 600, fontSize: 12, color: c.texto, lineHeight: 1.3,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}
-          >
-            {m.titulo}
-          </button>
-          <span style={{ fontFamily: FONT, fontSize: 11, color: c.textoSecundario, flexShrink: 0 }}>{dataHoraCurta(m.criadoEm)}</span>
-          {pendente && (
-            // R222: "chamar a atenção para mensagens novas/não respondidas"
-            <span title="Você ainda não respondeu" aria-label="não respondida" style={{ width: 7, height: 7, borderRadius: 4, background: tom, flexShrink: 0, alignSelf: "center" }} />
-          )}
-        </div>
-
-        {/* a bolha, na cor do prazo; em menção de campo, ela é o botão que abre a atividade */}
-        <div
-          role={comentario ? undefined : "button"}
-          tabIndex={comentario ? undefined : 0}
-          onClick={comentario ? undefined : () => aoAbrir(m.chamadoId)}
-          onKeyDown={comentario ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); aoAbrir(m.chamadoId); } }}
-          title={comentario ? undefined : "Abrir a atividade"}
+    <article
+      style={{
+        ...estiloDaBolha(cor, isLight, c),
+        borderRadius: 14, padding: 8, minWidth: 0,
+        display: "flex", flexDirection: "column", gap: 6,
+        boxShadow: pendente ? `inset 3px 0 0 ${tom}` : undefined,
+      }}
+    >
+      {/* R240: o TÍTULO mora DENTRO do campo colorido — é o assunto das caixas */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, padding: "0 2px" }}>
+        <button
+          type="button"
+          onClick={() => aoAbrir(m.chamadoId)}
+          title={`Abrir a atividade (menção em ${ROTULO_DA_ORIGEM[m.origem]})`}
           style={{
-            ...estiloDaBolha(cor, isLight, c),
-            borderRadius: "4px 14px 14px 14px", padding: "8px 11px",
-            boxShadow: pendente ? `inset 3px 0 0 ${tom}` : undefined,
-            cursor: comentario ? "default" : "pointer",
-            color: c.texto,
+            background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left",
+            flex: 1, minWidth: 0,
+            fontFamily: FONT, fontWeight: 600, fontSize: 12, color: c.texto, lineHeight: 1.3,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}
         >
-          {comentario ? (
-            <TextoComChecklist texto={m.texto} estilo={{ fontSize: 13, color: c.texto, lineHeight: 1.5, gap: 2 }} />
-          ) : (
-            <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: c.texto, lineHeight: 1.5, display: "flex", gap: 6, alignItems: "flex-start" }}>
-              <span style={{ flex: 1, minWidth: 0 }}><LinhaRica texto={paragrafoComMencao(m.texto, euId)} /></span>
-              <ExternalLink size={12} color={c.textoSecundario} style={{ flexShrink: 0, marginTop: 3 }} />
-            </p>
-          )}
-        </div>
-
-        {/* R216/R217: responder e reagir — só em COMENTÁRIO, abaixo do conteúdo */}
-        {comentario && m.eventoId && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => aoResponder({ chamadoId: m.chamadoId, numero: m.numero, autorId: m.autorId, autorNome: autor?.nome ?? null })}
-              aria-label="Responder aqui"
-              title="Responder aqui"
-              style={{
-                width: 28, height: 28, borderRadius: 9, cursor: "pointer",
-                background: c.superficie, border: `1px solid ${c.divisoria}`, color: c.texto,
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-              }}
-            >
-              <Reply size={14} />
-            </button>
-            <FileiraDeReacoes chamadoId={m.chamadoId} eventoId={m.eventoId} reacoes={reacoes} faltaMigration={faltaReacoes} euId={euId} />
-          </div>
+          {m.titulo}
+        </button>
+        {pendente && (
+          // R222: "chamar a atenção para mensagens novas/não respondidas"
+          <span title="Você ainda não respondeu" aria-label="não respondida" style={{ width: 7, height: 7, borderRadius: 4, background: tom, flexShrink: 0 }} />
         )}
       </div>
+
+      {/* a MENÇÃO — em campo da atividade, a caixa é o botão que abre o pop-up */}
+      <CaixaDeMensagem
+        autorId={m.autorId}
+        nome={nomeDe(m.autorId)}
+        pessoa={autor}
+        quando={dataHoraCurta(m.criadoEm)}
+        borda={bordaDaCaixa}
+        aoClicar={comentario ? undefined : () => aoAbrir(m.chamadoId)}
+        dica={comentario ? undefined : "Abrir a atividade"}
+      >
+        {comentario ? (
+          <TextoComChecklist texto={m.texto} estilo={textoDaCaixa} />
+        ) : (
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: c.texto, lineHeight: 1.5, display: "flex", gap: 6, alignItems: "flex-start" }}>
+            <span style={{ flex: 1, minWidth: 0 }}><LinhaRica texto={paragrafoComMencao(m.texto, euId)} /></span>
+            <ExternalLink size={12} color={c.textoSecundario} style={{ flexShrink: 0, marginTop: 3 }} />
+          </p>
+        )}
+      </CaixaDeMensagem>
+
+      {/* R240: as RESPOSTAS — caixas diferentes, o mesmo campo */}
+      {item.respostas.map((r: RespostaDoChat) => (
+        <CaixaDeMensagem
+          key={r.id}
+          autorId={r.autorId}
+          nome={nomeDe(r.autorId)}
+          pessoa={r.autorId ? pessoasPorId[r.autorId] : undefined}
+          quando={dataHoraCurta(r.criadoEm)}
+          borda={bordaDaCaixa}
+        >
+          <TextoComChecklist texto={r.texto} estilo={textoDaCaixa} />
+        </CaixaDeMensagem>
+      ))}
+
+      {/* R216/R217: responder e reagir — só em COMENTÁRIO, no pé do campo */}
+      {comentario && m.eventoId && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "0 2px" }}>
+          <button
+            type="button"
+            onClick={() => aoResponder({
+              chamadoId: m.chamadoId, numero: m.numero,
+              autorId: m.autorId, autorNome: autor?.nome ?? null,
+              eventoId: m.eventoId,   // R240: a resposta se junta a ESTA mensagem
+            })}
+            aria-label="Responder aqui"
+            title="Responder aqui"
+            style={{
+              width: 28, height: 28, borderRadius: 9, cursor: "pointer",
+              background: c.superficie, border: `1px solid ${c.divisoria}`, color: c.texto,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <Reply size={14} />
+          </button>
+          <FileiraDeReacoes chamadoId={m.chamadoId} eventoId={m.eventoId} reacoes={reacoes} faltaMigration={faltaReacoes} euId={euId} />
+        </div>
+      )}
     </article>
   );
 }
 
-// ── o recado para todos (R223): bolha neutra, sem título; o meu fica à direita ──
+// ── o recado para todos (R223): campo neutro; o meu encosta à direita ───────
 
 function Recado({ m, euId, pessoasPorId }: { m: MensagemParaTodos; euId: string | null; pessoasPorId: Pessoas }) {
   const { isLight } = useTheme();
@@ -514,21 +627,25 @@ function Recado({ m, euId, pessoasPorId }: { m: MensagemParaTodos; euId: string 
   const nome = autor?.nome ?? "Alguém";
   const meu = !!euId && m.autorId === euId;
   return (
-    <article style={{ display: "flex", gap: 8, alignItems: "flex-start", flexDirection: meu ? "row-reverse" : "row" }}>
-      <span title={nome} style={{ flexShrink: 0, marginTop: 2 }}>
-        <AvatarCirculo id={m.autorId} nome={nome} pessoa={autor} tamanho={28} />
-      </span>
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4, alignItems: meu ? "flex-end" : "flex-start" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-          <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 12, color: c.texto }}>{meu ? "Você" : nome}</span>
-          <span style={{ fontFamily: FONT, fontSize: 11, color: c.textoSecundario }}>· para todos · {dataHoraCurta(m.criadoEm)}</span>
-        </div>
-        <div style={{
-          background: meu ? c.elevada : c.superficie, border: `1px solid ${c.divisoria}`,
-          borderRadius: meu ? "14px 4px 14px 14px" : "4px 14px 14px 14px", padding: "8px 11px", maxWidth: "100%",
-        }}>
-          <TextoComChecklist texto={m.texto} estilo={{ fontSize: 13, color: c.texto, lineHeight: 1.5, gap: 2 }} />
-        </div>
+    <article style={{ display: "flex", justifyContent: meu ? "flex-end" : "flex-start", minWidth: 0 }}>
+      <div style={{
+        background: meu ? c.elevada : c.superficie, border: `1px solid ${c.divisoria}`,
+        borderRadius: 14, padding: 8, maxWidth: "94%", minWidth: 0,
+        display: "flex", flexDirection: "column", gap: 6,
+      }}>
+        {/* R240: o cabeçalho mora DENTRO do campo, como na menção — lá é o
+            título da atividade, aqui é para quem o recado vai */}
+        <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 11, letterSpacing: "0.10em", textTransform: "uppercase", color: c.textoSecundario, padding: "0 2px" }}>
+          Para todos
+        </span>
+        <CaixaDeMensagem
+          autorId={m.autorId}
+          nome={meu ? "Você" : nome}
+          pessoa={autor}
+          quando={dataHoraCurta(m.criadoEm)}
+        >
+          <TextoComChecklist texto={m.texto} estilo={{ fontSize: 13, color: c.texto, lineHeight: 1.5, gap: 2 } as CSSProperties} />
+        </CaixaDeMensagem>
       </div>
     </article>
   );

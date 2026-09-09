@@ -37,7 +37,7 @@
   - [6.19 Formulário em colunas — a Nova Visita (v12 — 2026-09-04, R194)](#619-formulário-em-colunas-a-nova-visita-v12-2026-09-04-r194)
   - [6.20 Ficha do cliente — três colunas de desktop, os dois painéis do vínculo e os cards editáveis (v15 — 2026-09-08, R200–R210)](#620-ficha-do-cliente-três-colunas-de-desktop-os-dois-painéis-do-vínculo-e-os-cards-editáveis-v15-2026-09-08-r200r210)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
-  - [6.21 O chat da Início — botão flutuante, a conversa 9:16, as bolhas por prazo (v16 — 2026-09-08, R215–R217, R222–R223)](#621-o-chat-da-início-botão-flutuante-a-conversa-916-as-bolhas-por-prazo-v16-2026-09-08-r215r217-r222r223)
+  - [6.21 O chat da Início — botão flutuante, a conversa 9:16, o campo colorido e as caixas de mensagem (v17 — 2026-09-09, R215–R217, R222–R223, R240)](#621-o-chat-da-início-botão-flutuante-a-conversa-916-o-campo-colorido-e-as-caixas-de-mensagem-v17-2026-09-09-r215r217-r222r223-r240)
   - [6.22 O editor de texto — uma área, blocos com marcador próprio, menção como chip (v16 — 2026-09-08, R135, R224)](#622-o-editor-de-texto-uma-área-blocos-com-marcador-próprio-menção-como-chip-v16-2026-09-08-r135-r224)
   - [6.23 A tela da atividade — documento à esquerda, ficha à direita (v19 — 2026-09-08, R234–R239)](#623-a-tela-da-atividade-documento-à-esquerda-ficha-à-direita-v19-2026-09-08-r234r239)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
@@ -1063,7 +1063,7 @@ imagem — sem ela a foto não aparece, e é isso que faz a entrada ser uma
 transição e não um salto. A opacidade final é menor no claro, onde a foto
 competiria com o texto escuro sobre branco.
 
-### 6.21 O chat da Início — botão flutuante, a conversa 9:16, as bolhas por prazo (v16 — 2026-09-08, R215–R217, R222–R223)
+### 6.21 O chat da Início — botão flutuante, a conversa 9:16, o campo colorido e as caixas de mensagem (v17 — 2026-09-09, R215–R217, R222–R223, R240)
 
 - **Botão flutuante** (`.fab-chat`): círculo de 54px em `goldButton()` (a ação
   principal da tela), ícone `MessageCircle` 22, sombra discreta. `position:
@@ -1087,21 +1087,35 @@ competiria com o texto escuro sobre branco.
   nova embaixo; o **rodapé** fixo em `superficie` com o campo
   (`TextareaComMencoes`, raio 14, fundo `campo`) e o botão **enviar** 40×40
   redondo em `goldButton()` — o único degradê amarelo da conversa.
-- **A mensagem** (menção): `AvatarCirculo` 28 de quem escreveu (o nome fica
-  no `title`) · à direita, o **título da atividade** 12/600 em `texto` (é o
-  botão que abre o Configurador rápido centralizado) · a **data/hora**
-  `dd/mm HH:mm` 11 secundário · e, abaixo, a **bolha** raio `4 14 14 14`,
-  padding 8×11, pintada pela cor estratégica do prazo — `PRISMA[cor].bg` de
-  fundo e `PRISMA[cor].border` de borda (a MESMA régua do card, R136:
-  vermelho/amarelo/azul/verde); sem prazo, `superficie` + `divisoria`. Mensagem
-  ainda não respondida: filete `inset 3px` na cor e um ponto 7px ao lado da
-  hora. Em menção de comentário, abaixo da bolha: **responder** (botão 28×28
-  `Reply` 14, fundo `superficie`) e a `FileiraDeReacoes`. Em menção de campo
-  (descrição/diagnóstico/solução) a bolha é o botão que abre a atividade, com
-  `ExternalLink` 12 no canto. Nenhum código de atividade aparece.
-- **O recado para todos**: nome de quem escreveu 12/600 · "· para todos ·
-  data/hora" 11 secundário · bolha neutra (`superficie`); o meu fica à direita
-  (`row-reverse`, bolha `elevada`, raio `14 4 14 14`).
+- **A CONVERSA — o campo colorido** (R240): cada menção é **UM CAMPO** na cor
+  estratégica do prazo — `PRISMA[cor].bg` de fundo e `PRISMA[cor].border` de
+  borda (a MESMA régua do card, R136: vermelho/amarelo/azul/verde); sem prazo,
+  `superficie` + `divisoria`. Raio 14, padding 8, gap 6. Dentro dele, de cima
+  para baixo: o **título da atividade** 12/600 em `texto` (o botão que abre a
+  atividade no pop-up) com o ponto 7px de "não respondida" à direita; uma
+  **caixa por mensagem**; e, em menção de comentário, **responder** (botão
+  28×28 `Reply` 14, fundo `superficie`) + a `FileiraDeReacoes`. Mensagem sem
+  resposta: filete `inset 3px` na cor do prazo. Nenhum código de atividade
+  aparece. O título mora DENTRO do campo — Davi, 09/09/2026: "as mensagens
+  devem conter o titulo junto com o fundo colorido".
+- **A CAIXA DE MENSAGEM** (`CaixaDeMensagem`, R240): `AvatarCirculo` 22 · nome
+  11,5/600 (o meu é "Você") · hora `dd/mm HH:mm` 10,5 secundário · o texto 13
+  com 1,5 de entrelinha (`TextoComChecklist`). Fundo
+  `rgba(255,255,255,0.80)` no claro e `rgba(0,0,0,0.30)` no escuro, raio 10,
+  padding 6×9, gap 8, e a borda **tingida** da cor do campo
+  (`PRISMA[cor].border`). MEDIDO: a caixa contra o campo dá **1,25** no claro e
+  **1,12** no escuro — dois tons escuros não produzem razão maior (o piso de
+  0,05 da fórmula domina), e é por isso que no sistema inteiro quem separa
+  superfície de superfície é a BORDA; tingida, ela amarra a caixa ao campo. O
+  texto dentro fica com **15:1** no claro e **17:1** no escuro. A menção é a
+  primeira caixa e cada resposta é a sua — Davi: "caixas de mensagem diferentes
+  no mesmo campo (fundo colorido)". Em menção de campo (descrição/diagnóstico/
+  solução) a caixa inteira é o botão que abre a atividade, com `ExternalLink`
+  12 no canto.
+- **O recado para todos**: a MESMA anatomia, com o destino no lugar do título —
+  campo neutro (`superficie`; o meu `elevada`, encostado à direita, `max-width:
+  94%`), o cabeçalho "PARA TODOS" 11/600 caixa alta espaçada em secundário
+  dentro dele, e uma caixa de mensagem embaixo.
 - **A resposta armada**: um chip pílula com `Reply` 12 e o `#Código`, pintado
   como a bolha daquela atividade (fundo `.bg`, texto `.dark`/`.light`), com o
   botão × 24px ao lado; o envio vira comentário na atividade (R223).

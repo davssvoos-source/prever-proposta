@@ -471,15 +471,33 @@ export function useChamadoEventos(chamadoId: string | undefined, ordem: "asc" | 
  * Comentário do feed. A policy só aceita tipo 'comentario' com user_id do
  * próprio autor — os outros eventos da linha do tempo nascem de trigger.
  */
-export async function comentarChamado(chamadoId: string, texto: string): Promise<void> {
+export async function comentarChamado(chamadoId: string, texto: string, respondeA?: string | null): Promise<void> {
   const { data: u } = await supabase.auth.getUser();
-  const { error } = await supabase.from("chamado_eventos" as any).insert({
+  const linha: Record<string, unknown> = {
     chamado_id: chamadoId,
     tipo: "comentario",
     descricao: texto,
     user_id: u.user?.id ?? null,
-  } as any);
-  if (error) throw error;
+  };
+  // R240 (U123): a ligação "esta mensagem responde àquela" — é o que faz a
+  // resposta enviada pelo chat ficar no campo da mensagem respondida.
+  if (respondeA) linha.responde_a = respondeA;
+  // uma PORTA só para chamado_eventos (o pino crítico conta as portas): o
+  // segundo envio, sem a ligação, passa pela mesma função
+  const inserir = () => supabase.from("chamado_eventos" as any).insert(linha as any);
+  const { error } = await inserir();
+  if (!error) return;
+  // Regra 5: sem a U123 a coluna não existe (42703 no Postgres, PGRST204 no
+  // cache do PostgREST). O comentário é mais importante que a ligação: vai sem
+  // ela, e a resposta continua aparecendo na atividade.
+  const codigo = (error as { code?: string }).code;
+  if (respondeA && (codigo === "42703" || codigo === "PGRST204")) {
+    delete linha.responde_a;
+    const semLigacao = await inserir();
+    if (semLigacao.error) throw semLigacao.error;
+    return;
+  }
+  throw error;
 }
 
 /**

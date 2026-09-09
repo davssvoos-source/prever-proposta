@@ -179,22 +179,118 @@ export function mensagemDaLinha(l: LinhaDeMensagem): MensagemParaTodos {
   return { id: l.id, autorId: l.autor_id, texto: l.texto ?? "", criadoEm: l.criado_em };
 }
 
-export type ItemDoChat =
-  | { tipo: "mencao"; chave: string; criadoEm: string; mencao: Mencao }
-  | { tipo: "todos"; chave: string; criadoEm: string; mensagem: MensagemParaTodos };
+// ═══════════════════════════════════════════════════════════════════════════
+// A RESPOSTA QUE FICA NO CHAT (R240)
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Menções e mensagens para todos, numa conversa só, da MAIS ANTIGA para a mais
- * nova (a última fica embaixo, junto do campo de escrever — é assim que um
- * chat de celular lê). Empate de instante: menção antes da mensagem.
+ * Davi, 09/09/2026: "quando um usuário manda uma mensagem no chat que vai
+ * diretamente para os comentários daquela atividade, a mensagem também deve
+ * ficar no chat, se juntando com a mensagem que ele respondeu, sendo caixas de
+ * mensagem diferentes no mesmo campo (fundo colorido) dentro do chat."
+ *
+ * Por que faltava: a resposta é um COMENTÁRIO na atividade (R216) que menciona
+ * QUEM MENCIONOU — então ela cai no chat da outra pessoa e nunca no de quem
+ * respondeu, porque `minhas_mencoes` devolve o que menciona quem chama. O que
+ * a traz de volta é a ligação `responde_a` (U123).
  */
-export function linhaDoTempo(mencoes: readonly Mencao[], mensagens: readonly MensagemParaTodos[]): ItemDoChat[] {
+export interface RespostaDoChat {
+  id: string;
+  chamadoId: string;
+  /** o comentário respondido — o `eventoId` de uma menção ou de outra resposta */
+  respondeA: string | null;
+  autorId: string | null;
+  texto: string;
+  criadoEm: string;
+}
+
+/** A linha que `respostas_do_chat()` devolve (U123). */
+export interface LinhaDeResposta {
+  id: string;
+  chamado_id: string;
+  responde_a: string | null;
+  autor_id: string | null;
+  texto: string | null;
+  criado_em: string;
+}
+
+export function respostaDaLinha(l: LinhaDeResposta): RespostaDoChat {
+  return {
+    id: l.id,
+    chamadoId: l.chamado_id,
+    respondeA: l.responde_a ?? null,
+    autorId: l.autor_id ?? null,
+    texto: l.texto ?? "",
+    criadoEm: l.criado_em,
+  };
+}
+
+/**
+ * A conversa de uma menção: a resposta dela, a resposta da resposta, e assim
+ * por diante — ACHATADAS em ordem cronológica. O campo colorido é um só e o
+ * que muda é a caixa dentro dele, então não há por que indentar.
+ */
+export function respostasDaMencao(eventoId: string | null, respostas: readonly RespostaDoChat[]): RespostaDoChat[] {
+  if (!eventoId) return [];
+  const porPai = new Map<string, RespostaDoChat[]>();
+  for (const r of respostas) {
+    if (!r.respondeA) continue;
+    porPai.set(r.respondeA, [...(porPai.get(r.respondeA) ?? []), r]);
+  }
+  const saida: RespostaDoChat[] = [];
+  const vistos = new Set<string>();
+  const fila: string[] = [eventoId];
+  while (fila.length > 0) {
+    for (const r of porPai.get(fila.shift() as string) ?? []) {
+      if (vistos.has(r.id)) continue;   // a FK e o gatilho impedem ciclo; custa nada
+      vistos.add(r.id);
+      saida.push(r);
+      fila.push(r.id);
+    }
+  }
+  return saida.sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
+}
+
+export type ItemDoChat =
+  | { tipo: "mencao"; chave: string; criadoEm: string; ultimoEm: string; mencao: Mencao; respostas: RespostaDoChat[] }
+  | { tipo: "todos"; chave: string; criadoEm: string; ultimoEm: string; mensagem: MensagemParaTodos };
+
+/**
+ * Menções (cada uma com as suas respostas) e mensagens para todos, numa
+ * conversa só, da MAIS ANTIGA para a mais nova — a última fica embaixo, junto
+ * do campo de escrever, que é como um chat de celular lê.
+ *
+ * O que ORDENA é o último instante da conversa (R240): responder põe aquele
+ * campo no fim da lista, onde quem acabou de responder está olhando — se ele
+ * ficasse no lugar antigo, a pessoa mandaria a resposta e não veria nada
+ * acontecer. Empate de instante: menção antes da mensagem.
+ *
+ * Uma menção que JÁ É resposta de outra (alguém respondeu à minha resposta
+ * mencionando-me) não abre campo próprio: ela é uma caixa dentro do campo da
+ * conversa a que pertence.
+ */
+export function linhaDoTempo(
+  mencoes: readonly Mencao[],
+  mensagens: readonly MensagemParaTodos[],
+  respostas: readonly RespostaDoChat[] = [],
+): ItemDoChat[] {
+  const idsDeResposta = new Set(respostas.map((r) => r.id));
+  const raizes = mencoes.filter((m) => !(m.eventoId && idsDeResposta.has(m.eventoId)));
   const itens: ItemDoChat[] = [
-    ...mencoes.map((m): ItemDoChat => ({ tipo: "mencao", chave: chaveDaMencao(m), criadoEm: m.criadoEm, mencao: m })),
-    ...mensagens.map((m): ItemDoChat => ({ tipo: "todos", chave: `t:${m.id}`, criadoEm: m.criadoEm, mensagem: m })),
+    ...raizes.map((m): ItemDoChat => {
+      const minhas = respostasDaMencao(m.eventoId, respostas);
+      return {
+        tipo: "mencao", chave: chaveDaMencao(m), criadoEm: m.criadoEm,
+        ultimoEm: minhas.reduce((ate, r) => (r.criadoEm > ate ? r.criadoEm : ate), m.criadoEm),
+        mencao: m, respostas: minhas,
+      };
+    }),
+    ...mensagens.map((m): ItemDoChat => ({
+      tipo: "todos", chave: `t:${m.id}`, criadoEm: m.criadoEm, ultimoEm: m.criadoEm, mensagem: m,
+    })),
   ];
   return itens.sort((a, b) => {
-    const d = a.criadoEm.localeCompare(b.criadoEm);
+    const d = a.ultimoEm.localeCompare(b.ultimoEm);
     if (d !== 0) return d;
     return a.tipo === b.tipo ? 0 : a.tipo === "mencao" ? -1 : 1;
   });
@@ -211,11 +307,38 @@ export interface RespostaPara {
   numero: string | null;
   autorId: string | null;
   autorNome: string | null;
+  /** R240: o comentário que está sendo respondido — null em menção de campo */
+  eventoId: string | null;
 }
 
 export type DestinoDoEnvio =
-  | { destino: "comentario"; chamadoId: string; texto: string }
+  | { destino: "comentario"; chamadoId: string; texto: string; respondeA: string | null }
   | { destino: "todos"; texto: string };
+
+/** Uma atividade que o chat conhece — o que `rotearEnvio` precisa saber dela. */
+export interface ConhecidaDoChat {
+  chamadoId: string;
+  numero: string | null;
+  /** o comentário daquela atividade que está no chat (null em menção de campo) */
+  eventoId?: string | null;
+  criadoEm?: string;
+}
+
+/**
+ * A que mensagem uma resposta se junta quando não há alvo explícito (R240): ao
+ * comentário MAIS RECENTE daquela atividade no chat. É o caso do `#Código`
+ * digitado à mão. Sem nenhum comentário (a menção era num campo da atividade),
+ * a resposta vira comentário solto — vai para a atividade e não para o chat.
+ */
+export function mensagemMaisNova(chamadoId: string, conhecidas: readonly ConhecidaDoChat[]): string | null {
+  let melhor: { id: string; em: string } | null = null;
+  for (const c of conhecidas) {
+    if (c.chamadoId !== chamadoId || !c.eventoId) continue;
+    const em = c.criadoEm ?? "";
+    if (!melhor || em > melhor.em) melhor = { id: c.eventoId, em };
+  }
+  return melhor?.id ?? null;
+}
 
 /**
  * Para onde vai o que a pessoa escreveu (R223):
@@ -229,13 +352,18 @@ export type DestinoDoEnvio =
 export function rotearEnvio(
   texto: string,
   respostaPara: RespostaPara | null,
-  conhecidas: readonly { chamadoId: string; numero: string | null }[],
+  conhecidas: readonly ConhecidaDoChat[],
 ): DestinoDoEnvio | null {
   const t = (texto ?? "").trim();
   if (!t) return null;
   if (respostaPara) {
     const corpo = respostaComMencao(respostaPara.autorNome, respostaPara.autorId, t);
-    return corpo ? { destino: "comentario", chamadoId: respostaPara.chamadoId, texto: corpo } : null;
+    if (!corpo) return null;
+    return {
+      destino: "comentario", chamadoId: respostaPara.chamadoId, texto: corpo,
+      // R240: a ligação com a mensagem respondida — é o que a traz de volta ao chat
+      respondeA: respostaPara.eventoId ?? mensagemMaisNova(respostaPara.chamadoId, conhecidas),
+    };
   }
   const m = t.match(/^#(\S+)\s*/);
   if (m) {
@@ -243,7 +371,9 @@ export function rotearEnvio(
     const alvo = conhecidas.find((c) => (hashtagDaAtividade(c.numero) ?? "").slice(1).toLowerCase() === codigo);
     if (alvo) {
       const resto = t.slice(m[0].length).trim();
-      return resto ? { destino: "comentario", chamadoId: alvo.chamadoId, texto: resto } : null;
+      return resto
+        ? { destino: "comentario", chamadoId: alvo.chamadoId, texto: resto, respondeA: mensagemMaisNova(alvo.chamadoId, conhecidas) }
+        : null;
     }
   }
   return { destino: "todos", texto: t };

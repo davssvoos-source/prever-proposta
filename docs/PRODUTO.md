@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R239 (10)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R240 (11)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-08 (R239). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-09 (R240). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4403,3 +4403,24 @@ adaptado."
   página siga o padrão das margens em tudo, inclusive no espaço entre os
   botões, entre os tópicos, enfim.. Faça uma revisão geral do design, aplique e
   corrija todos os erros apontados.")*
+
+- **R240** — **No chat, o título mora dentro do campo colorido, e a resposta
+  enviada fica no chat — junto da mensagem que respondeu.** Duas coisas:
+  1. Cada mensagem do chat é **um campo na cor do prazo** com o **título da
+     atividade dentro dele**, não acima. O título é o assunto do campo; a cor
+     continua sendo a régua do card (R136).
+  2. Quando alguém responde pelo chat — e a resposta vai para os **comentários
+     da atividade** (R216) —, a resposta **também fica no chat**, no MESMO
+     campo colorido da mensagem que ela respondeu, como uma **caixa de mensagem
+     diferente**. Cada caixa traz a foto, o nome e a hora de quem falou; a
+     conversa cresce para baixo dentro do campo. O campo com resposta nova vai
+     para o fim da lista, onde quem acabou de escrever está olhando.
+  Até aqui a resposta virava comentário na atividade e desaparecia do chat de
+  quem respondeu: ela menciona a OUTRA pessoa, e o chat mostra o que menciona
+  quem está olhando. A ligação "esta mensagem responde àquela" passou a existir
+  no banco (migration U123).
+  *(Davi, 09/09/2026: "No chat, as mensagens devem conter o titulo junto com o
+  fundo colorido. Além disso, quando um usuário manda uma mensagem no chat que
+  vai diretamente para os comentários daquela atividade, a mensagem também deve
+  ficar no chat, se juntando com a mensagem que ele respondeu, sendo caixas de
+  mensagem diferentes no mesmo campo (fundo colorido) dentro do chat.")*

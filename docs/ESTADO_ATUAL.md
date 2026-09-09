@@ -8,14 +8,13 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-08** · última regra: **R239** · último diário:
-**U122** · verificador: **3.180 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-09** · última regra: **R240** · último diário:
+**U123** · verificador: **3.196 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U121** (U106 e U109 em 07/09/2026; U110,
-U117, U119 e U121 em 08/09/2026 — "Eu rodei as migrations", Davi) · **nenhuma
-migration pendente** · **versão instalada no servidor: v0.0.1** (o pacote da
-U118); **esta entrega é a v0.0.4** (o pacote foi refeito na U122, por cima, a
-pedido do Davi: "não executei o 004 no servidor, você pode sobrescrever") — o
-que entrou em cada versão está em `docs/VERSOES.md`.
+U117, U119 e U121 em 08/09/2026 — "Eu rodei as migrations", Davi) ·
+**pendente: U123** (a ligação `responde_a` do chat — rodar antes de subir a
+v0.0.5) · **versão instalada no servidor: v0.0.1** (o pacote da U118); **esta
+entrega é a v0.0.5** — o que entrou em cada versão está em `docs/VERSOES.md`.
 
 ---
 
@@ -104,6 +103,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U120 | a **v0.0.3**: o sistema é o **Prever OS** (R230); o plantão sai da abertura de chamado (R231); **prazo × agendar** num controle só (R232); no quadro **a coluna inteira aceita o card** (R233); a **tela da atividade redesenhada para desktop** — quatro faixas, margem de verdade, os textos mandando (R234); a **rosca do progresso** pelo checklist (R235); **equipamentos por arrasto** em dois painéis (R236). Sem migration nova |
 | U121 | a **v0.0.4**: a tela da atividade na estrutura **aprovada sobre o mockup** — documento à esquerda, ficha de 340px à direita, propriedades em linhas rótulo \| valor, ficha acompanhando a rolagem (R234); o **pop-up da Início mostra a mesma tela** num diálogo de 1600px (R238); equipamento **entra no cliente só pelo QAP** — painéis Blocos do cliente \| Sem bloco, botão remover, nada de "Fora do cliente" (R237). Migration **U121** (`mover_equipamento` exige item do cliente; exige a U119) |
 | U122 | a **revisão geral da tela da atividade** (R239): o pop-up deixa de ser cortado pelo menu (diálogo e folha lateral em **z-70**); **uma régua de margem** para o sistema inteiro (`--gutter`, 16/24px) — Início, atividade e ficha do cliente no mesmo prumo, com a meia barra de rolagem descontada (`--barra`); **um scroll só** (a ficha não é mais sticky, os painéis não rolam por dentro); **Equipamentos recolhido** por padrão, com o botão que expande na extremidade direita; escala de espaçamento 8/12/16/24; barra de topo no diálogo. Sem migration nova |
+| U123 | a **v0.0.5**: o chat virou **conversa** (R240) — o título da atividade mora dentro do campo colorido, e a resposta enviada pelo chat fica no chat, no mesmo campo da mensagem respondida, como uma caixa separada (foto, nome, hora). Ordena pelo último instante da conversa. Migration **U123** (`chamado_eventos.responde_a` + `respostas_do_chat`) |
 
 ## 4. Banco: migrations
 
@@ -111,6 +111,17 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
+- **Pendente: U123** (`20260923090000_u123_v005_resposta_do_chat.sql`) — a
+  ligação **`responde_a`** em `chamado_eventos` (FK para o próprio comentário,
+  `ON DELETE SET NULL`, índice parcial e um gatilho que exige a MESMA
+  atividade) e a leitura **`respostas_do_chat(uuid[])`** (SECURITY INVOKER),
+  que é o que faz a resposta enviada pelo chat voltar para o chat (R240).
+  Pré-voo exige `chamado_eventos` e `minhas_mencoes` (U117/U119). **Rodar antes
+  de subir o pacote v0.0.5** — até rodar, o app se defende (regra 5): o chat
+  avisa que as respostas precisam da U123 e `comentarChamado` reenvia o
+  comentário sem a ligação, então a resposta continua chegando na atividade.
+  Sete itens de conferência; desfazer é largar a coluna (ela é ligação, não
+  conteúdo).
 - **Rodadas até a U121** — a **U119** e a **U121** em 08/09/2026 à noite
   (Davi: "Eu rodei as migrations"); a U117 mais cedo no mesmo dia ("tudo OK").
 - **U121** (`20260922090000_u121_v004_equipamento_so_pelo_qap.sql`, rodada em

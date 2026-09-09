@@ -9772,7 +9772,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        [selects.length, /\.eq\("chamado_id", chamadoId\)/.test(dataS4),
         /\.from\("chamado_eventos" as any\)\s*\n\s*\.delete\(\)\s*\n\s*\.eq\("id", eventoId\)/.test(dataS4)], [3, true, true]);
     eq('…e o segundo `.from` é o INSERT do comentário, que continua mandando só `user_id` e `tipo=comentario` — o WITH CHECK novo pede vínculo, e quem comenta parte de um chamado já aberto',
-       /\.insert\(\{[\s\S]{0,200}tipo: "comentario"/.test(dataS4), true);
+       // R240 (U123): o corpo do INSERT virou variável (a ligação responde_a
+       // entra ou não), então o pino olha o literal que a monta
+       /const linha: Record<string, unknown> = \{[\s\S]{0,200}tipo: "comentario",[\s\S]{0,120}user_id: u\.user\?\.id/.test(dataS4), true);
   }
 }
 
@@ -18943,7 +18945,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R216/R217: o card do chat tem "Responder aqui" (comentário na atividade via comentarChamado) e a fileira de reações só em menção de comentário; a MESMA fileira está no painel e na página da atividade',
      // U119 (R222/R223): "Responder aqui" virou o ícone abaixo da bolha; a
      // resposta passa por rotearEnvio e vira comentário pelo MESMO comentarChamado
-     [/Responder aqui/.test(chatUi117), /await comentarChamado\(destino\.chamadoId, destino\.texto\);/.test(chatUi117),
+     // R240 (U123): a chamada leva a ligação com a mensagem respondida
+     [/Responder aqui/.test(chatUi117), /await comentarChamado\(destino\.chamadoId, destino\.texto, destino\.respondeA\);/.test(chatUi117),
       /\{comentario && m\.eventoId && \(\s*\n[\s\S]{0,900}<FileiraDeReacoes/.test(chatUi117),
       /<FileiraDeReacoes chamadoId=\{chamadoId\} eventoId=\{c\.id\}/.test(pc117b),
       /<FileiraDeReacoes chamadoId=\{id\} eventoId=\{c\.id\}/.test(ler117('src/features/chamados/DetalheInterno.tsx'))],
@@ -19078,8 +19081,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       CH.rotearEnvio('#at-1 fechado', null, [{ chamadoId: 'c1', numero: 'AT-1' }]),
       CH.rotearEnvio('#AT-9 x', null, [{ chamadoId: 'c1', numero: 'AT-1' }]),
       CH.rotearEnvio('bom dia a todos', null, []), CH.rotearEnvio('   ', null, []), CH.rotearEnvio('#AT-1', null, [{ chamadoId: 'c1', numero: 'AT-1' }])],
-     [{ destino: 'comentario', chamadoId: 'c1', texto: '@[Ana](user:p1) oi' },
-      { destino: 'comentario', chamadoId: 'c1', texto: 'fechado' },
+     // R240: o destino "comentario" leva respondeA — a ligação que faz a resposta
+     // voltar para o chat. Aqui as conhecidas não têm eventoId (a menção era num
+     // campo da atividade), então é null.
+     [{ destino: 'comentario', chamadoId: 'c1', texto: '@[Ana](user:p1) oi', respondeA: null },
+      { destino: 'comentario', chamadoId: 'c1', texto: 'fechado', respondeA: null },
       { destino: 'todos', texto: '#AT-9 x' },
       { destino: 'todos', texto: 'bom dia a todos' }, null, null]);
   eq('R223: hashtagDaAtividade tira espaços e devolve null sem número',
@@ -19122,7 +19128,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /guardarNoNavegador\(CHAVE_POSICAO_CHAT/.test(chatUi)],
      [true, true, true, true, true, true, 2, false, true]);
   eq('R222: a bolha é pintada por corDaMencao (a régua do card); menção em campo abre o pop-up em vez de responder; o título vai sem código; a data/hora é absoluta',
-     [/\.\.\.estiloDaBolha\(cor, isLight, c\),/.test(chatUi), /onClick=\{comentario \? undefined : \(\) => aoAbrir\(m\.chamadoId\)\}/.test(chatUi),
+     // R240: quem abre o pop-up é a CAIXA da menção (aoClicar), dentro do campo
+     [/\.\.\.estiloDaBolha\(cor, isLight, c\),/.test(chatUi), /aoClicar=\{comentario \? undefined : \(\) => aoAbrir\(m\.chamadoId\)\}/.test(chatUi),
       /\{m\.numero \? `\$\{m\.numero\} · ` : ""\}/.test(chatUi), /dataHoraCurta\(m\.criadoEm\)/.test(chatUi)],
      [true, true, false, true]);
   eq('R223 CRÍTICO: recado para todos lê e grava em mensagens_chat (ao vivo pelo canal); a resposta armada é o chip #Código; o envio passa por rotearEnvio; abrir o chat marca as menções lidas; nada de SELECT em chamado_eventos',
@@ -19542,10 +19549,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a versão ──────────────────────────────────────────────────────────────
   const pkg121 = JSON.parse(ler121('package.json'));
-  eq('R229: a versão subiu para 0.0.4 nas duas fontes, e a v0.0.4 está no VERSOES.md com a U121 como exigência',
-     [pkg121.version, (ler121('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
+  eq('R229: a versão é UMA (package.json = src/lib/versao.ts) e a v0.0.4 está no VERSOES.md com a U121 como exigência — o número atual é pino da última U (a U123 pinou 0.0.5)',
+     [pkg121.version === (ler121('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
       /^## v0\.0\.4 [^\n]*U121/m.test(ler121('docs/VERSOES.md'))],
-     ['0.0.4', '0.0.4', true]);
+     [true, true]);
 
   // regra 7
   const prod121 = ler121('docs/PRODUTO.md');
@@ -19641,9 +19648,145 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /A RÉGUA DE MARGEM \(`--gutter`/.test(ler122('DESIGN_SYSTEM.md')),
       /recolhido/.test(ler122('docs/manual/visao-geral.md')),
       /^## U122 /m.test(ler122('docs/PLANO_UNIFICACAO.md')),
-      /nenhuma\n?\s*migration pendente/.test(ler122('docs/ESTADO_ATUAL.md')),
+      /^\| U122 \|/m.test(ler122('docs/ESTADO_ATUAL.md')),   // U123: a "nenhuma pendente" era daquele dia; a U123 está pendente agora
       /^## P67 /m.test(ler122('docs/PENDENCIAS_TECNICAS.md'))],
      [true, true, true, true, true, true, true, true, true, true]);
+}
+
+
+// ── U123 — a v0.0.5: o chat vira conversa (campo colorido + caixas, R240) ───
+{
+  const fs123 = require('fs');
+  const ler123 = (f) => fs123.readFileSync(f, 'utf8');
+  const CH3 = carregar('src/features/home/chat.ts');
+  const chat123 = ler123('src/features/home/ChatDeMencoes.tsx');
+  const dados123 = ler123('src/features/home/chat-data.ts');
+  const mig123 = ler123('supabase/migrations/20260923090000_u123_v005_resposta_do_chat.sql');
+  const men = (id, em, evento) => ({
+    origem: 'comentario', chamadoId: id, numero: 'AT-1', titulo: 't', eventoId: evento,
+    autorId: 'p1', texto: '', criadoEm: em,
+    status: null, prazoLimite: null, dataAgendada: null, dataHoraAgendada: null, respondida: false,
+  });
+  const resp = (id, pai, em) => ({ id, chamadoId: 'c1', respondeA: pai, autorId: 'p2', texto: 'x', criadoEm: em });
+
+  // ── a conversa: a resposta se junta à mensagem que respondeu ──────────────
+  eq('R240 CRÍTICO: respostasDaMencao junta à mensagem tudo o que responde a ela — inclusive a resposta da resposta —, achatado e em ordem; sem comentário (menção num campo) não há conversa',
+     [CH3.respostasDaMencao('e1', [resp('r2', 'r1', '2026-09-09T09:00:00Z'), resp('r1', 'e1', '2026-09-09T08:00:00Z'), resp('r9', 'outro', '2026-09-09T10:00:00Z')]).map((r) => r.id),
+      CH3.respostasDaMencao(null, [resp('r1', 'e1', '2026-09-09T08:00:00Z')]),
+      CH3.respostasDaMencao('e1', [])],
+     [['r1', 'r2'], [], []]);
+  eq('R240 CRÍTICO: linhaDoTempo põe as respostas DENTRO do item da menção, ordena a conversa pelo ÚLTIMO instante (responder joga o campo para o fim, onde quem escreveu está olhando) e não abre campo próprio para a menção que já é resposta de outra',
+     (() => {
+       const itens = CH3.linhaDoTempo(
+         [men('c1', '2026-09-09T08:00:00Z', 'e1'), men('c2', '2026-09-09T09:00:00Z', 'e2')],
+         [{ id: 'm1', autorId: 'p', texto: 'x', criadoEm: '2026-09-09T08:30:00Z' }],
+         [resp('r1', 'e1', '2026-09-09T11:00:00Z')],
+       );
+       return {
+         ordem: itens.map((i) => i.chave),
+         respostas: itens.map((i) => (i.tipo === 'mencao' ? i.respostas.length : -1)),
+         ultimo: itens.map((i) => i.ultimoEm),
+       };
+     })(),
+     { ordem: ['t:m1', 'c:e2', 'c:e1'], respostas: [-1, 0, 1], ultimo: ['2026-09-09T08:30:00Z', '2026-09-09T09:00:00Z', '2026-09-09T11:00:00Z'] });
+  eq('R240: uma menção que É resposta de outra vira caixa no campo dela, não campo novo',
+     CH3.linhaDoTempo(
+       [men('c1', '2026-09-09T08:00:00Z', 'e1'), men('c1', '2026-09-09T09:00:00Z', 'r1')],
+       [], [resp('r1', 'e1', '2026-09-09T09:00:00Z')],
+     ).map((i) => i.chave),
+     ['c:e1']);
+  eq('R240: linhaDoTempo sem respostas continua a de antes (o terceiro argumento é opcional)',
+     CH3.linhaDoTempo([men('c1', '2026-09-09T08:00:00Z', 'e1')], [{ id: 'm1', autorId: 'p', texto: 'x', criadoEm: '2026-09-09T09:00:00Z' }]).map((i) => i.chave),
+     ['c:e1', 't:m1']);
+
+  // ── para onde vai a ligação ───────────────────────────────────────────────
+  eq('R240: mensagemMaisNova acha o comentário mais recente daquela atividade no chat (é a quem o "#Código" digitado à mão se junta); sem comentário, null',
+     [CH3.mensagemMaisNova('c1', [{ chamadoId: 'c1', numero: 'AT-1', eventoId: 'e1', criadoEm: '2026-09-09T08:00:00Z' }, { chamadoId: 'c1', numero: 'AT-1', eventoId: 'e2', criadoEm: '2026-09-09T10:00:00Z' }, { chamadoId: 'c2', numero: 'AT-2', eventoId: 'e3', criadoEm: '2026-09-09T23:00:00Z' }]),
+      CH3.mensagemMaisNova('c1', [{ chamadoId: 'c1', numero: 'AT-1', eventoId: null, criadoEm: '2026-09-09T08:00:00Z' }]),
+      CH3.mensagemMaisNova('c9', [])],
+     ['e2', null, null]);
+  eq('R240 CRÍTICO: rotearEnvio leva a ligação — respondendo, o comentário respondido; com "#Código", o mais recente daquela atividade; para todos, ligação nenhuma',
+     [CH3.rotearEnvio('oi', { chamadoId: 'c1', numero: 'AT-1', autorId: 'p1', autorNome: 'Ana', eventoId: 'e7' }, []),
+      CH3.rotearEnvio('#at-1 fechado', null, [{ chamadoId: 'c1', numero: 'AT-1', eventoId: 'e1', criadoEm: '2026-09-09T08:00:00Z' }]),
+      CH3.rotearEnvio('bom dia', null, [])],
+     [{ destino: 'comentario', chamadoId: 'c1', texto: '@[Ana](user:p1) oi', respondeA: 'e7' },
+      { destino: 'comentario', chamadoId: 'c1', texto: 'fechado', respondeA: 'e1' },
+      { destino: 'todos', texto: 'bom dia' }]);
+  eq('R240: respostaDaLinha traduz a linha do banco (texto nulo vira string vazia)',
+     CH3.respostaDaLinha({ id: 'r1', chamado_id: 'c1', responde_a: 'e1', autor_id: null, texto: null, criado_em: '2026-09-09T08:00:00Z' }),
+     { id: 'r1', chamadoId: 'c1', respondeA: 'e1', autorId: null, texto: '', criadoEm: '2026-09-09T08:00:00Z' });
+
+  // ── a tela: o título DENTRO do campo, uma caixa por mensagem ──────────────
+  eq('R240 CRÍTICO: o TÍTULO mora dentro do campo colorido (o campo abre com estiloDaBolha e o título vem depois, não antes), e cada mensagem é uma CaixaDeMensagem — a menção e uma por resposta',
+     [chat123.indexOf('...estiloDaBolha(cor, isLight, c),') < chat123.indexOf('{m.titulo}'),
+      /o TÍTULO mora DENTRO do campo colorido/.test(chat123),
+      /function CaixaDeMensagem\(\{ autorId, nome, pessoa, quando, borda, aoClicar, dica, children \}/.test(chat123),
+      (chat123.match(/<CaixaDeMensagem/g) ?? []).length,
+      /\{item\.respostas\.map\(\(r: RespostaDoChat\) => \(/.test(chat123)],
+     [true, true, true, 3, true]);
+  eq('R240: a caixa tem foto 22, nome (o meu é "Você"), hora e a borda TINGIDA da cor do campo — medido: 1,12 de razão contra o campo no escuro, então quem separa é a borda',
+     [/tamanho=\{22\}/.test(chat123), /\(id && id === euId\) \? "Você"/.test(chat123),
+      /const bordaDaCaixa = cor \? PRISMA\[PRISMA_DA_MENSAGEM\[cor\]\]\.border : c\.divisoria;/.test(chat123),
+      /background: isLight \? "rgba\(255,255,255,0\.80\)" : "rgba\(0,0,0,0\.30\)"/.test(chat123),
+      (chat123.match(/borda=\{bordaDaCaixa\}/g) ?? []).length],
+     [true, true, true, true, 2]);
+  eq('R240: o recado para todos tem a MESMA anatomia — cabeçalho dentro do campo ("Para todos") e uma caixa de mensagem',
+     [/Para todos\s*\n\s*<\/span>/.test(chat123), chat123.indexOf('Para todos') < chat123.lastIndexOf('<CaixaDeMensagem')],
+     [true, true]);
+  eq('R240: a tela lê as respostas por atividade (chave ordenada), recarrega-as depois de enviar e avisa se a U123 não rodou (regra 5)',
+     [/const respostasQ = useRespostasDoChat\(chamadoIds, true\);/.test(chat123),
+      /Array\.from\(new Set\(mencoes\.map\(\(m\) => m\.chamadoId\)\)\)\.sort\(\)/.test(chat123),
+      /linhaDoTempo\(mencoes, mensagens, respostas\)/.test(chat123),
+      /qc\.invalidateQueries\(\{ queryKey: \["respostas-chat"\] \}\)/.test(chat123),
+      /precisam da migration <strong>U123<\/strong>/.test(chat123),
+      /queryKey: \["respostas-chat", chamadoIds\]/.test(dados123),
+      /if \(semFuncao\(error\)\) return \{ respostas: \[\], faltaMigration: true \};/.test(dados123)],
+     [true, true, true, true, true, true, true]);
+  eq('R240 (regra 5): comentarChamado grava a ligação e, se a coluna não existir, reenvia o comentário SEM ela — a resposta chega na atividade de qualquer jeito, e a PORTA de chamado_eventos continua sendo uma',
+     [/export async function comentarChamado\(chamadoId: string, texto: string, respondeA\?: string \| null\)/.test(ler123('src/features/chamados/data.ts')),
+      /if \(respondeA\) linha\.responde_a = respondeA;/.test(ler123('src/features/chamados/data.ts')),
+      /codigo === "42703" \|\| codigo === "PGRST204"/.test(ler123('src/features/chamados/data.ts')),
+      (ler123('src/features/chamados/data.ts').match(/\.from\("chamado_eventos" as any\)/g) ?? []).length],
+     [true, true, true, 3]);
+
+  // ── a migration ───────────────────────────────────────────────────────────
+  eq('U123 migration CRÍTICO: a coluna responde_a com FK ON DELETE SET NULL e índice parcial, o gatilho do invariante (mesma atividade), a função respostas_do_chat SECURITY INVOKER só com responde_a IS NOT NULL, pré-voo, conferência e DESFAZER',
+     [/ALTER TABLE public\.chamado_eventos ADD COLUMN IF NOT EXISTS responde_a uuid;/.test(mig123),
+      /FOREIGN KEY \(responde_a\) REFERENCES public\.chamado_eventos\(id\) ON DELETE SET NULL/.test(mig123),
+      /CREATE INDEX IF NOT EXISTS chamado_eventos_responde_a_idx/.test(mig123),
+      /só se responde a um comentário da MESMA atividade/.test(mig123),
+      /CREATE TRIGGER chamado_eventos_responde_a_valido/.test(mig123),
+      /LANGUAGE sql STABLE SECURITY INVOKER/.test(mig123), /AND e\.responde_a IS NOT NULL/.test(mig123),
+      /GRANT EXECUTE ON FUNCTION public\.respostas_do_chat\(uuid\[\]\) TO authenticated, service_role;/.test(mig123),
+      /to_regprocedure\('public\.minhas_mencoes\(integer\)'\) IS NULL/.test(mig123),
+      />>> OLHAR <<</.test(mig123), /DESFAZER/.test(mig123),
+      /^BEGIN;$/m.test(mig123) && /^COMMIT;$/m.test(mig123)],
+     [true, true, true, true, true, true, true, true, true, true, true, true]);
+  eq('U123: as migrations que o Davi JÁ RODOU não foram tocadas — a U119 e a U121 seguem com o texto entregue',
+     [/SET cliente_id = v_ch\.cliente_id, pessoa_id = NULL, cliente_sistema_id = _sistema,/.test(ler123('supabase/migrations/20260921090000_u119_v002_visibilidade_chat_agenda_equipamentos.sql')),
+      /só pelo QAP \(R237\)/.test(ler123('supabase/migrations/20260922090000_u121_v004_equipamento_so_pelo_qap.sql')),
+      /responde_a/.test(ler123('supabase/migrations/20260921090000_u119_v002_visibilidade_chat_agenda_equipamentos.sql'))],
+     [true, true, false]);
+
+  // ── a versão e a regra 7 ──────────────────────────────────────────────────
+  const prod123 = ler123('docs/PRODUTO.md');
+  eq('R229/R240: a versão subiu para 0.0.5 nas duas fontes e a v0.0.5 está no VERSOES.md exigindo a U123',
+     [JSON.parse(ler123('package.json')).version,
+      (ler123('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
+      /^## v0\.0\.5 [^\n]*U123/m.test(ler123('docs/VERSOES.md'))],
+     ['0.0.5', '0.0.5', true]);
+  eq('U123 (regra 7): a R240 existe com as duas frases do Davi, o DS tem a §6.21 v17 (campo + caixas), o manual conta a conversa, a U123 está no diário e o ESTADO a aponta como PENDENTE',
+     [/^- \*\*R240\*\* —/m.test(prod123),
+      // o .md quebra a linha no meio da citação — comparar com o texto corrido
+      /as mensagens devem conter o titulo junto com o fundo colorido/.test(prod123.replace(/\s+/g, ' ')),
+      /caixas de mensagem diferentes no mesmo campo/.test(prod123.replace(/\s+/g, ' ')),
+      Number((prod123.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 240,
+      /^### 6\.21 O chat da Início[^\n]*\(v17/m.test(ler123('DESIGN_SYSTEM.md')),
+      /CaixaDeMensagem/.test(ler123('DESIGN_SYSTEM.md')),
+      /caixa/i.test(ler123('docs/manual/visao-geral.md')),
+      /^## U123 /m.test(ler123('docs/PLANO_UNIFICACAO.md')),
+      /\*\*Pendente: U123\*\*/.test(ler123('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true, true, true, true, true]);
 }
 
 

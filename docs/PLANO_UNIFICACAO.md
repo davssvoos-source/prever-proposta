@@ -11684,3 +11684,67 @@ crase em patch entra por concatenação.
 **Números.** Verificador: 3.180 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migrations: nenhuma nesta entrega (a U119 e a U121 já rodaram). O pacote
 `Prever-0.0.4.zip` foi refeito por cima.
+
+## U123 — a v0.0.5: o chat vira conversa (o campo colorido e as caixas de mensagem, R240)
+
+Duas frases do Davi, uma manhã depois da v0.0.4: "No chat, as mensagens devem
+conter o titulo junto com o fundo colorido" e "quando um usuário manda uma
+mensagem no chat que vai diretamente para os comentários daquela atividade, a
+mensagem também deve ficar no chat, se juntando com a mensagem que ele
+respondeu, sendo caixas de mensagem diferentes no mesmo campo (fundo colorido)
+dentro do chat."
+
+**A primeira é layout.** O título e a hora estavam ACIMA da bolha, soltos sobre
+o fundo da página; a cor pintava só o conteúdo. Agora o campo colorido é o
+continente: título dentro (o botão que abre a atividade), caixas dentro, ações
+dentro. O título é o assunto do campo, e é assim que ele passa a valer para
+todas as mensagens que estão lá — que é justamente o que a segunda frase pede.
+
+**A segunda é um buraco no modelo, não no CSS.** A resposta do chat vira um
+comentário na atividade que MENCIONA quem mencionou (R216) — é assim que o
+gatilho da U95 avisa a pessoa certa. Só que `minhas_mencoes` devolve o que
+menciona QUEM CHAMA: a minha resposta aparece no chat do outro e nunca no meu.
+Eu escrevia, a mensagem sumia da tela, e o chat parecia ter engolido o recado.
+Faltava a ligação "esta mensagem responde àquela".
+
+**A U123** acrescenta `chamado_eventos.responde_a` (FK para o próprio
+comentário, `ON DELETE SET NULL`, índice parcial) e a função
+`respostas_do_chat(uuid[])`, que devolve as respostas das atividades que o chat
+está mostrando — SECURITY INVOKER, então a RLS filtra como em tudo o mais. Um
+gatilho guarda o invariante: só se responde a um comentário da MESMA atividade.
+Nada de conteúdo novo mora ali: `responde_a` é ligação, e desfazer é largar a
+coluna.
+
+**A conversa, na tela.** `linhaDoTempo` ganhou um terceiro argumento e agora
+monta a conversa: cada menção carrega as suas respostas (achatadas, em ordem —
+o campo é um só, então indentar não diria nada), e uma menção que JÁ É resposta
+de outra não abre campo próprio. O que ORDENA a lista passou a ser o último
+instante da conversa: sem isso, responder mandava a mensagem para o meio da
+lista, longe de onde a pessoa está olhando. E o `#Código` digitado à mão se
+junta ao comentário mais recente daquela atividade — se a menção era num campo
+da atividade (descrição, diagnóstico, solução) não há comentário para responder,
+e aí a mensagem vai só para a atividade, como antes.
+
+**A caixa.** Fundo branco a 80% no claro, preto a 30% no escuro, borda TINGIDA
+da cor do campo. Medi antes de escolher: a caixa contra o campo dá 1,25 no
+claro e 1,12 no escuro — dois tons escuros não produzem razão maior, porque o
+piso de 0,05 da fórmula de contraste domina. É por isso que no sistema inteiro
+quem separa superfície de superfície é a borda; tingida, ela amarra a caixa ao
+campo em vez de brigar com ele. O texto dentro fica com 15:1 no claro e 17:1 no
+escuro. Vi as duas versões numa prévia descartável de 375px, com as quatro
+cores e um campo de três caixas.
+
+**Regra 5.** Sem a U123 a função não existe e a coluna não existe: o chat mostra
+um aviso ("as respostas precisam da U123"), e `comentarChamado` reenvia o
+comentário SEM a ligação se o banco reclamar da coluna — a resposta continua
+chegando na atividade, que é o que não pode falhar.
+
+**O que a verificação pegou.** O pino CRÍTICO que conta as PORTAS de
+`chamado_eventos` no app (para ninguém inventar um feed entre atividades)
+acusou quatro em vez de três: o meu reenvio abria uma segunda. Virou uma função
+local chamada duas vezes — a porta continua sendo uma. Outros quatro pinos
+descreviam o chat antigo (o título fora da bolha, o `comentarChamado` de dois
+argumentos, o `rotearEnvio` sem a ligação) e foram reapontados com o motivo.
+
+**Números.** Verificador: 3.196 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Migration **U123 pendente** — rodar antes de subir a v0.0.5.
