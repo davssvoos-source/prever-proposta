@@ -33,6 +33,7 @@ import {
 } from "./constants";
 import { geocode, useTecnicos, useVisitasGerencial } from "./data";
 import { useTheme } from "@/contexts/ThemeContext";
+import { AVISO_ENDERECO_SEM_MAPA, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
 
 const L = {
   card: "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)",
@@ -158,16 +159,8 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
       );
     } else {
       setResolvido(null);
-      toast.error(
-        // A CASCA `geocode()` COLAPSA "não achei" e "o serviço recusou" no
-        // mesmo `null` — o SERVIDOR distingue os dois (`nao_encontrado` ×
-        // `servico_falhou`) e a casca de gerencial/data.ts apaga a diferença.
-        // Enquanto ela apagar, esta frase NÃO PODE afirmar que o endereço não
-        // existe: o bloqueio do Nominatim é por IP e cai sobre a operação
-        // inteira, e "este endereço não existe" é a única frase do sistema que
-        // instrui a pessoa a martelar o serviço que acabou de bloqueá-la.
-        "Não achei este endereço. Confira o texto (bairro e cidade ajudam) — e, se ele está certo, o serviço de mapas pode ter recusado agora: repetir na mesma hora não adianta.",
-      );
+      // R242: não é erro — o endereço está salvo; o mapa é que não achou.
+      toast.warning(AVISO_ENDERECO_SEM_MAPA);
     }
   }
 
@@ -444,7 +437,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                   setResolvido(null);
                   setCoords(null);
                 }}
-                placeholder="Rua, número, bairro, cidade"
+                placeholder={DICA_DO_CAMPO_ENDERECO}
               />
               <Button
                 type="button"

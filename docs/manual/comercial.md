@@ -50,6 +50,10 @@ visita aprovada é venda; achar que proposta cria cliente).
   normalizado, não duplica e só preenche o que está vazio. A lista de
   prospecção não tem tela desde a R64 — o trabalho vive nos chamados de
   natureza comercial.
+- **R242 — o endereço vale sem o mapa.** O campo é texto e salva sozinho; o
+  botão de localizar é conveniência, e quando ele não acha o sistema diz que o
+  endereço está salvo (recado, não erro). A frase e a dica do campo moram em
+  `src/lib/endereco.ts` — um texto para as quatro telas que têm endereço.
 - **R23 — proposta também se faz para cliente existente.** Nesse caso o
   chamado da proposta é **vinculado** ao cliente da base.
 - **R29 — a proposta É um chamado** (natureza `comercial`, tipo

@@ -40,6 +40,7 @@ import { rotuloDoResponsavel } from "@/features/gerencial/tecnicos";
 import { FONT, card, botaoSelecao, goldButton, GOLD_GRAD } from "@/lib/ui";
 import { PRISMA, cinzas, misturar } from "@/lib/paleta";
 import { SeletorDeOpcao } from "@/components/SeletorDeOpcao";
+import { AVISO_ENDERECO_SEM_MAPA, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
 
 // A paleta local `L` (um segundo tema claro só desta tela) e o "vidro dourado"
 // dos campos no escuro SAÍRAM na U107 (R194): a tela passou a falar o design
@@ -650,7 +651,7 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
                   a mesma coordenada errada de sempre, agora por CORRIDA. */}
               <input
                 style={{ ...INPUT, flex: 1 }}
-                placeholder="Rua, número, bairro"
+                placeholder={DICA_DO_CAMPO_ENDERECO}
                 value={endereco}
                 disabled={geoStatus === "loading"}
                 onChange={(e) => {
@@ -697,9 +698,13 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
                 frase do sistema que instrui a pessoa a martelar o serviço que
                 acabou de bloqueá-la. */}
             {geoStatus === "err" && (
-              <p style={{ fontSize: 11, color: vermelho, fontFamily: FONT, margin: "8px 0 0" }}>
-                Não achei este endereço. Confira o texto (bairro e cidade ajudam) — e, se ele está
-                certo, o serviço de mapas pode ter recusado agora: repetir na mesma hora não adianta.
+              // R242: NÃO é vermelho, e a primeira coisa que a frase diz é que o
+              // endereço está salvo. Vermelho ali dizia "recusei o seu endereço",
+              // e o Davi leu exatamente isso ("não consigo inserir o endereço do
+              // local"). A coordenada é do mapa, é opcional e não bloqueia a
+              // visita: a validação do formulário nunca olhou lat/lng.
+              <p style={{ fontSize: 11, color: cz.textoSecundario, fontFamily: FONT, margin: "8px 0 0", lineHeight: 1.5 }}>
+                {AVISO_ENDERECO_SEM_MAPA}
               </p>
             )}
             {/* O NOME DO LUGAR, NÃO A PALAVRA "OK". Duas coordenadas não são

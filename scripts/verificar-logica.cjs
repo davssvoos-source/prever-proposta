@@ -11999,7 +11999,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // só (P43), e o bloqueio do Nominatim é POR IP: "este endereço não existe" é a
   // única frase do sistema que instrui a pessoa a martelar quem a bloqueou.
   eq('CRÍTICO: nenhuma das quatro telas afirma que o endereço NÃO EXISTE quando a geocodificação falha — a casca colapsa "não achei" e "o serviço recusou" no mesmo `null` (P43), e o bloqueio do Nominatim é por IP e cai sobre a operação inteira. As quatro dizem que pode ser o texto OU o serviço, e que repetir na mesma hora não adianta',
-     [chamamGeocode84.filter(([, s]) => /Não achei este endereço/.test(s)).length,
+     // R242 (U125): a frase virou UM texto em src/lib/endereco.ts, e as quatro
+     // telas o importam — o que o pino conta agora é o USO da constante (o
+     // conteúdo dela é assertado no bloco da U125, num lugar só). E ela deixou
+     // de ser vermelha: o endereço está salvo, o mapa é que não achou.
+     [chamamGeocode84.filter(([, s]) => /AVISO_ENDERECO_SEM_MAPA/.test(s)).length,
       chamamGeocode84.filter(([, s]) => /Endereço não localizado|Endereço não encontrado/.test(s)).map(([p]) => p)],
      [4, []]);
   eq('U84: e o SERVIDOR continua distinguindo os dois motivos — a informação existe e está sendo apagada UMA camada acima, que é exatamente o que P43 declara; se ela sumisse do servidor, a dívida deixaria de ser resolvível sem uma entrega nova',
@@ -19880,11 +19884,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a versão e a regra 7 ──────────────────────────────────────────────────
   const prod124 = ler124('docs/PRODUTO.md');
-  eq('R229/R241: a versão subiu para 0.0.6 nas duas fontes e a v0.0.6 está no VERSOES.md exigindo a U124',
-     [JSON.parse(ler124('package.json')).version,
-      (ler124('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
+  eq('R229/R241: a versão é UMA (package.json = src/lib/versao.ts) e a v0.0.6 está no VERSOES.md exigindo a U124 — o número atual é pino da última U (a U125 pinou 0.0.7)',
+     [JSON.parse(ler124('package.json')).version === (ler124('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
       /^## v0\.0\.6 [^\n]*U124/m.test(ler124('docs/VERSOES.md'))],
-     ['0.0.6', '0.0.6', true]);
+     [true, true]);
   eq('U124 (regra 7): a R241 existe com a frase do Davi, a R21 guarda a frase nova dele sobre proposta ≠ cliente, o manual comercial aponta a porta certa da prospecção, a U124 está no diário, o ESTADO a aponta como pendente e a P68 registra o que sobrou',
      [/^- \*\*R241\*\* —/m.test(prod124),
       /habilite os usuários Admin para fazer a visita técnica/.test(prod124.replace(/\s+/g, ' ')),
@@ -19893,9 +19896,98 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /achar_ou_criar_prospeccao_do_local/.test(ler124('docs/manual/comercial.md')),
       /src\/features\/prospeccao\/data\.ts/.test(ler124('docs/manual/comercial.md')),
       /^## U124 /m.test(ler124('docs/PLANO_UNIFICACAO.md')),
-      /\*\*Pendente: U124\*\*/.test(ler124('docs/ESTADO_ATUAL.md')),
+      // U125: a U124 rodou em 09/09/2026 — o ESTADO a lista entre as rodadas
+      /^- \*\*U124\*\* \(/m.test(ler124('docs/ESTADO_ATUAL.md')),
       /^## P68 /m.test(ler124('docs/PENDENCIAS_TECNICAS.md'))],
      [true, true, true, true, true, false, true, true, true]);
+}
+
+
+// ── U125 — a v0.0.7: a capa nasce antes da visita, e o endereço vale sem o mapa (R242) ──
+{
+  const fs125 = require('fs');
+  const ler125 = (f) => fs125.readFileSync(f, 'utf8');
+  const cod125 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const mig125 = ler125('supabase/migrations/20260925090000_u125_v007_capa_da_visita_antes.sql');
+  const END = carregar('src/lib/endereco.ts');
+  const TELAS_DO_ENDERECO = [
+    'src/features/clientes/ClienteForm.tsx',
+    'src/features/gerencial/NovaVisitaTecnica.tsx',
+    'src/features/gerencial/VisitaForm.tsx',
+    'src/features/visitas/NovaVisitaDialog.tsx',
+  ];
+
+  // ── a capa do chamado nasce ANTES da visita ───────────────────────────────
+  eq('U125 CRÍTICO: a capa do chamado nasce num gatilho BEFORE INSERT — uma FK não-deferrável é conferida por um gatilho interno (RI_…) que dispara ANTES do gatilho do usuário na mesma fila de AFTER, então a capa criada AFTER chegava tarde e NENHUMA visita podia ser criada desde a U29. A sincronização fica só no UPDATE',
+     [/CREATE TRIGGER trg_capa_da_visita\s*\n\s*BEFORE INSERT ON public\.visitas_tecnicas/.test(mig125),
+      /FOR EACH ROW EXECUTE FUNCTION public\.sincronizar_chamado_da_visita\(\);/.test(mig125),
+      /CREATE TRIGGER trg_sincronizar_chamado_da_visita\s*\n\s*AFTER UPDATE OF/.test(mig125),
+      /AFTER INSERT OR UPDATE OF/.test(cod125(mig125).replace(/^--.*$/gm, '')),
+      /DROP TRIGGER IF EXISTS trg_sincronizar_chamado_da_visita ON public\.visitas_tecnicas;/.test(mig125)],
+     [true, true, true, false, true]);
+  eq('U125: a capa também registra o LOCAL (cliente OU prospecção) em chamado_locais, e só quando não há nenhum — quem edita local depois é a tela; mais o backfill das visitas antigas',
+     [/CREATE OR REPLACE FUNCTION public\.registrar_local_da_visita\(\)/.test(mig125),
+      /IF EXISTS \(SELECT 1 FROM public\.chamado_locais WHERE chamado_id = NEW\.id\) THEN\s*\n\s*RETURN NEW;/.test(mig125),
+      /INSERT INTO public\.chamado_locais \(chamado_id, cliente_id, prospeccao_id\)/.test(mig125),
+      /CREATE TRIGGER trg_local_da_visita\s*\n\s*AFTER INSERT ON public\.visitas_tecnicas/.test(mig125),
+      /num_nonnulls\(v\.cliente_id, v\.prospeccao_id\) = 1/.test(mig125)],
+     [true, true, true, true, true]);
+  eq('U125: pré-voo (chamado_locais, a função da U29/U38 e a FK), conferência com o TIPO do gatilho (before × after) e DESFAZER',
+     [/to_regclass\('public\.chamado_locais'\) IS NULL/.test(mig125),
+      /to_regprocedure\('public\.sincronizar_chamado_da_visita\(\)'\) IS NULL/.test(mig125),
+      /conname = 'visitas_e_chamado'\s*\n\s*\) THEN/.test(mig125),
+      /tgtype & 2 = 2 THEN 'before'/.test(mig125),
+      /visita sem capa \(a FK garante 0\)/.test(mig125),
+      />>> OLHAR <<</.test(mig125), /DESFAZER/.test(mig125)],
+     [true, true, true, true, true, true, true]);
+  eq('U125: as migrations que o Davi JÁ RODOU não foram tocadas — a U29 e a U38 seguem com o gatilho AFTER INSERT que elas entregaram (é a U125 que passa por cima)',
+     [/AFTER INSERT OR UPDATE OF status, proposta_resultado, data_hora_agendada,/.test(ler125('supabase/migrations/20260821160000_u29_proposta_e_chamado.sql')),
+      /AFTER INSERT OR UPDATE OF status, proposta_resultado, proposta_enviada_em,/.test(ler125('supabase/migrations/20260822010000_u38_fim_do_fluxo_pos_envio.sql')),
+      /trg_capa_da_visita/.test(ler125('supabase/migrations/20260822010000_u38_fim_do_fluxo_pos_envio.sql'))],
+     [true, true, false]);
+
+  // ── R242: o endereço vale sem o mapa ─────────────────────────────────────
+  eq('R242 CRÍTICO: o aviso do endereço é UM texto para as QUATRO telas — e ele diz que o endereço ESTÁ SALVO, não afirma que o endereço não existe, e mantém o aviso de que repetir na mesma hora não adianta (o bloqueio do Nominatim é por IP, P43)',
+     [/O endereço fica salvo assim mesmo/.test(END.AVISO_ENDERECO_SEM_MAPA),
+      /não achei este ponto no mapa/.test(END.AVISO_ENDERECO_SEM_MAPA),
+      /Incluir bairro e cidade/.test(END.AVISO_ENDERECO_SEM_MAPA),
+      /repetir na mesma hora não adianta/.test(END.AVISO_ENDERECO_SEM_MAPA),
+      /não existe|não encontrado|não localizado/i.test(END.AVISO_ENDERECO_SEM_MAPA),
+      END.DICA_DO_CAMPO_ENDERECO],
+     [true, true, true, true, false, 'Rua, número, bairro, cidade']);
+  eq('R242 CRÍTICO: as quatro telas do endereço usam a constante comum — na frase e na placeholder —, e nenhuma delas guarda mais a frase antiga nem pinta o aviso de vermelho',
+     [TELAS_DO_ENDERECO.filter((f) => /AVISO_ENDERECO_SEM_MAPA/.test(ler125(f))).length,
+      TELAS_DO_ENDERECO.filter((f) => /placeholder=\{DICA_DO_CAMPO_ENDERECO\}/.test(ler125(f))).length,
+      TELAS_DO_ENDERECO.filter((f) => /Não achei este endereço/.test(ler125(f))),
+      /color: vermelho, fontFamily: FONT, margin: "8px 0 0" \}\}>\s*\n\s*Não achei/.test(ler125('src/features/gerencial/NovaVisitaTecnica.tsx')),
+      /color: cz\.textoSecundario, fontFamily: FONT, margin: "8px 0 0", lineHeight: 1\.5 \}\}>\s*\n\s*\{AVISO_ENDERECO_SEM_MAPA\}/.test(ler125('src/features/gerencial/NovaVisitaTecnica.tsx'))],
+     [4, 4, [], false, true]);
+  eq('R242: a coordenada NÃO entra na conta do que serve para salvar — enderecoServe olha só o texto, e a validação da tela da visita continua sem lat/lng',
+     [END.enderecoServe('Rua Engelbert Romer, 124'), END.enderecoServe('   '), END.enderecoServe(null),
+      /const formularioValido =\s*\n\s*nomePredio\.trim\(\) !== "" &&\s*\n\s*tipoLocal !== "" &&\s*\n\s*servicosPropostos\.length > 0 &&\s*\n\s*endereco\.trim\(\) !== "";/.test(ler125('src/features/gerencial/NovaVisitaTecnica.tsx')),
+      /lat|lng|latitude/.test((ler125('src/features/gerencial/NovaVisitaTecnica.tsx').match(/const formularioValido =[\s\S]{0,220}?;/) ?? [''])[0])],
+     [true, false, false, true, false]);
+  eq('R242: o servidor continua distinguindo os dois motivos e a R114 segue de pé — UM gesto, UMA requisição: nenhuma tela tenta de novo com a cidade inventada',
+     [/motivo: "nao_encontrado"/.test(ler125('src/lib/geocodificar.functions.ts')),
+      /motivo: "servico_falhou"/.test(ler125('src/lib/geocodificar.functions.ts')),
+      TELAS_DO_ENDERECO.filter((f) => /geocode\([^)]*(São Paulo|", SP")/.test(ler125(f))).length],
+     [true, true, 0]);
+
+  // ── a versão e a regra 7 ──────────────────────────────────────────────────
+  const prod125 = ler125('docs/PRODUTO.md');
+  eq('R229/R242: a versão subiu para 0.0.7 nas duas fontes e a v0.0.7 está no VERSOES.md exigindo a U125',
+     [JSON.parse(ler125('package.json')).version,
+      (ler125('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
+      /^## v0\.0\.7 [^\n]*U125/m.test(ler125('docs/VERSOES.md'))],
+     ['0.0.7', '0.0.7', true]);
+  eq('U125 (regra 7): a R242 existe com a frase do Davi, a U125 está no diário, o ESTADO a aponta como pendente e o manual comercial conta que o endereço vale sem o mapa',
+     [/^- \*\*R242\*\* —/m.test(prod125),
+      /Não consigo inserir o endereço do local/.test(prod125.replace(/\s+/g, ' ')),
+      Number((prod125.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 242,
+      /^## U125 /m.test(ler125('docs/PLANO_UNIFICACAO.md')),
+      /\*\*Pendente: U125\*\*/.test(ler125('docs/ESTADO_ATUAL.md')),
+      /endereço vale sem o mapa/i.test(ler125('docs/manual/comercial.md'))],
+     [true, true, true, true, true, true]);
 }
 
 

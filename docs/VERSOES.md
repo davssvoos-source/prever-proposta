@@ -9,6 +9,23 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v0.0.7 — 2026-09-09 (U125) · migration **U125** — rodar ANTES de subir o pacote
+
+- **Agendar visita técnica volta a funcionar** — era o erro "violates foreign
+  key constraint visitas_e_chamado". A visita é satélite de um chamado (a capa
+  que aparece no quadro), e a capa estava sendo criada tarde demais: o banco
+  conferia o vínculo antes de ela existir. Desde 21/08 nenhuma visita podia ser
+  criada pelo sistema; os três erros do caminho (situação, cliente, chave)
+  estavam empilhados, cada um escondendo o seguinte.
+- **A proposta aparece com o lugar** no quadro da Início: a capa passa a
+  registrar o local — cliente da base ou prospecção.
+- **O endereço vale sem o mapa** (R242): quando o botão de localizar não acha o
+  ponto, o sistema diz que **o endereço está salvo** e explica o que ajuda a
+  achar, em recado e não em vermelho. O campo passou a pedir "Rua, número,
+  bairro, **cidade**" — era a cidade que faltava para o mapa achar.
+- **Banco:** a **U125** troca a hora em que a capa nasce (gatilho BEFORE
+  INSERT) e registra o local. Sem ela, criar visita continua falhando.
+
 ## v0.0.6 — 2026-09-09 (U124) · migration **U124** — rodar ANTES de subir o pacote
 
 - **A proposta comercial volta a nascer** (R21/R22): a visita de um prédio que

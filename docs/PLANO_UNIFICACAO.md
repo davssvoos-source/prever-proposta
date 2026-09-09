@@ -11825,3 +11825,67 @@ desativa alguém invalida as duas.
 **Números.** Verificador: 3.207 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migration **U124 pendente** — rodar antes de subir a v0.0.6. Sem ela a tela
 avisa que o prédio novo precisa da U124; ela não volta a tentar criar cliente.
+
+## U125 — a v0.0.7: a capa do chamado nasce ANTES da visita (a terceira camada do mesmo caminho) e o endereço para de parecer recusado (R242)
+
+O Davi mandou o print da tela com dois problemas: "Ainda não consigo criar a
+visita técnica para proposta comercial" e "Não consigo inserir o endereço do
+local".
+
+**A terceira camada.** O erro novo era outro: "insert or update on table
+visitas_tecnicas violates foreign key constraint visitas_e_chamado". A U29 fez
+a visita ser SATÉLITE do chamado — `visitas_tecnicas.id` **é** o id do chamado,
+e a FK garante que não sobre visita órfã. Quem cria a capa é o gatilho
+`sincronizar_chamado_da_visita`, armado como **AFTER INSERT**. E é aí que a
+coisa quebra, por um detalhe do PostgreSQL que não perdoa: uma FK
+não-deferrável é conferida por um gatilho INTERNO (`RI_ConstraintTrigger_c_…`)
+que entra na MESMA fila de AFTER e dispara em ordem de NOME — e "RI_…" vem
+antes de "trg_…". A conferência acontece com a capa ainda inexistente.
+
+Ou seja: **desde 21/08/2026 nenhuma visita podia ser criada pelo app**, por
+nenhuma das duas telas, porque nenhuma manda `id`. Ninguém tinha visto porque o
+caminho parava antes: prédio novo morria no INSERT de `clientes` (R21,
+consertado ontem na U124), e antes disso morria no CHECK de `situacao`
+(P44/U84). Três defeitos empilhados no mesmo caminho, cada um escondendo o
+seguinte. **A lição, terceira vez que ela aparece: conserto que não percorre o
+caminho INTEIRO conserta o erro que se viu, não o fluxo.**
+
+A U125 troca a hora: a capa passa a nascer num gatilho **BEFORE INSERT**. Isso
+tira a pergunta da ordem de disparo do caminho — quando a linha da visita entra,
+a capa já está lá, e a FK confere em qualquer ordem. A função não muda (ela já
+fazia `INSERT … ON CONFLICT DO UPDATE` e devolvia NEW); muda o evento. A
+sincronização continua AFTER UPDATE, onde sempre esteve.
+
+E a capa passou a **registrar o local** em `chamado_locais` — cliente da base ou
+prospecção (R22/U124). Sem isso o card da Início mostraria a proposta sem lugar,
+porque `chamados` não tem `prospeccao_id`: quem guarda as três formas de local
+(cliente, prospecção, setor) é `chamado_locais`. O gatilho só escreve se ainda
+não houver local nenhum — quem edita local depois é a tela, e um gatilho que
+reescrevesse isso a cada UPDATE apagaria escolha de gente. O backfill preenche
+as visitas antigas que estavam sem.
+
+**O endereço (R242).** O endereço ESTAVA no campo — "Rua Engelbert Romer, 124".
+O que o Davi leu como recusa foi a frase vermelha embaixo: o botão de localizar
+no mapa não achou (sem bairro nem cidade, o Nominatim volta vazio). O código
+nunca exigiu coordenada — `formularioValido` olha nome, tipo, serviços e
+endereço, e nada mais —, mas a tela dizia o contrário na cor. Então: a frase
+deixou de ser vermelha, passou a começar por "o endereço fica salvo assim
+mesmo", e o campo passou a pedir "Rua, número, bairro, **cidade**" (era a cidade
+que faltava, e a placeholder desta tela era a única das quatro sem ela).
+
+A frase morava copiada em QUATRO telas, o que garante que consertar o tom em
+uma deixaria três mentindo. Virou um texto só, em `src/lib/endereco.ts`, e as
+quatro leem de lá. O que NÃO fiz: uma segunda tentativa de geocodificação com a
+cidade inventada. A R114 diz "um gesto humano explícito = no máximo uma
+requisição" ao Nominatim, e uma tentativa extra por gesto é decisão de produto,
+não conveniência minha — quem paga o bloqueio por IP é a operação inteira.
+
+**O que a verificação pegou.** O pino CRÍTICO da U84 contava as quatro telas
+pela frase literal "Não achei este endereço" e passou a contar zero. Foi
+reapontado para algo mais forte do que antes: as quatro devem USAR a constante
+comum, e o TEXTO dela é assertado num lugar só — não pode afirmar que o
+endereço não existe, tem de dizer que ele está salvo, e tem de manter o aviso de
+que repetir na mesma hora não adianta.
+
+**Números.** Verificador: 3.217 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Migration **U125 pendente** — rodar antes de subir a v0.0.7.

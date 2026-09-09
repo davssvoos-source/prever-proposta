@@ -33,6 +33,7 @@ import { FONT, card, etiqueta, botaoSelecao, goldButton } from "@/lib/ui";
 import { PRISMA, cinzas } from "@/lib/paleta";
 import { copiarTexto } from "@/lib/copiar";
 import { enderecoParaCopiar } from "./ficha";
+import { AVISO_ENDERECO_SEM_MAPA, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
 
 /**
  * R207: os botões de COPIAR da ficha (e-mail, endereço). O texto copiado nasce
@@ -243,16 +244,8 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
         toast.success("Coordenadas encontradas — confira o lugar abaixo.");
       } else {
         setResolvido(null);
-        toast.error(
-          // A CASCA `geocode()` COLAPSA "não achei" e "o serviço recusou" no
-          // mesmo `null` — o SERVIDOR distingue os dois (`nao_encontrado` ×
-          // `servico_falhou`) e a casca de gerencial/data.ts apaga a diferença.
-          // Enquanto ela apagar, esta frase NÃO PODE afirmar que o endereço não
-          // existe: o bloqueio do Nominatim é por IP e cai sobre a operação
-          // inteira, e "este endereço não existe" é a única frase do sistema que
-          // instrui a pessoa a martelar o serviço que acabou de bloqueá-la.
-          "Não achei este endereço. Confira o texto (bairro e cidade ajudam) — e, se ele está certo, o serviço de mapas pode ter recusado agora: repetir na mesma hora não adianta.",
-        );
+        // R242: não é erro — o endereço está salvo; o mapa é que não achou.
+        toast.warning(AVISO_ENDERECO_SEM_MAPA);
       }
     } finally {
       setGeocodificando(false);
@@ -457,7 +450,7 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
                 setLat(null);
                 setLng(null);
               }}
-              placeholder="Rua, número, bairro, cidade"
+              placeholder={DICA_DO_CAMPO_ENDERECO}
             />
           </div>
           <div>

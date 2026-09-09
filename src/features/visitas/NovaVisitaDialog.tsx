@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { AVISO_ENDERECO_SEM_MAPA, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
 
 // A CÓPIA INLINE DE `geocode` FOI APAGADA AQUI (U84) — era a segunda de quatro,
 // byte a byte igual à de features/gerencial/data.ts. Agora importa a única.
@@ -161,7 +162,7 @@ export function NovaVisitaDialog({ children }: { children?: React.ReactNode }) {
                   setCoords(null);
                   setResolvido(null);
                 }}
-                placeholder="Rua, número, bairro, cidade"
+                placeholder={DICA_DO_CAMPO_ENDERECO}
               />
               <Button
                 type="button"
@@ -178,16 +179,8 @@ export function NovaVisitaDialog({ children }: { children?: React.ReactNode }) {
                     );
                   } else {
                     setResolvido(null);
-                    toast.error(
-                      // A CASCA `geocode()` COLAPSA "não achei" e "o serviço recusou" no
-                      // mesmo `null` — o SERVIDOR distingue os dois (`nao_encontrado` ×
-                      // `servico_falhou`) e a casca de gerencial/data.ts apaga a diferença.
-                      // Enquanto ela apagar, esta frase NÃO PODE afirmar que o endereço não
-                      // existe: o bloqueio do Nominatim é por IP e cai sobre a operação
-                      // inteira, e "este endereço não existe" é a única frase do sistema que
-                      // instrui a pessoa a martelar o serviço que acabou de bloqueá-la.
-                      "Não achei este endereço. Confira o texto (bairro e cidade ajudam) — e, se ele está certo, o serviço de mapas pode ter recusado agora: repetir na mesma hora não adianta.",
-                    );
+                    // R242: não é erro — o endereço está salvo.
+                    toast.warning(AVISO_ENDERECO_SEM_MAPA);
                   }
                 }}
               >
