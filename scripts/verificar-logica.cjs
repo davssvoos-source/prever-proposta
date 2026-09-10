@@ -16805,7 +16805,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      // pino da R213 no bloco da U117
      [/temDiagnostico\(chamado\.tipo\) \? "Problema detectado" : "Descrição"/.test(di96),
       // R239: o rótulo e a dica saem do MESMO cabeçalho de bloco — cabecalho(titulo, dica)
-      /cabecalho\(\s*\n\s*"Solução aplicada",/.test(di96), /salvar\.mutate\(\{ servico_executado: v \|\| null \}\)/.test(di96)],
+      // R243: a dica saiu, e o cabeçalho ficou com um argumento só
+      /cabecalho\("Solução aplicada"\)/.test(di96), /salvar\.mutate\(\{ servico_executado: v \|\| null \}\)/.test(di96)],
      [true, true, true]);
   eq('R150: fotos e arquivos na página — a MESMA tabela e o MESMO bucket do campo (anexarFoto, etapa "outra"; excluirFoto)',
      [/<span style=\{SEC\}>Fotos e arquivos<\/span>/.test(di96), /await anexarFoto\(id, f, "outra"\)/.test(di96), /excluirFoto\(fotoId, path\)/.test(di96),
@@ -17754,10 +17755,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // R183 — o seletor compacto e as peças de módulo
   const sel104 = ler104('src/components/SeletorDeOpcao.tsx');
-  eq('R183: SeletorDeOpcao tem o modo compacto (30px, pílula, 12px/600) e o modo cheio continua o de sempre (44px)',
+  eq('R183/R243: SeletorDeOpcao tem o modo compacto (30px, pílula, 12px/600) e o modo cheio encolheu de 44 para 36px (Davi, 10/09/2026: "diminua um pouco a altura dos botões de Status, Tipo e Impacto")',
      [/compacto\?: boolean;/.test(sel104),
       /minHeight: 30, padding: "0 9px 0 11px", borderRadius: 999, fontSize: 12, fontWeight: 600/.test(sel104),
-      /minHeight: 44, padding: "0 12px 0 14px", borderRadius: 12, fontSize: 13\.5/.test(sel104)],
+      // R243: 44 → 36 (Davi, 10/09/2026: "diminua um pouco a altura")
+      /minHeight: 36, padding: "0 11px 0 13px", borderRadius: 10, fontSize: 13/.test(sel104)],
      [true, true, true]);
   eq('R183: as peças novas do painel (Grupo, ProgressoDoRegistro, LinhaDoTempo) são de MÓDULO, não nascem dentro do componente',
      ['Grupo', 'ProgressoDoRegistro', 'LinhaDoTempo'].every((n) => new RegExp(`^function ${n}\\(`, 'm').test(pc104))
@@ -19426,16 +19428,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /filter=|feDropShadow/.test(rosca120),
       /\{p\.pct\}%/.test(rosca120),
       // ela recebe o resultado pronto: importa só o TIPO, nunca a função que conta
-      /import \{ ROTULO_DO_CAMPO, type ProgressoDaAtividade \}/.test(rosca120) && /progressoDaAtividade\(/.test(rosca120),
-      /<RoscaDeProgresso p=\{prog\} tamanho=\{96\} \/>/.test(di120),
+      // R243: a linha de origem saiu da rosca, e com ela o ROTULO_DO_CAMPO
+      /import \{ type ProgressoDaAtividade \}/.test(rosca120) && /progressoDaAtividade\(/.test(rosca120),
+      /<RoscaDeProgresso p=\{prog\} tamanho=\{88\} \/>/.test(di120),
       // U121: a rosca ABRE a ficha — vem antes das linhas
       di120.indexOf('<RoscaDeProgresso') < di120.indexOf('className="ficha-linhas"')],
      [true, true, true, false, true, false, true, true]);
-  eq('R235: a tela DIZ em qual campo o checklist conta — o convite fica no card que conta, não numa legenda solta',
+  // R243 (Davi, 10/09/2026): a frase "Cada item de checklist daqui conta no
+  // progresso da atividade" SAIU das duas caixas. Onde o número é contado
+  // continua dito — no title/aria-label da rosca, que carrega a frase de
+  // progressoDaAtividade. O pino inverteu: a tela NÃO repete mais isso.
+  eq('R235/R243: a legenda do checklist saiu das caixas de texto — quem diz de onde vem o número é a rosca (title/aria-label), uma vez por tela',
      [(di120.match(/Cada item de checklist daqui conta no progresso da atividade\./g) ?? []).length,
-      // R239: a dica é o segundo argumento do cabeçalho do bloco, na mesma linha do rótulo
-      /prog\.campo === "descricao" \? "Cada item de checklist/.test(di120), /prog\.campo === "solucao" \? "Cada item de checklist/.test(di120)],
-     [2, true, true]);
+      /Progresso da atividade: /.test(rosca120), /title=\{p\.frase\}/.test(rosca120)],
+     [0, true, true]);
 
   // ── R236: o arrasto dos equipamentos ──────────────────────────────────────
   const eq120 = ler120('src/features/chamados/EquipamentosDaAtividade.tsx');
@@ -19508,11 +19514,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       ['Status', 'Tipo', 'Impacto', 'Quando', 'Responsável', 'Apoio', 'Equipes', 'Proposta', 'Cliente'].map((r) => new RegExp('linha\\("' + r + '", \\(').test(di121)),
       (di121.match(/etiqueta\(/g) ?? []).length, /const st = chamadoStatusInfo/.test(di121)],
      [true, [true, true, true, true, true, true, true, true, true], 2, false]);
-  eq('R234: o cabeçalho diz número · "aberta há…" por quem · tipo — sem etiqueta; título 22/700 com text-wrap balance',
+  // R243: a linha "número · aberta há Nd por Fulano · tipo" SAIU do cabeçalho
+  // (Davi, 10/09/2026). Nada dela se perdeu: o tipo é linha da ficha e "recebida
+  // de … em" é o rodapé dela — e é isso que os dois últimos pinos guardam.
+  eq('R234/R243: o cabeçalho é só o título (22/700, text-wrap balance) — a linha de meta saiu, e o que ela dizia continua na ficha',
      [/aberta \{tempoRelativo\(chamado\.created_at\)\}\{chamado\.aberto_por \? ` por \$\{nomeDe\(chamado\.aberto_por\)\}` : ""\}/.test(di121),
       /\{tipoRotulo && <span>· \{tipoRotulo\}<\/span>\}/.test(di121),
-      /fontWeight: 700, fontSize: 22,\s*\n\s*lineHeight: 1\.25, textWrap: "balance" as any,/.test(di121)],
-     [true, true, true]);
+      /fontWeight: 700, fontSize: 22,\s*\n\s*lineHeight: 1\.25, textWrap: "balance" as any,/.test(di121),
+      /Recebida\{chamado\.aberto_por/.test(di121), /linha\("Tipo", \(/.test(di121)],
+     [false, false, true, true, true]);
   eq('R234: a ficha tem o recebimento como rodapé, e fotos em grade de 3 quadrados',
      [/Recebida\{chamado\.aberto_por/.test(di121), /gridTemplateColumns: "repeat\(3, minmax\(0, 1fr\)\)", gap: 8/.test(di121), /aspectRatio: "1 \/ 1"/.test(di121)],
      [true, true, true]);
@@ -19644,8 +19654,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /Abrir em página inteira/.test(di122), /aoAbrirPagina/.test(di122),
       /\{!embutido && \(/.test(di122)],
      [true, true, true, false, false, true]);
-  eq('R239: todo bloco da tela abre igual — cabecalho(titulo, dica) põe o rótulo e a dica na MESMA linha (a dica do checklist estava pendurada por um marginTop negativo)',
-     [/const cabecalho = \(titulo: string, dica\?: string \| null\)/.test(di122),
+  eq('R239/R243: todo bloco da tela abre igual — cabecalho(titulo) põe o rótulo, e só ele: a dica que morava na mesma linha saiu a pedido do Davi (10/09/2026)',
+     [/const cabecalho = \(titulo: string\) =>/.test(di122),
       /marginTop: -6/.test(di122),
       (di122.match(/\{cabecalho\(/g) ?? []).length >= 2,
       /\.ficha-linha > span:first-child \{ padding-top: 8px; \}/.test(css122)],
@@ -19975,19 +19985,117 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a versão e a regra 7 ──────────────────────────────────────────────────
   const prod125 = ler125('docs/PRODUTO.md');
-  eq('R229/R242: a versão subiu para 0.0.7 nas duas fontes e a v0.0.7 está no VERSOES.md exigindo a U125',
-     [JSON.parse(ler125('package.json')).version,
-      (ler125('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
+  eq('R229/R242: a versão é UMA (package.json = src/lib/versao.ts) e a v0.0.7 está no VERSOES.md exigindo a U125 — o número atual é pino da última U (a U126 pinou 0.0.8)',
+     [JSON.parse(ler125('package.json')).version === (ler125('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
       /^## v0\.0\.7 [^\n]*U125/m.test(ler125('docs/VERSOES.md'))],
-     ['0.0.7', '0.0.7', true]);
+     [true, true]);
   eq('U125 (regra 7): a R242 existe com a frase do Davi, a U125 está no diário, o ESTADO a aponta como pendente e o manual comercial conta que o endereço vale sem o mapa',
      [/^- \*\*R242\*\* —/m.test(prod125),
       /Não consigo inserir o endereço do local/.test(prod125.replace(/\s+/g, ' ')),
       Number((prod125.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 242,
       /^## U125 /m.test(ler125('docs/PLANO_UNIFICACAO.md')),
-      /\*\*Pendente: U125\*\*/.test(ler125('docs/ESTADO_ATUAL.md')),
+      // U126: a U125 rodou em 09/09/2026 — o ESTADO a lista entre as rodadas
+      /^- \*\*U125\*\* \(/m.test(ler125('docs/ESTADO_ATUAL.md')),
       /endereço vale sem o mapa/i.test(ler125('docs/manual/comercial.md'))],
      [true, true, true, true, true, true]);
+}
+
+
+// ── U126 — a v0.0.8: a tela fala menos e mostra maior; o seletor funciona no pop-up (R243) ──
+{
+  const fs126 = require('fs');
+  const ler126 = (f) => fs126.readFileSync(f, 'utf8');
+  const cod126 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const di126 = cod126(ler126('src/features/chamados/DetalheInterno.tsx'));
+  const rosca126 = ler126('src/components/RoscaDeProgresso.tsx');
+  const sel126 = ler126('src/components/SeletorDeOpcao.tsx');
+  const quando126 = ler126('src/components/CampoQuando.tsx');
+  const editor126 = cod126(ler126('src/components/EditorDeDescricao.tsx'));
+  const dlg126 = cod126(ler126('src/features/chamados/DialogDaAtividade.tsx'));
+  const CH126 = carregar('src/features/home/chat.ts');
+
+  // ── R243.1: os seis textos saíram ────────────────────────────────────────
+  eq('R243 CRÍTICO: os seis textos que o Davi mandou tirar não existem mais em tela nenhuma — o número na barra do pop-up, a linha de meta do cabeçalho, a dica do checklist (2×), a legenda da barra do editor, a frase do prazo e a linha de origem da rosca',
+     [/\{chamado\?\.numero \?\? "Atividade"\}/.test(dlg126),
+      /aberta \{tempoRelativo\(chamado\.created_at\)\}/.test(di126),
+      /Cada item de checklist daqui conta no progresso da atividade/.test(di126),
+      /@ menciona · Enter nova linha/.test(editor126),
+      /\{escolhida\.frase\}/.test(quando126),
+      /checklist da \{ROTULO_DO_CAMPO\[p\.campo\]\}/.test(rosca126)],
+     [false, false, false, false, false, false]);
+  eq('R243: e o que essas frases ensinavam continua dito onde não custa linha — o title dos dois botões do Quando, o title/aria-label da rosca, e a NOTA do reagendamento (que é fato, não explicação) sobreviveu',
+     [/title=\{`\$\{o\.ajuda\} — \$\{o\.frase\}`\}/.test(quando126),
+      /title=\{p\.frase\}/.test(rosca126), /Progresso da atividade: /.test(rosca126),
+      /\{nota && \(/.test(quando126),
+      /Recebida\{chamado\.aberto_por/.test(di126), /linha\("Tipo", \(/.test(di126)],
+     [true, true, true, true, true, true]);
+
+  // ── R243.2: o rótulo de seção, 12px, num lugar só ────────────────────────
+  const TELAS_COM_SECAO = [
+    'src/features/chamados/DetalheInterno.tsx',
+    'src/features/chamados/DetalheCampo.tsx',
+    'src/features/chamados/FormularioChamadoTecnico.tsx',
+    'src/features/implantacao/CronogramaObra.tsx',
+    'src/features/plantao/PainelDoPlantao.tsx',
+  ];
+  eq('R243 CRÍTICO: o micro-rótulo de seção (PROBLEMA DETECTADO, FICHA, COMENTÁRIOS…) subiu de 10 para 12px em UM lugar — rotuloDeSecao, em lib/ui.ts — e as CINCO telas que copiavam a constante byte a byte passaram a lê-lo de lá',
+     [/export const rotuloDeSecao = \(isLight: boolean\): React\.CSSProperties => \(\{\s*\n\s*fontFamily: FONT, fontWeight: 700, fontSize: 12,/.test(ler126('src/lib/ui.ts')),
+      TELAS_COM_SECAO.filter((f) => /const SEC: CSSProperties = rotuloDeSecao\(isLight\);/.test(ler126(f))).length,
+      TELAS_COM_SECAO.filter((f) => /fontFamily: (FONT|"var\(--fonte\)"), fontWeight: 700, fontSize: 10,\s*\n\s*letterSpacing: "0\.16em"/.test(ler126(f)))],
+     [true, 5, []]);
+
+  // ── R243.3: a rosca ──────────────────────────────────────────────────────
+  eq('R243: o número dentro da rosca encolheu (1/3,4 → 1/4,4 do diâmetro), o rótulo PROGRESSO subiu para 12px e o card da ficha apertou junto',
+     [/fontSize=\{Math\.round\(tamanho \/ 4\.4\)\}/.test(rosca126),
+      /fontWeight: 700, fontSize: 12, letterSpacing: "0\.14em"/.test(rosca126),
+      /<RoscaDeProgresso p=\{prog\} tamanho=\{88\} \/>/.test(di126),
+      /padding: "10px 14px 10px 10px"/.test(di126)],
+     [true, true, true, true]);
+
+  // ── R243.4/5: o seletor — mais baixo, e vivo dentro do diálogo ──────────
+  eq('R243 CRÍTICO: a lista do seletor é desenhada DENTRO do diálogo quando há um — no <body> ela ficava inerte, porque um diálogo modal do Radix apaga o ponteiro de tudo o que está fora dele (o clique atravessava para o véu e FECHAVA a janela em vez de escolher)',
+     [/const dialogo = botaoRef\.current\?\.closest\('\[role="dialog"\]'\) as HTMLElement \| null;/.test(sel126),
+      /return dialogo \?\? document\.body;/.test(sel126),
+      /alvoRef\.current = alvoDoPortal\(\);/.test(sel126),
+      /alvoRef\.current \?\? document\.body,\s*\n\s*\)\}/.test(sel126),
+      /pointerEvents: "auto",/.test(sel126)],
+     [true, true, true, true, true]);
+  eq('R243 CRÍTICO: e a conta da posição acompanha — dentro de um ancestral transformado, `fixed` mede a partir da caixa de PADDING dele, então as coordenadas saem relativas ao container e descontam a BORDA (medido: sem isso o menu caía 1px fora); o limite de não-vazar passa a ser a caixa do diálogo, que também é o que impede o corte pelo overflow',
+     [/const caixa = alvo === document\.body \? null : alvo\.getBoundingClientRect\(\);/.test(sel126),
+      /const bordaE = alvo === document\.body \? 0 : alvo\.clientLeft;/.test(sel126),
+      /left: left - \(caixa\?\.left \?\? 0\) - bordaE,/.test(sel126),
+      /\{ esq: caixa\.left, dir: caixa\.right, topo: caixa\.top, base: caixa\.bottom \}/.test(sel126),
+      /const jl = window\.innerWidth;/.test(sel126)],
+     [true, true, true, true, false]);
+  eq('R243: o botão fechado do seletor ficou mais baixo — 44 → 36px (Status, Tipo, Impacto e todos os outros); o compacto de 30px do configurador não mudou',
+     [/\{ minHeight: 36, padding: "0 11px 0 13px", borderRadius: 10, fontSize: 13 \}/.test(sel126),
+      /\{ minHeight: 30, padding: "0 9px 0 11px", borderRadius: 999, fontSize: 12, fontWeight: 600 \}/.test(sel126),
+      /minHeight: 44/.test(sel126)],
+     [true, true, false]);
+
+  // ── o relógio do chat (achado pela verificação, não pelo pedido) ─────────
+  eq('R222 (conserto): corDaMencao responde pelo relógio que RECEBE, e não pelo da parede — ela repassa o `agora` para situacaoPrazo. Sem isto a mesma entrada mudava de resposta na virada do dia, e a asserção da R222 amanheceu vermelha sozinha em 10/09',
+     [/situacaoPrazo\(m\.prazoLimite, m\.status, agora\)/.test(ler126('src/features/home/chat.ts')),
+      CH126.corDaMencao({ status: 'aberto', prazoLimite: '2030-01-02T12:00:00', dataAgendada: null, dataHoraAgendada: null }, new Date('2030-01-01T12:00:00')),
+      CH126.corDaMencao({ status: 'aberto', prazoLimite: '2030-01-02T12:00:00', dataAgendada: null, dataHoraAgendada: null }, new Date('2030-01-03T12:00:00'))],
+     [true, 'esta_semana', 'atraso']);
+
+  // ── a versão e a regra 7 ─────────────────────────────────────────────────
+  const prod126 = ler126('docs/PRODUTO.md');
+  eq('R229/R243: a versão subiu para 0.0.8 nas duas fontes e a v0.0.8 está no VERSOES.md dizendo que NÃO pede migration',
+     [JSON.parse(ler126('package.json')).version,
+      (ler126('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
+      /^## v0\.0\.8 [^\n]*sem migration/mi.test(ler126('docs/VERSOES.md'))],
+     ['0.0.8', '0.0.8', true]);
+  eq('U126 (regra 7): a R243 existe com a frase do Davi, o DS registra o rótulo de 12px e o menu dentro do diálogo, a U126 está no diário e o ESTADO não aponta migration pendente',
+     [/^- \*\*R243\*\* —/m.test(prod126),
+      /Estes botões não estão funcionando/.test(prod126.replace(/\s+/g, ' ')),
+      Number((prod126.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 243,
+      /rotuloDeSecao/.test(ler126('DESIGN_SYSTEM.md')),
+      /role="dialog"/.test(ler126('DESIGN_SYSTEM.md')),
+      /^## U126 /m.test(ler126('docs/PLANO_UNIFICACAO.md')),
+      /[Nn]enhuma migration pendente/.test(ler126('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true, true, true]);
 }
 
 

@@ -39,7 +39,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { card, etiqueta } from "@/lib/ui";
+import { card, etiqueta, rotuloDeSecao } from "@/lib/ui";
 import { TextoComChecklist } from "@/components/TextoComChecklist";
 import { SeletorDeOpcao, type OpcaoDoSeletor } from "@/components/SeletorDeOpcao";
 import { EditorDeDescricao, TextareaComMencoes, type PessoaParaMencao } from "@/components/EditorDeDescricao";
@@ -169,11 +169,9 @@ export function DetalheInterno({ id, embutido = false }: {
     padding: "16px",
     display: "flex", flexDirection: "column", gap: 12,
   };
-  const SEC: CSSProperties = {
-    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
-    letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
-  };
+  // R243: o micro-rótulo de seção é UM só, em lib/ui.ts — era esta constante,
+  // copiada byte a byte em cinco telas
+  const SEC: CSSProperties = rotuloDeSecao(isLight);
   const LABEL: CSSProperties = {
     fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
     letterSpacing: "0.12em", textTransform: "uppercase",
@@ -434,14 +432,15 @@ export function DetalheInterno({ id, embutido = false }: {
     lineHeight: 1.4,
   };
   /**
-   * O CABEÇALHO DE UM BLOCO (R239): o rótulo e, na MESMA linha, a dica. Todo
-   * card da tela abre igual — era isto que fazia os "tópicos" terem espaços
-   * diferentes entre si (a dica antes subia com um marginTop negativo).
+   * O CABEÇALHO DE UM BLOCO (R239, sem a dica desde a R243): só o rótulo, na
+   * mesma linha e no mesmo tamanho em todo card da tela. A dica "cada item de
+   * checklist daqui conta no progresso" saiu a pedido do Davi (10/09/2026) —
+   * a rosca já diz de onde vem o número, e a frase repetia isso duas vezes por
+   * tela.
    */
-  const cabecalho = (titulo: string, dica?: string | null) => (
+  const cabecalho = (titulo: string) => (
     <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
       <span style={SEC}>{titulo}</span>
-      {dica && <span style={DICA}>{dica}</span>}
     </div>
   );
   const BOTAO_QUADRADO: CSSProperties = {
@@ -468,7 +467,10 @@ export function DetalheInterno({ id, embutido = false }: {
 
       {/* ══ DOCUMENTO ═══════════════════════════════════════════════════════ */}
       <section className="atividade-documento" aria-label="Documento da atividade">
-        <header style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        {/* R243: sem a linha de meta embaixo do título, o cabeçalho é UMA
+            linha — o alinhamento passa a ser pelo centro, senão o quadrado de
+            voltar fica pendurado acima do texto. */}
+        <header style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* R239: no diálogo o "voltar" não existe — a chapelaria (fechar,
               "Página inteira") é da barra do diálogo, e o conteúdo começa no
               título. Na página, o quadrado leva de volta para a Início. */}
@@ -490,15 +492,9 @@ export function DetalheInterno({ id, embutido = false }: {
             }}>
               {chamado.titulo}
             </h1>
-            <div style={{
-              fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11.5,
-              color: textSecondary, marginTop: 5, display: "flex", flexWrap: "wrap", gap: "0 6px",
-            }}>
-              <span style={{ fontVariantNumeric: "tabular-nums" }}>{chamado.numero}</span>
-              <span>· aberta {tempoRelativo(chamado.created_at)}{chamado.aberto_por ? ` por ${nomeDe(chamado.aberto_por)}` : ""}</span>
-              {tipoRotulo && <span>· {tipoRotulo}</span>}
-              {chamado.origem === "notion" && <span>· importada do Notion</span>}
-            </div>
+            {/* R243: a linha "número · aberta há Nd por Fulano · tipo" SAIU
+                (Davi, 10/09/2026). Nada se perde: o tipo é uma linha da ficha,
+                e quem abriu e quando está no rodapé dela ("Recebida de … em"). */}
           </div>
         </header>
 
@@ -506,10 +502,7 @@ export function DetalheInterno({ id, embutido = false }: {
             detectado e Solução aplicada (R149), lado a lado no monitor grande. */}
         <div className={ehCorretiva ? "atividade-textos duplo" : "atividade-textos"}>
           <div style={{ ...CARD, minWidth: 0 }}>
-            {cabecalho(
-              temDiagnostico(chamado.tipo) ? "Problema detectado" : "Descrição",
-              prog.campo === "descricao" ? "Cada item de checklist daqui conta no progresso da atividade." : null,
-            )}
+            {cabecalho(temDiagnostico(chamado.tipo) ? "Problema detectado" : "Descrição")}
             <EditorDeDescricao
               valor={chamado.descricao_problema ?? ""}
               chaveReset={id}
@@ -524,10 +517,7 @@ export function DetalheInterno({ id, embutido = false }: {
           </div>
           {ehCorretiva && (
             <div style={{ ...CARD, minWidth: 0 }}>
-              {cabecalho(
-                "Solução aplicada",
-                prog.campo === "solucao" ? "Cada item de checklist daqui conta no progresso da atividade." : null,
-              )}
+              {cabecalho("Solução aplicada")}
               <EditorDeDescricao
                 valor={chamado.servico_executado ?? ""}
                 chaveReset={`${id}-solucao`}
@@ -712,8 +702,10 @@ export function DetalheInterno({ id, embutido = false }: {
       {/* ══ FICHA ═══════════════════════════════════════════════════════════ */}
       <aside className="atividade-ficha" aria-label="Ficha da atividade">
         {/* R235: o progresso abre a ficha — "quanto andou" se lê antes de qualquer campo */}
-        <div style={{ ...CARD, padding: "12px 16px 12px 12px" }}>
-          <RoscaDeProgresso p={prog} tamanho={96} />
+        {/* R243: a rosca perdeu a linha de origem e o número encolheu — o card
+            acompanha, senão sobra ar embaixo de um bloco de duas linhas. */}
+        <div style={{ ...CARD, padding: "10px 14px 10px 10px" }}>
+          <RoscaDeProgresso p={prog} tamanho={88} />
         </div>
 
         <div style={{ ...CARD, gap: 8 }}>

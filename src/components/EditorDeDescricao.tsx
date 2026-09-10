@@ -698,9 +698,10 @@ export function EditorRico({
               </button>
             </Fragment>
           ))}
-          <span style={{ marginLeft: "auto", fontFamily: FONT, fontSize: 10.5, color: textSecondary, paddingRight: 4, textAlign: "right" }}>
-            @ menciona · Enter nova linha · selecione várias linhas e clique em Checklist
-          </span>
+          {/* R243: a legenda "@ menciona · Enter nova linha · selecione várias
+              linhas e clique em Checklist" SAIU (Davi, 10/09/2026). Ela ocupava
+              metade da barra em toda caixa de texto do sistema, e o que ela
+              ensina cada botão já diz no `title`/`aria-label` dele. */}
         </div>
       )}
       <div

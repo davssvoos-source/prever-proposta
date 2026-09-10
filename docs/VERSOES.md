@@ -9,6 +9,20 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v0.0.8 — 2026-09-10 (U126) · sem migration
+
+- **Os botões de Status, Tipo e Impacto voltam a funcionar no pop-up** da
+  atividade: a lista deles era desenhada fora da janela, e uma janela modal
+  deixa inerte tudo o que está fora dela — clicar numa opção não escolhia nada
+  e ainda fechava o pop-up.
+- **A tela da atividade fala menos** (R243): saíram o número repetido, a linha
+  "aberta há Nd por Fulano", as duas dicas do checklist, a legenda da barra do
+  editor, a frase do prazo e a linha de origem da rosca. O que elas ensinavam
+  ficou no `title` dos botões, e o que era informação (tipo, quem abriu e
+  quando, "Re-agendado 2x") continua na ficha.
+- **Os títulos de seção crescem 20%** (PROBLEMA DETECTADO, FICHA, COMENTÁRIOS…)
+  e o número dentro da rosca diminui; os botões de escolha ficam mais baixos.
+
 ## v0.0.7 — 2026-09-09 (U125) · migration **U125** — rodar ANTES de subir o pacote
 
 - **Agendar visita técnica volta a funcionar** — era o erro "violates foreign

@@ -18,7 +18,7 @@ import type { CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
-import { ROTULO_DO_CAMPO, type ProgressoDaAtividade } from "@/features/chamados/progresso";
+import { type ProgressoDaAtividade } from "@/features/chamados/progresso";
 
 export function RoscaDeProgresso({ p, tamanho = 96, estilo }: {
   p: ProgressoDaAtividade;
@@ -65,7 +65,7 @@ export function RoscaDeProgresso({ p, tamanho = 96, estilo }: {
           )}
           <text
             x={meio} y={meio} textAnchor="middle" dominantBaseline="central"
-            fontFamily={FONT} fontWeight="400" fontSize={Math.round(tamanho / 3.4)}
+            fontFamily={FONT} fontWeight="400" fontSize={Math.round(tamanho / 4.4)}
             fill={textPrimary}
             style={{ letterSpacing: "-0.02em" } as any}
           >
@@ -75,7 +75,7 @@ export function RoscaDeProgresso({ p, tamanho = 96, estilo }: {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
         <span style={{
-          fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.14em",
+          fontFamily: FONT, fontWeight: 700, fontSize: 12, letterSpacing: "0.14em",
           textTransform: "uppercase", color: textSecondary,
         }}>
           Progresso
@@ -85,10 +85,10 @@ export function RoscaDeProgresso({ p, tamanho = 96, estilo }: {
             ? `${p.marcados} de ${p.total} ${p.total === 1 ? "item" : "itens"}`
             : p.pct === 100 ? "concluída" : "sem checklist"}
         </span>
-        {/* de onde vem o número — sem isso a rosca seria mágica */}
-        <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 10.5, color: textSecondary, lineHeight: 1.4 }}>
-          checklist da {ROTULO_DO_CAMPO[p.campo]} · concluída = 100%
-        </span>
+        {/* R243: a linha "checklist da Solução aplicada · concluída = 100%"
+            SAIU (Davi, 10/09/2026). A origem do número continua dita onde ela
+            não ocupa a tela: no `title`/`aria-label` da rosca, que é a mesma
+            frase de `progressoDaAtividade`. */}
       </div>
     </div>
   );

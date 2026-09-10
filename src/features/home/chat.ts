@@ -150,7 +150,9 @@ export function corDaMencao(
   const agendada = !!agendadaEm && (m.status === "aberto" || m.status === "agendado");
   const parcial = {
     emAberto,
-    prazoEstourado: !agendada && situacaoPrazo(m.prazoLimite, m.status) === "estourado",
+    // o MESMO relógio da assinatura — sem isto a função respondia com dois
+    // relógios diferentes e o resultado mudava sozinho na virada do dia
+    prazoEstourado: !agendada && situacaoPrazo(m.prazoLimite, m.status, agora) === "estourado",
     prazoLimite: agendada ? null : m.prazoLimite,
     agendadaEm,
   } as Atividade;

@@ -19,7 +19,7 @@ import {
   AlertTriangle, CalendarRange, CheckSquare, FileDown, RefreshCw, Square, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { card } from "@/lib/ui";
+import { card, rotuloDeSecao } from "@/lib/ui";
 import {
   FASES, FASE_LABEL, conferirCronograma, textoDoProblema, dividirEmFases,
   contarDiasUteis, contarDiasCorridos, avisoDeAnoNaoConferido, resumirObra,
@@ -65,11 +65,9 @@ export function CronogramaObra({
     ...card(isLight), padding: 16,
     display: "flex", flexDirection: "column", gap: 12,
   };
-  const SEC: CSSProperties = {
-    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
-    letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
-  };
+  // R243: o micro-rótulo de seção é UM só, em lib/ui.ts — era esta constante,
+  // copiada byte a byte em cinco telas
+  const SEC: CSSProperties = rotuloDeSecao(isLight);
   const LABEL: CSSProperties = {
     fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
     letterSpacing: "0.12em", textTransform: "uppercase",

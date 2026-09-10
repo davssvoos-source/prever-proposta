@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { card, etiqueta } from "@/lib/ui";
+import { card, etiqueta, rotuloDeSecao } from "@/lib/ui";
 import { TextoComChecklist } from "@/components/TextoComChecklist";
 import { useIsGerente, useTecnicos, useVeFinanceiro } from "@/features/gerencial/data";
 import { AssinaturaCanvas } from "@/features/chamados/AssinaturaCanvas";
@@ -225,11 +225,9 @@ export function DetalheCampo({ id }: { id: string }) {
     padding: "16px",
     display: "flex", flexDirection: "column", gap: 12,
   };
-  const SEC: CSSProperties = {
-    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
-    letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
-  };
+  // R243: o micro-rótulo de seção é UM só, em lib/ui.ts — era esta constante,
+  // copiada byte a byte em cinco telas
+  const SEC: CSSProperties = rotuloDeSecao(isLight);
   const LABEL: CSSProperties = {
     fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
     letterSpacing: "0.12em", textTransform: "uppercase",

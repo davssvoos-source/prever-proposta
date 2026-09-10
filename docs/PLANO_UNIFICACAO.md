@@ -11889,3 +11889,58 @@ que repetir na mesma hora não adianta.
 
 **Números.** Verificador: 3.217 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migration **U125 pendente** — rodar antes de subir a v0.0.7.
+
+## U126 — a v0.0.8: a tela da atividade fala menos e mostra maior (R243), e o seletor volta a funcionar dentro do pop-up
+
+Uma lista de pedidos do Davi sobre a tela da atividade, e no fim dela um
+defeito de verdade: "Estes botões não estão funcionando".
+
+**O defeito.** Status, Tipo e Impacto abrem uma lista desenhada por PORTAL no
+`<body>`. Um diálogo do Radix é MODAL: ele põe `pointer-events: none` no
+`<body>` e devolve `auto` só para a árvore do diálogo (react-remove-scroll).
+A lista, irmã dessa árvore, ficava INERTE — o clique atravessava para o véu, que
+fecha a janela. Na página funcionava; no pop-up, não. Como a tela do pop-up é a
+MESMA da página desde a R238, o defeito nasceu ali e ninguém tinha clicado
+nesses três campos dentro do diálogo até agora.
+
+A correção é desenhar a lista DENTRO do diálogo quando há um
+(`closest('[role="dialog"]')`). Isso resolve as duas metades: o ponteiro volta
+(a árvore do diálogo é a única viva) e o Radix para de tratar o clique como
+"fora" (o que fechava a janela). E muda a conta da posição — a caixa do diálogo
+tem `transform`, e um `position: fixed` dentro de um ancestral transformado é
+medido a partir DELE. MEDI no navegador, numa prévia descartável que imita o
+diálogo: com as coordenadas relativas ao container o menu caía 1px fora, porque
+`fixed` mede a partir da caixa de PADDING e `getBoundingClientRect` devolve a de
+BORDA. Descontando `clientLeft/clientTop` bateu exato (299/371 esperado, 299/371
+obtido). A mesma prévia confirmou a causa: com o `<body>` inerte,
+`elementFromPoint` sobre o menu devolvia `HTML`; com `pointer-events: auto`,
+devolvia o menu.
+
+**Os seis textos que saíram.** Todos explicavam o que a tela mostra. O número
+da atividade aparecia duas vezes (barra do pop-up e linha de meta) e some das
+duas: quem precisa dele tem o card, a URL e a busca. A linha de meta levava
+junto "aberta há 5d por Fulano" e o tipo — e nenhum dos dois some do sistema: o
+tipo é linha da ficha, e "Recebida de Davi Voos em 04/09, 01:37" é o rodapé
+dela. As duas frases de ensino (a do checklist e a da barra do editor) apareciam
+DUAS e QUATRO vezes por tela; o que elas ensinam mora agora no `title` dos
+botões. A frase do prazo virou o `title` dos dois botões do "Quando" — e a NOTA
+("Re-agendado 2x") ficou, porque não é explicação, é fato daquela atividade.
+
+**O rótulo de seção, num lugar só.** Subir 10 → 12px (os 20% que ele pediu) me
+fez achar a mesma constante copiada BYTE A BYTE em cinco telas — DetalheInterno,
+DetalheCampo, FormularioChamadoTecnico, CronogramaObra, PainelDoPlantao. Subir
+só a da atividade deixaria quatro telas dizendo a mesma coisa num tamanho
+diferente. Virou `rotuloDeSecao(isLight)` em `lib/ui.ts`, e as cinco leem de lá.
+
+**O que a verificação pegou, e não era meu.** A asserção do chat (R222)
+amanheceu vermelha sem ninguém tocar no chat: `corDaMencao` RECEBE um `agora` e
+mesmo assim perguntava as horas ao relógio da parede, porque chamava
+`situacaoPrazo` sem repassar o parâmetro. Com a virada para 10/09 um prazo de
+09/09 virou atraso, e a asserção mudou de resposta sozinha. Relógio injetado
+tem de valer para a conta inteira — consertado na função, não na asserção.
+
+Outros seis pinos descreviam a tela de ontem (a linha de meta, a dica do
+checklist, o botão de 44px, o import da rosca) e foram reapontados com o motivo.
+
+**Números.** Verificador: 3.227 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+**Sem migration** — esta entrega é só tela.

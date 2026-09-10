@@ -178,6 +178,24 @@ export const botaoSelecao = (
 };
 
 /** Título padrão — Montserrat Bold (R195: título de página é 700). */
+/**
+ * O MICRO-RÓTULO DE SEÇÃO (DS §6.2) — "PROBLEMA DETECTADO", "FICHA",
+ * "COMENTÁRIOS", "PROGRESSO". Caixa alta espaçada, dourado apagado no escuro e
+ * preto a 50% no claro.
+ *
+ * Davi, 10/09/2026: "Aumente um pouco (Aumento de algo em torno de 20%) o
+ * tamanho das fontes dos títulos" — 10 → 12. O número mora AQUI porque a mesma
+ * constante estava copiada em CINCO telas (DetalheInterno, DetalheCampo,
+ * FormularioChamadoTecnico, CronogramaObra, PainelDoPlantao), byte a byte:
+ * subir só a da tela da atividade deixaria as outras quatro dizendo a mesma
+ * coisa num tamanho diferente.
+ */
+export const rotuloDeSecao = (isLight: boolean): React.CSSProperties => ({
+  fontFamily: FONT, fontWeight: 700, fontSize: 12,
+  letterSpacing: "0.16em", textTransform: "uppercase",
+  color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
+});
+
 export const title = (isLight: boolean): React.CSSProperties => ({
   fontFamily: FONT,
   fontWeight: 700,

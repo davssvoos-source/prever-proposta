@@ -60,9 +60,8 @@ export function DialogDaAtividade({ chamadoId, aoFechar, aoAbrirPagina }: {
             borderBottom: `1px solid ${c.divisoria}`,
           }}
         >
-          <span style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario, fontVariantNumeric: "tabular-nums" }}>
-            {chamado?.numero ?? "Atividade"}
-          </span>
+          {/* R243: o número saiu da barra (Davi, 10/09/2026) — ela guarda só a
+              chapelaria: "Página inteira" e o X. */}
           <span style={{ flex: 1 }} />
           {chamadoId && (
             <button

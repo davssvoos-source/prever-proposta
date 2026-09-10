@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 50 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 51 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -18,7 +18,8 @@
   - [Campo de busca (`CampoBusca.tsx`)](#campo-de-busca-campobuscatsx)
 - [6. Padrões de componente](#6-padrões-de-componente)
   - [6.1 Card (bloco de conteúdo)](#61-card-bloco-de-conteúdo)
-  - [6.2 Micro-label de seção](#62-micro-label-de-seção)
+  - [6.2 Micro-label de seção (v2 — 2026-09-10, R243)](#62-micro-label-de-seção-v2-2026-09-10-r243)
+  - [6.2b Popover de lista dentro de um diálogo (R243)](#62b-popover-de-lista-dentro-de-um-diálogo-r243)
   - [6.3 CTA primário (pílula dourada)](#63-cta-primário-pílula-dourada)
   - [6.4 Botão de seleção (opção marcável)](#64-botão-de-seleção-opção-marcável)
   - [6.5 Input / textarea](#65-input-textarea)
@@ -457,19 +458,46 @@ background: "rgba(8,8,12,0.22)",
 backdropFilter: "blur(24px) saturate(200%)",
 ```
 
-### 6.2 Micro-label de seção
+### 6.2 Micro-label de seção (v2 — 2026-09-10, R243)
+
+O rótulo que anuncia um bloco: PROBLEMA DETECTADO, FICHA, COMENTÁRIOS,
+PROGRESSO, FOTOS E ARQUIVOS. **Mora num lugar só** — `rotuloDeSecao(isLight)`,
+em `src/lib/ui.ts`. Era uma constante copiada byte a byte em cinco telas
+(DetalheInterno, DetalheCampo, FormularioChamadoTecnico, CronogramaObra,
+PainelDoPlantao), e subir o tamanho numa deixaria as outras quatro dizendo a
+mesma coisa menor.
 
 ```jsx
-const LABEL = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontWeight: isLight ? 600 : 300,
-  fontSize: 11,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-  color: isLight ? "rgba(0,0,0,0.55)" : "rgba(248,200,17,0.65)",
-  marginBottom: 8,
-};
+export const rotuloDeSecao = (isLight) => ({
+  fontFamily: FONT, fontWeight: 700,
+  fontSize: 12,                       // R243: era 10 — "aumente algo em torno de 20%"
+  letterSpacing: "0.16em", textTransform: "uppercase",
+  color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
+});
 ```
+
+O rótulo de CAMPO (o de um input, dentro de um formulário) é outro e continua
+menor — 10/600 com `0.12em`, `LABEL` na tela que o usa. Seção anuncia bloco;
+campo anuncia caixa.
+
+### 6.2b Popover de lista dentro de um diálogo (R243)
+
+Todo menu que abre por portal — `SeletorDeOpcao`, `MenuFiltro` — desenha-se no
+`<body>`. **Dentro de um diálogo modal isso não funciona**, e o defeito é
+silencioso: o Radix põe `pointer-events: none` no `<body>` e devolve `auto` só
+para a árvore do diálogo, então a lista fica INERTE e o clique atravessa para o
+véu, que fecha a janela. A regra:
+
+- o alvo do portal é `botao.closest('[role="dialog"]') ?? document.body`,
+  decidido ao ABRIR (não a cada render);
+- dentro de um ancestral com `transform` (o Radix centra o diálogo com
+  `translate`), `position: fixed` mede a partir da caixa de **padding** dele —
+  as coordenadas saem relativas ao container e descontam `clientLeft`/
+  `clientTop` (MEDIDO: sem o desconto o menu cai 1px fora);
+- o limite de "não vazar" passa a ser a caixa do diálogo, o que também impede o
+  corte pelo `overflow: hidden` dele;
+- `pointerEvents: "auto"` no menu, de qualquer forma — dentro é redundante e
+  barato, fora é a garantia.
 
 ### 6.3 CTA primário (pílula dourada)
 

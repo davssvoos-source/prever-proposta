@@ -15,7 +15,7 @@ import {
   ResponsiveContainer, Legend, Line, ComposedChart,
 } from "recharts";
 import { AlertTriangle, Moon, Sun, Sunset } from "lucide-react";
-import { FONT, card } from "@/lib/ui";
+import { FONT, card, rotuloDeSecao } from "@/lib/ui";
 import { ERRO, AVISO, PRISMA } from "@/lib/paleta";
 import { usePessoasDoSobreaviso, useSobreaviso } from "@/features/sobreaviso/data";
 import { useClientes } from "@/features/clientes/data";
@@ -42,11 +42,9 @@ export function PainelDoPlantao({ mes, isLight }: { mes: string; isLight: boolea
     ...card(isLight), padding: "16px 18px",
     display: "flex", flexDirection: "column", gap: 12,
   };
-  const SEC: CSSProperties = {
-    fontFamily: FONT, fontWeight: 700, fontSize: 10,
-    letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
-  };
+  // R243: o micro-rótulo de seção é UM só, em lib/ui.ts — era esta constante,
+  // copiada byte a byte em cinco telas
+  const SEC: CSSProperties = rotuloDeSecao(isLight);
 
   const nomesDePessoa = useMemo(() => {
     const m: Record<string, string> = {};

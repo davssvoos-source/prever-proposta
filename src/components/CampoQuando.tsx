@@ -91,7 +91,9 @@ export function CampoQuando({
             key={o.modo}
             type="button"
             aria-pressed={modo === o.modo}
-            title={o.ajuda}
+            // R243: a frase saiu da TELA, não do sistema — quem quiser saber a
+            // diferença entre prazo e agendar lê no title, sem custar linha
+            title={`${o.ajuda} — ${o.frase}`}
             disabled={desabilitado}
             onClick={() => escolher(o.modo)}
             style={{
@@ -118,11 +120,18 @@ export function CampoQuando({
             onChange={(e) => aoMudar(parDeQuando(escolhida.modo, e.target.value))}
             style={{ ...entrada, height: compacto ? 36 : (entrada.height as number | undefined) }}
           />
-          <span style={{
-            fontFamily: FONT, fontSize: compacto ? 10.5 : 11, color: c.textoSecundario, lineHeight: 1.4,
-          }}>
-            {escolhida.frase}{nota ? ` · ${nota}` : ""}
-          </span>
+          {/* R243: a frase de cada modo ("Vence nesse dia — a cor do card segue
+              o prazo.") SAIU a pedido do Davi (10/09/2026). O que ensina qual é
+              qual são os dois botões pintados logo acima (R232), e a frase
+              ocupava três linhas na coluna estreita da ficha. A NOTA fica: ela
+              não é explicação, é fato daquela atividade ("Re-agendado 2x"). */}
+          {nota && (
+            <span style={{
+              fontFamily: FONT, fontSize: compacto ? 10.5 : 11, color: c.textoSecundario, lineHeight: 1.4,
+            }}>
+              {nota}
+            </span>
+          )}
         </>
       )}
       {!escolhida && (

@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R242 (13)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R243 (14)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-09 (R242). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-10 (R243). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4457,3 +4457,33 @@ adaptado."
   faltava. *(Davi, 09/09/2026: "Não consigo inserir o endereço do local. Arrume
   os erros!" — o endereço estava no campo; o que ele leu como recusa foi a
   frase vermelha embaixo dele.)*
+
+- **R243** — **A tela da atividade fala menos e mostra maior.** A limpeza que o
+  Davi pediu tela a tela, e que vale em toda tela com o mesmo conteúdo (a
+  página, o pop-up, o configurador rápido, a tela de campo):
+  1. **Saem seis textos**, porque explicavam o que a própria tela já mostra: o
+     número da atividade na barra do pop-up; a linha "número · aberta há Nd por
+     Fulano · tipo" embaixo do título (o tipo é linha da ficha, e quem abriu e
+     quando é o rodapé dela); "Cada item de checklist daqui conta no progresso
+     da atividade" nas duas caixas de texto; a legenda da barra do editor ("@
+     menciona · Enter nova linha · selecione várias linhas e clique em
+     Checklist"); "Vence nesse dia — a cor do card segue o prazo"; e "checklist
+     da Solução aplicada · concluída = 100%" na rosca. Nada disso se perde: o
+     que ensinava passou para o `title` do botão ou da rosca, onde não ocupa
+     linha.
+  2. **Os micro-rótulos de seção crescem 20%** — 10px → **12px**: PROBLEMA
+     DETECTADO, SOLUÇÃO APLICADA, PROGRESSO, EQUIPAMENTOS, COMENTÁRIOS, FICHA,
+     FOTOS E ARQUIVOS, LINHA DO TEMPO. O tamanho mora num lugar só
+     (`rotuloDeSecao`, em `lib/ui.ts`).
+  3. **O número dentro da rosca encolhe** (de 1/3,4 para 1/4,4 do diâmetro) e o
+     card acompanha.
+  4. **Os botões de Status, Tipo e Impacto ficam mais baixos** — 44px → **36px**.
+  5. **E eles voltam a funcionar dentro de um pop-up.** A lista deles era
+     desenhada no `<body>`; um diálogo modal apaga o ponteiro de tudo o que
+     está fora dele, então o clique não escolhia nada. A lista passa a ser
+     desenhada **dentro do diálogo** quando há um.
+  *(Davi, 10/09/2026: "Remova os textos e ajuste as margens […] Aumente um pouco
+  (Aumento de algo em torno de 20%) o tamanho das fontes dos títulos […] Diminua
+  o tamanho do número percentual dentro do gráfico de rosca […] Diminua um pouco
+  a altura dos botões de Status, Tipo e Impacto. Estes botões não estão
+  funcionando, corrija-os nesta e em todas as páginas em que eles aparecem.")*

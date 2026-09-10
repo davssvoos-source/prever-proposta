@@ -70,23 +70,69 @@ export function SeletorDeOpcao({
   const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
 
   const MARGEM = 12;
+
+  /**
+   * ONDE O MENU É DESENHADO (R243) — e por que isto é um CONSERTO, não gosto.
+   *
+   * Davi, 10/09/2026: "Estes botões não estão funcionando, corrija-os nesta e
+   * em todas as páginas em que eles aparecem." No pop-up da atividade, clicar
+   * numa opção não fazia nada.
+   *
+   * O menu ia para o `<body>` por portal. Um diálogo do Radix é MODAL: ele põe
+   * `pointer-events: none` no `<body>` e devolve `auto` só para a árvore do
+   * diálogo (react-remove-scroll). O menu, irmão dessa árvore, ficava INERTE —
+   * o clique atravessava para o véu, que fecha a janela. Ou seja: no pop-up o
+   * seletor abria e não escolhia, e na página funcionava. O mesmo vale para
+   * qualquer diálogo do sistema (o "+" da Início, o configurador).
+   *
+   * A correção é desenhar o menu DENTRO do diálogo quando há um. Isso muda a
+   * conta da posição: a caixa do diálogo tem `transform` (o Radix centra com
+   * translate), e um `position: fixed` dentro de um ancestral transformado
+   * passa a ser medido a partir DELE, não da janela. Então as coordenadas saem
+   * relativas ao container, e o limite de "não vazar" passa a ser a caixa do
+   * diálogo — que também é o que impede o menu de ser cortado pelo
+   * `overflow: hidden` dele.
+   */
+  const alvoDoPortal = useCallback((): HTMLElement => {
+    const dialogo = botaoRef.current?.closest('[role="dialog"]') as HTMLElement | null;
+    return dialogo ?? document.body;
+  }, []);
+  const alvoRef = useRef<HTMLElement | null>(null);
+
   const posicionar = useCallback(() => {
     const r = botaoRef.current?.getBoundingClientRect();
     if (!r) return;
-    const jl = window.innerWidth;
-    const jt = window.innerHeight;
+    const alvo = alvoRef.current ?? document.body;
+    const caixa = alvo === document.body ? null : alvo.getBoundingClientRect();
+    const lim = caixa
+      ? { esq: caixa.left, dir: caixa.right, topo: caixa.top, base: caixa.bottom }
+      : { esq: 0, dir: window.innerWidth, topo: 0, base: window.innerHeight };
     const largura = Math.max(larguraMenu, Math.min(r.width, 420));
     let left = r.left;
-    if (left + largura > jl - MARGEM) left = Math.max(MARGEM, jl - MARGEM - largura);
-    const abaixo = jt - r.bottom - MARGEM;
-    const acima = r.top - MARGEM;
+    if (left + largura > lim.dir - MARGEM) left = Math.max(lim.esq + MARGEM, lim.dir - MARGEM - largura);
+    const abaixo = lim.base - r.bottom - MARGEM;
+    const acima = r.top - lim.topo - MARGEM;
     const paraCima = abaixo < 180 && acima > abaixo;
     const maxH = Math.max(140, Math.min(320, paraCima ? acima : abaixo));
     const top = paraCima ? r.top - 6 - maxH : r.bottom + 6;
-    setPos({ left, top, maxH });
+    // Relativas ao container: dentro do diálogo, `fixed` mede a partir da
+    // caixa de PADDING dele — e getBoundingClientRect devolve a de BORDA.
+    // MEDIDO: sem descontar `clientLeft/clientTop` o menu saía 1px fora (a
+    // borda do diálogo), e sairia mais em qualquer caixa de borda grossa.
+    const bordaE = alvo === document.body ? 0 : alvo.clientLeft;
+    const bordaT = alvo === document.body ? 0 : alvo.clientTop;
+    setPos({
+      left: left - (caixa?.left ?? 0) - bordaE,
+      top: top - (caixa?.top ?? 0) - bordaT,
+      maxH,
+    });
   }, [larguraMenu]);
 
-  useLayoutEffect(() => { if (aberto) posicionar(); }, [aberto, posicionar]);
+  useLayoutEffect(() => {
+    if (!aberto) return;
+    alvoRef.current = alvoDoPortal();   // decidido ao ABRIR, não a cada render
+    posicionar();
+  }, [aberto, posicionar, alvoDoPortal]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -132,7 +178,12 @@ export function SeletorDeOpcao({
     ...botaoSelecao(!!atual, isLight, atual?.cor ?? null),
     ...(compacto
       ? { minHeight: 30, padding: "0 9px 0 11px", borderRadius: 999, fontSize: 12, fontWeight: 600 }
-      : { minHeight: 44, padding: "0 12px 0 14px", borderRadius: 12, fontSize: 13.5 }),
+      // R243: 44 → 36. Davi, 10/09/2026: "Diminua um pouco a altura dos botões
+      // de Status, Tipo e Impacto." Continua acima do piso de toque de 40px? Não
+      // — e é decisão consciente: estes três são de DESKTOP (a ficha da
+      // atividade), e no celular a ficha desce para uma coluna com o mesmo
+      // botão, onde 36px ainda é alvo confortável para o polegar em pílula larga.
+      : { minHeight: 36, padding: "0 11px 0 13px", borderRadius: 10, fontSize: 13 }),
     display: "inline-flex", alignItems: "center", justifyContent: "space-between", gap: compacto ? 5 : 8,
     width: cheio && !compacto ? "100%" : undefined, boxSizing: "border-box",
     textAlign: "left",
@@ -170,6 +221,9 @@ export function SeletorDeOpcao({
           className="rolagem-fina"
           style={{
             position: "fixed", left: pos.left, top: pos.top, zIndex: 200,
+            // o diálogo do Radix apaga o ponteiro de tudo o que está fora dele;
+            // dentro, isto é redundante e barato — fora, é a garantia
+            pointerEvents: "auto",
             width: Math.max(larguraMenu, Math.min(botaoRef.current?.getBoundingClientRect().width ?? 0, 420)),
             maxHeight: pos.maxH, overflowY: "auto", overscrollBehavior: "contain",
             borderRadius: 14, padding: 6,
@@ -242,7 +296,7 @@ export function SeletorDeOpcao({
             );
           })}
         </div>,
-        document.body,
+        alvoRef.current ?? document.body,
       )}
     </>
   );
