@@ -42,13 +42,14 @@ const L = {
   inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
 
-type CargoId = "tecnico" | "sac" | "comercial" | "admin";
+type CargoId = "tecnico" | "sac" | "comercial" | "admin" | "operacional";
 
 const CARGO_LIGHT: Record<string, { color: string; bg: string; border: string }> = {
   tecnico:   { color: "#15803d", bg: "#dcfce7", border: "1px solid #bbf7d0" },
   sac:       { color: "#6d28d9", bg: "#ede9fe", border: "1px solid #ddd6fe" },
   comercial: { color: "#1d4ed8", bg: "#dbeafe", border: "1px solid #bfdbfe" },
   admin:     { color: "#A63E17", bg: "#fef3c7", border: "1px solid #fde68a" },
+  operacional: { color: "#0369a1", bg: "#e0f2fe", border: "1px solid #bae6fd" },
 };
 
 const CARGO_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
@@ -56,6 +57,8 @@ const CARGO_CONFIG: Record<string, { label: string; color: string; desc: string 
   sac:       { label: "SAC",       color: "#A78BFA", desc: "Gestor de chamados — abre e acompanha tudo, não vê valores" },
   comercial: { label: "Comercial", color: "#60A5FA", desc: "Gestor que vê valores: propostas, contratos e fechamentos" },
   admin:     { label: "Admin",     color: "#F17881", desc: "Acesso total + gerenciamento de usuários" },
+  // R244 (Davi, 10/09/2026): vê todas as atividades; Início, Calendário, Clientes e Perfil
+  operacional: { label: "Operacional", color: "#5CB7E5", desc: "Vê todas as atividades de todos; Início, Calendário, Clientes e Perfil" },
 };
 
 type StaffUser = {
@@ -559,6 +562,7 @@ export function GestaoDeUsuarios() {
                       >
                         <option value="tecnico" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Técnico</option>
                         <option value="comercial" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Comercial</option>
+                        <option value="operacional" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Operacional</option>
                         <option value="admin" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Admin</option>
                       </select>
                       <button

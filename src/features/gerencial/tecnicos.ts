@@ -16,8 +16,13 @@
 // agora também o admin, que na Prever é quem faz a visita quando a equipe está
 // cheia.
 
-/** Os cargos que podem ser responsáveis por uma visita ou um chamado de campo. */
-export const CARGOS_DE_CAMPO = ["tecnico", "admin"] as const;
+/**
+ * Os cargos que podem ser responsáveis por uma visita ou um chamado de campo.
+ * R244: o OPERACIONAL entra — é para ele que o Nicholas e o Erik vão, e eles
+ * são justamente quem hoje responde por visita e chamado. A ordem da lista é a
+ * ordem em que aparecem para escolher: quem vai ao prédio todo dia primeiro.
+ */
+export const CARGOS_DE_CAMPO = ["tecnico", "operacional", "admin"] as const;
 export type CargoDeCampo = (typeof CARGOS_DE_CAMPO)[number];
 
 /** `cargo` pode responder por trabalho técnico? */
@@ -40,10 +45,13 @@ export function rotuloDoResponsavel(p: { nome?: string | null; cargo?: string | 
  * ao prédio todo dia aparece antes de quem vai por exceção.
  */
 export function ordenarResponsaveis<T extends { nome?: string | null; cargo?: string | null }>(pessoas: readonly T[]): T[] {
+  const posicao = (cargo?: string | null) => {
+    const i = (CARGOS_DE_CAMPO as readonly string[]).indexOf(cargo ?? "");
+    return i < 0 ? CARGOS_DE_CAMPO.length : i;   // desconhecido vai para o fim
+  };
   return [...pessoas].sort((a, b) => {
-    const pa = a.cargo === "tecnico" ? 0 : 1;
-    const pb = b.cargo === "tecnico" ? 0 : 1;
-    if (pa !== pb) return pa - pb;
+    const d = posicao(a.cargo) - posicao(b.cargo);
+    if (d !== 0) return d;
     return (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR");
   });
 }

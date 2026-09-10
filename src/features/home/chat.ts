@@ -253,6 +253,24 @@ export function respostasDaMencao(eventoId: string | null, respostas: readonly R
   return saida.sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
 }
 
+/**
+ * As menções que aparecem DENTRO do campo de OUTRA menção do mesmo chat — e por
+ * isso não abrem campo próprio. "Dentro" é literal: o id dela está na árvore de
+ * respostas de outra menção. Se a raiz da conversa não está no meu chat, a
+ * menção continua sendo raiz — ninguém perde mensagem por causa de agrupamento.
+ */
+export function absorvidasPor(mencoes: readonly Mencao[], respostas: readonly RespostaDoChat[]): Set<string> {
+  const arvores = mencoes
+    .filter((m) => !!m.eventoId)
+    .map((m) => ({ raiz: m.eventoId as string, sub: new Set(respostasDaMencao(m.eventoId, respostas).map((r) => r.id)) }));
+  const absorvidas = new Set<string>();
+  for (const m of mencoes) {
+    if (!m.eventoId) continue;
+    if (arvores.some((a) => a.raiz !== m.eventoId && a.sub.has(m.eventoId as string))) absorvidas.add(m.eventoId);
+  }
+  return absorvidas;
+}
+
 export type ItemDoChat =
   | { tipo: "mencao"; chave: string; criadoEm: string; ultimoEm: string; mencao: Mencao; respostas: RespostaDoChat[] }
   | { tipo: "todos"; chave: string; criadoEm: string; ultimoEm: string; mensagem: MensagemParaTodos };
@@ -276,8 +294,14 @@ export function linhaDoTempo(
   mensagens: readonly MensagemParaTodos[],
   respostas: readonly RespostaDoChat[] = [],
 ): ItemDoChat[] {
-  const idsDeResposta = new Set(respostas.map((r) => r.id));
-  const raizes = mencoes.filter((m) => !(m.eventoId && idsDeResposta.has(m.eventoId)));
+  // R245 (o defeito "as mensagens às vezes desaparecem para uns ou outros"):
+  // uma menção que É resposta só deixa de ter campo próprio se a conversa a
+  // que ela pertence ESTÁ neste chat. A U123 filtrava toda menção que fosse
+  // resposta — e a resposta que eu mando ao Erik menciona o Erik: no chat
+  // DELE ela é uma menção e é uma resposta, mas o pai dela é o comentário do
+  // PRÓPRIO Erik, que não é menção a ele. Sem raiz visível, ela sumia.
+  const absorvidas = absorvidasPor(mencoes, respostas);
+  const raizes = mencoes.filter((m) => !(m.eventoId && absorvidas.has(m.eventoId)));
   const itens: ItemDoChat[] = [
     ...raizes.map((m): ItemDoChat => {
       const minhas = respostasDaMencao(m.eventoId, respostas);
@@ -479,4 +503,54 @@ export function agruparReacoes(reacoes: readonly ReacaoMinima[], eventoId: strin
       return { emoji, total: dele.length, eu: !!euId && dele.some((r) => r.profile_id === euId) };
     })
     .filter((g) => g.total > 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// O "#" NO CHAT — as atividades recentes (R245)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Davi, 10/09/2026: "Quando o usuário tecla # no chat, crie um mecanismo que
+ * abra uma lista de sugestões de atividades baseado nas últimas mensagens
+ * (últimas atividades que teve interação). Essa lista deve conter somente o
+ * nome da atividade em cada item."
+ *
+ * A fonte é o PRÓPRIO chat: as conversas (menções) da mais recente para a mais
+ * antiga, uma vez por atividade. Escolher uma ARMA a resposta (o chip #Código,
+ * R223) — o mesmo caminho do botão Responder, então a mensagem vai para a
+ * atividade certa e volta para o chat (R240).
+ */
+export interface AtividadeRecente {
+  chamadoId: string;
+  numero: string | null;
+  titulo: string;
+  autorId: string | null;
+  /** o comentário mais recente daquela conversa — a quem a resposta se junta */
+  eventoId: string | null;
+  ultimoEm: string;
+}
+
+export function atividadesRecentes(itens: readonly ItemDoChat[]): AtividadeRecente[] {
+  const vistos = new Set<string>();
+  const saida: AtividadeRecente[] = [];
+  const porRecencia = [...itens].sort((a, b) => b.ultimoEm.localeCompare(a.ultimoEm));
+  for (const it of porRecencia) {
+    if (it.tipo !== "mencao" || vistos.has(it.mencao.chamadoId)) continue;
+    vistos.add(it.mencao.chamadoId);
+    saida.push({
+      chamadoId: it.mencao.chamadoId, numero: it.mencao.numero, titulo: it.mencao.titulo,
+      autorId: it.mencao.autorId, eventoId: it.mencao.eventoId, ultimoEm: it.ultimoEm,
+    });
+  }
+  return saida;
+}
+
+/** O filtro da lista do "#": pelo título ou pelo número, sem acento e sem caixa. */
+export function filtrarAtividadesRecentes<T extends { titulo: string; numero?: string | null }>(
+  lista: readonly T[], consulta: string, teto = 6,
+): T[] {
+  const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const q = norm(consulta.trim());
+  const l = q ? lista.filter((a) => norm(a.titulo).includes(q) || norm(a.numero ?? "").includes(q)) : [...lista];
+  return l.slice(0, teto);
 }

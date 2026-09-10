@@ -1244,6 +1244,32 @@ Linear, Jira e Notion.
   finais reservados ao "X" do Radix, que é absoluto e antes caía em cima do
   card do progresso. O conteúdo rola por baixo dela.
 
+#### v20 — 2026-09-10 (R245, R247): a tela de campo na mesma grade; a caixa do chat
+
+- **O chamado de campo usa a grade** (`.atividade-grade.campo-grade`): o
+  trabalho (problema, roteiro, cronograma, execução, cobrança, conferência,
+  linha do tempo) em `.atividade-documento`; o estado e as ações (status,
+  cliente, técnico, agenda, "Iniciar atendimento", relatório, reabrir,
+  cancelar) em `.atividade-ficha`. Casca, régua e escala são as desta seção. A
+  diferença é UMA e é de celular: `.campo-grade .atividade-ficha { order: -1 }`
+  abaixo de 1024px — o técnico abre a tela no prédio para ver o status e
+  apertar "Iniciar atendimento", então a ficha vem primeiro. Título 22/700
+  (R195); o quadrado de voltar só existe na página (no diálogo a chapelaria é
+  da barra, como na atividade interna).
+- **A caixa de texto rola sem barra** (`.rolagem-oculta`: `scrollbar-width:
+  none` + `::-webkit-scrollbar { display: none }`): o teto de altura fica
+  (120px no chat), a rolagem fica, a barra sai. Só para caixas com teto — uma
+  área que cresce sozinha não precisa.
+- **O placeholder herda o padding da área**
+  (`.editor-rico-area[data-vazio="1"]::before` com `padding: inherit;
+  box-sizing: border-box`): ele nasce exatamente onde o texto nasce, seja a
+  caixa grande (13/14) ou a do chat (10/12). Nunca chutar `left`/`top` fixos
+  num placeholder — a caixa muda de padding e ele fica torto.
+- **A lista do `#`** (`SugestoesDeAtividade`) é irmã da lista do `@`
+  (`mencao-lista`): mesma casca, mesma marcação por teclado (↑ ↓ Enter Tab
+  Esc), e cada item mostra SÓ o nome da atividade (R245). Escolher arma a
+  resposta (o chip `#Código`); não insere texto.
+
 ## 7. Arquitetura de tema
 
 Um contexto simples com persistência em `localStorage` e atributo no `<html>`:

@@ -8,12 +8,14 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-10** · última regra: **R243** · último diário:
-**U126** · verificador: **3.227 asserções, 0 falharam** · `tsc`: baseline
-**57** · migrations rodadas até a **U125** (U123 e U124 em 09/09/2026; **U125**
-em 09/09/2026) · **nenhuma migration pendente** · **versão no servidor: v0.0.7**
-(192.168.10.182); **esta entrega é a v0.0.8** — o que entrou em cada versão está
-em `docs/VERSOES.md`.
+Última atualização: **2026-09-10** · última regra: **R247** · último diário:
+**U127** · verificador: **3.240 asserções, 0 falharam** · `tsc`: baseline
+**57** · migrations rodadas até a **U125** (U123, U124 e U125 em 09/09/2026) ·
+**Pendente: U127** (`20260926090000_u127_v009_perfil_operacional.sql` — rodar
+ANTES de subir o pacote v0.0.9; sem ela o cargo OPERACIONAL não existe no
+banco) · **versão no servidor: v0.0.7** (192.168.10.182); **esta entrega é a
+v0.0.9** — o que entrou em cada versão está em `docs/VERSOES.md`. Fim de
+entrega: `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
 
 ---
 
@@ -106,6 +108,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U124 | a **v0.0.6**: a **proposta comercial volta a nascer** — prédio sem cadastro entra como **prospecção** e não como cliente (R21/R22: o INSERT em `clientes` estava sem policy desde a U27, e toda visita de prédio novo morria na RLS); o **admin faz visita técnica** e entra na lista única de responsáveis (R241); a colisão de cache `tecnicos-ativos` foi separada. Migration **U124** (`achar_ou_criar_prospeccao_do_local`) |
 | U125 | a **v0.0.7**: a **capa do chamado nasce ANTES da visita** — o gatilho da U29/U38 era AFTER INSERT e a FK `visitas_e_chamado` é conferida antes dele, então **nenhuma visita podia ser criada desde 21/08** (a terceira camada do mesmo caminho, depois da P44 e da U124); a capa passa a registrar o **local** em `chamado_locais` (cliente ou prospecção); e o **endereço vale sem o mapa** (R242): a frase deixa de ser vermelha, diz que o endereço está salvo, e o campo pede a cidade. Migration **U125** |
 | U126 | a **v0.0.8**: a tela da atividade **fala menos e mostra maior** (R243) — saem seis textos que explicavam o que a tela já mostra, os micro-rótulos de seção sobem 10 → 12px num lugar só (`rotuloDeSecao`), o número da rosca encolhe e os botões de Status/Tipo/Impacto ficam 36px; e eles **voltam a funcionar dentro do pop-up** (a lista ia para o `<body>`, que um diálogo modal deixa inerte). De brinde: `corDaMencao` passou a responder pelo relógio que recebe. Sem migration |
+| U127 | a **v0.0.9**: a revisão sistêmica — o perfil **OPERACIONAL** (R244: Início, Calendário, Clientes e Perfil; vê tudo, não é gestor; para o Nicholas e o Erik), o **chat que não perde mensagem** (R245: a resposta que menciona alguém era engolida no chat dele; Backspace vazio, barra de rolagem e placeholder da caixa; o **`#`** lista as atividades recentes, só o nome), a **Início inteira** (R246: todas as abertas + as 300 encerradas mais recentes, coluna Concluído em ordem de conclusão FIXA, rótulo da ordem à esquerda do botão), a **tela de campo no desktop** (R247: a grade documento \| ficha, embutida no pop-up — P66 parte 1), e as **ferramentas da IA** (`scripts/lib/editar.cjs`, `scripts/fechar-entrega.cjs`, pino permanente de versão). Migration **U127** (enum, dois CHECKs, `salvar_permissoes`, `handle_new_user`, semente) |
 
 ## 4. Banco: migrations
 
@@ -113,6 +116,18 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
+- **U127** (`20260926090000_u127_v009_perfil_operacional.sql`, **PENDENTE** —
+  rodar ANTES de subir o pacote v0.0.9) — o cargo **operacional** (R244) nos
+  cinco lugares que enumeram cargos: o enum `app_role` (ADD VALUE fora da
+  transação, como a U6a), o CHECK de `profiles.cargo`, o CHECK de
+  `permissoes_tela.cargo`, o `WHERE` de `salvar_permissoes` e a lista de
+  `handle_new_user`; e a semente da matriz (17 linhas: dashboard, calendario,
+  clientes e perfil em `true`, o resto em `false`, `ON CONFLICT DO NOTHING`).
+  Pré-voo exige `permissoes_tela` e `salvar_permissoes` (U11) e
+  `handle_new_user` (U6a). NÃO toca em `is_gestor` (operacional vê, não manda)
+  nem em `sync_user_role_from_cargo` (P69). Sem ela, a tela de Usuários não
+  consegue gravar o cargo (o CHECK antigo recusa). Oito itens de conferência;
+  o DESFAZER começa tirando as pessoas do cargo.
 - **U125** (`20260925090000_u125_v007_capa_da_visita_antes.sql`, rodada em
   09/09/2026) — o
   gatilho **`trg_capa_da_visita`** (BEFORE INSERT) cria a capa do chamado antes

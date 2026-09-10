@@ -33,7 +33,8 @@ lá antes de virar código**, e as importantes viram asserção permanente em
 | **admin** | Davi, Vinicius | desktop | vê e pode tudo; NUNCA entra na matriz de permissões (regra de sistema) |
 | **comercial** | — | desktop | funil de proposta + gestão (compartilha a barra do admin) |
 | **sac** | — | desktop | coordena chamados, agenda visitas (R1: o SAC é gestor) |
-| **tecnico** | Gilleno, Nicholas, Erik, Breno… | **celular** | executa em campo; só o líder da dupla tem conta (R14) |
+| **operacional** | Nicholas, Erik | desktop e celular | vê todas as atividades de todos; Início, Calendário, Clientes e Perfil; responde por visita e chamado de campo; não é gestor (R244) |
+| **tecnico** | Gilleno, Breno… | **celular** | executa em campo; só o líder da dupla tem conta (R14); as telas dele o Davi ajusta na matriz (R244) |
 
 O Controle Patrimonial usa perfil de técnico (R6). T.I. e Controle Patrimonial
 trabalham nas atividades de natureza `interno`; a equipe da atividade é a das

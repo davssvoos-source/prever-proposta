@@ -9,6 +9,32 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v0.0.9 — 2026-09-10 (U127) · migration **U127** — rodar ANTES de subir o pacote
+
+- **O perfil OPERACIONAL** (R244): um quinto cargo, para o Nicholas e o Erik.
+  Abre Início, Calendário, Clientes e Perfil; vê todas as atividades de todos;
+  pode ser responsável por visita e chamado de campo; não é gestor. Aparece na
+  tela de Usuários, no convite e na matriz de Permissões.
+- **O chat não perde mensagem** (R245): a resposta que alguém manda pelo chat
+  aparece no chat de quem respondeu E no de quem foi respondido — antes ela
+  sumia do segundo. A caixa de texto não quebra mais no Backspace vazio, não
+  mostra barra de rolagem, e o "Escreva para todos…" nasce no lugar do texto.
+  **Teclar `#`** abre a lista das atividades recentes (só o nome); escolher uma
+  arma a resposta para ela.
+- **A Início mostra tudo** (R246): todas as atividades em aberto e as 300
+  concluídas mais recentes — a poda de sete dias saiu. No Kanban, a coluna
+  Concluído fica em ordem de conclusão (a mais recente no topo), fixa, seja
+  qual for a ordem escolhida no botão; e o texto da ordem ("Prazo (crescente)")
+  passou para a esquerda do botão.
+- **A tela do chamado de campo no desktop** (R247): a mesma grade da atividade
+  interna — o trabalho à esquerda, a ficha (status, cliente, técnico, agenda,
+  ações) à direita. No celular a ficha vem primeiro. O pop-up da Início mostra
+  a mesma tela.
+- **Banco:** a **U127** cria o cargo nos cinco lugares que enumeram cargos
+  (enum, dois CHECKs, `salvar_permissoes`, `handle_new_user`) e semeia a
+  matriz de telas do operacional. Sem ela, a tela de Usuários não consegue
+  gravar o cargo novo (o CHECK recusa) — rodar ANTES do pacote.
+
 ## v0.0.8 — 2026-09-10 (U126) · sem migration
 
 - **Os botões de Status, Tipo e Impacto voltam a funcionar no pop-up** da

@@ -16,13 +16,23 @@
 // `sempre: true` marca o que não pode ser desmarcado. Perfil é o caso claro:
 // bloquear tiraria o botão de sair do app.
 
-export type PapelPermissao = "tecnico" | "comercial" | "sac";
+export type PapelPermissao = "tecnico" | "comercial" | "sac" | "operacional";
 
-/** Os três que aparecem na matriz. O admin tem tudo por regra de sistema. */
+/**
+ * Os quatro que aparecem na matriz. O admin tem tudo por regra de sistema.
+ *
+ * R244 (Davi, 10/09/2026): "vamos criar um novo perfil de usuário: OPERACIONAL.
+ * O perfil OPERACIONAL tem acesso a página INICIO, CALENDARIO, CLIENTES e
+ * PERFIL. […] Este perfil consegue visualizar todas as atividades de todos, na
+ * página INICIO." Ele vê e trabalha; não é gestor (não entra em `is_gestor`
+ * nem em `useIsGerente`). O TÉCNICO passa a ser o perfil de quem vai ao prédio
+ * pelo celular — as telas dele o Davi ajusta na matriz.
+ */
 export const PAPEIS: { chave: PapelPermissao; label: string }[] = [
   { chave: "tecnico", label: "Técnico" },
   { chave: "comercial", label: "Comercial" },
   { chave: "sac", label: "SAC" },
+  { chave: "operacional", label: "Operacional" },
 ];
 
 export interface Tela {
@@ -40,11 +50,13 @@ export interface Tela {
 
 const T = (
   chave: string, label: string, rota: string, grupo: string,
-  padrao: [boolean, boolean, boolean],
+  // [técnico, comercial, sac, operacional?] — o quarto é opcional e FECHADO
+  // por padrão (R244): o operacional só abre o que a regra dele lista
+  padrao: [boolean, boolean, boolean, boolean?],
   extra: Partial<Tela> = {},
 ): Tela => ({
   chave, label, rota, grupo,
-  padrao: { tecnico: padrao[0], comercial: padrao[1], sac: padrao[2] },
+  padrao: { tecnico: padrao[0], comercial: padrao[1], sac: padrao[2], operacional: padrao[3] ?? false },
   ...extra,
 });
 
@@ -53,8 +65,8 @@ const T = (
 // sempre se comportou, em vez de trancar todo mundo para fora.
 export const TELAS: Tela[] = [
   // ── Trabalho ──────────────────────────────────────────────────────────────
-  T("dashboard", "Início", "/dashboard", "Trabalho", [true, true, true], { sempre: true }),
-  T("calendario", "Calendário", "/calendario", "Trabalho", [true, true, true], {
+  T("dashboard", "Início", "/dashboard", "Trabalho", [true, true, true, true], { sempre: true }),
+  T("calendario", "Calendário", "/calendario", "Trabalho", [true, true, true, true], {
     nota: "o técnico vê só o que é dele, por RLS",
   }),
   // U86/R116. Os três nascem TRUE porque a LEITURA é de TODO MUNDO QUE
@@ -127,7 +139,7 @@ export const TELAS: Tela[] = [
   // ── Clientes ──────────────────────────────────────────────────────────────
   // U24: o Davi definiu quem vê a base — admin, comercial e SAC. O técnico
   // chega no cliente pelo chamado dele (detalhe não é gateado), não pela base.
-  T("clientes", "Clientes", "/clientes", "Clientes", [false, true, true]),
+  T("clientes", "Clientes", "/clientes", "Clientes", [false, true, true, true]),
   // R21: o app não cria nem consolida cliente. As chaves ficam no catálogo
   // (a semente do banco as tem, e o verificador compara os dois) mas negadas
   // para todos; as rotas redirecionam para /clientes.
@@ -150,7 +162,7 @@ export const TELAS: Tela[] = [
   }),
 
   // ── Conta ─────────────────────────────────────────────────────────────────
-  T("perfil", "Perfil", "/perfil", "Conta", [true, true, true], {
+  T("perfil", "Perfil", "/perfil", "Conta", [true, true, true, true], {
     sempre: true,
     nota: "é por onde se sai do app",
   }),

@@ -70,6 +70,16 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
   }
+  // R244: o OPERACIONAL — Início, Calendário, Clientes e Perfil. Vê tudo, não
+  // gerencia: sem painéis, sem Comercial, sem Administrativo.
+  if (cargo === "operacional") {
+    return [
+      { to: "/dashboard", label: "Início", icon: Home, tela: "dashboard" },
+      { to: "/calendario", label: "Calendário", icon: Calendar, tela: "calendario" },
+      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes" },
+      { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
+    ];
+  }
   return [
     { to: "/dashboard", label: "Início", icon: Home, tela: "dashboard" },
     { to: "/calendario", label: "Agenda", icon: Calendar, tela: "calendario" },

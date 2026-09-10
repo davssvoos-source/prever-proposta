@@ -5,7 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const inviteSchema = z.object({
   email: z.string().email(),
   nome: z.string().min(1),
-  cargo: z.enum(["admin", "comercial", "sac", "tecnico"]).default("tecnico"),
+  cargo: z.enum(["admin", "comercial", "sac", "tecnico", "operacional"]).default("tecnico"),
 });
 
 export const enviarConvite = createServerFn({ method: "POST" })

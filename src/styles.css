@@ -1211,10 +1211,18 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
    "marcado" é atributo do bloco, não um <input>: o CSS espelha o do checklist
    de leitura (.checklist-input:checked + .checklist-check). */
 .editor-rico-area { outline: none; white-space: pre-wrap; word-break: break-word; position: relative; }
+/* R245: o placeholder ("Escreva para todos…") nasce EXATAMENTE onde o texto
+   nasce — herda o padding da área em vez de chutar 13/14px, que era certo
+   para a caixa grande e errado para a do chat (10/12). */
 .editor-rico-area[data-vazio="1"]::before {
-  content: attr(data-placeholder); position: absolute; left: 13px; top: 14px; right: 13px;
+  content: attr(data-placeholder); position: absolute; left: 0; top: 0; right: 0;
+  padding: inherit; box-sizing: border-box;
   color: var(--text-muted); pointer-events: none; white-space: pre-wrap;
 }
+/* R245: a caixa do chat rola sem mostrar a barra — 120px de teto continuam
+   valendo, só a barra some (Davi: "remova a barra de scroll da caixa de texto") */
+.rolagem-oculta { scrollbar-width: none; }
+.rolagem-oculta::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .editor-rico-area > [data-bloco] { position: relative; padding: 3px 0; min-height: 1.55em; }
 .editor-rico-area > [data-bloco="checklist"],
 .editor-rico-area > [data-bloco="lista"] { padding-left: 30px; }
@@ -1279,6 +1287,10 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
 @media (min-width: 1024px) { .atividade-grade { grid-template-columns: minmax(0, 1fr) 340px; } }
 @media (min-width: 1700px) { .atividade-grade { grid-template-columns: minmax(0, 1fr) 360px; } }
 .atividade-documento { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* R247: a tela do chamado de CAMPO usa a mesma grade — e no celular a FICHA vem
+   primeiro (status, "Iniciar atendimento"), porque é para isso que o técnico
+   abre a tela no prédio; o documento (problema, roteiro, execução) vem depois. */
+@media (max-width: 1023px) { .campo-grade .atividade-ficha { order: -1; } }
 .atividade-ficha { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
 /* Os textos: um ocupa o documento inteiro; na corretiva são DOIS, e a partir de

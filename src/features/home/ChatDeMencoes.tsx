@@ -68,9 +68,9 @@ import { useMinhasMencoes, useMensagensDoChat, useRespostasDoChat, useCanalDoCha
 import {
   CHAVE_LIDO_ATE_CHAT, CHAVE_POSICAO_CHAT, PRISMA_DA_MENSAGEM, ROTULO_DA_ORIGEM,
   contarNaoLidasDoChat, corDaMencao, dataHoraCurta, ehComentario, hashtagDaAtividade,
-  lerPosicaoGuardada, linhaDoTempo, paragrafoComMencao, posicaoDentroDaTela, rotearEnvio,
+  atividadesRecentes, lerPosicaoGuardada, linhaDoTempo, paragrafoComMencao, posicaoDentroDaTela, rotearEnvio,
   type CorDaMensagem, type ItemDoChat, type Mencao, type MensagemParaTodos, type Ponto,
-  type RespostaDoChat, type RespostaPara,
+  type AtividadeRecente, type RespostaDoChat, type RespostaPara,
 } from "./chat";
 
 type Pessoas = Record<string, { nome: string; avatar_url: string | null }>;
@@ -131,6 +131,8 @@ export function ChatDeMencoes({ aoAbrirAtividade }: { aoAbrirAtividade: (chamado
   const respostas = respostasQ.data?.respostas ?? [];
   const faltaRespostas = !!respostasQ.data?.faltaMigration;
   const itens = useMemo(() => linhaDoTempo(mencoes, mensagens, respostas), [mencoes, mensagens, respostas]);
+  // R245: as conversas mais recentes, uma por atividade — é o que o "#" oferece
+  const recentes = useMemo(() => atividadesRecentes(itens), [itens]);
 
   // ── o selo: menções não lidas + recados que chegaram depois da última abertura ──
   const [lidoAte, setLidoAte] = useState<string | null>(() => lerDoNavegador(CHAVE_LIDO_ATE_CHAT));
@@ -314,6 +316,9 @@ export function ChatDeMencoes({ aoAbrirAtividade }: { aoAbrirAtividade: (chamado
         conhecidas={mencoes}
         respostaPara={respostaPara}
         limparResposta={() => setRespostaPara(null)}
+        recentes={recentes}
+        pessoasPorId={pessoasPorId}
+        armarResposta={(r) => setRespostaPara(r)}
       />
     </section>
   );
@@ -321,13 +326,18 @@ export function ChatDeMencoes({ aoAbrirAtividade }: { aoAbrirAtividade: (chamado
 
 // ── o rodapé: o chip #Código e o campo fixo ────────────────────────────────
 
-function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparResposta }: {
+function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparResposta, recentes, pessoasPorId, armarResposta }: {
   c: ReturnType<typeof cinzas>;
   isLight: boolean;
   pessoasMencao: PessoaParaMencao[];
   conhecidas: readonly Mencao[];
   respostaPara: RespostaPara | null;
   limparResposta: () => void;
+  /** R245: as atividades recentes do chat — a lista do "#" */
+  recentes: readonly AtividadeRecente[];
+  pessoasPorId: Pessoas;
+  /** R245: escolher no "#" é o mesmo gesto do botão Responder */
+  armarResposta: (r: RespostaPara) => void;
 }) {
   const qc = useQueryClient();
   const [texto, setTexto] = useState("");
@@ -402,7 +412,20 @@ function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparRes
           aoMudar={setTexto}
           pessoas={pessoasMencao}
           rows={1}
-          placeholder={resposta ? "Sua resposta… (Enter envia)" : "Escreva para todos… (#código responde numa atividade)"}
+          placeholder={resposta ? "Sua resposta… (Enter envia)" : "Escreva para todos… (# escolhe uma atividade)"}
+          // R245: o "#" abre as atividades recentes (só o nome); escolher uma
+          // ARMA a resposta — o chip #Código aparece acima, e a mensagem vai
+          // para a atividade como resposta (R223/R240)
+          atividades={recentes.map((a) => ({ id: a.chamadoId, titulo: a.titulo, numero: a.numero }))}
+          aoEscolherAtividade={(a) => {
+            const r = recentes.find((x) => x.chamadoId === a.id);
+            if (!r) return;
+            armarResposta({
+              chamadoId: r.chamadoId, numero: r.numero,
+              autorId: r.autorId, autorNome: r.autorId ? (pessoasPorId[r.autorId]?.nome ?? null) : null,
+              eventoId: r.eventoId,
+            });
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && podeEnviar) {
               e.preventDefault();

@@ -17,7 +17,13 @@ Cicatriz: `has_role()` lia só `user_roles` e teria trancado para fora o
 comercial cadastrado via `cargo` (pego na revisão da S1). No app, o padrão é
 o mesmo (ver a consulta `is-admin` em `gerencial.tsx`).
 
-Cargos: `admin`, `comercial`, `sac`, `tecnico` (ver `visao-geral.md`).
+Cargos: `admin`, `comercial`, `sac`, `tecnico`, `operacional` (ver `visao-geral.md`).
+O **operacional** (R244, U127) vê tudo e não é gestor: não entra em `is_gestor()`
+nem em `useIsGerente`; abre Início, Calendário, Clientes e Perfil (semente da
+U127) e pode ser responsável por visita e chamado (`CARGOS_DE_CAMPO`, R241/R244).
+Um cargo novo toca CINCO lugares no banco — o enum `app_role`, os CHECKs de
+`profiles.cargo` e `permissoes_tela.cargo`, o `WHERE` de `salvar_permissoes` e a
+lista de `handle_new_user` — e a semente da matriz; a U127 é o modelo.
 
 ## Camada 2 — matriz de telas (que portas o cargo abre)
 
@@ -95,9 +101,9 @@ Pontos que valem regra:
 
 ## Procedimento: adicionar uma tela nova com permissão
 
-1. **Catálogo**: entrada `T("chave", "Nome", "/rota", "Grupo", [tec, com, sac], {...})`
+1. **Catálogo**: entrada `T("chave", "Nome", "/rota", "Grupo", [tec, com, sac, ope?], {...})`
    em `src/lib/telas.ts`.
-2. **Semente**: migration nova inserindo as 3 linhas com os MESMOS valores
+2. **Semente**: migration nova inserindo as 4 linhas (uma por cargo da matriz) com os MESMOS valores
    (`ON CONFLICT DO NOTHING` se não quiser sobrescrever escolha do admin;
    `DO UPDATE` só quando a mudança é decisão de produto — padrão U28/U30).
 3. **Guarda**: `beforeLoad` com `guardaDeTela("chave")` + redirect.

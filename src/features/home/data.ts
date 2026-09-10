@@ -24,6 +24,17 @@ import { SERVICO_LABEL, type ServicoCliente } from "@/features/clientes/data";
 import { inicioSemana } from "@/lib/periodos";
 
 /** Encerrados mais velhos que isto não entram na Home. */
+/**
+ * R246 (Davi, 10/09/2026): "Todas as atividades devem aparecer para todos na
+ * tela INICIO, bem como as atividades que já foram concluídas." A poda de 7
+ * dias das encerradas SAIU. O que fica é um teto de CONTAGEM, não de data: as
+ * 300 encerradas mais recentes (a importação do Notion gravou ~2000 concluídas
+ * de uma vez, e o PostgREST TRUNCA em silêncio perto de 1000 linhas — teto sem
+ * aviso é o pior jeito de faltar dado). Sem cliff de data: uma atividade
+ * concluída há meses continua aparecendo enquanto estiver entre as 300.
+ */
+export const TETO_ENCERRADAS_NA_INICIO = 300;
+/** @deprecated R246: a Início não poda mais por dias — fica só para quem ainda lê o nome. */
 export const DIAS_ENCERRADO = 7;
 
 /**
@@ -58,7 +69,7 @@ const CAMPOS_VISITA =
 
 export interface Sessao {
   userId: string | null;
-  cargo: "tecnico" | "sac" | "comercial" | "admin" | null;
+  cargo: "tecnico" | "sac" | "comercial" | "admin" | "operacional" | null;
 }
 
 /** Papel e id numa consulta só — o layout já busca o perfil sob outra chave. */
@@ -72,20 +83,28 @@ export function useSessao() {
       const { data } = await supabase
         .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
       const c = (data as any)?.cargo as string | undefined;
-      const cargo = c === "tecnico" || c === "sac" || c === "comercial" || c === "admin" ? c : null;
+      const cargo = c === "tecnico" || c === "sac" || c === "comercial" || c === "admin" || c === "operacional" ? c : null;
       return { userId: user.id, cargo };
     },
   });
 }
 
 export function useChamadosDaHome(s: Sessao) {
-  const corte = new Date(Date.now() - DIAS_ENCERRADO * 864e5).toISOString();
   return useQuery({
-    queryKey: ["home-chamados", s.userId, s.cargo, corte.slice(0, 10)],
+    queryKey: ["home-chamados", s.userId, s.cargo],
     enabled: !!s.userId,
     queryFn: async (): Promise<BrutoChamado[]> => {
-      // corte grosso no servidor por updated_at; o refino por data de
-      // encerramento é no cliente, porque PostgREST não tem coalesce.
+      // R246: DUAS consultas — as em aberto TODAS, e as encerradas pelas 300
+      // mais recentes (ver TETO_ENCERRADAS_NA_INICIO). Era uma só, com a poda
+      // de 7 dias por updated_at; a poda saiu.
+      const { data: encerradas, error: erroEnc } = await supabase
+        .from("chamados" as any)
+        .select(CAMPOS_DA_HOME)
+        .neq("natureza", "comercial")
+        .in("status", ["concluido", "cancelado"])
+        .order("updated_at", { ascending: false })
+        .limit(TETO_ENCERRADAS_NA_INICIO);
+      if (erroEnc) throw erroEnc;
       const { data, error } = await supabase
         .from("chamados" as any)
         .select(CAMPOS_DA_HOME)
@@ -99,10 +118,10 @@ export function useChamadosDaHome(s: Sessao) {
         // funil, tem a foto, sabe para qual tela do fluxo levar) e que desde a
         // U29 já carrega o número CH- vindo da capa pelo join.
         .neq("natureza", "comercial")
-        .or(`status.not.in.(concluido,cancelado),updated_at.gte.${corte}`)
+        .not("status", "in", "(concluido,cancelado)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const lista = ((data as any[]) ?? []) as BrutoChamado[];
+      const lista = [...(((data as any[]) ?? []) as BrutoChamado[]), ...(((encerradas as any[]) ?? []) as BrutoChamado[])];
       // R225 (U119) — REGRA 5: `reagendamentos` vem numa consulta à parte, só
       // dos que foram remarcados (poucos), porque até a migration rodar a
       // coluna não existe (42703) e pôr o nome dela no SELECT principal
@@ -280,7 +299,6 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
       locaisDoChamado: locaisDeTodos.data,
       equipeDePessoa,
     };
-    const corte = agora.getTime() - DIAS_ENCERRADO * 864e5;
     const lista: Atividade[] = [];
 
     // R221 (U119): o recorte "só o meu" do técnico SAIU. Davi, 08/09/2026:
@@ -288,17 +306,12 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
     // sistema." A lente "Meu dia" e o filtro por pessoa continuam sendo o
     // jeito de olhar só o seu — escolha, não imposição.
     for (const c of chamados.data ?? []) {
-      const a = atividadeDoChamado(c, ctx);
-      // refino do corte: quando o chamado saiu da fila de verdade. A conta
-      // mora no modelo (`encerradoEm`) porque o gráfico precisa do mesmo
-      // número — duas contas do mesmo fato acabam discordando.
-      if (a.encerradoEm && new Date(a.encerradoEm).getTime() < corte) continue;
-      lista.push(a);
+      // R246: sem poda por data — o que veio do servidor entra. O teto é de
+      // contagem (as 300 encerradas mais recentes), lá na consulta.
+      lista.push(atividadeDoChamado(c, ctx));
     }
     for (const v of visitas.data ?? []) {
-      const a = atividadeDaVisita(v, ctx);
-      if (a.encerradoEm && new Date(a.encerradoEm).getTime() < corte) continue;
-      lista.push(a);
+      lista.push(atividadeDaVisita(v, ctx));
     }
     return lista;
     // `agora` entra nas dependências de propósito: sem isso o "atrasado"

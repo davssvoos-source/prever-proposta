@@ -109,6 +109,43 @@ Detalhes e cicatrizes: `docs/manual/banco-e-migrations.md`.
 - Constante de estilo em nível de módulo não enxerga tema — vire função
   `(isLight)`.
 
+## As ferramentas da IA (economize esforço — U127)
+
+Davi, 10/09/2026: "garanta que o desenvolvimento contínuo e manutenções no
+sistema sejam feitas de tal maneira que economize esforço e ganhe eficiência no
+trabalho da I.A." O que se repetia em toda entrega virou ferramenta ou regra:
+
+- **Patch de código: `scripts/lib/editar.cjs`.** `abrir(arquivo)` →
+  `troca/trocaTodas/antesDe/depoisDe/entre/anexa` → `lote(...)` grava TODOS
+  ou NENHUM, listando de uma vez cada marcador que não casou. Texto longo vem
+  de arquivo (`deArquivo`). O rascunho `.cjs` é escrito pelo **Write** no
+  scratchpad — **nunca** heredoc do Bash nem `node -e` (comem barra
+  invertida); **nunca** crase dentro de template literal (use `deArquivo` ou
+  concatenação). Nome novo a cada rascunho (o Write não sobrescreve arquivo
+  que a sessão não leu).
+- **Fim de entrega: `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.**
+  Sobe a versão nas duas fontes, atualiza o cabeçalho do ESTADO, regenera os
+  sumários, roda o verificador e — só com 0 falharam — grava o número no
+  ESTADO e em todo `{{VERIFICADOR}}` (deixe o marcador na entrada do diário).
+  Antes dele vem a prosa: a entrada `## vX — data (Un) · migration…` no
+  `VERSOES.md`, a regra, o diário, o ESTADO §3/§4.
+- **Pino descreve ARQUIVO, nunca estado do banco.** "A migration existe / o
+  código faz X" fica verde para sempre; "o ESTADO aponta a U tal como
+  pendente" fica vermelho no dia em que o Davi roda a migration. A versão tem
+  UM pino permanente (package.json = versao.ts = a entrada mais nova do
+  VERSOES.md); nenhum bloco de U pina o número. Ao reapontar um pino, escreva
+  o motivo ao lado dele.
+- **Teste o caminho inteiro, não a camada.** Três defeitos empilhados no mesmo
+  caminho (CHECK → RLS → FK; U84, U124, U125) — cada um escondia o seguinte, e
+  cada entrega "consertou" um. Quando o Davi diz "ainda não funciona", refaça
+  o gesto dele de ponta a ponta antes de mexer.
+- **MEDIR no navegador antes de dizer pronto** (U120, U122, U126): margem,
+  largura, `getBoundingClientRect`. Um pino de CSS prova que a regra está
+  escrita, não que a tela obedece.
+- **Portal dentro de diálogo modal** (R243): menu por portal no `<body>` fica
+  INERTE dentro de um Dialog do Radix — o alvo é `closest('[role=dialog]')`, e
+  a conta de `position: fixed` desconta `clientLeft/clientTop` do container.
+
 ## Mapa do repo
 
 **Comece por `docs/ESTADO_ATUAL.md`** — ele diz onde o projeto está e em que
@@ -134,6 +171,8 @@ ordem ler o resto.
 | `.claude/skills/organizador/` | a SKILL de organização e planejamento: onde mora cada fato (documentos mestre), os quatro rituais (início de sessão · pedido do Davi · durante · fim de entrega), estratégias de leitura por sumário e de escrita que dura. Carrega em toda sessão; `/organizador` |
 | `.claude/skills/banco/` | a SKILL de migrations: o procedimento inegociável, a regra 5 (ordem de deploy e as listas NAO_OFERECIDOS), o que cada tipo de mudança exige, as cicatrizes, o modelo de migration para copiar. Carrega em toda mudança de schema/RLS/gatilho; `/banco` |
 | `scripts/sumario.cjs` | gera/confere os sumários dos documentos mestre (`--check` no verificador) |
+| `scripts/lib/editar.cjs` | os ajudantes de patch (troca/antesDe/depoisDe/entre/anexa, tudo-ou-nada) — todo rascunho `.cjs` de edição usa isto |
+| `scripts/fechar-entrega.cjs` | o fim de entrega numa tacada: versão, cabeçalho do ESTADO, sumários, verificador, números |
 | `src/features/*/modelo.ts` | a lógica pura de cada domínio |
 | `supabase/migrations/` | histórico completo do banco (fonte do schema) |
 
@@ -143,4 +182,5 @@ ordem ler o resto.
 node scripts/verificar-logica.cjs   # tem de terminar "0 falharam"
 npx vite build                      # tem de completar
 npx tsc --noEmit | grep -c "error TS"   # baseline 57; não crie novos
+node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un   # fim de entrega: versão, ESTADO, sumários, verificador, números
 ```

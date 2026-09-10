@@ -112,7 +112,9 @@ function Home() {
 
   const { data: sessao } = useSessao();
   const s = sessao ?? { userId: null, cargo: null };
-  const gestor = s.cargo === "admin" || s.cargo === "comercial" || s.cargo === "sac";
+  // quem enxerga a casa inteira — e por isso ganha o filtro por pessoa. O
+  // operacional entra (R244: "consegue visualizar todas as atividades de todos")
+  const veTodos = s.cargo === "admin" || s.cargo === "comercial" || s.cargo === "sac" || s.cargo === "operacional";
 
   const [novaAberta, setNovaAberta] = useState(false);
   /** R175: gráficos, meta, indicadores e o campo de IA recolhidos (preferência) */
@@ -654,7 +656,7 @@ function Home() {
               selecionados={filtros.equipe === "todas" ? [] : [filtros.equipe]}
               onMudar={(v) => setFiltros((f) => ({ ...f, equipe: v[0] ?? "todas" }))}
             />
-            {gestor && pessoas.length > 0 && (
+            {veTodos && pessoas.length > 0 && (
               <MenuFiltro
                 rotulo="Pessoa"
                 vazio="Responsável"
@@ -677,15 +679,9 @@ function Home() {
                 a resposta — prazo e recebimento. A `nota` de cada uma diz o
                 que a ordem faz de verdade ("vence antes primeiro"), porque
                 "crescente" sozinho não responde crescente EM QUÊ. */}
-            <MenuFiltro
-              rotulo="Ordenar"
-              icone={ArrowUpDown}
-              larguraMenu={250}
-              opcoes={ORDENACOES.map((o) => ({ valor: o.valor, label: o.label, nota: o.nota }))}
-              selecionados={filtros.ordenacao ? [filtros.ordenacao] : []}
-              onMudar={(v) => setFiltros((f) => ({ ...f, ordenacao: v[0] ?? null }))}
-            />
-            {/* R182 (Davi, 04/09/2026): "a ordenação deve estar sempre escrita ao
+            {/* R246 (Davi, 10/09/2026): o rótulo fica à ESQUERDA do botão — "o texto
+                'Prazo crescente' […] deve estar ao lado esquerdo do botão".
+                R182 (Davi, 04/09/2026): "a ordenação deve estar sempre escrita ao
                 lado do botão de ordenar. Ou seja, se for Prazo (Crescente), deve
                 estar escrito isso". O ícone sozinho não dizia crescente EM QUÊ —
                 e a ordem em vigor pode ser a do preset, que ninguém escolheu. */}
@@ -700,6 +696,14 @@ function Home() {
               {ORDENACOES.find((o) => o.chave === ordem.chave && o.desc === ordem.desc)?.label
                 ?? ORDENACOES.find((o) => o.chave === ordem.chave)?.label ?? ""}
             </span>
+            <MenuFiltro
+              rotulo="Ordenar"
+              icone={ArrowUpDown}
+              larguraMenu={250}
+              opcoes={ORDENACOES.map((o) => ({ valor: o.valor, label: o.label, nota: o.nota }))}
+              selecionados={filtros.ordenacao ? [filtros.ordenacao] : []}
+              onMudar={(v) => setFiltros((f) => ({ ...f, ordenacao: v[0] ?? null }))}
+            />
             {/* a lupa continua existindo SÓ no celular — lá ela tem função de
                 verdade: abre o campo de busca colapsável abaixo da barra, que
                 no celular não tem onde morar fixo (so-celular logo adiante) */}

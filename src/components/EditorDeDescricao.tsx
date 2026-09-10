@@ -50,6 +50,7 @@ import {
   textoParaBlocos, blocosParaTexto, linhaParaBloco, segmentar, tokenDeMencao,
   mencaoEmCurso, filtrarPessoasParaMencao,
   type Bloco, type TipoDeBloco,
+  hashtagEmCurso,
 } from "@/lib/texto-rico";
 import { useRascunhoSalvo } from "@/hooks/useRascunhoSalvo";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
@@ -404,6 +405,89 @@ export function SugestoesDeMencao({ pessoas, marcada, aoEscolher, aoMarcar }: {
 }
 
 /**
+ * O "#" (R245): uma atividade que a caixa de texto pode oferecer. Só o que a
+ * LISTA precisa — o título (Davi: "somente o nome da atividade em cada item")
+ * e um id para quem chamou saber qual foi. O número entra só no filtro.
+ */
+export interface AtividadeParaHashtag {
+  id: string;
+  titulo: string;
+  numero?: string | null;
+}
+
+/** A lista do "#": só o nome da atividade em cada item. */
+export function SugestoesDeAtividade({ atividades, marcada, aoEscolher, aoMarcar }: {
+  atividades: AtividadeParaHashtag[];
+  marcada: number;
+  aoEscolher: (a: AtividadeParaHashtag) => void;
+  aoMarcar: (i: number) => void;
+}) {
+  const { isLight } = useTheme();
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
+  if (atividades.length === 0) {
+    return (
+      <div className="mencao-lista" style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, padding: "8px 10px" }}>
+        Nenhuma atividade recente com esse nome.
+      </div>
+    );
+  }
+  return (
+    <div className="mencao-lista" role="listbox" aria-label="Atividades recentes">
+      {atividades.map((a, i) => (
+        <button
+          key={a.id}
+          type="button"
+          role="option"
+          aria-selected={i === marcada}
+          onMouseDown={(e) => { e.preventDefault(); aoEscolher(a); }}
+          onMouseEnter={() => aoMarcar(i)}
+          className="hover-suave"
+          style={{
+            width: "100%", minHeight: 36, padding: "5px 9px", borderRadius: 9,
+            display: "flex", alignItems: "center", textAlign: "left",
+            background: i === marcada ? (isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.07)") : "transparent",
+            border: "none", cursor: "pointer", color: textPrimary,
+            fontFamily: FONT, fontWeight: i === marcada ? 600 : 400, fontSize: 13,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+        >
+          {a.titulo}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** O estado do "#": o que foi digitado depois da cerquilha e as atividades que casam. */
+export function useHashtag(atividades: AtividadeParaHashtag[]) {
+  const [consulta, setConsulta] = useState<string | null>(null);
+  const [marcada, setMarcada] = useState(0);
+  const sugestoes = useMemo(() => {
+    if (consulta === null) return [];
+    const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const q = norm(consulta.trim());
+    const l = q ? atividades.filter((a) => norm(a.titulo).includes(q) || norm(a.numero ?? "").includes(q)) : atividades;
+    return l.slice(0, 6);
+  }, [atividades, consulta]);
+  useEffect(() => { setMarcada(0); }, [consulta]);
+  function observar(texto: string, cursor: number) {
+    const em = hashtagEmCurso(texto, cursor);
+    setConsulta(em ? em.consulta : null);
+  }
+  const aberta = consulta !== null && atividades.length > 0;
+  function teclado(e: KeyboardEvent): AtividadeParaHashtag | boolean {
+    if (!aberta) return false;
+    if (e.key === "ArrowDown") { e.preventDefault(); setMarcada((m) => Math.min(sugestoes.length - 1, m + 1)); return true; }
+    if (e.key === "ArrowUp") { e.preventDefault(); setMarcada((m) => Math.max(0, m - 1)); return true; }
+    if (e.key === "Escape") { e.preventDefault(); setConsulta(null); return true; }
+    if ((e.key === "Enter" || e.key === "Tab") && sugestoes[marcada]) { e.preventDefault(); return sugestoes[marcada]; }
+    return false;
+  }
+  return { aberta, sugestoes, marcada, setMarcada, observar, fechar: () => setConsulta(null), teclado };
+}
+
+/**
  * O estado do "@" numa caixa de texto qualquer: o que foi digitado depois do
  * arroba, as pessoas que casam, qual está marcada.
  */
@@ -481,15 +565,23 @@ export interface EditorRicoProps {
   onKeyDown?: (e: KeyboardEvent<HTMLElement>) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  /** R245: as atividades que o "#" oferece (o chat passa as recentes); sem lista, "#" é texto */
+  atividades?: AtividadeParaHashtag[];
+  /** R245: escolhida uma atividade, o "#consulta" sai do texto e quem chamou decide o que fazer */
+  aoEscolherAtividade?: (a: AtividadeParaHashtag) => void;
+  /** classe extra da área (a caixa do chat esconde a barra de rolagem) */
+  classe?: string;
 }
 
 export function EditorRico({
   valor, aoMudar, pessoas, placeholder, id, minAltura, somenteLeitura = false, barra = false, estilo, onKeyDown, onFocus, onBlur,
+  atividades, aoEscolherAtividade, classe,
 }: EditorRicoProps) {
   const { isLight } = useTheme();
   const areaRef = useRef<HTMLDivElement>(null);
   const ultimoEmitido = useRef<string | null>(null);
   const men = useMencao(pessoas);
+  const hash = useHashtag(atividades ?? []);
 
   const textPrimary = isLight ? "#212121" : "#ffffff";
   const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.62)";
@@ -524,6 +616,29 @@ export function EditorRico({
     const bloco = raiz ? blocoAtual(raiz) : null;
     const antes = bloco ? textoAntesDoCursor(bloco) : "";
     men.observar(antes, antes.length);
+    hash.observar(antes, antes.length);   // R245: o "#" anda junto do "@"
+  }
+  /** R245: escolhida uma atividade, o "#consulta" sai do texto — a resposta é do pai. */
+  function escolherAtividade(a: AtividadeParaHashtag) {
+    const raiz = areaRef.current;
+    const sel = selecaoAtual();
+    if (raiz && sel && sel.rangeCount > 0) {
+      const r = sel.getRangeAt(0);
+      const no = r.startContainer;
+      if (no.nodeType === Node.TEXT_NODE) {
+        const texto = (no.textContent ?? "").slice(0, r.startOffset);
+        const em = hashtagEmCurso(texto, texto.length);
+        if (em) {
+          const del = document.createRange();
+          del.setStart(no, em.inicio);
+          del.setEnd(no, r.startOffset);
+          del.deleteContents();
+        }
+      }
+    }
+    hash.fechar();
+    emitir();
+    aoEscolherAtividade?.(a);
   }
   function focarSePreciso(raiz: HTMLElement) {
     const sel = selecaoAtual();
@@ -596,10 +711,13 @@ export function EditorRico({
     const raiz = areaRef.current;
     if (!raiz || somenteLeitura) return;
 
-    // a lista do "@" tem prioridade sobre tudo
+    // as listas do "@" e do "#" têm prioridade sobre tudo
     const rm = men.teclado(e);
     if (rm === true) return;
     if (rm && typeof rm === "object") { escolherMencao(rm); return; }
+    const rh = hash.teclado(e);
+    if (rh === true) return;
+    if (rh && typeof rh === "object") { escolherAtividade(rh); return; }
 
     // o pai decide primeiro (a caixa de comentário envia no Enter)
     onKeyDown?.(e);
@@ -634,7 +752,14 @@ export function EditorRico({
         e.preventDefault();
         juntarComAnterior(bloco, anterior);
         emitir();
+        return;
       }
+      // R245 (Davi: "se o usuário clicar no botão do teclado de apagar quando
+      // não houver texto, ela buga"): no começo do PRIMEIRO bloco não há o que
+      // apagar — mas o navegador apagava o próprio <div> do bloco, e a área
+      // ficava sem estrutura (placeholder preso, cursor perdido, texto novo
+      // nascendo fora de bloco). Não há nada antes: a tecla não faz nada.
+      e.preventDefault();
     }
   }
 
@@ -707,7 +832,7 @@ export function EditorRico({
       <div
         id={id}
         ref={areaRef}
-        className="editor-rico-area"
+        className={classe ? `editor-rico-area ${classe}` : "editor-rico-area"}
         role="textbox"
         aria-multiline="true"
         aria-readonly={somenteLeitura || undefined}
@@ -722,7 +847,7 @@ export function EditorRico({
         onPaste={colar}
         onMouseDown={mouseDown}
         onFocus={() => { document.execCommand("styleWithCSS", false, "false"); onFocus?.(); }}
-        onBlur={() => { men.fechar(); onBlur?.(); }}
+        onBlur={() => { men.fechar(); hash.fechar(); onBlur?.(); }}
         style={{
           ...estiloTexto,
           minHeight: minAltura,
@@ -736,6 +861,11 @@ export function EditorRico({
           <SugestoesDeMencao pessoas={men.sugestoes} marcada={men.marcada} aoEscolher={escolherMencao} aoMarcar={men.setMarcada} />
         </div>
       )}
+      {hash.aberta && !men.aberta && !somenteLeitura && (
+        <div style={{ padding: "0 8px 8px" }}>
+          <SugestoesDeAtividade atividades={hash.sugestoes} marcada={hash.marcada} aoEscolher={escolherAtividade} aoMarcar={hash.setMarcada} />
+        </div>
+      )}
     </div>
   );
 }
@@ -744,7 +874,7 @@ export function EditorRico({
 // A caixa de comentário com "@" — a mesma área, sem barra, o Enter é do pai
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function TextareaComMencoes({ valor, aoMudar, pessoas, placeholder, estilo, onKeyDown, onFocus, onBlur, id }: {
+export function TextareaComMencoes({ valor, aoMudar, pessoas, placeholder, estilo, onKeyDown, onFocus, onBlur, id, atividades, aoEscolherAtividade }: {
   valor: string;
   aoMudar: (v: string) => void;
   pessoas: PessoaParaMencao[];
@@ -756,6 +886,9 @@ export function TextareaComMencoes({ valor, aoMudar, pessoas, placeholder, estil
   onFocus?: () => void;
   onBlur?: () => void;
   id?: string;
+  /** R245: as atividades que o "#" oferece */
+  atividades?: AtividadeParaHashtag[];
+  aoEscolherAtividade?: (a: AtividadeParaHashtag) => void;
 }) {
   return (
     <EditorRico
@@ -767,6 +900,10 @@ export function TextareaComMencoes({ valor, aoMudar, pessoas, placeholder, estil
       onKeyDown={onKeyDown}
       onFocus={onFocus}
       onBlur={onBlur}
+      atividades={atividades}
+      aoEscolherAtividade={aoEscolherAtividade}
+      // R245: com teto de altura a área rola — mas sem MOSTRAR a barra
+      classe={estilo?.maxHeight ? "rolagem-oculta" : undefined}
       estilo={{ ...estilo, overflowY: estilo?.maxHeight ? "auto" : undefined }}
     />
   );

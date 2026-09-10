@@ -206,3 +206,16 @@ export function filtrarPessoasParaMencao<T extends { nome: string }>(pessoas: T[
   const lista = q ? pessoas.filter((p) => norm(p.nome).includes(q)) : pessoas;
   return lista.slice(0, teto);
 }
+
+/**
+ * O "#" EM CURSO (R245): o que foi digitado depois da cerquilha, para a lista
+ * de atividades do chat. A mesma forma de `mencaoEmCurso`: só conta se o "#"
+ * abre a palavra (começo do texto ou depois de espaço) e ainda não há espaço
+ * depois dele.
+ */
+export function hashtagEmCurso(texto: string, cursor: number): { inicio: number; consulta: string } | null {
+  const ate = (texto ?? "").slice(0, Math.max(0, cursor));
+  const m = ate.match(/(?:^|\s)#([^\s#]*)$/);
+  if (!m) return null;
+  return { inicio: ate.length - m[0].trimStart().length, consulta: m[1] };
+}

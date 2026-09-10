@@ -379,6 +379,8 @@ const ARQUIVOS_SEMENTE = [
   // U109: entra 'equipamentos' (a tela nova) e sai 'admin' (R198 — o Davi
   // mandou excluir a tela "Catálogo"); o INSERT e o DELETE contam na semente.
   'supabase/migrations/20260918090000_u109_patrimonio_do_qap.sql',
+  // U127 (R244): a semente do perfil OPERACIONAL — uma linha por tela
+  'supabase/migrations/20260926090000_u127_v009_perfil_operacional.sql',
 ];
 const semente = {};
 // REGRA 2, E ELA MORDEU AQUI: este leitor casava COMENTÁRIO. O bloco DESFAZER
@@ -398,7 +400,7 @@ for (const arq of ARQUIVOS_SEMENTE) {
   const ini = sql.indexOf('INSERT INTO public.permissoes_tela (tela, cargo, permitido) VALUES');
   const fim = sql.indexOf('ON CONFLICT (tela, cargo)', ini);
   const bloco = sql.slice(ini, fim);
-  for (const m of bloco.matchAll(/\('([a-z._]+)',\s*'(tecnico|comercial|sac)',\s*(true|false)\)/g)) {
+  for (const m of bloco.matchAll(/\('([a-z._]+)',\s*'(tecnico|comercial|sac|operacional)',\s*(true|false)\)/g)) {
     (semente[m[1]] ??= {})[m[2]] = m[3] === 'true';
   }
   // a U30 APAGA telas da matriz — o DELETE participa da semente efetiva,
@@ -416,7 +418,7 @@ eq('catálogo e semente têm as mesmas telas',
 // e o padrão do catálogo tem que bater com a semente efetiva, senão o app se
 // comporta de um jeito antes da migration e de outro depois
 const divergem = TL.TELAS.filter((t) =>
-  ['tecnico', 'comercial', 'sac'].some((c) => semente[t.chave]?.[c] !== t.padrao[c]));
+  ['tecnico', 'comercial', 'sac', 'operacional'].some((c) => semente[t.chave]?.[c] !== t.padrao[c]));   // R244: quatro cargos
 eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t.chave), []);
 
 // ── Faixa de prazo: a cor do card (fundo em 2026-08-20; só a BORDA desde a R136) ──
@@ -2050,8 +2052,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   //    (Defeito ANTERIOR à U33; a revisão o encontrou no rastro dela.)
   eq('a Home não traz a capa da proposta (a visita já a representa)',
      /\.neq\("natureza", "comercial"\)/.test(hd2.split('useChamadosDaHome')[1] ?? ''), true);
-  eq('o histórico também não traz a capa (barra contaria dobrado)',
-     (hd2.match(/\.neq\("natureza", "comercial"\)/g) ?? []).length, 2);
+  // R246 (U127): a Home passou a ler em DUAS consultas (as abertas + as 300
+  // encerradas mais recentes) — as três leituras da tabela tiram a capa
+  eq('o histórico também não traz a capa (barra contaria dobrado) — e a segunda consulta da Home tampouco',
+     (hd2.match(/\.neq\("natureza", "comercial"\)/g) ?? []).length, 3);
   // e a proposta CONTINUA no quadro pela visita, como a R29 exige
   const mod2 = fs17.readFileSync('src/features/atividades/modelo.ts', 'utf8');
   eq('a proposta segue no quadro pela visita, com número da capa (R29)',
@@ -13444,7 +13448,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // DEFINER (o SAC monta visita e não é gestor, então não escreveria em
        // prospeccoes pela policy). Menção em documentação, não em decisão de
        // acesso: o alcance da dívida P51 não cresceu.
-       [true, false, 33, 137, 52]);
+       // U127 (+1 arquivo, +2 ocorrências, +0 policy): a conferência da migration
+       // do perfil OPERACIONAL cita is_gestor duas vezes — no rótulo e no
+       // pg_get_functiondef — para PROVAR que ela não mudou (operacional vê,
+       // não manda). Menção em conferência, não em decisão de acesso.
+       [true, false, 34, 139, 52]);
   }
 }
 
@@ -16775,7 +16783,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [false, false, true]);
   const home96 = ler96('src/features/home/data.ts');
   eq('R139/R140 (Início): o contexto leva o mapa pessoa → equipe; fichas de compra e chamado_equipes saíram da leitura',
-     [/equipeDePessoa,/.test(home96), /useFichasDeCompra|chamado_compra|useEquipesDeTodos\(\)/.test(codigo96(home96)), (home96.match(/\.select\(CAMPOS_DA_HOME\)/g) ?? []).length === 2],
+     [/equipeDePessoa,/.test(home96), /useFichasDeCompra|chamado_compra|useEquipesDeTodos\(\)/.test(codigo96(home96)), (home96.match(/\.select\(CAMPOS_DA_HOME\)/g) ?? []).length === 3],   // R246: abertas + encerradas + histórico
      [true, false, true]);
   eq('R139 (lentes): o filtro Equipe casa com as equipes das PESSOAS (a.equipes), em qualquer natureza',
      /return equipe === "todas" \|\| a\.equipes\.includes\(equipe\);/.test(ler96('src/features/home/lentes.ts')), true);
@@ -19532,7 +19540,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/import \{ DialogDaAtividade \} from "@\/features\/chamados\/DialogDaAtividade";/.test(dash121), /PainelChamado/.test(dash121),
       /<DialogDaAtividade\s*\n\s*chamadoId=\{painelId\}/.test(dash121), /setPainelId\(a\.registroId\);/.test(dash121),
       /width: "min\(1600px, 96vw\)"/.test(dlg121), /<DetalheInterno id=\{chamadoId\} embutido \/>/.test(dlg121),
-      /chamado\.natureza === "interno"/.test(dlg121) && /<DetalheCampo id=\{chamadoId\} \/>/.test(dlg121),
+      // R247 (U127): o DetalheCampo também ganhou o modo embutido (P66 fechada)
+      /chamado\.natureza === "interno"/.test(dlg121) && /<DetalheCampo id=\{chamadoId\} embutido \/>/.test(dlg121),
       /posicao/.test(cod121(pc121)), /ui\/dialog/.test(pc121),
       /<PainelChamado/.test(ler121('src/routes/_authenticated/calendario.tsx')) && /<PainelChamado/.test(ler121('src/routes/_authenticated/painel.operacional.tsx'))],
      [true, false, true, true, true, true, true, false, false, true]);
@@ -19866,10 +19875,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true]);
 
   // ── R241: quem responde por trabalho técnico ──────────────────────────────
-  eq('R241 CRÍTICO: os cargos de campo são o técnico e o ADMIN — comercial e SAC montam a visita mas não vão ao prédio',
-     [TEC.CARGOS_DE_CAMPO, TEC.ehCargoDeCampo('tecnico'), TEC.ehCargoDeCampo('admin'),
+  // R244 (U127): o OPERACIONAL entrou — é para ele que o Nicholas e o Erik vão
+  eq('R241/R244 CRÍTICO: os cargos de campo são o técnico, o OPERACIONAL e o admin — comercial e SAC montam a visita mas não vão ao prédio',
+     [TEC.CARGOS_DE_CAMPO, TEC.ehCargoDeCampo('tecnico'), TEC.ehCargoDeCampo('admin'), TEC.ehCargoDeCampo('operacional'),
       TEC.ehCargoDeCampo('comercial'), TEC.ehCargoDeCampo('sac'), TEC.ehCargoDeCampo(null)],
-     [['tecnico', 'admin'], true, true, false, false, false]);
+     [['tecnico', 'operacional', 'admin'], true, true, true, false, false, false]);
   eq('R241: na lista, técnico vem primeiro (cada grupo em ordem alfabética) e quem não é técnico mostra o cargo entre parênteses',
      [TEC.ordenarResponsaveis([
         { nome: 'Zeca', cargo: 'tecnico' }, { nome: 'Ana', cargo: 'admin' }, { nome: 'Bia', cargo: 'tecnico' },
@@ -20082,11 +20092,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a versão e a regra 7 ─────────────────────────────────────────────────
   const prod126 = ler126('docs/PRODUTO.md');
-  eq('R229/R243: a versão subiu para 0.0.8 nas duas fontes e a v0.0.8 está no VERSOES.md dizendo que NÃO pede migration',
-     [JSON.parse(ler126('package.json')).version,
-      (ler126('src/lib/versao.ts').match(/export const VERSAO = "([^"]+)";/) ?? [])[1],
-      /^## v0\.0\.8 [^\n]*sem migration/mi.test(ler126('docs/VERSOES.md'))],
-     ['0.0.8', '0.0.8', true]);
+  // U127: o NÚMERO saiu deste pino — o pino PERMANENTE de versão (logo abaixo
+  // deste bloco) confere a igualdade das três fontes, e nenhuma U pina mais o número
+  eq('R229/R243: a v0.0.8 está no VERSOES.md dizendo que NÃO pede migration',
+     [/^## v0\.0\.8 [^\n]*sem migration/mi.test(ler126('docs/VERSOES.md'))],
+     [true]);
   eq('U126 (regra 7): a R243 existe com a frase do Davi, o DS registra o rótulo de 12px e o menu dentro do diálogo, a U126 está no diário e o ESTADO não aponta migration pendente',
      [/^- \*\*R243\*\* —/m.test(prod126),
       /Estes botões não estão funcionando/.test(prod126.replace(/\s+/g, ' ')),
@@ -20094,10 +20104,170 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /rotuloDeSecao/.test(ler126('DESIGN_SYSTEM.md')),
       /role="dialog"/.test(ler126('DESIGN_SYSTEM.md')),
       /^## U126 /m.test(ler126('docs/PLANO_UNIFICACAO.md')),
-      /[Nn]enhuma migration pendente/.test(ler126('docs/ESTADO_ATUAL.md'))],
+      // U127: pino de ESTADO DO BANCO (regra nova: pino descreve arquivo) — aceita
+      // as duas formas do cabeçalho, para não ficar vermelho a cada migration nova
+      /[Nn]enhuma migration pendente|\*\*[Pp]endente: U\d+\*\*/.test(ler126('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true, true]);
 }
 
+
+
+// ── PERMANENTE — a versão (R229): UMA, e a mais nova do VERSOES.md ──────────
+// Substitui o costume "a U tal pinou 0.0.x" (U119–U126): a cada release o pino
+// anterior ficava vermelho e era reapontado. Este não descreve NÚMERO — descreve
+// a IGUALDADE das três fontes. Subir a versão não exige mexer aqui.
+{
+  const fsV = require('fs');
+  const pkgV = JSON.parse(fsV.readFileSync('package.json', 'utf8')).version;
+  const tsV = (fsV.readFileSync('src/lib/versao.ts', 'utf8').match(/export const VERSAO = "([^"]+)";/) ?? [])[1];
+  const topoV = (fsV.readFileSync('docs/VERSOES.md', 'utf8').match(/^## v(\d+\.\d+\.\d+) /m) ?? [])[1];
+  eq('R229 PERMANENTE: a versão é UMA — package.json = src/lib/versao.ts = a entrada mais nova de docs/VERSOES.md; o número em si não é pino de U nenhuma',
+     [pkgV === tsV, tsV === topoV, /^\d+\.\d+\.\d+$/.test(pkgV ?? '')],
+     [true, true, true]);
+}
+
+// ── U127 — a v0.0.9: OPERACIONAL (R244), o chat que não perde mensagem (R245), a Início inteira (R246), a tela de campo no desktop (R247) ──
+{
+  const fs127 = require('fs');
+  const ler127 = (f) => fs127.readFileSync(f, 'utf8');
+  const cod127 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const CH7 = carregar('src/features/home/chat.ts');
+  const TR7 = carregar('src/lib/texto-rico.ts');
+  const LT7 = carregar('src/features/home/lentes.ts');
+  const TL7 = carregar('src/lib/telas.ts');
+  const NAV7 = carregar('src/components/nav-itens.ts');
+  const mig127 = ler127('supabase/migrations/20260926090000_u127_v009_perfil_operacional.sql');
+  const men = (id, ev, em) => ({ origem: 'comentario', chamadoId: id, numero: 'AT-' + id, titulo: 't' + id, eventoId: ev, autorId: 'p', texto: '', criadoEm: em, status: null, prazoLimite: null, dataAgendada: null, dataHoraAgendada: null, respondida: false });
+  const resp = (id, pai, em) => ({ id, chamadoId: 'c1', respondeA: pai, autorId: 'q', texto: 'x', criadoEm: em });
+
+  // ── R245: nenhuma mensagem some ───────────────────────────────────────────
+  eq('R245 CRÍTICO: a menção que É resposta só some do topo quando a conversa dela ESTÁ no meu chat — se a raiz não é minha, ela é raiz (era o defeito: a resposta ao Erik mencionava o Erik, e no chat dele o pai — o comentário do próprio Erik — não é menção a ele, então a resposta sumia)',
+     (() => {
+       // o Erik vê: a resposta r1 (que o menciona) responde ao comentário e0 DELE, que não está no chat dele
+       const doErik = CH7.linhaDoTempo([men('c1', 'r1', '2026-09-10T09:00:00Z')], [], [resp('r1', 'e0', '2026-09-10T09:00:00Z')]).map((i) => i.chave);
+       // o Davi vê: a menção e1 e a resposta r1 a ela — r1 é caixa dentro do campo de e1
+       const doDavi = CH7.linhaDoTempo([men('c1', 'e1', '2026-09-10T08:00:00Z'), men('c1', 'r1', '2026-09-10T09:00:00Z')], [], [resp('r1', 'e1', '2026-09-10T09:00:00Z')]).map((i) => i.chave);
+       return { doErik, doDavi, absorvidas: [...CH7.absorvidasPor([men('c1', 'e1', 'a'), men('c1', 'r1', 'b')], [resp('r1', 'e1', 'b')])] };
+     })(),
+     { doErik: ['c:r1'], doDavi: ['c:e1'], absorvidas: ['r1'] });
+  eq('R245: as atividades recentes do "#" — da conversa mais recente para a mais antiga, uma vez por atividade; o filtro casa título ou número, sem acento',
+     (() => {
+       const itens = CH7.linhaDoTempo([men('c1', 'e1', '2026-09-10T08:00:00Z'), men('c2', 'e2', '2026-09-09T08:00:00Z'), men('c1', 'e3', '2026-09-08T08:00:00Z')], [], []);
+       const rec = CH7.atividadesRecentes(itens);
+       return [rec.map((a) => a.chamadoId), CH7.filtrarAtividadesRecentes([{ titulo: 'Adequação de rede', numero: 'CH-2026-0030' }, { titulo: 'Rack', numero: 'CH-2026-0031' }], 'adequa').map((a) => a.numero),
+               CH7.filtrarAtividadesRecentes([{ titulo: 'Adequação de rede', numero: 'CH-2026-0030' }], '0030').length];
+     })(),
+     [['c1', 'c2'], ['CH-2026-0030'], 1]);
+  eq('R245: o "#" em curso segue a forma do "@" — só abre a palavra, e fecha no espaço',
+     [TR7.hashtagEmCurso('oi #ade', 7), TR7.hashtagEmCurso('#', 1), TR7.hashtagEmCurso('a#b', 3), TR7.hashtagEmCurso('#x y', 4)],
+     [{ inicio: 3, consulta: 'ade' }, { inicio: 0, consulta: '' }, null, null]);
+  {
+    const ed = ler127('src/components/EditorDeDescricao.tsx');
+    const chat = ler127('src/features/home/ChatDeMencoes.tsx');
+    const css = ler127('src/styles.css');
+    eq('R245 CRÍTICO: a caixa de texto — Backspace no começo do primeiro bloco não faz nada (o navegador apagava o próprio bloco e a área "bugava"), a barra de rolagem fica oculta, o placeholder herda o padding da área, e o "#" abre a lista de atividades (só o nome)',
+       [/Não há nada antes: a tecla não faz nada\.\s*\n\s*e\.preventDefault\(\);/.test(ed),
+        /classe=\{estilo\?\.maxHeight \? "rolagem-oculta" : undefined\}/.test(ed),
+        /\.rolagem-oculta \{ scrollbar-width: none; \}/.test(css),
+        /padding: inherit; box-sizing: border-box;/.test(css),
+        /export function useHashtag\(atividades: AtividadeParaHashtag\[\]\)/.test(ed),
+        /<SugestoesDeAtividade atividades=\{hash\.sugestoes\}/.test(ed),
+        (ed.match(/\{a\.titulo\}/g) ?? []).length >= 1,
+        /atividades=\{recentes\.map\(\(a\) => \(\{ id: a\.chamadoId, titulo: a\.titulo, numero: a\.numero \}\)\)\}/.test(chat),
+        /armarResposta\(\{/.test(chat)],
+       [true, true, true, true, true, true, true, true, true]);
+  }
+
+  // ── R246: a Início inteira, e a coluna Concluído ─────────────────────────
+  {
+    const hd = ler127('src/features/home/data.ts');
+    const q = ler127('src/features/home/Quadro.tsx');
+    const dash = ler127('src/routes/_authenticated/dashboard.tsx');
+    eq('R246 CRÍTICO: a Início traz TODAS as em aberto e as 300 encerradas mais recentes — a poda de 7 dias saiu do servidor e do cliente',
+       [/export const TETO_ENCERRADAS_NA_INICIO = 300;/.test(hd),
+        /\.in\("status", \["concluido", "cancelado"\]\)\s*\n\s*\.order\("updated_at", \{ ascending: false \}\)\s*\n\s*\.limit\(TETO_ENCERRADAS_NA_INICIO\);/.test(hd),
+        /\.not\("status", "in", "\(concluido,cancelado\)"\)/.test(hd),
+        /\.gte\("updated_at"/.test(cod127(hd)), /getTime\(\) < corte/.test(cod127(hd))],
+       [true, true, true, false, false]);
+    eq('R246 CRÍTICO: a coluna Concluído é ordenada pela data de conclusão, a mais recente no topo — FIXA, seja qual for a ordem do botão; sem data vai para o fim',
+       [LT7.ordenarConcluidas([
+          { id: 'a', encerradoEm: '2026-09-01T10:00:00Z', criadoEm: '2026-08-01T00:00:00Z' },
+          { id: 'b', encerradoEm: null, criadoEm: '2026-08-05T00:00:00Z' },
+          { id: 'c', encerradoEm: '2026-09-09T10:00:00Z', criadoEm: '2026-08-02T00:00:00Z' },
+        ]).map((a) => a.id),
+        /const itens = c === "concluido" \? ordenarConcluidas\(porColuna\.get\(c\) \?\? \[\]\) : \(porColuna\.get\(c\) \?\? \[\]\);/.test(q)],
+       [['c', 'a', 'b'], true]);
+    eq('R246: o rótulo da ordenação ("Prazo (crescente)") fica à ESQUERDA do botão de ordenar',
+       dash.indexOf('aria-live="polite"') > 0 && dash.indexOf('aria-live="polite"') < dash.indexOf('<MenuFiltro\n              rotulo="Ordenar"'), true);
+  }
+
+  // ── R244: o perfil OPERACIONAL ───────────────────────────────────────────
+  eq('R244 CRÍTICO: o OPERACIONAL abre Início, Calendário, Clientes e Perfil — e NADA mais — no catálogo (padrão) e no menu; não é gestor (gerencial/data.ts continua admin/comercial/sac) e abre a Início sem recorte',
+     [TL7.TELAS.filter((t) => t.padrao.operacional).map((t) => t.chave).sort(),
+      TL7.PAPEIS.map((p) => p.chave),
+      NAV7.itensDoCargo('operacional').map((i) => i.tela),
+      TL7.podeAbrir('gerencial', 'operacional', undefined), TL7.podeAbrir('clientes', 'operacional', undefined),
+      /const gestores = \["admin", "comercial", "sac"\];/.test(ler127('src/features/gerencial/data.ts')),
+      LT7.presetPadrao('operacional')],
+     [['calendario', 'clientes', 'dashboard', 'perfil'], ['tecnico', 'comercial', 'sac', 'operacional'], ['dashboard', 'calendario', 'clientes', 'perfil'], false, true, true, null]);
+  eq('R244: o cargo novo entrou em TODO lugar do app que enumera cargos — sessão da Início, lentes, matriz completa, convite, tela de usuários',
+     [/"operacional"/.test(cod127(ler127('src/features/home/data.ts'))),
+      /\| "operacional"/.test(cod127(ler127('src/features/home/lentes.ts'))),
+      /operacional: matriz\?\.\[t\.chave\]\?\.operacional \?\? t\.padrao\.operacional/.test(ler127('src/features/gerencial/permissoes.ts')),
+      /z\.enum\(\["admin", "comercial", "sac", "tecnico", "operacional"\]\)/.test(ler127('src/lib/convites.functions.ts')),
+      /operacional: \{ label: "Operacional"/.test(ler127('src/features/administrativo/Usuarios.tsx')),
+      /<option value="operacional"/.test(ler127('src/features/administrativo/Usuarios.tsx'))],
+     [true, true, true, true, true, true]);
+  eq('U127 migration CRÍTICO: o enum ganha o valor FORA da transação, os dois CHECKs aceitam o cargo, salvar_permissoes e handle_new_user o reconhecem, a semente tem UMA linha por tela (17) com as quatro portas abertas — e a transação não toca em is_gestor',
+     [mig127.indexOf("ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'operacional';") < mig127.indexOf('\nBEGIN;'),
+      /CHECK \(cargo IS NULL OR cargo IN \('admin', 'comercial', 'sac', 'tecnico', 'operacional'\)\);/.test(mig127),
+      /CHECK \(cargo IN \('tecnico', 'comercial', 'sac', 'operacional'\)\);/.test(mig127),
+      /WHERE x\.cargo IN \('tecnico', 'comercial', 'sac', 'operacional'\)/.test(mig127),
+      /IF v_cargo NOT IN \('admin', 'comercial', 'sac', 'tecnico', 'operacional'\) THEN/.test(mig127),
+      (mig127.match(/'operacional', (true|false)\)/g) ?? []).length,
+      (mig127.match(/'operacional', true\)/g) ?? []).length,
+      /is_gestor/.test(mig127.slice(mig127.indexOf('\nBEGIN;'), mig127.indexOf('COMMIT;'))),
+      />>> OLHAR <<</.test(mig127), /DESFAZER/.test(mig127)],
+     [true, true, true, true, true, 17, 4, false, true, true]);
+
+  // ── R247: a tela de campo no desktop ─────────────────────────────────────
+  {
+    const dc = ler127('src/features/chamados/DetalheCampo.tsx');
+    const css = ler127('src/styles.css');
+    eq('R247 CRÍTICO: o chamado de campo usa a MESMA grade documento | ficha da atividade interna — o trabalho na coluna larga, o estado e as ações na ficha; no celular a ficha vem primeiro; e a tela entra embutida no pop-up (P66, parte 1, fechada)',
+       [/className="atividade-grade campo-grade"/.test(dc),
+        dc.indexOf('<section className="atividade-documento"') < dc.indexOf('<aside className="atividade-ficha"'),
+        dc.indexOf('{/* Problema relatado') > dc.indexOf('<section className="atividade-documento"') && dc.indexOf('{/* Problema relatado') < dc.indexOf('<aside className="atividade-ficha"'),
+        dc.indexOf('{/* Linha do tempo */}') < dc.indexOf('<aside className="atividade-ficha"'),
+        dc.indexOf('{/* Status + prazo */}') > dc.indexOf('<aside className="atividade-ficha"'),
+        dc.indexOf('{/* Iniciar atendimento */}') > dc.indexOf('<aside className="atividade-ficha"'),
+        /@media \(max-width: 1023px\) \{ \.campo-grade \.atividade-ficha \{ order: -1; \} \}/.test(css),
+        /export function DetalheCampo\(\{ id, embutido = false \}/.test(dc),
+        /return <div className="atividade-embutida" style=\{\{ color: textPrimary \}\}>\{conteudo\}<\/div>;/.test(dc),
+        /className="pagina-trabalho" style=\{\{ paddingTop: 12, paddingBottom: 48, color: textPrimary \}\}/.test(dc),
+        /fontWeight: 700, fontSize: 22, lineHeight: 1\.25/.test(dc),
+        /\{!embutido && \(/.test(dc),
+        /<DetalheCampo id=\{chamadoId\} embutido \/>/.test(ler127('src/features/chamados/DialogDaAtividade.tsx'))],
+       [true, true, true, true, true, true, true, true, true, true, true, true, true]);
+  }
+
+  // ── regra 7 — pinos de ARQUIVO, nunca de estado do banco ──────────────────
+  const prod127 = ler127('docs/PRODUTO.md').replace(/\s+/g, ' ');
+  eq('U127 (regra 7): R244–R247 existem com as frases do Davi, a U127 está no diário e no ESTADO, a P66 fechou em parte, o manual de permissões e a visão geral conhecem o OPERACIONAL, o VERSOES tem a v0.0.9 exigindo a U127, e as duas ferramentas da IA existem e estão no CLAUDE.md',
+     [['R244', 'R245', 'R246', 'R247'].every((r) => new RegExp('- \\*\\*' + r + '\\*\\* —').test(prod127)),
+      /vamos criar um novo perfil de usuário: OPERACIONAL/.test(prod127),
+      /As mensagens não devem desaparecer para ninguém/.test(prod127),
+      /ordenadas por data de conclusão/.test(prod127),
+      /layout de celular com os campos com a largura esticada/.test(prod127),
+      /^## U127 /m.test(ler127('docs/PLANO_UNIFICACAO.md')),
+      /\bU127\b/.test(ler127('docs/ESTADO_ATUAL.md')),
+      /^## P66 — ~~BAIXO~~ FECHADA/m.test(ler127('docs/PENDENCIAS_TECNICAS.md')),
+      /operacional/.test(ler127('docs/manual/permissoes-e-acesso.md')) && /\*\*operacional\*\*/.test(ler127('docs/manual/visao-geral.md')),
+      /^## v0\.0\.9 [^\n]*U127/m.test(ler127('docs/VERSOES.md')),
+      fs127.existsSync('scripts/lib/editar.cjs') && fs127.existsSync('scripts/fechar-entrega.cjs'),
+      /fechar-entrega\.cjs/.test(ler127('CLAUDE.md')) && /lib\/editar\.cjs/.test(ler127('CLAUDE.md'))],
+     [true, true, true, true, true, true, true, true, true, true, true, true]);
+}
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

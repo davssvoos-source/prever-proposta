@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 72 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **63 em aberto, 9 fechadas.**
+> **Sumário** — 73 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **63 em aberto, 10 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -72,9 +72,10 @@
 - [P63 — BAIXO · O botão de forçar o sincronismo com o QAP fica para depois (2026-09-08, U119)](#p63-baixo-o-botão-de-forçar-o-sincronismo-com-o-qap-fica-para-depois-2026-09-08-u119)
 - [P64 — BAIXO · As duas leituras à parte de `reagendamentos` podem sair depois da U119 (2026-09-08, U119)](#p64-baixo-as-duas-leituras-à-parte-de-reagendamentos-podem-sair-depois-da-u119-2026-09-08-u119)
 - [P65 — ~~MÉDIO~~ FECHADA (U121, 2026-09-08) · A v0.0.3 oferece "instalar de fora", que a R237 proíbe (2026-09-08, U120)](#p65-médio-fechada-u121-2026-09-08-a-v003-oferece-instalar-de-fora-que-a-r237-proíbe-2026-09-08-u120)
-- [P66 — BAIXO · No pop-up da Início, o chamado de campo ainda abre a tela de campo; a folha lateral só vive no Calendário e no Operacional (2026-09-08, U121)](#p66-baixo-no-pop-up-da-início-o-chamado-de-campo-ainda-abre-a-tela-de-campo-a-folha-lateral-só-vive-no-calendário-e-no-operacional-2026-09-08-u121)
+- [P66 — ~~BAIXO~~ FECHADA EM PARTE (U127, 2026-09-10) · No pop-up da Início, o chamado de campo ainda abre a tela de campo; a folha lateral só vive no Calendário e no Operacional (2026-09-08, U121)](#p66-baixo-fechada-em-parte-u127-2026-09-10-no-pop-up-da-início-o-chamado-de-campo-ainda-abre-a-tela-de-campo-a-folha-lateral-só-vive-no-calendário-e-no-operacional-2026-09-08-u121)
 - [P67 — BAIXO · `--barra` só é remedida no resize (2026-09-08, U122)](#p67-baixo---barra-só-é-remedida-no-resize-2026-09-08-u122)
 - [P68 — MÉDIO · A consolidação assistida (`/clientes/migrar`) ainda chama `criarCliente`, que a RLS recusa (2026-09-09, U124)](#p68-médio-a-consolidação-assistida-clientesmigrar-ainda-chama-criarcliente-que-a-rls-recusa-2026-09-09-u124)
+- [P69 — BAIXO · `sync_user_role_from_cargo` não espelha `operacional` (nem `sac`) em `user_roles` (2026-09-10, U127)](#p69-baixo-syncuserrolefromcargo-não-espelha-operacional-nem-sac-em-userroles-2026-09-10-u127)
 <!-- sumario:fim -->
 
 Registro formal do que a revisão adversarial encontrou.
@@ -2256,7 +2257,7 @@ reescreve `mover_equipamento` exigindo item do cliente nos dois movimentos (a
 instalação só troca o bloco). A U119 não foi editada (regra das migrations:
 nunca mexer numa entregue — corrigir por cima).
 
-## P66 — BAIXO · No pop-up da Início, o chamado de campo ainda abre a tela de campo; a folha lateral só vive no Calendário e no Operacional (2026-09-08, U121)
+## P66 — ~~BAIXO~~ FECHADA EM PARTE (U127, 2026-09-10) · No pop-up da Início, o chamado de campo ainda abre a tela de campo; a folha lateral só vive no Calendário e no Operacional (2026-09-08, U121)
 
 A R238 fez o diálogo da Início (`DialogDaAtividade`) mostrar a tela inteira da
 atividade interna (`DetalheInterno` em modo `embutido`). Duas pontas ficaram:
@@ -2267,6 +2268,12 @@ não foi redesenhado; espera a rodada da área técnica (ESTADO §7, item 1). (2
 Início; só o Calendário e o painel Operacional ainda o usam. Se esses dois
 também passarem ao diálogo, o componente sai — até lá são dois desenhos para o
 mesmo objeto, o que o verificador não tem como impedir.
+
+**Fechamento (U127, 2026-09-10):** a parte (1) fechou — `DetalheCampo` ganhou o
+modo `embutido` e a MESMA grade `documento | ficha` da atividade interna (R247;
+no celular a ficha vem primeiro), e o diálogo da Início o chama com `embutido`.
+A parte (2) continua: o `PainelChamado` ainda vive no Calendário e no painel
+Operacional.
 
 ## P67 — BAIXO · `--barra` só é remedida no resize (2026-09-08, U122)
 
@@ -2305,3 +2312,16 @@ QAP, pelo Sincronizar" no lugar da mensagem do Postgres.
 Quando o Davi decidir: ou a consolidação passa a exigir um destino existente
 (o mais provável — consolidar é fundir em quem JÁ é cliente), ou a tela sai de
 vez do catálogo. As duas saídas são de uma linha; o que falta é a decisão.
+
+
+## P69 — BAIXO · `sync_user_role_from_cargo` não espelha `operacional` (nem `sac`) em `user_roles` (2026-09-10, U127)
+
+O gatilho que espelha `profiles.cargo` em `user_roles.role` lista só
+admin/comercial/tecnico (U6a). O SAC vive sem espelho desde a U6a, e agora o
+operacional também: `is_gestor`, `pode_acessar_visita` e as policies decidem
+por **cargo** (fonte dual, `manual/permissoes-e-acesso.md` §Camada 1), e nada
+lê `role = 'operacional'`. Não é defeito hoje; é uma lista que vai divergir se
+algum dia uma policy passar a ler `user_roles` para esses dois cargos. Se isso
+acontecer, a migration que a escrever atualiza o gatilho junto — e este item
+fecha. A U127 deixou o gatilho como estava DE PROPÓSITO: mexer nele sem
+leitor é mudança sem prova.

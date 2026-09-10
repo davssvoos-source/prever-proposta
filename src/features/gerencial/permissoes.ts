@@ -131,6 +131,7 @@ export function matrizCompleta(matriz: Matriz | undefined): Matriz {
       tecnico:   matriz?.[t.chave]?.tecnico   ?? t.padrao.tecnico,
       comercial: matriz?.[t.chave]?.comercial ?? t.padrao.comercial,
       sac:       matriz?.[t.chave]?.sac       ?? t.padrao.sac,
+      operacional: matriz?.[t.chave]?.operacional ?? t.padrao.operacional,   // R244
     };
   }
   return m;

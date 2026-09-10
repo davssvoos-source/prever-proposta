@@ -33,7 +33,7 @@ import {
   type Atividade, type ColunaQuadro,
 } from "@/features/atividades/modelo";
 import { CardAtividade, PISO_TIPO } from "./CardAtividade";
-import { ordemDasColunas, moverColuna } from "./lentes";
+import { ordemDasColunas, moverColuna, ordenarConcluidas } from "./lentes";
 
 /**
  * R179 (Davi, 04/09/2026: "a visualização Kanban deverá conter as colunas
@@ -150,7 +150,11 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
           cada uma vai de ponta a ponta: soltar na horizontal basta. */}
       <div style={{ display: "flex", alignItems: "stretch", gap: 10, paddingBottom: 4 }}>
         {colunas.map((c) => {
-          const itens = porColuna.get(c) ?? [];
+          // R246 (Davi, 10/09/2026): a coluna Concluído é ordenada pela DATA DE
+          // CONCLUSÃO, a mais recente no topo — FIXA, independente da ordem que
+          // a pessoa escolheu para o resto do quadro. As outras colunas vêm na
+          // ordem que a Início já aplicou (ordenar(), pela escolha do botão).
+          const itens = c === "concluido" ? ordenarConcluidas(porColuna.get(c) ?? []) : (porColuna.get(c) ?? []);
           const cor = colunaCores(c);
           const destacada = foco.length > 0 && foco.includes(c);
           const apagada = foco.length > 0 && !destacada;

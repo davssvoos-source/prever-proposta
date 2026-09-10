@@ -18,7 +18,7 @@
 //
 // A natureza decide o corpo, como na rota /chamados/$id: interno → o
 // DetalheInterno embutido (sem a casca da página); campo → o DetalheCampo, que
-// continua sendo a tela do técnico e não foi redesenhado nesta leva (P66).
+// desde a R247 (U127) também tem a grade documento | ficha e o modo embutido.
 
 import { ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -89,7 +89,7 @@ export function DialogDaAtividade({ chamadoId, aoFechar, aoAbrirPagina }: {
           ) : chamado.natureza === "interno" ? (
             <DetalheInterno id={chamadoId} embutido />
           ) : (
-            <DetalheCampo id={chamadoId} />
+            <DetalheCampo id={chamadoId} embutido />
           )}
         </div>
       </DialogContent>

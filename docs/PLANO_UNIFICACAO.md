@@ -11944,3 +11944,102 @@ checklist, o botão de 44px, o import da rosca) e foram reapontados com o motivo
 
 **Números.** Verificador: 3.227 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 **Sem migration** — esta entrega é só tela.
+
+## U127 — a v0.0.9: a revisão sistêmica — OPERACIONAL (R244), o chat que não perde mensagem (R245), a Início inteira (R246), a tela de campo no desktop (R247) e as ferramentas da IA
+
+Uma mensagem do Davi com oito frentes. A ordem em que fiz é a ordem do risco:
+bugs primeiro, estrutura depois, ferramenta por último.
+
+**A mensagem que sumia (R245.1).** O agrupamento da U123 filtrava do topo toda
+menção que fosse resposta de outra — "ela aparece dentro do campo da mensagem
+respondida". Verdade no MEU chat; falso no do outro. A resposta que eu mando ao
+Erik menciona o Erik; no chat DELE ela é menção E é resposta, mas o pai dela é
+o comentário do próprio Erik, que não é menção a ele — a raiz não está lá, e a
+caixa sumia. É exatamente "as mensagens às vezes desaparecem para uns ou
+outros": para mim ficava, para ele não. A regra passou a ser: uma menção só é
+absorvida se está dentro da árvore de OUTRA menção do MESMO chat
+(`absorvidasPor`). A asserção reproduz os dois lados — o chat do Davi e o do
+Erik — com as mesmas três linhas de dado.
+
+**A caixa (R245.2–4).** Backspace no começo do primeiro bloco: o navegador
+apagava o próprio `<div>` do bloco, a área ficava sem estrutura e o placeholder
+grudava — agora a tecla não faz nada ali, porque não há nada antes. A barra de
+rolagem some por CSS (`.rolagem-oculta`), o teto de 120px fica. O placeholder
+chutava `left: 13px; top: 14px` — certo para a caixa grande, errado para a do
+chat (10/12); passou a `padding: inherit`, que é o padding da própria área,
+qualquer que seja. E o `#`: o editor ganhou um gatilho irmão do `@`
+(`useHashtag`, `SugestoesDeAtividade`), a lista mostra SÓ o nome, e escolher
+ARMA a resposta — o mesmo gesto do botão Responder, então o chip `#Código`
+aparece e a mensagem segue o caminho da R223/R240. A fonte da lista é o próprio
+chat (`atividadesRecentes`): as conversas da mais recente para a mais antiga,
+uma por atividade — "últimas atividades que teve interação", literalmente.
+
+**A Início inteira (R246).** A poda de sete dias das encerradas saiu — do
+servidor (`updated_at.gte`) e do cliente (o `corte` por `encerradoEm`). Em vez
+de data, CONTAGEM: as 300 encerradas mais recentes, em consulta própria, porque
+a importação do Notion gravou ~2000 concluídas de uma vez e o PostgREST trunca
+perto de mil linhas sem avisar — teto sem aviso é o pior jeito de faltar dado.
+A coluna Concluído ganhou ordem própria (`ordenarConcluidas`: data de conclusão,
+mais recente no topo), aplicada no Quadro DEPOIS da ordem do botão — fixa, como
+ele pediu. E o rótulo "Prazo (crescente)" mudou de lado: à esquerda do botão.
+
+**O OPERACIONAL (R244).** Um cargo novo toca CINCO lugares no banco que
+enumeram cargos — o enum `app_role`, o CHECK de `profiles.cargo`, o CHECK de
+`permissoes_tela.cargo`, o `WHERE` de `salvar_permissoes` e a lista de
+`handle_new_user` — e a semente da matriz. Esquecer um deles é o app se
+comportar de um jeito antes da migration e de outro depois; a U127 faz os cinco
+e semeia uma linha por tela (paridade catálogo ↔ semente, que o verificador
+cobra). No app, o cargo entrou no catálogo (`padrao` ganhou o quarto membro,
+opcional e FECHADO por padrão), na matriz completa, no menu, na sessão da
+Início, nas lentes, no convite e na tela de usuários — e nos cargos de campo
+(R241), porque é para o operacional que o Nicholas e o Erik vão, e eles são quem
+responde por visita e chamado hoje. O que NÃO mudou, de propósito: `is_gestor`
+(operacional vê, não manda) e `sync_user_role_from_cargo`, que só espelha
+admin/comercial/tecnico em `user_roles` — o SAC já vive sem espelho desde a
+U6a, e nada lê `role = 'operacional'`.
+
+**A tela de campo no desktop (R247).** O `DetalheCampo` era uma coluna só, do
+celular, esticada no monitor. Não reescrevi nenhum bloco: um script cortou o
+render pelos quinze marcadores de bloco que já existiam e os REAGRUPOU na mesma
+grade da atividade interna — o trabalho (problema, roteiro, cronograma,
+execução, cobrança, conferência, linha do tempo) na coluna larga; o estado e as
+ações (status, iniciar, relatório, reabrir, cancelar, o aviso de "só
+visualizando") na ficha. Duas coisas de desktop entraram: o título virou 22/700
+(R195) e a ficha rola com a página (R239). E uma de celular: lá a ficha vem
+PRIMEIRO (`.campo-grade .atividade-ficha { order: -1 }`), porque o técnico abre
+a tela para ver o status e apertar "Iniciar atendimento". A tela ganhou o modo
+`embutido` e o pop-up da Início a usa — a P66 fechou.
+
+**As ferramentas da IA.** O Davi pediu que "o desenvolvimento contínuo e as
+manutenções sejam feitas de tal maneira que economize esforço e ganhe
+eficiência no trabalho da I.A." Olhei para o que custou nas últimas dez
+entregas e três coisas se repetiam:
+1. **Patch de código** — cada entrega reescrevia os mesmos ajudantes
+   (`troca`/`entre`/`anexa`/`importar`) num `.cjs` de rascunho, e duas
+   armadilhas morderam quatro vezes: crase dentro de template literal e
+   heredoc do Bash comendo barra invertida. Nasce `scripts/lib/editar.cjs`, a
+   biblioteca dos ajudantes, com os textos longos lidos de ARQUIVO (crase e
+   barra deixam de ser problema) e o CLAUDE.md dizendo que é por ali.
+2. **Fechar a entrega** — a cada versão: dois arquivos de versão, o cabeçalho
+   do ESTADO (um bloco de sete linhas casado ao byte), o número do verificador
+   no diário e no ESTADO, e o pino de versão da U anterior para reapontar.
+   Nasce `scripts/fechar-entrega.cjs`: sobe a versão, roda o verificador, grava
+   o número nos dois lugares, atualiza os campos do cabeçalho por padrão
+   estável, roda os sumários. E o verificador ganhou UM pino permanente de
+   versão (package.json = versao.ts = a entrada mais nova do VERSOES.md) — os
+   blocos de U não pinam mais o número.
+3. **Pinos que envelhecem sozinhos** — "o ESTADO aponta a U tal como pendente"
+   fica vermelho no dia em que o Davi roda a migration. A convenção nova, no
+   CLAUDE.md: pino descreve ARQUIVO (a migration existe, o código faz X), nunca
+   o estado do banco; e o pino de versão é o permanente.
+
+**O que a verificação pegou.** O import que acrescentei ao editor por regex
+produziu `,, hashtagEmCurso` — a lista de import tinha vírgula final e quebra
+de linha; `tsc` caiu de 57 para 1 erro, que é o sinal de sintaxe quebrada (ele
+para de checar tipos). Três pinos descreviam o estado anterior (os cargos de
+campo, o `DetalheCampo` sem `embutido`, o censo do `is_gestor` que a conferência
+da U127 cita duas vezes para PROVAR que ele não mudou) e foram reapontados.
+
+**Números.** Verificador: 3.240 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Migration **U127 pendente** — rodar antes de subir a v0.0.9; até rodar, o
+cargo operacional não existe no banco (a tela de usuários não consegue gravá-lo).

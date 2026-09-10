@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R243 (14)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R247 (18)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-10 (R243). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-10 (R247). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4487,3 +4487,84 @@ adaptado."
   o tamanho do número percentual dentro do gráfico de rosca […] Diminua um pouco
   a altura dos botões de Status, Tipo e Impacto. Estes botões não estão
   funcionando, corrija-os nesta e em todas as páginas em que eles aparecem.")*
+
+- **R244** — **O perfil OPERACIONAL.** Um quinto cargo, entre o técnico de campo
+  e o gestor: abre **Início, Calendário, Clientes e Perfil**, e nada mais.
+  Vê **todas as atividades de todos** na Início (o que a R221 já dá a todo
+  logado), pode ser **responsável** por visita e chamado de campo (entra na
+  lista única da R241), e **não é gestor** — não entra em `is_gestor`, não vê
+  painéis, Comercial nem Administrativo. O **Nicholas e o Erik** passam para
+  ele. O perfil **TÉCNICA** passa a ser o de quem vai ao prédio pelo celular;
+  as telas dele o Davi ajusta direto na matriz de Permissões. No banco, o
+  cargo entra nos cinco lugares que enumeram cargos (enum, dois CHECKs,
+  `salvar_permissoes`, `handle_new_user`) e ganha a semente da matriz
+  (migration U127). *(Davi, 10/09/2026: "vamos criar um novo perfil de
+  usuário: OPERACIONAL. O perfil OPERACIONAL tem acesso a página INICIO,
+  CALENDARIO, CLIENTES e PERFIL. Na prática vou alterar o Nicholas e o Erik
+  para o perfil OPERACIONAL. Este perfil consegue visualizar todas as
+  atividades de todos, na página INICIO. O Perfil de usuário TECNICA na verdade
+  quem usará são os técnicos de campo então ainda vamos decidir as telas nas
+  quais eles têm acesso, mas isso eu consigo alterar direto no sistema.")*
+
+- **R245** — **O chat não perde mensagem, e a caixa dele funciona.** Quatro
+  coisas:
+  1. **Nenhuma mensagem some para ninguém.** A resposta que uma pessoa manda
+     pelo chat aparece no chat dela E no de quem foi respondido. Uma menção que
+     é resposta de outra só deixa de ter campo próprio quando a conversa a que
+     ela pertence está naquele chat; senão, ela é o topo da sua própria
+     conversa. (Era o defeito: a resposta ao Erik mencionava o Erik, e no chat
+     dele ela sumia porque a mensagem respondida — o comentário do próprio
+     Erik — não é menção a ele.)
+  2. **Backspace na caixa vazia não quebra a caixa.** No começo do primeiro
+     bloco não há o que apagar, e a tecla não faz nada.
+  3. **A caixa de texto não mostra barra de rolagem** (continua rolando por
+     dentro, com o teto de 120px), e o **texto de convite** ("Escreva para
+     todos…") nasce exatamente onde o texto nasce.
+  4. **Teclar `#` abre a lista das atividades recentes** — as conversas do
+     próprio chat, da mais recente para a mais antiga, uma por atividade,
+     filtradas pelo que se digita —, e a lista mostra **só o nome** de cada
+     atividade. Escolher uma arma a resposta (o chip `#Código`, R223): a
+     mensagem vai para aquela atividade e volta para o chat (R240).
+  *(Davi, 10/09/2026: "Revise os mecanismos do chat, as mensagens as vezes
+  desaparecem para uns ou outros. As mensagens não devem desaparecer para
+  ninguém. No chat, a caixa de inserir texto está bugada, se o usuário clicar no
+  botão do teclado de apagar quando não houver texto, ela buga. Além disso,
+  remova a barra de scroll da caixa de texto do chat. Revise a margem do texto
+  'Escreva para todos...'. Quando o usuário tecla # no chat, crie um mecanismo
+  que abra uma lista de sugestões de atividades baseado nas ultimas mensagens
+  (ultimas atividades que teve interação). Essa lista deve conter somente o
+  nome da atividade em cada item.")*
+
+- **R246** — **A Início mostra tudo, inclusive o concluído — e a coluna
+  Concluído tem ordem própria.** Todas as atividades em aberto aparecem para
+  todos, e as concluídas também: a poda de sete dias saiu. O que fica é um
+  teto de contagem, não de data — as **300 encerradas mais recentes**, porque a
+  importação do Notion gravou ~2000 concluídas de uma vez e o servidor trunca a
+  resposta em silêncio perto de mil linhas. No Kanban, a coluna **Concluído** é
+  ordenada pela **data de conclusão, a mais recente no topo**, e essa ordem é
+  **fixa**: o botão de ordenar manda nas outras colunas, não nela. O texto que
+  diz a ordem em vigor ("Prazo (crescente)") fica **à esquerda** do botão.
+  *(Davi, 10/09/2026: "Todas as atividades devem aparecer para todos na tela
+  INICIO. Bem como as atividades que já foram concluídas. No modo de
+  visualização Kanban, as atividades da coluna de Status Concluído devem estar
+  ordenadas por data de conclusão, sendo a mais recente no topo. Esta ordem deve
+  ser fixa independente da ordenação que o usuário selecionar no botão de
+  escolher ordem do kanban. O texto 'Prazo crescente' por exemplo que fica ao
+  lado do botão de escolher ordem na tela INICIO, deve estar ao lado esquerdo
+  do botão.")*
+
+- **R247** — **A tela do chamado de campo tem layout de desktop.** No computador
+  ela usa a mesma grade da atividade interna (R234): o trabalho — problema,
+  roteiro, cronograma, execução, cobrança, conferência, linha do tempo — na
+  coluna larga, e o estado e as ações — status, cliente, técnico, agenda,
+  "Iniciar atendimento", relatório, reabrir, cancelar — na ficha à direita, com
+  as mesmas margens, fontes e espaçamentos (título 22/700, rótulos de seção,
+  escala 8/12/16/24). No celular a grade vira uma coluna e a **ficha vem
+  primeiro**, porque é para ver o status e apertar "Iniciar atendimento" que o
+  técnico abre a tela no prédio. A mesma tela entra embutida no pop-up da
+  Início. *(Davi, 10/09/2026: "Quando um usuário através de um Desktop utiliza
+  o sistema para acessar uma atividade de um técnico de campo (Mesmo que
+  somente para visualizar, o que acontece na prática), a tela tem layout de
+  celular com os campos com a largura esticada. Corrija estas telas adaptando o
+  layout para PC, seguindo todas as regras de espaçamento, fontes, margens,
+  etc..")*

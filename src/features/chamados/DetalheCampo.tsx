@@ -57,7 +57,11 @@ import {
   type ChamadoPrioridade,
 } from "@/lib/chamado-status";
 
-export function DetalheCampo({ id }: { id: string }) {
+export function DetalheCampo({ id, embutido = false }: {
+  id: string;
+  /** R247: dentro do diálogo da Início — sem a casca da página nem o botão de voltar */
+  embutido?: boolean;
+}) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isLight } = useTheme();
@@ -575,999 +579,1035 @@ export function DetalheCampo({ id }: { id: string }) {
   const fotosAntes = fotos.filter((f) => f.etapa === "antes");
   const fotosDepois = fotos.filter((f) => f.etapa === "depois");
 
-  // U120: `paddingTop`/`paddingBottom`, nunca o atalho `padding` — ele zeraria
-  // o padding lateral da classe (ver o comentário em DetalheInterno.tsx).
-  return (
-    <div className="pagina-trabalho" style={{ paddingTop: 12, paddingBottom: 48, display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
+  // R247 (U127) — DESKTOP: documento à esquerda, ficha à direita, a MESMA grade
+  // da atividade interna (R234). Davi, 10/09/2026: "Quando um usuário através de
+  // um Desktop utiliza o sistema para acessar uma atividade de um técnico de
+  // campo […] a tela tem layout de celular com os campos com a largura
+  // esticada. Corrija estas telas adaptando o layout para PC, seguindo todas as
+  // regras de espaçamento, fontes, margens." Nada de bloco novo: os blocos que
+  // existiam foram REAGRUPADOS — o trabalho (problema, roteiro, execução,
+  // cobrança, conferência, linha do tempo) na coluna larga; o estado e as ações
+  // (status, cliente, iniciar, relatório, reabrir, cancelar) na ficha. No
+  // celular a grade é uma coluna e a FICHA VEM PRIMEIRO (.campo-grade, order):
+  // o técnico abre a tela para ver o status e apertar "Iniciar atendimento".
+  const conteudo = (
+    <>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <button
-          onClick={() => navigate({ to: "/dashboard" })}
-          style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#1b1b1b",
-            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
-            color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", flexShrink: 0,
-          }}
-        >
-          <ArrowLeft size={18} />
-        </button>
+        {/* R247: no pop-up a chapelaria (fechar, "Página inteira") é do diálogo */}
+        {!embutido && (
+          <button
+            onClick={() => navigate({ to: "/dashboard" })}
+            style={{
+              width: 40, height: 40, borderRadius: 12,
+              background: isLight ? "#ffffff" : "#1b1b1b",
+              border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+              color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", flexShrink: 0,
+            }}
+          >
+            <ArrowLeft size={18} />
+          </button>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12, color: gold, letterSpacing: "0.06em" }}>
             {os.numero ?? "—"} · {TIPO_LABEL[os.tipo] ?? os.tipo}
           </div>
-          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 17 }}>{os.titulo}</div>
+          {/* R195: título de página é 22/700 */}
+          <h1 style={{ margin: 0, fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 22, lineHeight: 1.25, textWrap: "balance" as any }}>{os.titulo}</h1>
         </div>
       </div>
 
-      {/* Status + prazo */}
-      <div style={{ ...CARD, gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span
-            style={{
-              padding: "4px 10px", borderRadius: 12,
-              ...etiqueta({ dark: info.color, light: info.colorLight }),
-              fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
-              letterSpacing: "0.06em", textTransform: "uppercase",
-            }}
-          >
-            {info.labelUpper}
-          </span>
-          <span
-            style={{
-              padding: "4px 10px", borderRadius: 12,
-              ...etiqueta(prio),
-              fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
-              letterSpacing: "0.06em", textTransform: "uppercase",
-            }}
-          >
-            {PRIORIDADE_LABEL[os.prioridade as ChamadoPrioridade] ?? os.prioridade}
-          </span>
-          {(prazo === "estourado" || prazo === "proximo") && (
-            <span
-              style={{
-                display: "flex", alignItems: "center", gap: 5,
-                fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
-                color: prazo === "estourado" ? (isLight ? "#B1242E" : "#F17881") : (isLight ? "#A63E17" : "#F8C811"),
-              }}
-            >
-              <AlertTriangle size={13} />
-              {textoPrazo(os.prazo_limite)}
-            </span>
-          )}
-        </div>
 
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ ...linha, borderTop: "none" }}>
-            <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Cliente</span>
-            <button
-              onClick={() => navigate({ to: "/clientes/$id", params: { id: os.cliente_id } })}
-              style={{
-                background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "right",
-                fontFamily: "var(--fonte)", fontSize: 13, color: gold, fontWeight: 600,
-                display: "flex", alignItems: "center", gap: 5,
-              }}
-            >
-              <Building2 size={13} />
-              {os.cliente?.nome ?? "—"}
-            </button>
-          </div>
-          {os.cliente?.endereco && (
-            <div style={linha}>
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Endereço</span>
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, textAlign: "right" }}>
-                <MapPin size={12} style={{ display: "inline", marginRight: 4 }} />
-                {os.cliente.endereco}
-              </span>
+      <div className="atividade-grade campo-grade">
+        <section className="atividade-documento" aria-label="O atendimento">
+          {/* Problema relatado — itens de checklist viram caixa de marcar (só
+              leitura aqui: quem edita a descrição é o painel de propriedades). */}
+          {os.descricao_problema && (
+            <div style={CARD}>
+              <span style={SEC}>Problema relatado</span>
+              <TextoComChecklist texto={os.descricao_problema} estilo={{ fontSize: 13 }} />
             </div>
           )}
-          {os.cliente?.telefone_sindico && (
-            <div style={linha}>
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Contato</span>
-              <a
-                href={`tel:${os.cliente.telefone_sindico}`}
-                style={{
-                  fontFamily: "var(--fonte)", fontSize: 13, color: gold, fontWeight: 600,
-                  textDecoration: "none", display: "flex", alignItems: "center", gap: 5,
-                }}
-              >
-                <Phone size={12} />
-                {os.cliente.telefone_sindico}
-              </a>
-            </div>
-          )}
-          {os.sistema?.nome && (
-            <div style={linha}>
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Sistema</span>
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>{os.sistema.nome}</span>
-            </div>
-          )}
-          {os.data_hora_agendada && (
-            <div style={linha}>
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Agendado</span>
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
-                <Clock size={12} style={{ display: "inline", marginRight: 4 }} />
-                {new Date(os.data_hora_agendada).toLocaleString("pt-BR", {
-                  day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
-                })}
-              </span>
-            </div>
-          )}
-          <div style={linha}>
-            <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Técnico</span>
-            {isGerente && ["aberto", "agendado", "em_andamento"].includes(os.status) ? (
-              <select
-                value={os.responsavel_id ?? ""}
-                onChange={(e) => trocarTecnico.mutate(e.target.value)}
-                style={{
-                  ...INPUT, width: "auto", padding: "6px 10px", fontSize: 12,
-                  textAlign: "right",
-                }}
-              >
-                <option value="">Sem técnico</option>
-                {tecnicos.map((t: any) => (
-                  <option key={t.id} value={t.id}>{t.nome}</option>
-                ))}
-              </select>
-            ) : (
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
-                <User size={12} style={{ display: "inline", marginRight: 4 }} />
-                {tecnicos.find((t: any) => t.id === os.responsavel_id)?.nome ?? "não atribuído"}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* Problema relatado — itens de checklist viram caixa de marcar (só
-          leitura aqui: quem edita a descrição é o painel de propriedades). */}
-      {os.descricao_problema && (
-        <div style={CARD}>
-          <span style={SEC}>Problema relatado</span>
-          <TextoComChecklist texto={os.descricao_problema} estilo={{ fontSize: 13 }} />
-        </div>
-      )}
-
-      {/* Cancelado */}
-      {os.status === "cancelado" && os.motivo_cancelamento && (
-        <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(177,36,46,0.35)" : "rgba(241,120,129,0.30)"}` }}>
-          <span style={SEC}>Motivo do cancelamento</span>
-          <div style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 400 }}>
-            {os.motivo_cancelamento}
-          </div>
-        </div>
-      )}
-
-      {/* Checklist (preventiva e implantação) */}
-      {checklist.length > 0 && (
-        <div style={CARD}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <ListChecks size={15} color={gold} />
-            <span style={SEC}>Roteiro de verificação</span>
-            <span style={{ flex: 1 }} />
-            <span
-              style={{
-                fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 700,
-                color: checklist.every((i) => i.concluido) ? (isLight ? "#047862" : "#2DD2A5") : gold,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {checklist.filter((i) => i.concluido).length}/{checklist.length}
-            </span>
-          </div>
-          {(() => {
-            const grupos = Array.from(new Set(checklist.map((i) => i.grupo ?? "Geral")));
-            return grupos.map((g) => (
-              <div key={g} style={{ marginTop: 6 }}>
-                <div style={{ ...LABEL, marginBottom: 4 }}>{g}</div>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {checklist
-                    .filter((i) => (i.grupo ?? "Geral") === g)
-                    .map((i) => (
-                      <button
-                        key={i.id}
-                        onClick={() => emExecucao && marcarItem.mutate({ itemId: i.id, concluido: !i.concluido })}
-                        disabled={!emExecucao}
-                        style={{
-                          display: "flex", alignItems: "flex-start", gap: 8, padding: "7px 0",
-                          background: "transparent", border: "none", textAlign: "left",
-                          cursor: emExecucao ? "pointer" : "default", color: textPrimary,
-                          borderTop: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
-                        }}
-                      >
-                        {i.concluido ? (
-                          <CheckSquare size={16} color={isLight ? "#047862" : "#2DD2A5"} style={{ flexShrink: 0, marginTop: 1 }} />
-                        ) : (
-                          <Square size={16} color={textSecondary} style={{ flexShrink: 0, marginTop: 1 }} />
-                        )}
-                        <span
-                          style={{
-                            flex: 1, fontFamily: "var(--fonte)", fontSize: 12.5,
-                            opacity: i.concluido ? 0.6 : 1,
-                            textDecoration: i.concluido ? "line-through" : "none",
-                          }}
-                        >
-                          {i.item}
-                        </span>
-                      </button>
-                    ))}
-                </div>
+          {/* Cancelado */}
+          {os.status === "cancelado" && os.motivo_cancelamento && (
+            <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(177,36,46,0.35)" : "rgba(241,120,129,0.30)"}` }}>
+              <span style={SEC}>Motivo do cancelamento</span>
+              <div style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 400 }}>
+                {os.motivo_cancelamento}
               </div>
-            ));
-          })()}
-        </div>
-      )}
-
-      {/* Cronograma da obra — só na implantação (R120, U89).
-          Fica ANTES de "Iniciar atendimento" de propósito: o cronograma é o
-          plano, e o plano se lê antes de executar. E não some quando a obra é
-          concluída — é ele que documenta o que foi entregue. */}
-      {os.tipo === "implantacao" && (
-        <CronogramaObra
-          chamadoId={os.id}
-          isLight={isLight}
-          podeEditar={!!isGerente}
-          dadosDoPdf={{
-            numero: os.numero ?? null,
-            titulo: os.titulo ?? null,
-            cliente: os.cliente?.nome ?? os.cliente_origem_nome ?? null,
-            endereco: os.cliente?.endereco ?? null,
-          }}
-        />
-      )}
-
-      {/* Iniciar atendimento */}
-      {podeExecutar && ["aberto", "agendado"].includes(os.status) && (
-        <button style={CTA} onClick={() => iniciar.mutate()} disabled={iniciar.isPending}>
-          <PlayCircle size={18} />
-          {iniciar.isPending ? "Iniciando…" : "Iniciar atendimento"}
-        </button>
-      )}
-
-      {/* Execução */}
-      {podeExecutar && ["em_andamento", "concluido"].includes(os.status) && (
-        <div style={CARD}>
-          <span style={SEC}>Execução</span>
-
-          {/* Fotos antes/depois */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {([["antes", fotosAntes], ["depois", fotosDepois]] as const).map(([etapa, arr]) => (
-              <div key={etapa}>
-                <label style={LABEL}>{etapa === "antes" ? "Antes (problema)" : "Depois (solução)"}</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {arr.map((f) => (
-                    <div key={f.id} style={{ position: "relative" }}>
-                      {f.signedUrl ? (
-                        <img
-                          src={f.signedUrl}
-                          alt={f.legenda ?? etapa}
-                          style={{ width: 68, height: 68, objectFit: "cover", borderRadius: 10 }}
-                        />
-                      ) : (
-                        <div style={{ width: 68, height: 68, borderRadius: 10, background: isLight ? "#e8e8e8" : "#232323" }} />
-                      )}
-                      {emExecucao && (
-                        <button
-                          onClick={() => removerFoto.mutate({ fotoId: f.id, path: f.storage_path })}
-                          style={{
-                            position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
-                            background: "#212121", color: "#fff", border: "none", cursor: "pointer",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                          }}
-                        >
-                          <X size={11} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {emExecucao && (
-                    <label
-                      style={{
-                        width: 68, height: 68, borderRadius: 10, cursor: enviandoFoto ? "wait" : "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.04)",
-                        border: isLight ? "1px dashed rgba(0,0,0,0.20)" : "1px dashed rgba(255,255,255,0.22)",
-                      }}
-                    >
-                      <Camera size={18} color={gold} />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        style={{ display: "none" }}
-                        disabled={enviandoFoto}
-                        onChange={(e) => { void enviarFoto(e.target.files?.[0], etapa); e.currentTarget.value = ""; }}
-                      />
-                    </label>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <label style={LABEL}>Diagnóstico</label>
-            <textarea
-              style={{ ...INPUT, height: 88, resize: "vertical" }}
-              value={diagnostico}
-              onChange={(e) => setDiagnostico(e.target.value)}
-              disabled={!emExecucao}
-              placeholder="O que estava causando o problema"
-            />
-          </div>
-          <div>
-            <label style={LABEL}>Serviço executado</label>
-            <textarea
-              style={{ ...INPUT, height: 88, resize: "vertical" }}
-              value={servico}
-              onChange={(e) => setServico(e.target.value)}
-              disabled={!emExecucao}
-              placeholder="O que foi feito para resolver"
-            />
-          </div>
-          {/* Equipamento instalado / retirado — Etapa U3.
-              Substitui o campo de texto: o que entra aqui vira a decisão de
-              cobrança (U4) e o relatório de movimentação do QAP (U6). */}
-          <div>
-            <label style={LABEL}>Equipamento instalado / retirado</label>
-            {pecasOs.length === 0 && (
-              <span style={{ display: "block", fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 400, color: textSecondary, marginBottom: 8 }}>
-                Nada registrado ainda.
-              </span>
-            )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: emExecucao ? 10 : 0 }}>
-              {pecasOs.map((p) => {
-                const dc = DIRECAO_CORES[p.direcao];
-                return (
-                  <div
-                    key={p.id}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "10px 12px", borderRadius: 12,
-                      background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
-                      border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    <span style={{
-                      flexShrink: 0, padding: "3px 8px", borderRadius: 999,
-                      fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
-                      letterSpacing: "0.06em", textTransform: "uppercase",
-                      ...etiqueta(dc),
-                    }}>
-                      {DIRECAO_LABEL[p.direcao]}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
-                        {Number(p.quantidade) !== 1 ? `${p.quantidade}× ` : ""}{p.descricao}
-                      </div>
-                      {(p.numero_serie || p.tag_patrimonio) && (
-                        <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
-                          {p.numero_serie ? `Série ${p.numero_serie}` : ""}
-                          {p.tag_patrimonio ? `${p.numero_serie ? " · " : ""}TAG ${p.tag_patrimonio}` : ""}
-                        </div>
-                      )}
-                    </div>
-                    {emExecucao && (
-                      <button
-                        onClick={() => mexerPeca.mutate({ tipo: "del", pecaId: p.id })}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex" }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
             </div>
+          )}
 
-            {emExecucao && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {(Object.keys(DIRECAO_LABEL) as DirecaoPeca[]).map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setNovaDirecao(d)}
-                      style={{
-                        padding: "7px 12px", borderRadius: 10, cursor: "pointer",
-                        border: novaDirecao === d ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
-                        background: novaDirecao === d
-                          ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                          : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
-                        color: novaDirecao === d ? "#0E0E0E" : textPrimary,
-                        fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5,
-                      }}
-                    >
-                      {DIRECAO_LABEL[d]}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  style={INPUT}
-                  value={novaDescricao}
-                  onChange={(e) => setNovaDescricao(e.target.value)}
-                  placeholder="Equipamento ou material"
-                />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 44px", gap: 8 }}>
-                  <input
-                    style={INPUT}
-                    value={novaSerie}
-                    onChange={(e) => setNovaSerie(e.target.value)}
-                    placeholder="Nº de série (quando tiver)"
-                  />
-                  <input
-                    style={INPUT}
-                    value={novaQtd}
-                    onChange={(e) => setNovaQtd(e.target.value)}
-                    inputMode="decimal"
-                    placeholder="Qtd"
-                  />
-                  <button
-                    onClick={() => mexerPeca.mutate({ tipo: "add" })}
-                    disabled={!novaDescricao.trim() || mexerPeca.isPending}
-                    style={{
-                      height: 46, borderRadius: 12, border: "none",
-                      background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-                      color: "#0E0E0E", display: "flex", alignItems: "center", justifyContent: "center",
-                      cursor: novaDescricao.trim() ? "pointer" : "default",
-                      opacity: novaDescricao.trim() ? 1 : 0.5,
-                    }}
-                  >
-                    <Plus size={16} />
-                  </button>
-                </div>
-                <span style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: textSecondary, lineHeight: 1.5 }}>
-                  O número de série é o que permite conciliar com o patrimônio no ERP — registre sempre que o equipamento tiver.
+          {/* Checklist (preventiva e implantação) */}
+          {checklist.length > 0 && (
+            <div style={CARD}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <ListChecks size={15} color={gold} />
+                <span style={SEC}>Roteiro de verificação</span>
+                <span style={{ flex: 1 }} />
+                <span
+                  style={{
+                    fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 700,
+                    color: checklist.every((i) => i.concluido) ? (isLight ? "#047862" : "#2DD2A5") : gold,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {checklist.filter((i) => i.concluido).length}/{checklist.length}
                 </span>
               </div>
-            )}
-
-            {/* histórico anterior à U3, quando existir */}
-            {os.pecas_texto?.trim() && (
-              <div style={{
-                marginTop: 10, padding: "10px 12px", borderRadius: 12,
-                background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.02)",
-                border: isLight ? "1px dashed rgba(0,0,0,0.10)" : "1px dashed rgba(255,255,255,0.10)",
-              }}>
-                <div style={{ fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 600, letterSpacing: "0.10em", textTransform: "uppercase", color: textSecondary, marginBottom: 4 }}>
-                  Anotação anterior
-                </div>
-                <div style={{ fontFamily: "var(--fonte)", fontSize: 12.5, fontWeight: 400, color: textPrimary, whiteSpace: "pre-wrap" }}>
-                  {os.pecas_texto}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Assinatura */}
-          {os.assinatura_url ? (
-            <div>
-              <label style={LABEL}>Assinatura de {os.assinatura_nome ?? "quem recebeu"}</label>
-              {assinaturaUrl ? (
-                <img
-                  src={assinaturaUrl}
-                  alt="Assinatura"
-                  style={{ width: "100%", maxWidth: 320, borderRadius: 10, background: "#fff" }}
-                />
-              ) : (
-                <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
-                  carregando assinatura…
-                </span>
-              )}
-            </div>
-          ) : emExecucao ? (
-            <div>
-              <label style={LABEL}>Assinatura de quem acompanhou</label>
-              <input
-                style={{ ...INPUT, height: 46, marginBottom: 8 }}
-                value={assinanteNome}
-                onChange={(e) => setAssinanteNome(e.target.value)}
-                placeholder="Nome de quem assina"
-              />
-              <AssinaturaCanvas onChange={setAssinaturaData} />
-            </div>
-          ) : null}
-
-          {emExecucao && (
-            <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} />
-          )}
-
-          {emExecucao && (
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button style={{ ...btnSec, flex: 1 }} onClick={() => salvarRascunho.mutate()} disabled={salvarRascunho.isPending}>
-                {salvarRascunho.isPending ? "Salvando…" : "Salvar anotações"}
-              </button>
-              <button style={{ ...CTA, flex: 2, width: "auto" }} onClick={() => concluir.mutate()} disabled={concluir.isPending || afirmar.isPending}>
-                <CheckCircle2 size={18} />
-                {concluir.isPending ? "Concluindo…" : conf.rotulo("Concluir atendimento")}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Relatório de atendimento (PDF) — a partir da execução */}
-      {os.status === "concluido" && (
-        <button
-          style={{ ...btnSec, height: 50, borderRadius: 25 }}
-          onClick={() => baixarRelatorio.mutate()}
-          disabled={baixarRelatorio.isPending}
-        >
-          <FileDown size={16} color={gold} />
-          {baixarRelatorio.isPending ? "Gerando relatório…" : "Baixar relatório de atendimento (PDF)"}
-        </button>
-      )}
-
-      {/* Cobrança — Etapa U4. Só quem responde pelo financeiro enxerga; o
-          técnico registra a peça e não participa da decisão de cobrar, e o
-          SAC (gestor sem valores, R13) também não vê este card. */}
-      {veFinanceiro && os.status === "concluido" && pecasOs.length > 0 && (
-        <div style={CARD}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Receipt size={15} color={gold} />
-            <span style={SEC}>Cobrança</span>
-            <span style={{
-              marginLeft: "auto", padding: "3px 8px", borderRadius: 999,
-              fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
-              letterSpacing: "0.06em", textTransform: "uppercase",
-              color: textSecondary,
-              background: isLight ? "#f4f4f4" : "rgba(255,255,255,0.05)",
-              border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-            }}>
-              {FATURAMENTO_LABEL[(os as any).faturamento_status as FaturamentoStatus] ?? "—"}
-            </span>
-          </div>
-
-          {!os.contrato_id && (
-            <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: gold, lineHeight: 1.5 }}>
-              Cliente sem contrato vigente na abertura: tudo neste atendimento é faturável.
-            </span>
-          )}
-
-          {analise.length === 0 ? (
-            <span style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 400, color: textSecondary, lineHeight: 1.5 }}>
-              Ainda não analisado. A análise confere item a item contra o contrato — nada é cobrado sem a sua
-              aprovação depois.
-            </span>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {pecasOs.map((p) => {
-                const a = analise.find((x) => x.peca_id === p.id);
-                if (!a) return null;
-                const rc = RESULTADO_CORES[a.resultado];
-                const editando = itemEditando === p.id;
-                return (
-                  <div
-                    key={p.id}
-                    style={{
-                      padding: "10px 12px", borderRadius: 12,
-                      background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
-                      border: `1px solid ${a.resultado === "revisar" || a.resultado === "nao_identificado"
-                        ? rc.border
-                        : isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
-                      display: "flex", flexDirection: "column", gap: 6,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
-                          {Number(p.quantidade) !== 1 ? `${p.quantidade}× ` : ""}{p.descricao}
-                        </div>
-                        <div style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: textSecondary, marginTop: 2, lineHeight: 1.45 }}>
-                          {a.justificativa}
-                          {a.ajustado_manualmente && " · ajustado manualmente"}
-                          {!a.ajustado_manualmente && a.confianca != null && ` · ${Math.round(a.confianca * 100)}% de confiança`}
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                        <span style={{
-                          padding: "3px 8px", borderRadius: 999,
-                          fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
-                          letterSpacing: "0.06em", textTransform: "uppercase",
-                          ...etiqueta(rc),
-                        }}>
-                          {RESULTADO_LABEL[a.resultado]}
-                        </span>
-                        {a.valor_calculado != null && (
-                          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600 }}>
-                            {moeda(Number(a.valor_calculado) * Number(p.quantidade))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {os.faturamento_status === "a_analisar" && (
-                      editando ? (
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                          {(Object.keys(RESULTADO_LABEL) as ResultadoItem[]).map((r) => (
-                            <button
-                              key={r}
-                              onClick={() => setNovoResultado(r)}
+              {(() => {
+                const grupos = Array.from(new Set(checklist.map((i) => i.grupo ?? "Geral")));
+                return grupos.map((g) => (
+                  <div key={g} style={{ marginTop: 6 }}>
+                    <div style={{ ...LABEL, marginBottom: 4 }}>{g}</div>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      {checklist
+                        .filter((i) => (i.grupo ?? "Geral") === g)
+                        .map((i) => (
+                          <button
+                            key={i.id}
+                            onClick={() => emExecucao && marcarItem.mutate({ itemId: i.id, concluido: !i.concluido })}
+                            disabled={!emExecucao}
+                            style={{
+                              display: "flex", alignItems: "flex-start", gap: 8, padding: "7px 0",
+                              background: "transparent", border: "none", textAlign: "left",
+                              cursor: emExecucao ? "pointer" : "default", color: textPrimary,
+                              borderTop: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
+                            }}
+                          >
+                            {i.concluido ? (
+                              <CheckSquare size={16} color={isLight ? "#047862" : "#2DD2A5"} style={{ flexShrink: 0, marginTop: 1 }} />
+                            ) : (
+                              <Square size={16} color={textSecondary} style={{ flexShrink: 0, marginTop: 1 }} />
+                            )}
+                            <span
                               style={{
-                                padding: "5px 9px", borderRadius: 8, cursor: "pointer",
-                                fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10.5,
-                                border: novoResultado === r ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
-                                background: novoResultado === r ? "linear-gradient(135deg,#FCDE48,#F8C811)" : "transparent",
-                                color: novoResultado === r ? "#0E0E0E" : textPrimary,
+                                flex: 1, fontFamily: "var(--fonte)", fontSize: 12.5,
+                                opacity: i.concluido ? 0.6 : 1,
+                                textDecoration: i.concluido ? "line-through" : "none",
                               }}
                             >
-                              {RESULTADO_LABEL[r]}
-                            </button>
-                          ))}
-                          {novoResultado === "faturavel" && (
-                            <input
-                              value={novoValor}
-                              onChange={(e) => setNovoValor(e.target.value)}
-                              inputMode="decimal"
-                              placeholder="valor unit."
-                              style={{ ...INPUT, width: 110, padding: "6px 10px", fontSize: 12 }}
-                            />
-                          )}
-                          <button
-                            onClick={() => ajustar.mutate({ pecaId: p.id })}
-                            style={{
-                              padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer",
-                              background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-                              color: "#0E0E0E", fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10.5,
-                            }}
-                          >
-                            Salvar
+                              {i.item}
+                            </span>
                           </button>
-                          <button
-                            onClick={() => setItemEditando(null)}
-                            style={{
-                              padding: "5px 10px", borderRadius: 8, cursor: "pointer",
-                              background: "none", border: "none",
-                              color: textSecondary, fontFamily: "var(--fonte)", fontSize: 10.5,
-                            }}
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setItemEditando(p.id);
-                            setNovoResultado(a.resultado);
-                            setNovoValor(a.valor_calculado != null ? String(a.valor_calculado) : "");
-                          }}
-                          style={{
-                            alignSelf: "flex-start", padding: "4px 9px", borderRadius: 8, cursor: "pointer",
-                            background: "none",
-                            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
-                            color: textSecondary, fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10.5,
-                          }}
-                        >
-                          Ajustar
-                        </button>
-                      )
-                    )}
-                  </div>
-                );
-              })}
-
-              {(() => {
-                const emRevisao = analise.filter(
-                  (a) => a.resultado === "revisar" || a.resultado === "nao_identificado",
-                ).length;
-                const total = totalFaturavel(
-                  analise,
-                  Object.fromEntries(pecasOs.map((p) => [p.id, Number(p.quantidade) || 1])),
-                );
-                return (
-                  <>
-                    <div style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "baseline",
-                      paddingTop: 8,
-                      borderTop: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-                    }}>
-                      <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
-                        Total faturável
-                      </span>
-                      <span style={{ fontFamily: "var(--fonte)", fontSize: 16, fontWeight: 700, color: gold }}>
-                        {moeda(total)}
-                      </span>
+                        ))}
                     </div>
-                    {emRevisao > 0 && (
-                      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                        <AlertTriangle size={15} color={gold} style={{ marginTop: 2, flexShrink: 0 }} />
-                        <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
-                          {emRevisao} item(ns) esperando decisão. A aprovação fica bloqueada até resolver — cobrança
-                          indevida custa mais caro que uma conferência.
-                        </span>
-                      </div>
-                    )}
-                  </>
-                );
+                  </div>
+                ));
               })()}
             </div>
           )}
 
-          {/* AS COBRANÇAS VIVAS — e "vivas" é o recorte de `temLancamento`
-              (chamados/cobranca.ts), o mesmo do fechamento (u5:139) e o mesmo
-              dos dois índices únicos da U80. Antes esta linha somava a
-              CANCELADA junto: um chamado com uma cobrança de R$ 400 cancelada
-              e nada mais anunciava "1 cobrança(s) geradas · R$ 400,00", que é
-              dinheiro que não existe. A cancelada não some da tela — ela passa
-              a ser dita à parte, que é o que ela é. */}
-          {cobrancasVivas.length > 0 && (
-            <div style={{
-              padding: "10px 12px", borderRadius: 12,
-              background: isLight ? "rgba(45,210,165,0.08)" : "rgba(45,210,165,0.08)",
-              border: "1px solid rgba(45,210,165,0.28)",
-            }}>
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textPrimary }}>
-                {cobrancasVivas.length} cobrança(s) geradas ·{" "}
-                <strong>{moeda(cobrancasVivas.reduce((s, c) => s + Number(c.valor), 0))}</strong> na competência{" "}
-                {cobrancasVivas[0]?.competencia}
-                {canceladasOs > 0 && ` · ${canceladasOs} cancelada(s), fora da soma`}
-              </span>
-            </div>
+          {/* Cronograma da obra — só na implantação (R120, U89).
+              Fica ANTES de "Iniciar atendimento" de propósito: o cronograma é o
+              plano, e o plano se lê antes de executar. E não some quando a obra é
+              concluída — é ele que documenta o que foi entregue. */}
+          {os.tipo === "implantacao" && (
+            <CronogramaObra
+              chamadoId={os.id}
+              isLight={isLight}
+              podeEditar={!!isGerente}
+              dadosDoPdf={{
+                numero: os.numero ?? null,
+                titulo: os.titulo ?? null,
+                cliente: os.cliente?.nome ?? os.cliente_origem_nome ?? null,
+                endereco: os.cliente?.endereco ?? null,
+              }}
+            />
           )}
 
-          {/* O FURO, FECHADO ONDE ELE NASCE.
-              `useCobrancasDoChamado` faz SELECT direto, e `cobrancas_select` é
-              `pode_ver_financeiro(auth.uid())` (u4:293). Uma policy de SELECT
-              FILTRA LINHAS e NÃO levanta erro: a resposta é HTTP 200 com `[]`,
-              e `[]` quer dizer DUAS coisas indistinguíveis — "não há cobrança"
-              e "a RLS apagou tudo". O `if (error) return []` do hook nem chega
-              a ser exercido, porque não há erro nenhum.
-              A RPC da U80 é a única que sabe separar as duas, e quando ela
-              discorda da lista quem manda é ela: dizer "há lançamento e esta
-              tela não consegue listá-lo" é honesto; desenhar a ausência não é.
-              Hoje isto é inalcançável dentro deste card (ele é `veFinanceiro`,
-              e quem vê financeiro lê as linhas), e é de propósito: o defeito
-              deixa de depender de o gate acima continuar existindo. */}
-          {temLancamentoRpc === true && cobrancasVivas.length === 0 && (
-            <div style={{
-              padding: "10px 12px", borderRadius: 12,
-              background: isLight ? "rgba(250,132,45,0.07)" : "rgba(250,132,45,0.08)",
-              border: "1px solid rgba(250,132,45,0.28)",
-            }}>
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textPrimary }}>
-                Existe lançamento vinculado a este atendimento, e esta tela não consegue listá-lo.
-                Quem responde pelo financeiro vê o valor no fechamento.
-              </span>
-            </div>
-          )}
+          {/* Execução */}
+          {podeExecutar && ["em_andamento", "concluido"].includes(os.status) && (
+            <div style={CARD}>
+              <span style={SEC}>Execução</span>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              style={{ ...btnSec, flex: 1 }}
-              onClick={() => analisar.mutate()}
-              disabled={analisar.isPending}
-            >
-              <Sparkles size={15} color={gold} />
-              {analisar.isPending ? "Analisando…" : analise.length === 0 ? "Analisar cobrança" : "Reanalisar"}
-            </button>
-            {analise.length > 0 && os.faturamento_status === "a_analisar" && (
-              <button
-                style={{ ...btnSec, flex: 1, borderColor: gold, color: gold }}
-                onClick={() => aprovar.mutate()}
-                disabled={aprovar.isPending}
-              >
-                {aprovar.isPending ? "Aprovando…" : "Aprovar cobrança"}
-              </button>
-            )}
-            {/* BOTÃO MORTO DESDE QUE NASCEU, CONSERTADO (U80).
-                A condição era `c.status === "aberto" || c.status === "concluido"`
-                — dois literais que NÃO EXISTEM no domínio de `cobrancas.status`,
-                que é `('aberta','fechada','faturada','cancelada')` (CHECK em
-                u4:54-55, e o tipo `Cobranca` diz o mesmo). Gênero masculino em
-                cima de valores femininos, e o `as any` da consulta impediu o
-                `tsc` de ver: o botão NUNCA renderizou para ninguém, e
-                `marcar_chamado_faturado` está instalada, com REVOKE e GRANT
-                corretos, sem um chamador vivo desde a U7.
-                A condição certa é "há cobrança que ainda não virou nota":
-                `aberta` ou `fechada`. `faturada` já saiu, `cancelada` não
-                conta. */}
-            {cobrancasOs.some((c) => c.status === "aberta" || c.status === "fechada") && (
-              <button
-                style={{ ...btnSec, flex: 1 }}
-                onClick={() => faturar.mutate()}
-                disabled={faturar.isPending}
-              >
-                Marcar faturada
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+              {/* Fotos antes/depois */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {([["antes", fotosAntes], ["depois", fotosDepois]] as const).map(([etapa, arr]) => (
+                  <div key={etapa}>
+                    <label style={LABEL}>{etapa === "antes" ? "Antes (problema)" : "Depois (solução)"}</label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {arr.map((f) => (
+                        <div key={f.id} style={{ position: "relative" }}>
+                          {f.signedUrl ? (
+                            <img
+                              src={f.signedUrl}
+                              alt={f.legenda ?? etapa}
+                              style={{ width: 68, height: 68, objectFit: "cover", borderRadius: 10 }}
+                            />
+                          ) : (
+                            <div style={{ width: 68, height: 68, borderRadius: 10, background: isLight ? "#e8e8e8" : "#232323" }} />
+                          )}
+                          {emExecucao && (
+                            <button
+                              onClick={() => removerFoto.mutate({ fotoId: f.id, path: f.storage_path })}
+                              style={{
+                                position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
+                                background: "#212121", color: "#fff", border: "none", cursor: "pointer",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                              }}
+                            >
+                              <X size={11} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      {emExecucao && (
+                        <label
+                          style={{
+                            width: 68, height: 68, borderRadius: 10, cursor: enviandoFoto ? "wait" : "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.04)",
+                            border: isLight ? "1px dashed rgba(0,0,0,0.20)" : "1px dashed rgba(255,255,255,0.22)",
+                          }}
+                        >
+                          <Camera size={18} color={gold} />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            style={{ display: "none" }}
+                            disabled={enviandoFoto}
+                            onChange={(e) => { void enviarFoto(e.target.files?.[0], etapa); e.currentTarget.value = ""; }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-      {/* Conferência do gestor. Depois da U13 ela não é mais um ESTADO do
-          chamado — é a fila do faturamento, que é onde ela sempre morou de
-          verdade. Um chamado sem nada a cobrar sai dela sozinho. */}
-      {isGerente && os.status === "concluido" && os.faturamento_status === "a_analisar" && (
-        <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(4,120,87,0.35)" : "rgba(45,210,165,0.30)"}` }}>
-          <span style={SEC}>Conferência</span>
-          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
-            Revise o diagnóstico, as fotos e a assinatura antes de liberar a cobrança.
-          </span>
-          {/* O chamado já está `concluido` aqui: quem chegou a esta caixa vê a
-              pergunta no MODO ATRASADO — foi encerrado por um caminho que não
-              perguntou (o arrasto do quadro, o seletor de status, os chips do
-              interno, `decidir_pedido_compra`, o gatilho da visita — P34). */}
-          <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} modo="atrasado" />
-
-          {/* A DECISÃO DE COBRANÇA — só para quem responde pelo financeiro.
-              O SAC é gestor e NÃO vê valores (R13): para ele esta seção não
-              existe, e o botão de fechar dispara `conferir_depois`, que é
-              exatamente a escrita que este botão já fazia antes da U90.
-              Nada de campo de valor desabilitado: um campo cinza ensina que
-              existe um número ali que ele não pode ver. */}
-          {veFinanceiro && os.natureza === "campo" && (
-            analise.length > 0 ? (
-              /* OS DOIS CAMINHOS SÃO DISJUNTOS (u80:406-410): onde houve
-                 análise item a item, a cobrança sai da APROVAÇÃO, com o
-                 bloqueio de `revisar`. A porta RECUSA `lancar` aqui — então a
-                 tela não oferece, em vez de oferecer e colher um 55000. */
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary }}>
-                Este atendimento foi analisado item a item — a cobrança sai da
-                conferência do cartão de peças, e não de um valor digitado aqui.
-              </span>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <label style={LABEL}>Lançar cobrança ao fechar (opcional)</label>
-                <input
-                  style={INPUT} placeholder="O que está sendo cobrado"
-                  value={lancDescricao} onChange={(e) => setLancDescricao(e.target.value)}
+              <div>
+                <label style={LABEL}>Diagnóstico</label>
+                <textarea
+                  style={{ ...INPUT, height: 88, resize: "vertical" }}
+                  value={diagnostico}
+                  onChange={(e) => setDiagnostico(e.target.value)}
+                  disabled={!emExecucao}
+                  placeholder="O que estava causando o problema"
                 />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    style={{ ...INPUT, flex: 2 }} inputMode="decimal" placeholder="Valor total"
-                    value={lancValor} onChange={(e) => setLancValor(e.target.value)}
-                  />
-                  <input
-                    style={{ ...INPUT, flex: 1 }} inputMode="numeric" placeholder="parcelas"
-                    aria-label="Número de parcelas"
-                    value={lancParcelas} onChange={(e) => setLancParcelas(e.target.value)}
-                  />
-                </div>
-                {/* A PRÉVIA É O QUE IMPEDE A SURPRESA. `parcelar` põe o resto na
-                    PRIMEIRA parcela, então 100 em 3 é 33,34 + 33,33 + 33,33 —
-                    e quem lança precisa ver isso ANTES, não descobrir no boleto. */}
-                {previaDasParcelas.length > 0 && (
-                  <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, fontVariantNumeric: "tabular-nums" }}>
-                    {previaDasParcelas.length}× — primeira de{" "}
-                    {previaDasParcelas[0].toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    {previaDasParcelas.length > 1 && previaDasParcelas[1] !== previaDasParcelas[0]
-                      ? `, demais de ${previaDasParcelas[1].toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
-                      : ""}
-                    {candidatoDoLancamento.tipoServico === "instalacao" ? " · instalação, até 60×" : " · manutenção, até 12×"}
+              </div>
+              <div>
+                <label style={LABEL}>Serviço executado</label>
+                <textarea
+                  style={{ ...INPUT, height: 88, resize: "vertical" }}
+                  value={servico}
+                  onChange={(e) => setServico(e.target.value)}
+                  disabled={!emExecucao}
+                  placeholder="O que foi feito para resolver"
+                />
+              </div>
+              {/* Equipamento instalado / retirado — Etapa U3.
+                  Substitui o campo de texto: o que entra aqui vira a decisão de
+                  cobrança (U4) e o relatório de movimentação do QAP (U6). */}
+              <div>
+                <label style={LABEL}>Equipamento instalado / retirado</label>
+                {pecasOs.length === 0 && (
+                  <span style={{ display: "block", fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 400, color: textSecondary, marginBottom: 8 }}>
+                    Nada registrado ainda.
                   </span>
                 )}
-                {lancDescricao.trim() !== "" && erroDoLanc && (
-                  <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: isLight ? "#8A5A00" : "#F0B429" }}>
-                    {erroDoLanc}
-                  </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: emExecucao ? 10 : 0 }}>
+                  {pecasOs.map((p) => {
+                    const dc = DIRECAO_CORES[p.direcao];
+                    return (
+                      <div
+                        key={p.id}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 8,
+                          padding: "10px 12px", borderRadius: 12,
+                          background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
+                          border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
+                        }}
+                      >
+                        <span style={{
+                          flexShrink: 0, padding: "3px 8px", borderRadius: 999,
+                          fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
+                          letterSpacing: "0.06em", textTransform: "uppercase",
+                          ...etiqueta(dc),
+                        }}>
+                          {DIRECAO_LABEL[p.direcao]}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
+                            {Number(p.quantidade) !== 1 ? `${p.quantidade}× ` : ""}{p.descricao}
+                          </div>
+                          {(p.numero_serie || p.tag_patrimonio) && (
+                            <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
+                              {p.numero_serie ? `Série ${p.numero_serie}` : ""}
+                              {p.tag_patrimonio ? `${p.numero_serie ? " · " : ""}TAG ${p.tag_patrimonio}` : ""}
+                            </div>
+                          )}
+                        </div>
+                        {emExecucao && (
+                          <button
+                            onClick={() => mexerPeca.mutate({ tipo: "del", pecaId: p.id })}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex" }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {emExecucao && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {(Object.keys(DIRECAO_LABEL) as DirecaoPeca[]).map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setNovaDirecao(d)}
+                          style={{
+                            padding: "7px 12px", borderRadius: 10, cursor: "pointer",
+                            border: novaDirecao === d ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
+                            background: novaDirecao === d
+                              ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
+                              : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+                            color: novaDirecao === d ? "#0E0E0E" : textPrimary,
+                            fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5,
+                          }}
+                        >
+                          {DIRECAO_LABEL[d]}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      style={INPUT}
+                      value={novaDescricao}
+                      onChange={(e) => setNovaDescricao(e.target.value)}
+                      placeholder="Equipamento ou material"
+                    />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 44px", gap: 8 }}>
+                      <input
+                        style={INPUT}
+                        value={novaSerie}
+                        onChange={(e) => setNovaSerie(e.target.value)}
+                        placeholder="Nº de série (quando tiver)"
+                      />
+                      <input
+                        style={INPUT}
+                        value={novaQtd}
+                        onChange={(e) => setNovaQtd(e.target.value)}
+                        inputMode="decimal"
+                        placeholder="Qtd"
+                      />
+                      <button
+                        onClick={() => mexerPeca.mutate({ tipo: "add" })}
+                        disabled={!novaDescricao.trim() || mexerPeca.isPending}
+                        style={{
+                          height: 46, borderRadius: 12, border: "none",
+                          background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
+                          color: "#0E0E0E", display: "flex", alignItems: "center", justifyContent: "center",
+                          cursor: novaDescricao.trim() ? "pointer" : "default",
+                          opacity: novaDescricao.trim() ? 1 : 0.5,
+                        }}
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                    <span style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: textSecondary, lineHeight: 1.5 }}>
+                      O número de série é o que permite conciliar com o patrimônio no ERP — registre sempre que o equipamento tiver.
+                    </span>
+                  </div>
+                )}
+
+                {/* histórico anterior à U3, quando existir */}
+                {os.pecas_texto?.trim() && (
+                  <div style={{
+                    marginTop: 10, padding: "10px 12px", borderRadius: 12,
+                    background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.02)",
+                    border: isLight ? "1px dashed rgba(0,0,0,0.10)" : "1px dashed rgba(255,255,255,0.10)",
+                  }}>
+                    <div style={{ fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 600, letterSpacing: "0.10em", textTransform: "uppercase", color: textSecondary, marginBottom: 4 }}>
+                      Anotação anterior
+                    </div>
+                    <div style={{ fontFamily: "var(--fonte)", fontSize: 12.5, fontWeight: 400, color: textPrimary, whiteSpace: "pre-wrap" }}>
+                      {os.pecas_texto}
+                    </div>
+                  </div>
                 )}
               </div>
-            )
+
+              {/* Assinatura */}
+              {os.assinatura_url ? (
+                <div>
+                  <label style={LABEL}>Assinatura de {os.assinatura_nome ?? "quem recebeu"}</label>
+                  {assinaturaUrl ? (
+                    <img
+                      src={assinaturaUrl}
+                      alt="Assinatura"
+                      style={{ width: "100%", maxWidth: 320, borderRadius: 10, background: "#fff" }}
+                    />
+                  ) : (
+                    <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
+                      carregando assinatura…
+                    </span>
+                  )}
+                </div>
+              ) : emExecucao ? (
+                <div>
+                  <label style={LABEL}>Assinatura de quem acompanhou</label>
+                  <input
+                    style={{ ...INPUT, height: 46, marginBottom: 8 }}
+                    value={assinanteNome}
+                    onChange={(e) => setAssinanteNome(e.target.value)}
+                    placeholder="Nome de quem assina"
+                  />
+                  <AssinaturaCanvas onChange={setAssinaturaData} />
+                </div>
+              ) : null}
+
+              {emExecucao && (
+                <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} />
+              )}
+
+              {emExecucao && (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button style={{ ...btnSec, flex: 1 }} onClick={() => salvarRascunho.mutate()} disabled={salvarRascunho.isPending}>
+                    {salvarRascunho.isPending ? "Salvando…" : "Salvar anotações"}
+                  </button>
+                  <button style={{ ...CTA, flex: 2, width: "auto" }} onClick={() => concluir.mutate()} disabled={concluir.isPending || afirmar.isPending}>
+                    <CheckCircle2 size={18} />
+                    {concluir.isPending ? "Concluindo…" : conf.rotulo("Concluir atendimento")}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button style={{ ...btnSec, flex: 1 }} onClick={() => reabrir.mutate()} disabled={reabrir.isPending}>
-              Reabrir
-            </button>
-            {podeDecidirValor && (
-              <button
-                style={{ ...btnSec, flex: 1 }}
-                onClick={() => fechar.mutate("nada_a_cobrar")}
-                disabled={fechar.isPending || afirmar.isPending}
-              >
-                Nada a cobrar
-              </button>
-            )}
-            <button
-              style={{
-                ...CTA, flex: 2, width: "auto",
-                background: "linear-gradient(135deg,#2DD2A5 0%,#059676 40%,#047862 100%)",
-                color: "#FFFFFF",
-                boxShadow: "0 4px 20px rgba(5,150,118,0.45)",
-              }}
-              /* O BOTÃO GRANDE MUDA DE DECISÃO, NÃO DE LUGAR. Com o formulário
-                 preenchido e válido ele LANÇA; vazio, ele faz o que sempre fez.
-                 Dois botões grandes concorrentes fariam a pessoa escolher entre
-                 dois verbos parecidos com o dedo em cima do mais próximo. */
-              onClick={() => fechar.mutate(vaiLancar ? "lancar" : "conferir_depois")}
-              disabled={fechar.isPending || afirmar.isPending}
-            >
-              <CheckCircle2 size={18} />
-              {fechar.isPending
-                ? "Fechando…"
-                : conf.rotulo(vaiLancar ? `Fechar e lançar ${previaDasParcelas.length}×` : "Conferir e fechar")}
-            </button>
-          </div>
-        </div>
-      )}
+          {/* Cobrança — Etapa U4. Só quem responde pelo financeiro enxerga; o
+              técnico registra a peça e não participa da decisão de cobrar, e o
+              SAC (gestor sem valores, R13) também não vê este card. */}
+          {veFinanceiro && os.status === "concluido" && pecasOs.length > 0 && (
+            <div style={CARD}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Receipt size={15} color={gold} />
+                <span style={SEC}>Cobrança</span>
+                <span style={{
+                  marginLeft: "auto", padding: "3px 8px", borderRadius: 999,
+                  fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
+                  letterSpacing: "0.06em", textTransform: "uppercase",
+                  color: textSecondary,
+                  background: isLight ? "#f4f4f4" : "rgba(255,255,255,0.05)",
+                  border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
+                }}>
+                  {FATURAMENTO_LABEL[(os as any).faturamento_status as FaturamentoStatus] ?? "—"}
+                </span>
+              </div>
 
-      {/* Reabrir quando já fechada */}
-      {isGerente && os.status === "concluido" && (
-        <button style={btnSec} onClick={() => reabrir.mutate()} disabled={reabrir.isPending}>
-          Reabrir chamado
-        </button>
-      )}
+              {!os.contrato_id && (
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: gold, lineHeight: 1.5 }}>
+                  Cliente sem contrato vigente na abertura: tudo neste atendimento é faturável.
+                </span>
+              )}
 
-      {/* Cancelar */}
-      {isGerente && ["aberto", "agendado", "em_andamento"].includes(os.status) && (
-        <div style={CARD}>
-          {cancelando ? (
-            <>
-              <span style={SEC}>Cancelar chamado</span>
-              <textarea
-                style={{ ...INPUT, height: 70, resize: "vertical" }}
-                value={motivoCancel}
-                onChange={(e) => setMotivoCancel(e.target.value)}
-                placeholder="Motivo do cancelamento"
-              />
-              {/* Cancelar não afirma nada sozinho: o gatilho desmarca TODO
-                  pendente, de qualquer dia. Quem foi ao prédio e só depois viu
-                  o chamado cair diz isso AQUI, antes do status. */}
-              <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} />
-              <div style={{ display: "flex", gap: 10 }}>
-                <button style={{ ...btnSec, flex: 1 }} onClick={() => setCancelando(false)}>Voltar</button>
+              {analise.length === 0 ? (
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 400, color: textSecondary, lineHeight: 1.5 }}>
+                  Ainda não analisado. A análise confere item a item contra o contrato — nada é cobrado sem a sua
+                  aprovação depois.
+                </span>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {pecasOs.map((p) => {
+                    const a = analise.find((x) => x.peca_id === p.id);
+                    if (!a) return null;
+                    const rc = RESULTADO_CORES[a.resultado];
+                    const editando = itemEditando === p.id;
+                    return (
+                      <div
+                        key={p.id}
+                        style={{
+                          padding: "10px 12px", borderRadius: 12,
+                          background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
+                          border: `1px solid ${a.resultado === "revisar" || a.resultado === "nao_identificado"
+                            ? rc.border
+                            : isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
+                          display: "flex", flexDirection: "column", gap: 6,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
+                              {Number(p.quantidade) !== 1 ? `${p.quantidade}× ` : ""}{p.descricao}
+                            </div>
+                            <div style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: textSecondary, marginTop: 2, lineHeight: 1.45 }}>
+                              {a.justificativa}
+                              {a.ajustado_manualmente && " · ajustado manualmente"}
+                              {!a.ajustado_manualmente && a.confianca != null && ` · ${Math.round(a.confianca * 100)}% de confiança`}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                            <span style={{
+                              padding: "3px 8px", borderRadius: 999,
+                              fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
+                              letterSpacing: "0.06em", textTransform: "uppercase",
+                              ...etiqueta(rc),
+                            }}>
+                              {RESULTADO_LABEL[a.resultado]}
+                            </span>
+                            {a.valor_calculado != null && (
+                              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600 }}>
+                                {moeda(Number(a.valor_calculado) * Number(p.quantidade))}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {os.faturamento_status === "a_analisar" && (
+                          editando ? (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                              {(Object.keys(RESULTADO_LABEL) as ResultadoItem[]).map((r) => (
+                                <button
+                                  key={r}
+                                  onClick={() => setNovoResultado(r)}
+                                  style={{
+                                    padding: "5px 9px", borderRadius: 8, cursor: "pointer",
+                                    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10.5,
+                                    border: novoResultado === r ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+                                    background: novoResultado === r ? "linear-gradient(135deg,#FCDE48,#F8C811)" : "transparent",
+                                    color: novoResultado === r ? "#0E0E0E" : textPrimary,
+                                  }}
+                                >
+                                  {RESULTADO_LABEL[r]}
+                                </button>
+                              ))}
+                              {novoResultado === "faturavel" && (
+                                <input
+                                  value={novoValor}
+                                  onChange={(e) => setNovoValor(e.target.value)}
+                                  inputMode="decimal"
+                                  placeholder="valor unit."
+                                  style={{ ...INPUT, width: 110, padding: "6px 10px", fontSize: 12 }}
+                                />
+                              )}
+                              <button
+                                onClick={() => ajustar.mutate({ pecaId: p.id })}
+                                style={{
+                                  padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer",
+                                  background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
+                                  color: "#0E0E0E", fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10.5,
+                                }}
+                              >
+                                Salvar
+                              </button>
+                              <button
+                                onClick={() => setItemEditando(null)}
+                                style={{
+                                  padding: "5px 10px", borderRadius: 8, cursor: "pointer",
+                                  background: "none", border: "none",
+                                  color: textSecondary, fontFamily: "var(--fonte)", fontSize: 10.5,
+                                }}
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setItemEditando(p.id);
+                                setNovoResultado(a.resultado);
+                                setNovoValor(a.valor_calculado != null ? String(a.valor_calculado) : "");
+                              }}
+                              style={{
+                                alignSelf: "flex-start", padding: "4px 9px", borderRadius: 8, cursor: "pointer",
+                                background: "none",
+                                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+                                color: textSecondary, fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10.5,
+                              }}
+                            >
+                              Ajustar
+                            </button>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {(() => {
+                    const emRevisao = analise.filter(
+                      (a) => a.resultado === "revisar" || a.resultado === "nao_identificado",
+                    ).length;
+                    const total = totalFaturavel(
+                      analise,
+                      Object.fromEntries(pecasOs.map((p) => [p.id, Number(p.quantidade) || 1])),
+                    );
+                    return (
+                      <>
+                        <div style={{
+                          display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                          paddingTop: 8,
+                          borderTop: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
+                        }}>
+                          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
+                            Total faturável
+                          </span>
+                          <span style={{ fontFamily: "var(--fonte)", fontSize: 16, fontWeight: 700, color: gold }}>
+                            {moeda(total)}
+                          </span>
+                        </div>
+                        {emRevisao > 0 && (
+                          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                            <AlertTriangle size={15} color={gold} style={{ marginTop: 2, flexShrink: 0 }} />
+                            <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
+                              {emRevisao} item(ns) esperando decisão. A aprovação fica bloqueada até resolver — cobrança
+                              indevida custa mais caro que uma conferência.
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* AS COBRANÇAS VIVAS — e "vivas" é o recorte de `temLancamento`
+                  (chamados/cobranca.ts), o mesmo do fechamento (u5:139) e o mesmo
+                  dos dois índices únicos da U80. Antes esta linha somava a
+                  CANCELADA junto: um chamado com uma cobrança de R$ 400 cancelada
+                  e nada mais anunciava "1 cobrança(s) geradas · R$ 400,00", que é
+                  dinheiro que não existe. A cancelada não some da tela — ela passa
+                  a ser dita à parte, que é o que ela é. */}
+              {cobrancasVivas.length > 0 && (
+                <div style={{
+                  padding: "10px 12px", borderRadius: 12,
+                  background: isLight ? "rgba(45,210,165,0.08)" : "rgba(45,210,165,0.08)",
+                  border: "1px solid rgba(45,210,165,0.28)",
+                }}>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textPrimary }}>
+                    {cobrancasVivas.length} cobrança(s) geradas ·{" "}
+                    <strong>{moeda(cobrancasVivas.reduce((s, c) => s + Number(c.valor), 0))}</strong> na competência{" "}
+                    {cobrancasVivas[0]?.competencia}
+                    {canceladasOs > 0 && ` · ${canceladasOs} cancelada(s), fora da soma`}
+                  </span>
+                </div>
+              )}
+
+              {/* O FURO, FECHADO ONDE ELE NASCE.
+                  `useCobrancasDoChamado` faz SELECT direto, e `cobrancas_select` é
+                  `pode_ver_financeiro(auth.uid())` (u4:293). Uma policy de SELECT
+                  FILTRA LINHAS e NÃO levanta erro: a resposta é HTTP 200 com `[]`,
+                  e `[]` quer dizer DUAS coisas indistinguíveis — "não há cobrança"
+                  e "a RLS apagou tudo". O `if (error) return []` do hook nem chega
+                  a ser exercido, porque não há erro nenhum.
+                  A RPC da U80 é a única que sabe separar as duas, e quando ela
+                  discorda da lista quem manda é ela: dizer "há lançamento e esta
+                  tela não consegue listá-lo" é honesto; desenhar a ausência não é.
+                  Hoje isto é inalcançável dentro deste card (ele é `veFinanceiro`,
+                  e quem vê financeiro lê as linhas), e é de propósito: o defeito
+                  deixa de depender de o gate acima continuar existindo. */}
+              {temLancamentoRpc === true && cobrancasVivas.length === 0 && (
+                <div style={{
+                  padding: "10px 12px", borderRadius: 12,
+                  background: isLight ? "rgba(250,132,45,0.07)" : "rgba(250,132,45,0.08)",
+                  border: "1px solid rgba(250,132,45,0.28)",
+                }}>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textPrimary }}>
+                    Existe lançamento vinculado a este atendimento, e esta tela não consegue listá-lo.
+                    Quem responde pelo financeiro vê o valor no fechamento.
+                  </span>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  style={{ ...btnSec, flex: 1 }}
+                  onClick={() => analisar.mutate()}
+                  disabled={analisar.isPending}
+                >
+                  <Sparkles size={15} color={gold} />
+                  {analisar.isPending ? "Analisando…" : analise.length === 0 ? "Analisar cobrança" : "Reanalisar"}
+                </button>
+                {analise.length > 0 && os.faturamento_status === "a_analisar" && (
+                  <button
+                    style={{ ...btnSec, flex: 1, borderColor: gold, color: gold }}
+                    onClick={() => aprovar.mutate()}
+                    disabled={aprovar.isPending}
+                  >
+                    {aprovar.isPending ? "Aprovando…" : "Aprovar cobrança"}
+                  </button>
+                )}
+                {/* BOTÃO MORTO DESDE QUE NASCEU, CONSERTADO (U80).
+                    A condição era `c.status === "aberto" || c.status === "concluido"`
+                    — dois literais que NÃO EXISTEM no domínio de `cobrancas.status`,
+                    que é `('aberta','fechada','faturada','cancelada')` (CHECK em
+                    u4:54-55, e o tipo `Cobranca` diz o mesmo). Gênero masculino em
+                    cima de valores femininos, e o `as any` da consulta impediu o
+                    `tsc` de ver: o botão NUNCA renderizou para ninguém, e
+                    `marcar_chamado_faturado` está instalada, com REVOKE e GRANT
+                    corretos, sem um chamador vivo desde a U7.
+                    A condição certa é "há cobrança que ainda não virou nota":
+                    `aberta` ou `fechada`. `faturada` já saiu, `cancelada` não
+                    conta. */}
+                {cobrancasOs.some((c) => c.status === "aberta" || c.status === "fechada") && (
+                  <button
+                    style={{ ...btnSec, flex: 1 }}
+                    onClick={() => faturar.mutate()}
+                    disabled={faturar.isPending}
+                  >
+                    Marcar faturada
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Conferência do gestor. Depois da U13 ela não é mais um ESTADO do
+              chamado — é a fila do faturamento, que é onde ela sempre morou de
+              verdade. Um chamado sem nada a cobrar sai dela sozinho. */}
+          {isGerente && os.status === "concluido" && os.faturamento_status === "a_analisar" && (
+            <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(4,120,87,0.35)" : "rgba(45,210,165,0.30)"}` }}>
+              <span style={SEC}>Conferência</span>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
+                Revise o diagnóstico, as fotos e a assinatura antes de liberar a cobrança.
+              </span>
+              {/* O chamado já está `concluido` aqui: quem chegou a esta caixa vê a
+                  pergunta no MODO ATRASADO — foi encerrado por um caminho que não
+                  perguntou (o arrasto do quadro, o seletor de status, os chips do
+                  interno, `decidir_pedido_compra`, o gatilho da visita — P34). */}
+              <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} modo="atrasado" />
+
+              {/* A DECISÃO DE COBRANÇA — só para quem responde pelo financeiro.
+                  O SAC é gestor e NÃO vê valores (R13): para ele esta seção não
+                  existe, e o botão de fechar dispara `conferir_depois`, que é
+                  exatamente a escrita que este botão já fazia antes da U90.
+                  Nada de campo de valor desabilitado: um campo cinza ensina que
+                  existe um número ali que ele não pode ver. */}
+              {veFinanceiro && os.natureza === "campo" && (
+                analise.length > 0 ? (
+                  /* OS DOIS CAMINHOS SÃO DISJUNTOS (u80:406-410): onde houve
+                     análise item a item, a cobrança sai da APROVAÇÃO, com o
+                     bloqueio de `revisar`. A porta RECUSA `lancar` aqui — então a
+                     tela não oferece, em vez de oferecer e colher um 55000. */
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary }}>
+                    Este atendimento foi analisado item a item — a cobrança sai da
+                    conferência do cartão de peças, e não de um valor digitado aqui.
+                  </span>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <label style={LABEL}>Lançar cobrança ao fechar (opcional)</label>
+                    <input
+                      style={INPUT} placeholder="O que está sendo cobrado"
+                      value={lancDescricao} onChange={(e) => setLancDescricao(e.target.value)}
+                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        style={{ ...INPUT, flex: 2 }} inputMode="decimal" placeholder="Valor total"
+                        value={lancValor} onChange={(e) => setLancValor(e.target.value)}
+                      />
+                      <input
+                        style={{ ...INPUT, flex: 1 }} inputMode="numeric" placeholder="parcelas"
+                        aria-label="Número de parcelas"
+                        value={lancParcelas} onChange={(e) => setLancParcelas(e.target.value)}
+                      />
+                    </div>
+                    {/* A PRÉVIA É O QUE IMPEDE A SURPRESA. `parcelar` põe o resto na
+                        PRIMEIRA parcela, então 100 em 3 é 33,34 + 33,33 + 33,33 —
+                        e quem lança precisa ver isso ANTES, não descobrir no boleto. */}
+                    {previaDasParcelas.length > 0 && (
+                      <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, fontVariantNumeric: "tabular-nums" }}>
+                        {previaDasParcelas.length}× — primeira de{" "}
+                        {previaDasParcelas[0].toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        {previaDasParcelas.length > 1 && previaDasParcelas[1] !== previaDasParcelas[0]
+                          ? `, demais de ${previaDasParcelas[1].toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
+                          : ""}
+                        {candidatoDoLancamento.tipoServico === "instalacao" ? " · instalação, até 60×" : " · manutenção, até 12×"}
+                      </span>
+                    )}
+                    {lancDescricao.trim() !== "" && erroDoLanc && (
+                      <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: isLight ? "#8A5A00" : "#F0B429" }}>
+                        {erroDoLanc}
+                      </span>
+                    )}
+                  </div>
+                )
+              )}
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button style={{ ...btnSec, flex: 1 }} onClick={() => reabrir.mutate()} disabled={reabrir.isPending}>
+                  Reabrir
+                </button>
+                {podeDecidirValor && (
+                  <button
+                    style={{ ...btnSec, flex: 1 }}
+                    onClick={() => fechar.mutate("nada_a_cobrar")}
+                    disabled={fechar.isPending || afirmar.isPending}
+                  >
+                    Nada a cobrar
+                  </button>
+                )}
                 <button
                   style={{
-                    ...btnSec, flex: 1,
-                    color: isLight ? "#B1242E" : "#F17881",
-                    border: `1px solid ${isLight ? "rgba(177,36,46,0.35)" : "rgba(241,120,129,0.32)"}`,
+                    ...CTA, flex: 2, width: "auto",
+                    background: "linear-gradient(135deg,#2DD2A5 0%,#059676 40%,#047862 100%)",
+                    color: "#FFFFFF",
+                    boxShadow: "0 4px 20px rgba(5,150,118,0.45)",
                   }}
-                  onClick={() => cancelar.mutate()}
-                  disabled={cancelar.isPending}
+                  /* O BOTÃO GRANDE MUDA DE DECISÃO, NÃO DE LUGAR. Com o formulário
+                     preenchido e válido ele LANÇA; vazio, ele faz o que sempre fez.
+                     Dois botões grandes concorrentes fariam a pessoa escolher entre
+                     dois verbos parecidos com o dedo em cima do mais próximo. */
+                  onClick={() => fechar.mutate(vaiLancar ? "lancar" : "conferir_depois")}
+                  disabled={fechar.isPending || afirmar.isPending}
                 >
-                  {cancelar.isPending ? "Cancelando…" : "Confirmar cancelamento"}
+                  <CheckCircle2 size={18} />
+                  {fechar.isPending
+                    ? "Fechando…"
+                    : conf.rotulo(vaiLancar ? `Fechar e lançar ${previaDasParcelas.length}×` : "Conferir e fechar")}
                 </button>
               </div>
-            </>
-          ) : (
-            <button
-              style={{ ...btnSec, color: isLight ? "#B1242E" : "#F17881" }}
-              onClick={() => setCancelando(true)}
-            >
-              <Trash2 size={14} />
-              Cancelar chamado
+            </div>
+          )}
+
+          {/* Linha do tempo */}
+          <div style={CARD}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <History size={15} color={gold} />
+              <span style={SEC}>Linha do tempo</span>
+            </div>
+            {eventos.length === 0 ? (
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
+                Sem movimentações registradas.
+              </span>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {eventos.map((ev, i) => (
+                  <div key={ev.id} style={i === 0 ? { ...linha, borderTop: "none" } : linha}>
+                    <span style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600 }}>
+                      {ev.descricao ?? ev.tipo}
+                    </span>
+                    <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary, flexShrink: 0 }}>
+                      {new Date(ev.created_at).toLocaleString("pt-BR", {
+                        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+
+        </section>
+        <aside className="atividade-ficha" aria-label="Ficha do chamado">
+          {/* Status + prazo */}
+          <div style={{ ...CARD, gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span
+                style={{
+                  padding: "4px 10px", borderRadius: 12,
+                  ...etiqueta({ dark: info.color, light: info.colorLight }),
+                  fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
+                  letterSpacing: "0.06em", textTransform: "uppercase",
+                }}
+              >
+                {info.labelUpper}
+              </span>
+              <span
+                style={{
+                  padding: "4px 10px", borderRadius: 12,
+                  ...etiqueta(prio),
+                  fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
+                  letterSpacing: "0.06em", textTransform: "uppercase",
+                }}
+              >
+                {PRIORIDADE_LABEL[os.prioridade as ChamadoPrioridade] ?? os.prioridade}
+              </span>
+              {(prazo === "estourado" || prazo === "proximo") && (
+                <span
+                  style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
+                    color: prazo === "estourado" ? (isLight ? "#B1242E" : "#F17881") : (isLight ? "#A63E17" : "#F8C811"),
+                  }}
+                >
+                  <AlertTriangle size={13} />
+                  {textoPrazo(os.prazo_limite)}
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ ...linha, borderTop: "none" }}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Cliente</span>
+                <button
+                  onClick={() => navigate({ to: "/clientes/$id", params: { id: os.cliente_id } })}
+                  style={{
+                    background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "right",
+                    fontFamily: "var(--fonte)", fontSize: 13, color: gold, fontWeight: 600,
+                    display: "flex", alignItems: "center", gap: 5,
+                  }}
+                >
+                  <Building2 size={13} />
+                  {os.cliente?.nome ?? "—"}
+                </button>
+              </div>
+              {os.cliente?.endereco && (
+                <div style={linha}>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Endereço</span>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, textAlign: "right" }}>
+                    <MapPin size={12} style={{ display: "inline", marginRight: 4 }} />
+                    {os.cliente.endereco}
+                  </span>
+                </div>
+              )}
+              {os.cliente?.telefone_sindico && (
+                <div style={linha}>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Contato</span>
+                  <a
+                    href={`tel:${os.cliente.telefone_sindico}`}
+                    style={{
+                      fontFamily: "var(--fonte)", fontSize: 13, color: gold, fontWeight: 600,
+                      textDecoration: "none", display: "flex", alignItems: "center", gap: 5,
+                    }}
+                  >
+                    <Phone size={12} />
+                    {os.cliente.telefone_sindico}
+                  </a>
+                </div>
+              )}
+              {os.sistema?.nome && (
+                <div style={linha}>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Sistema</span>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>{os.sistema.nome}</span>
+                </div>
+              )}
+              {os.data_hora_agendada && (
+                <div style={linha}>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Agendado</span>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
+                    <Clock size={12} style={{ display: "inline", marginRight: 4 }} />
+                    {new Date(os.data_hora_agendada).toLocaleString("pt-BR", {
+                      day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              )}
+              <div style={linha}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Técnico</span>
+                {isGerente && ["aberto", "agendado", "em_andamento"].includes(os.status) ? (
+                  <select
+                    value={os.responsavel_id ?? ""}
+                    onChange={(e) => trocarTecnico.mutate(e.target.value)}
+                    style={{
+                      ...INPUT, width: "auto", padding: "6px 10px", fontSize: 12,
+                      textAlign: "right",
+                    }}
+                  >
+                    <option value="">Sem técnico</option>
+                    {tecnicos.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.nome}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
+                    <User size={12} style={{ display: "inline", marginRight: 4 }} />
+                    {tecnicos.find((t: any) => t.id === os.responsavel_id)?.nome ?? "não atribuído"}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Iniciar atendimento */}
+          {podeExecutar && ["aberto", "agendado"].includes(os.status) && (
+            <button style={CTA} onClick={() => iniciar.mutate()} disabled={iniciar.isPending}>
+              <PlayCircle size={18} />
+              {iniciar.isPending ? "Iniciando…" : "Iniciar atendimento"}
             </button>
           )}
-        </div>
-      )}
 
-      {/* Linha do tempo */}
-      <div style={CARD}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <History size={15} color={gold} />
-          <span style={SEC}>Linha do tempo</span>
-        </div>
-        {eventos.length === 0 ? (
-          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
-            Sem movimentações registradas.
-          </span>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {eventos.map((ev, i) => (
-              <div key={ev.id} style={i === 0 ? { ...linha, borderTop: "none" } : linha}>
-                <span style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600 }}>
-                  {ev.descricao ?? ev.tipo}
-                </span>
-                <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary, flexShrink: 0 }}>
-                  {new Date(ev.created_at).toLocaleString("pt-BR", {
-                    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                  })}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+          {/* Relatório de atendimento (PDF) — a partir da execução */}
+          {os.status === "concluido" && (
+            <button
+              style={{ ...btnSec, height: 50, borderRadius: 25 }}
+              onClick={() => baixarRelatorio.mutate()}
+              disabled={baixarRelatorio.isPending}
+            >
+              <FileDown size={16} color={gold} />
+              {baixarRelatorio.isPending ? "Gerando relatório…" : "Baixar relatório de atendimento (PDF)"}
+            </button>
+          )}
+
+          {/* Reabrir quando já fechada */}
+          {isGerente && os.status === "concluido" && (
+            <button style={btnSec} onClick={() => reabrir.mutate()} disabled={reabrir.isPending}>
+              Reabrir chamado
+            </button>
+          )}
+
+          {/* Cancelar */}
+          {isGerente && ["aberto", "agendado", "em_andamento"].includes(os.status) && (
+            <div style={CARD}>
+              {cancelando ? (
+                <>
+                  <span style={SEC}>Cancelar chamado</span>
+                  <textarea
+                    style={{ ...INPUT, height: 70, resize: "vertical" }}
+                    value={motivoCancel}
+                    onChange={(e) => setMotivoCancel(e.target.value)}
+                    placeholder="Motivo do cancelamento"
+                  />
+                  {/* Cancelar não afirma nada sozinho: o gatilho desmarca TODO
+                      pendente, de qualquer dia. Quem foi ao prédio e só depois viu
+                      o chamado cair diz isso AQUI, antes do status. */}
+                  <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} />
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button style={{ ...btnSec, flex: 1 }} onClick={() => setCancelando(false)}>Voltar</button>
+                    <button
+                      style={{
+                        ...btnSec, flex: 1,
+                        color: isLight ? "#B1242E" : "#F17881",
+                        border: `1px solid ${isLight ? "rgba(177,36,46,0.35)" : "rgba(241,120,129,0.32)"}`,
+                      }}
+                      onClick={() => cancelar.mutate()}
+                      disabled={cancelar.isPending}
+                    >
+                      {cancelar.isPending ? "Cancelando…" : "Confirmar cancelamento"}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  style={{ ...btnSec, color: isLight ? "#B1242E" : "#F17881" }}
+                  onClick={() => setCancelando(true)}
+                >
+                  <Trash2 size={14} />
+                  Cancelar chamado
+                </button>
+              )}
+            </div>
+          )}
+
+          {!podeExecutar && (
+            <div style={{ ...CARD, alignItems: "center" }}>
+              <ClipboardList size={20} color={textSecondary} />
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, textAlign: "center" }}>
+                Este chamado está atribuído a outro técnico — você está apenas visualizando.
+              </span>
+            </div>
+          )}
+
+        </aside>
       </div>
+    </>
+  );
 
-      {!podeExecutar && (
-        <div style={{ ...CARD, alignItems: "center" }}>
-          <ClipboardList size={20} color={textSecondary} />
-          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, textAlign: "center" }}>
-            Este chamado está atribuído a outro técnico — você está apenas visualizando.
-          </span>
-        </div>
-      )}
+  // R238/R247: a mesma tela dentro do pop-up da Início — sem a casca da página
+  if (embutido) {
+    return <div className="atividade-embutida" style={{ color: textPrimary }}>{conteudo}</div>;
+  }
+  // U120: `paddingTop`/`paddingBottom`, nunca o atalho `padding` — ele zeraria
+  // o padding lateral da classe (anti-padrão nº 10)
+  return (
+    <div className="pagina-trabalho" style={{ paddingTop: 12, paddingBottom: 48, color: textPrimary }}>
+      <div className="trabalho-miolo" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {conteudo}
+      </div>
     </div>
   );
 }

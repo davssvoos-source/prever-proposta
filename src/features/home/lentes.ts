@@ -21,7 +21,7 @@ import type { Atividade, ColunaQuadro } from "@/features/atividades/modelo";
 import { mesmoDia } from "@/features/atividades/modelo";
 import { sprintDoPrazo } from "@/lib/chamado-status";
 
-export type Cargo = "tecnico" | "sac" | "comercial" | "admin";
+export type Cargo = "tecnico" | "sac" | "comercial" | "admin" | "operacional";
 export type Vinculo = "responsavel" | "apoio" | "autor" | "todos";
 /**
  * R60 (2026-08-22, Davi): o antigo "Período" (hoje/semana/mês, por data crua)
@@ -380,6 +380,21 @@ export function ordenar(lista: Atividade[], modo: Ordenacao, desc = false): Ativ
       // sempre significou, e é o que os presets esperam ao chamar sem `desc`.
       return l.sort((a, b) => (a.criadoEm < b.criadoEm ? 1 : -1) * s);
   }
+}
+
+/**
+ * R246 (Davi, 10/09/2026): "as atividades da coluna de Status Concluído devem
+ * estar ordenadas por data de conclusão, sendo a mais recente no topo. Esta
+ * ordem deve ser fixa independente da ordenação que o usuário selecionar."
+ * Sem data de encerramento vai para o fim; empate desempata pelo mais novo.
+ */
+export function ordenarConcluidas(lista: readonly Atividade[]): Atividade[] {
+  return [...lista].sort((a, b) => {
+    const ea = a.encerradoEm ?? "";
+    const eb = b.encerradoEm ?? "";
+    if (ea !== eb) return ea < eb ? 1 : -1;
+    return a.criadoEm < b.criadoEm ? 1 : -1;
+  });
 }
 
 // ── A ordem das colunas do quadro (R181) ─────────────────────────────────────
