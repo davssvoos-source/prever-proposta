@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 74 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **64 em aberto, 10 fechadas.**
+> **Sumário** — 75 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **65 em aberto, 10 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -77,6 +77,7 @@
 - [P68 — MÉDIO · A consolidação assistida (`/clientes/migrar`) ainda chama `criarCliente`, que a RLS recusa (2026-09-09, U124)](#p68-médio-a-consolidação-assistida-clientesmigrar-ainda-chama-criarcliente-que-a-rls-recusa-2026-09-09-u124)
 - [P69 — BAIXO · `sync_user_role_from_cargo` não espelha `operacional` (nem `sac`) em `user_roles` (2026-09-10, U127)](#p69-baixo-syncuserrolefromcargo-não-espelha-operacional-nem-sac-em-userroles-2026-09-10-u127)
 - [P70 — MÉDIO · O modal do Sobreaviso é artesanal: z-60, sem `role="dialog"` e sem foco preso (2026-09-11, U129)](#p70-médio-o-modal-do-sobreaviso-é-artesanal-z-60-sem-roledialog-e-sem-foco-preso-2026-09-11-u129)
+- [P71 — BAIXO · Quatro telas usam o peso 500, que a R195 proibiu — e a asserção não os vê (2026-09-11, achado na revisão da U129)](#p71-baixo-quatro-telas-usam-o-peso-500-que-a-r195-proibiu-e-a-asserção-não-os-vê-2026-09-11-achado-na-revisão-da-u129)
 <!-- sumario:fim -->
 
 Registro formal do que a revisão adversarial encontrou.
@@ -2351,3 +2352,30 @@ terceira é a que morde:
 de `DialogDaAtividade`), que já resolve camada, papel, Escape e foco. Não entrou
 na U129 para não misturar duas revisões na mesma tela — o redesenho do
 calendário e a troca de casca do modal são difíceis de conferir juntos.
+
+
+## P71 — BAIXO · Quatro telas usam o peso 500, que a R195 proibiu — e a asserção não os vê (2026-09-11, achado na revisão da U129)
+
+A R195 fixou o conjunto de pesos em **{100, 400, 600, 700}**, e o verificador
+tem uma asserção que varre o `src/` atrás de pesos fora dessa lista. Ela extrai
+com `/fontWeight: (\d+)/g` — que só casa **dígito literal logo depois de
+`fontWeight: `**. Quatro lugares escapam porque o peso está atrás de um
+ternário:
+
+| onde | o que é |
+|---|---|
+| `routes/_authenticated/calendario.tsx:1059` | `fontWeight: eDeHoje ? 700 : 500` — o número do dia na grade mensal |
+| `components/CampoComBusca.tsx:245` | opção da lista |
+| `components/SeletorDeOpcao.tsx:283` | opção da lista |
+| `features/chamados/PainelChamado.tsx:603` | rótulo da folha lateral |
+
+O peso 500 **não é carregado** do Google Fonts (a fonte vem com 100/400/600/700),
+então o navegador o SINTETIZA: a Montserrat fica levemente borrada, e só nesses
+quatro pontos — o tipo de defeito que se vê sem saber nomear.
+
+**O conserto** é de uma linha por arquivo (500 → 400 ou 600, conforme o papel) e
+uma na asserção: trocar a extração por algo que enxergue o ternário, por exemplo
+`/fontWeight:\s*(?:[^,}]*?\b)?(\d{3})\b/g` aplicado a cada ocorrência. Não entrou
+na U129 porque nenhum dos quatro está na tela de Sobreaviso, e misturar um
+varrimento de tipografia global com o redesenho do calendário tornaria as duas
+coisas difíceis de conferir.
