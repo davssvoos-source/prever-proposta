@@ -537,6 +537,14 @@ export interface LinhaDeApoio {
   profile_id: string;
   origem: string | null;
   congelado_em: string | null;
+  /**
+   * R255: QUEM estava logado quando a linha nasceu (coluna da S2). É a
+   * diferença entre "me puseram aqui" e "eu me pus aqui", e é o que
+   * `apoioValeComoVinculo` lê para decidir se o apoio conta como permissão.
+   * Sem ele, a tela precisava adivinhar — e adivinhava para o lado errado,
+   * liberando a edição inteira para quem o banco ia recusar.
+   */
+  criado_por: string | null;
 }
 
 export function useChamadoApoios(chamadoId: string | undefined) {
@@ -564,6 +572,10 @@ export function useChamadoApoios(chamadoId: string | undefined) {
         profile_id: r.profile_id as string,
         origem: (r.origem ?? null) as string | null,
         congelado_em: (r.congelado_em ?? null) as string | null,
+        // o `select("*")` logo acima já traz a coluna quando ela existe; o
+        // `?? null` lê a ausência como "linha anterior à S2", que é o valor
+        // que faz `apoioValeComoVinculo` conceder — exatamente como o banco.
+        criado_por: (r.criado_por ?? null) as string | null,
       }));
     },
   });

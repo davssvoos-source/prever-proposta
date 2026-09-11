@@ -8,7 +8,7 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-11** · última regra: **R254** · último diário:
+Última atualização: **2026-09-11** · última regra: **R255** · último diário:
 **U129** · verificador: **3.272 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U129** (U127 e U129 em 11/09/2026) ·
 **nenhuma migration pendente** · **versão no servidor: v0.0.7**

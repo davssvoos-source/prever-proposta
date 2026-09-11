@@ -34,7 +34,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Building2, CalendarClock, FileText, Layers, Paperclip, Plus, Send, Trash2, Wrench, X,
+  ArrowLeft, Building2, CalendarClock, FileText, Layers, Paperclip, Plus, Send, Trash2,
+  UserPlus, Wrench, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,7 +73,7 @@ import {
   IMPACTO_ORDEM, IMPACTO_LABEL, IMPACTO_CORES, temImpacto,
   type ChamadoStatus, type ImpactoOperacional,
 } from "@/lib/chamado-status";
-import { especieDoApoio } from "@/features/programacao/modelo";
+import { apoioValeComoVinculo, especieDoApoio } from "@/features/programacao/modelo";
 import { EQUIPE_LABEL, equipeCores, equipesDePessoas, type Equipe } from "@/lib/equipes";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
 
@@ -339,13 +340,17 @@ export function DetalheInterno({ id, embutido = false }: {
     chamado.responsavel_id === userId ||
     chamado.aberto_por === userId ||
     !chamado.responsavel_id ||
-    // U81: `apoios` virou lista de LINHAS (profile_id, origem, congelado_em) —
-    // antes era um array de ids. Este predicado continua sendo o gêmeo
-    // DESATUALIZADO de `pode_editar_chamado`: ele não aplica
-    // `apoioValeComoVinculo`, ao contrário da grade (programacao/modelo.ts:724).
-    // Está em docs/PENDENCIAS_TECNICAS.md; alargar aqui seria mudar autorização
-    // de carona numa entrega que prometeu não tocar em nenhuma.
-    apoios.some((a) => a.profile_id === (userId ?? ""));
+    // R255: a perna do apoio passou a aplicar `apoioValeComoVinculo` — o MESMO
+    // predicado que `pode_editar_chamado` usa no banco desde a S2: ser apoio só
+    // vale como vínculo quando OUTRA PESSOA te pôs lá (ou quando foi o gatilho
+    // da escala). Este gêmeo estava desatualizado, e o preço aparecia agora que
+    // qualquer um pode se pôr como apoio: a tela liberava tudo e o banco
+    // recusava toda gravação — a pior combinação possível, porque a promessa é
+    // da tela e a recusa chega depois de digitar.
+    apoios.some((a) => a.profile_id === (userId ?? "") && apoioValeComoVinculo(a));
+
+  /** R255: já estou no apoio? (com ou sem direito de edição) */
+  const souApoio = apoios.some((a) => a.profile_id === (userId ?? ""));
 
   // R139: as equipes ENVOLVIDAS — a do responsável e a de cada apoio, pelo
   // cadastro. Não há campo para escolher; troca a pessoa, troca a etiqueta.
@@ -790,6 +795,9 @@ export function DetalheInterno({ id, embutido = false }: {
             ))}
             {linha("Apoio", (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                {apoios.length === 0 && (
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>ninguém ainda</span>
+                )}
                 {apoios.map(({ profile_id: pid, origem, congelado_em }) => (
                   <span
                     key={pid}
@@ -817,7 +825,7 @@ export function DetalheInterno({ id, embutido = false }: {
                     )}
                   </span>
                 ))}
-                {podeEditar && (
+                {podeEditar ? (
                   <div style={{ minWidth: 120, flex: 1 }}>
                     <CampoComBusca
                       id="det-apoio"
@@ -832,10 +840,33 @@ export function DetalheInterno({ id, embutido = false }: {
                       aoMudar={(v) => { if (v) mudarApoio.mutate({ profileId: v, entrar: true }); }}
                     />
                   </div>
-                )}
-                {apoios.length === 0 && !podeEditar && (
-                  <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>ninguém ainda</span>
-                )}
+                ) : userId && !souApoio ? (
+                  // R255: QUEM NÃO EDITA PODE, AINDA ASSIM, DIZER QUE TRABALHOU
+                  // NISTO. O campo de escolher gente continua sendo de quem
+                  // edita — este botão põe UMA pessoa, ela mesma, e é o gesto
+                  // simétrico do "X" que já existia para sair.
+                  //
+                  // E ele NÃO abre a tela para edição: o banco (S2) só conta o
+                  // apoio como vínculo quando `criado_por` é diferente de
+                  // `profile_id`, e `podeEditar` aqui aplica o MESMO predicado.
+                  // Pôr-se a si mesmo registra participação; não vira permissão.
+                  <button
+                    type="button"
+                    onClick={() => mudarApoio.mutate({ profileId: userId, entrar: true })}
+                    disabled={mudarApoio.isPending}
+                    title="Registrar que você também trabalhou nesta atividade"
+                    style={{
+                      ...chipPessoa,
+                      border: isLight ? "1px dashed rgba(0,0,0,0.28)" : "1px dashed rgba(255,255,255,0.32)",
+                      background: "transparent",
+                      cursor: mudarApoio.isPending ? "default" : "pointer",
+                      opacity: mudarApoio.isPending ? 0.6 : 1,
+                    }}
+                  >
+                    <UserPlus size={14} />
+                    Entrar como apoio
+                  </button>
+                ) : null}
               </div>
             ))}
             {/* R139: as equipes ENVOLVIDAS — derivadas, não escolhidas */}

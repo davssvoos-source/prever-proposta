@@ -1,7 +1,7 @@
 # Operação de campo — chamados, fila e programação
 
 <!-- sumario:inicio -->
-> **Sumário** — 30 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 31 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [Para que serve este documento](#para-que-serve-este-documento)
 - [O ciclo de vida do chamado](#o-ciclo-de-vida-do-chamado)
@@ -20,6 +20,7 @@
 - [Concluir pelo cartão (R104)](#concluir-pelo-cartão-r104)
 - [Retornos pendentes (R106)](#retornos-pendentes-r106)
 - [Compartilhar o dia (R105)](#compartilhar-o-dia-r105)
+- [Entrar como apoio: a porta de quem não edita (R255, 2026-09-11)](#entrar-como-apoio-a-porta-de-quem-não-edita-r255-2026-09-11)
 - [Quem foi ao prédio: o apoio que já aconteceu (R107/R108, U81)](#quem-foi-ao-prédio-o-apoio-que-já-aconteceu-r107r108-u81)
 - [Encerrar um chamado passa a perguntar pelas visitas (R109/R110/R111, U82)](#encerrar-um-chamado-passa-a-perguntar-pelas-visitas-r109r110r111-u82)
 - [Vistoria: um tipo de chamado, e ele NÃO é a visita técnica comercial (R112, U83)](#vistoria-um-tipo-de-chamado-e-ele-não-é-a-visita-técnica-comercial-r112-u83)
@@ -654,6 +655,20 @@ SELECT faturamento_status, count(*)
 
 Se `em_conferencia` não for zero, esses são os analisados que ninguém aprovou —
 ver P20 em `docs/PENDENCIAS_TECNICAS.md`.
+
+## Entrar como apoio: a porta de quem não edita (R255, 2026-09-11)
+
+O campo **Apoio** da ficha tem duas portas, e elas dizem coisas diferentes:
+
+- **quem edita** a atividade (gestor, responsável, quem abriu, ou quem foi
+  posto no apoio por outra pessoa) escolhe **qualquer nome** no campo de busca;
+- **quem não edita** tem o botão **"Entrar como apoio"**, que põe **só ele
+  mesmo**. É o par do "X" que sempre existiu para sair.
+
+**Entrar como apoio não dá direito de editar.** Desde a S2 o banco só conta o
+apoio como vínculo quando foi OUTRA pessoa que pôs o nome lá (ou quando foi o
+gatilho da escala das duplas). Quem se inscreve registra que trabalhou; quem
+precisa editar pede a quem pode.
 
 ## Quem foi ao prédio: o apoio que já aconteceu (R107/R108, U81)
 

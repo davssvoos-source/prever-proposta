@@ -20738,5 +20738,43 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   }
 }
 
+
+// ── R255 — entrar como apoio sem virar editor ──────────────────────────────
+{
+  const fs255 = require('fs');
+  const ler255 = (f) => fs255.readFileSync(f, 'utf8');
+  const det255 = ler255('src/features/chamados/DetalheInterno.tsx');
+  const dados255 = ler255('src/features/chamados/data.ts');
+  const PM255 = carregar('src/features/programacao/modelo.ts');
+
+  eq('R255 CRÍTICO: a tela usa o MESMO predicado do banco — ser apoio só vale como vínculo quando OUTRA pessoa te pôs lá (ou quando foi o gatilho da escala). Sem isto, quem se punha como apoio via a ficha inteira liberada e o banco recusava toda gravação, uma a uma',
+     [/apoios\.some\(\(a\) => a\.profile_id === \(userId \?\? ""\) && apoioValeComoVinculo\(a\)\)/.test(det255),
+      /import \{ apoioValeComoVinculo, especieDoApoio \} from "@\/features\/programacao\/modelo";/.test(det255),
+      // o predicado puro, exercitado nos três casos que a S2 nomeia
+      PM255.apoioValeComoVinculo({ origem: 'manual', criado_por: 'eu', profile_id: 'eu' }),
+      PM255.apoioValeComoVinculo({ origem: 'manual', criado_por: 'gestor', profile_id: 'eu' }),
+      PM255.apoioValeComoVinculo({ origem: 'dupla', criado_por: 'eu', profile_id: 'eu' }),
+      PM255.apoioValeComoVinculo({ origem: 'manual', criado_por: null, profile_id: 'eu' })],
+     [true, true, false, true, true, true]);
+
+  eq('R255 CRÍTICO: a linha de apoio carrega `criado_por` desde a consulta — é ele que separa "me puseram aqui" de "eu me pus aqui", e a ausência (linha anterior à S2) continua concedendo, como no banco',
+     [/criado_por: string \| null;/.test(dados255),
+      /criado_por: \(r\.criado_por \?\? null\) as string \| null,/.test(dados255),
+      /\.select\("\*"\)/.test(dados255)],
+     [true, true, true]);
+
+  eq('R255 CRÍTICO: quem NÃO edita tem o botão "Entrar como apoio", que põe UMA pessoa — ela mesma —, e ele some quando ela já está no apoio; quem edita continua com o campo de escolher qualquer pessoa',
+     [/Entrar como apoio/.test(det255),
+      /const souApoio = apoios\.some\(\(a\) => a\.profile_id === \(userId \?\? ""\)\);/.test(det255),
+      /\) : userId && !souApoio \? \(/.test(det255),
+      /onClick=\{\(\) => mudarApoio\.mutate\(\{ profileId: userId, entrar: true \}\)\}/.test(det255),
+      /placeholder="\+ apoio"/.test(det255),
+      // o "ninguém ainda" deixou de ser o estado sem saída: ele agora aparece
+      // ao lado de uma porta, para quem edita e para quem não edita
+      /\{apoios\.length === 0 && \(/.test(det255),
+      /apoios\.length === 0 && !podeEditar/.test(det255)],
+     [true, true, true, true, true, true, false]);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

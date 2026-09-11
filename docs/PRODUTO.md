@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R254 (25)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R255 (26)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-11 (R254). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-11 (R255). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4755,3 +4755,24 @@ adaptado."
   semana jogava a tela cinco semanas atrás; e no celular as setas de dia
   ficavam **mudas** na virada do mês, além de a tela dizer "ninguém de
   sobreaviso" em vermelho para um dia que apenas não estava no período aberto.
+
+- **R255** — **Quem não edita a atividade pode, ainda assim, dizer que
+  trabalhou nela.** Na ficha, o campo **Apoio** passa a ter duas portas
+  diferentes, e elas não se confundem:
+  - **quem edita** (gestor, responsável, quem abriu, ou quem outra pessoa pôs
+    no apoio) continua com o campo de escolher **qualquer pessoa**;
+  - **todo o resto** ganha um botão **"Entrar como apoio"**, que põe **uma
+    pessoa só: ela mesma**. É o gesto simétrico do "X" que já existia para
+    sair — antes dava para se retirar e não dava para entrar, e o campo ficava
+    dizendo "ninguém ainda" sem nenhuma porta ao lado.
+
+  **Entrar como apoio NÃO vira permissão de editar.** O banco já decidia assim
+  desde a S2: ser apoio só conta como vínculo quando **outra pessoa** te pôs lá
+  (ou quando foi o gatilho da escala). O que estava errado era a TELA, que
+  contava qualquer apoio — inclusive o auto-inscrito — e liberava a ficha
+  inteira para alguém cujas gravações o banco ia recusar uma a uma. Os dois
+  lados agora usam o mesmo predicado.
+
+  *(Davi, 11/09/2026: "Na tela de configuração da atividade, o botão de
+  adicionar APOIO está indisponível para alguns usuários quando não tem nada
+  registrado no apoio ainda.")*
