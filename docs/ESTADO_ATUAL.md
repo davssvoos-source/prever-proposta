@@ -10,16 +10,12 @@
 
 Última atualização: **2026-09-11** · última regra: **R254** · último diário:
 **U129** · verificador: **3.272 asserções, 0 falharam** · `tsc`: baseline
-**57** · migrations rodadas até a **U125** (U123, U124 e U125 em 09/09/2026) ·
-**Pendentes: U127 e U129** — a **U127**
-(`20260926090000_u127_v009_perfil_operacional.sql`) cria o cargo OPERACIONAL, e
-sem ela a tela de Usuários não consegue gravá-lo; a **U129**
-(`20260927090000_u129_v011_trocar_plantonista.sql`) cria a troca de plantonista
-do Sobreaviso, e sem ela a tela avisa que falta rodar e o resto continua
-funcionando · **versão no servidor: v0.0.7** (192.168.10.182); a **v0.0.9** e a
-**v0.0.10** foram entregues e ainda não instaladas, e **esta entrega ainda não
-virou versão** — o que entrou em cada uma está em `docs/VERSOES.md`. Fim de
-entrega: `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
+**57** · migrations rodadas até a **U129** (U127 e U129 em 11/09/2026) ·
+**nenhuma migration pendente** · **versão no servidor: v0.0.7**
+(192.168.10.182); **esta entrega é a v0.0.11**, e ela sobe de uma vez o que a
+v0.0.8, a v0.0.9 e a v0.0.10 já tinham entregue — o que entrou em cada versão
+está em `docs/VERSOES.md`. Fim de entrega:
+`node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
 
 ---
 
@@ -114,6 +110,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U126 | a **v0.0.8**: a tela da atividade **fala menos e mostra maior** (R243) — saem seis textos que explicavam o que a tela já mostra, os micro-rótulos de seção sobem 10 → 12px num lugar só (`rotuloDeSecao`), o número da rosca encolhe e os botões de Status/Tipo/Impacto ficam 36px; e eles **voltam a funcionar dentro do pop-up** (a lista ia para o `<body>`, que um diálogo modal deixa inerte). De brinde: `corDaMencao` passou a responder pelo relógio que recebe. Sem migration |
 | U127 | a **v0.0.9**: a revisão sistêmica — o perfil **OPERACIONAL** (R244: Início, Calendário, Clientes e Perfil; vê tudo, não é gestor; para o Nicholas e o Erik), o **chat que não perde mensagem** (R245: a resposta que menciona alguém era engolida no chat dele; Backspace vazio, barra de rolagem e placeholder da caixa; o **`#`** lista as atividades recentes, só o nome), a **Início inteira** (R246: todas as abertas + as 300 encerradas mais recentes, coluna Concluído em ordem de conclusão FIXA, rótulo da ordem à esquerda do botão), a **tela de campo no desktop** (R247: a grade documento \| ficha, embutida no pop-up — P66 parte 1), e as **ferramentas da IA** (`scripts/lib/editar.cjs`, `scripts/fechar-entrega.cjs`, pino permanente de versão). Migration **U127** (enum, dois CHECKs, `salvar_permissoes`, `handle_new_user`, semente) |
 | U128 | a **v0.0.10**: a **próxima atividade virou card** (R248 — o banner saiu do topo do desktop e é o primeiro card da coluna Agendado, que ganhou ordem fixa pelo dia marcado; realce só de cor e contraste, etiqueta A SEGUIR/ATRASADA na vaga do chip de status; no celular o banner fica), **"Responder aqui" foca a caixa** do chat (R249), a **busca acha pelo nome do prédio** (R250 — inclusive setor e prospecção), **filtro por Tipo de Demanda** (R251) e o **Painel Comercial em duas visões** (R252 — quadro por etapa do ciclo, linha e card no MESMO componente, sem arrasto porque a etapa é derivada). Sem migration nova |
+| U129 | a **v0.0.11**: o **Sobreaviso reestruturado** — a semana virou a unidade da tela (R253: uma linha por semana com o seletor do plantonista, par Semana \| Mês, grade de 8 colunas) e o calendário ganhou a **barra** (R254: faixa amarela fosca por trecho contíguo, clicar seleciona e Delete apaga, modo "Remover dia" com pré-visualização, "+" para o segundo plantonista, troca que NÃO acumula pela RPC nova, e só a **equipe técnica** é escalada). Três defeitos consertados no caminho: buraco × sobra, o clique na última coluna que teletransportava a semana, e as setas mudas do celular. Migration **U129** |
 
 ## 4. Banco: migrations
 
@@ -121,8 +118,18 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **U127** (`20260926090000_u127_v009_perfil_operacional.sql`, **PENDENTE** —
-  rodar ANTES de subir o pacote v0.0.9) — o cargo **operacional** (R244) nos
+- **U129** (`20260927090000_u129_v011_trocar_plantonista.sql`, rodada em
+  11/09/2026) — a RPC **`sobreaviso_trocar_plantonista`** (R254): tira a semana
+  de quem sai por **subtração** (nunca por DELETE cego, que levaria junto a
+  ponta que pertence à semana vizinha) e lança para quem entra pelo MESMO CASE
+  de quatro ações da U86, tudo numa transação só. Repete o gate de duas metades
+  (`is_gestor` mais ativo/não pendente), porque SECURITY DEFINER não passa pela
+  RLS. Não altera as duas funções da U86 nem a tabela. O portão monta o caso que
+  derruba a composição ingênua — a mesma pessoa emendando duas semanas — e
+  confere que a madrugada da semana anterior sobrevive. Nove itens de
+  conferência; desfazer é um DROP FUNCTION.
+- **U127** (`20260926090000_u127_v009_perfil_operacional.sql`, rodada em
+  11/09/2026) — o cargo **operacional** (R244) nos
   cinco lugares que enumeram cargos: o enum `app_role` (ADD VALUE fora da
   transação, como a U6a), o CHECK de `profiles.cargo`, o CHECK de
   `permissoes_tela.cargo`, o `WHERE` de `salvar_permissoes` e a lista de
@@ -131,8 +138,8 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   Pré-voo exige `permissoes_tela` e `salvar_permissoes` (U11) e
   `handle_new_user` (U6a). NÃO toca em `is_gestor` (operacional vê, não manda)
   nem em `sync_user_role_from_cargo` (P69). Sem ela, a tela de Usuários não
-  consegue gravar o cargo (o CHECK antigo recusa). Oito itens de conferência;
-  o DESFAZER começa tirando as pessoas do cargo.
+  conseguia gravar o cargo (o CHECK antigo recusava). Oito itens de
+  conferência; o DESFAZER começa tirando as pessoas do cargo.
 - **U125** (`20260925090000_u125_v007_capa_da_visita_antes.sql`, rodada em
   09/09/2026) — o
   gatilho **`trg_capa_da_visita`** (BEFORE INSERT) cria a capa do chamado antes

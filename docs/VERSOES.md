@@ -9,6 +9,32 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v0.0.11 — 2026-09-11 (U129) · migrations **U127 e U129 já rodadas** (11/09/2026)
+
+> Este pacote sobe de uma vez tudo o que o servidor não tinha: ele está na
+> v0.0.7, e a v0.0.8, a v0.0.9 e a v0.0.10 foram entregues e não instaladas.
+> As duas migrations que faltavam (U127 e U129) foram rodadas em 11/09/2026.
+
+- **O Sobreaviso é montado por SEMANA** (R253): a faixa "A escala" tem uma linha
+  por semana com o seletor do plantonista, e o par **Semana | Mês** troca o
+  período. Escolher um nome lança os oito dias com as pontas certas (6 h na
+  segunda de entrada, 14 nos úteis, 24 no fim de semana e no feriado, 8 na
+  segunda de saída). O PDF continua sendo o do mês.
+- **O calendário do plantão ganhou a BARRA** (R254): a faixa amarela fosca
+  mostra de quando até quando cada um está de sobreaviso. Clicar seleciona a
+  barra e **Delete** apaga; o botão **"Remover dia"** tira um dia só, com
+  pré-visualização ao passar o cursor. Tirar um dia do meio parte a barra em
+  duas, cada metade com as pontas arredondadas.
+- **Trocar o plantonista TROCA, não soma** (R254): as horas saem de quem estava
+  e vão para quem entrou, numa transação só. Quem sai mantém a madrugada da
+  segunda que pertence à semana anterior.
+- **Mais de um plantonista na mesma semana**: o **"+"** à direita da linha.
+- **Só a equipe técnica** aparece no seletor (o campo Equipe do cadastro, não o
+  cargo). Quem tem horas antigas continua na grade, esmaecido.
+- **As margens da tela voltaram para a régua do sistema** — o conteúdo nascia
+  colado na barra lateral e a grade ficava 24 px à direita do resto.
+- **Banco:** a **U129** cria `sobreaviso_trocar_plantonista`. Já rodada.
+
 ## v0.0.10 — 2026-09-10 (U128) · sem migration nova · **a U127 (v0.0.9) continua pendente**
 
 - **A próxima atividade agora é um card do quadro** (R248): no desktop, o

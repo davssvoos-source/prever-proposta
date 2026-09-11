@@ -12228,6 +12228,6 @@ system, embora ele esteja em z-60 sem `role="dialog"` (é a R243 esperando
 acontecer de novo) — fica anotado como pendência, porque misturar isso com o
 redesenho da grade tornaria as duas coisas difíceis de conferir.
 
-**Números.** Verificador: {{VERIFICADOR}}. `tsc`: 57 (baseline). Build completa.
+**Números.** Verificador: 3.272 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migration **U129 pendente** — sem ela a troca de plantonista avisa que falta
 rodar, e o resto da tela funciona.
