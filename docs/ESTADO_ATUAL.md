@@ -8,14 +8,16 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-10** · última regra: **R247** · último diário:
-**U127** · verificador: **3.240 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-11** · última regra: **R252** · último diário:
+**U128** · verificador: **3.252 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U125** (U123, U124 e U125 em 09/09/2026) ·
 **Pendente: U127** (`20260926090000_u127_v009_perfil_operacional.sql` — rodar
-ANTES de subir o pacote v0.0.9; sem ela o cargo OPERACIONAL não existe no
-banco) · **versão no servidor: v0.0.7** (192.168.10.182); **esta entrega é a
-v0.0.9** — o que entrou em cada versão está em `docs/VERSOES.md`. Fim de
-entrega: `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
+ANTES de subir o pacote; sem ela o cargo OPERACIONAL não existe no banco, e a
+tela de Usuários não consegue gravá-lo) · **versão no servidor: v0.0.7**
+(192.168.10.182); **esta entrega é a v0.0.10** — e a **v0.0.9** (U127) foi
+entregue e ainda não instalada; o que entrou em cada versão está em
+`docs/VERSOES.md`. Fim de entrega:
+`node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
 
 ---
 
@@ -109,6 +111,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U125 | a **v0.0.7**: a **capa do chamado nasce ANTES da visita** — o gatilho da U29/U38 era AFTER INSERT e a FK `visitas_e_chamado` é conferida antes dele, então **nenhuma visita podia ser criada desde 21/08** (a terceira camada do mesmo caminho, depois da P44 e da U124); a capa passa a registrar o **local** em `chamado_locais` (cliente ou prospecção); e o **endereço vale sem o mapa** (R242): a frase deixa de ser vermelha, diz que o endereço está salvo, e o campo pede a cidade. Migration **U125** |
 | U126 | a **v0.0.8**: a tela da atividade **fala menos e mostra maior** (R243) — saem seis textos que explicavam o que a tela já mostra, os micro-rótulos de seção sobem 10 → 12px num lugar só (`rotuloDeSecao`), o número da rosca encolhe e os botões de Status/Tipo/Impacto ficam 36px; e eles **voltam a funcionar dentro do pop-up** (a lista ia para o `<body>`, que um diálogo modal deixa inerte). De brinde: `corDaMencao` passou a responder pelo relógio que recebe. Sem migration |
 | U127 | a **v0.0.9**: a revisão sistêmica — o perfil **OPERACIONAL** (R244: Início, Calendário, Clientes e Perfil; vê tudo, não é gestor; para o Nicholas e o Erik), o **chat que não perde mensagem** (R245: a resposta que menciona alguém era engolida no chat dele; Backspace vazio, barra de rolagem e placeholder da caixa; o **`#`** lista as atividades recentes, só o nome), a **Início inteira** (R246: todas as abertas + as 300 encerradas mais recentes, coluna Concluído em ordem de conclusão FIXA, rótulo da ordem à esquerda do botão), a **tela de campo no desktop** (R247: a grade documento \| ficha, embutida no pop-up — P66 parte 1), e as **ferramentas da IA** (`scripts/lib/editar.cjs`, `scripts/fechar-entrega.cjs`, pino permanente de versão). Migration **U127** (enum, dois CHECKs, `salvar_permissoes`, `handle_new_user`, semente) |
+| U128 | a **v0.0.10**: a **próxima atividade virou card** (R248 — o banner saiu do topo do desktop e é o primeiro card da coluna Agendado, que ganhou ordem fixa pelo dia marcado; realce só de cor e contraste, etiqueta A SEGUIR/ATRASADA na vaga do chip de status; no celular o banner fica), **"Responder aqui" foca a caixa** do chat (R249), a **busca acha pelo nome do prédio** (R250 — inclusive setor e prospecção), **filtro por Tipo de Demanda** (R251) e o **Painel Comercial em duas visões** (R252 — quadro por etapa do ciclo, linha e card no MESMO componente, sem arrasto porque a etapa é derivada). Sem migration nova |
 
 ## 4. Banco: migrations
 

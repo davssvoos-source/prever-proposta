@@ -9,6 +9,25 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v0.0.10 — 2026-09-10 (U128) · sem migration nova · **a U127 (v0.0.9) continua pendente**
+
+- **A próxima atividade agora é um card do quadro** (R248): no desktop, o
+  banner "A seguir" saiu de cima dos filtros e virou o primeiro card da coluna
+  **Agendado**, com etiqueta e anel próprios (ou **ATRASADA**, em vermelho). A
+  coluna ganhou ordem fixa: o dia marcado mais próximo em cima, seja qual for a
+  ordem escolhida no botão. No celular o banner continua.
+- **"Responder aqui" põe o cursor na caixa** do chat (R249).
+- **A busca da Início acha pelo nome do prédio** (R250) — inclusive quando ele
+  entra na atividade como setor ou prospecção, e não como cliente.
+- **Filtro por Tipo de Demanda** na barra da Início (R251), valendo na lista,
+  no quadro e nos painéis do topo.
+- **O Painel Comercial tem lista e quadro** (R252): uma coluna por etapa do
+  ciclo (visita pendente → aguardando revisão → aprovada → proposta enviada,
+  mais cancelada). O botão fica no fim da barra de etapas e a escolha é
+  lembrada. Não se arrasta card: cada transição tem porta própria.
+- **Banco:** nada novo. A **U127** (do pacote v0.0.9) **ainda precisa ser
+  rodada** — é ela que cria o cargo OPERACIONAL.
+
 ## v0.0.9 — 2026-09-10 (U127) · migration **U127** — rodar ANTES de subir o pacote
 
 - **O perfil OPERACIONAL** (R244): um quinto cargo, para o Nicholas e o Erik.

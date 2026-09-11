@@ -1,12 +1,13 @@
 # Operação de campo — chamados, fila e programação
 
 <!-- sumario:inicio -->
-> **Sumário** — 28 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 29 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [Para que serve este documento](#para-que-serve-este-documento)
 - [O ciclo de vida do chamado](#o-ciclo-de-vida-do-chamado)
 - [Quem faz o quê](#quem-faz-o-quê)
 - [A fila canônica: a Início (R17/R31)](#a-fila-canônica-a-início-r17r31)
+- [O que a Início mostra, e em que ordem (R221/R246/R248, U127/U128)](#o-que-a-início-mostra-e-em-que-ordem-r221r246r248-u127u128)
 - [Programação e painéis](#programação-e-painéis)
 - [O dashboard da Operacional Técnica — as três perguntas do Vinicius (R124–R126, U93)](#o-dashboard-da-operacional-técnica-as-três-perguntas-do-vinicius-r124r126-u93)
 - [O calendário tem duas visões — Mensal e Semanal (R133, U94)](#o-calendário-tem-duas-visões-mensal-e-semanal-r133-u94)
@@ -129,6 +130,28 @@ página para uma coluna só com as integrações; "Usuários e permissões" volt
 duas. No celular as colunas ficam uma embaixo da outra. A tela do **Mapa** de
 visitas foi excluída (R192): o endereço antigo cai no Painel Comercial, e o
 mapa de clientes continua dentro de Clientes.
+
+## O que a Início mostra, e em que ordem (R221/R246/R248, U127/U128)
+
+- **Todas as atividades de todos**, em aberto (R221). As **concluídas** também:
+  as 300 encerradas mais recentes (R246). Não há mais poda por data — o teto é
+  de contagem, porque a importação do Notion trouxe ~2000 concluídas de uma vez
+  e o servidor corta a resposta em silêncio perto de mil linhas.
+- **Duas colunas do quadro têm ordem própria e FIXA**, que o botão de ordenar
+  não muda:
+  - **Concluído** — pela data de conclusão, a mais recente em cima (R246);
+  - **Agendado** — pelo dia marcado, o mais próximo em cima (R248). Sem dia
+    marcado vai para o fim.
+- **O primeiro card de Agendado é "a próxima atividade"** e vem com etiqueta e
+  anel próprios: **A SEGUIR** em âmbar, ou **ATRASADA** em vermelho quando a
+  hora já passou (R248). É o que o banner do topo dizia no desktop — ele saiu
+  de lá. **No celular o banner continua**, porque lá a visão padrão é a lista.
+- **A busca** ("Procurar atividade…") casa número, título e **todos os locais**
+  da atividade (R250) — o prédio que entra como setor ou prospecção também
+  responde pelo nome.
+- **Os filtros** são Vínculo, Prazo, Equipe, **Tipo de demanda** (R251) e
+  Pessoa (para quem vê tudo). Todos valem na lista, no quadro e nos painéis do
+  topo, e todos aparecem no aviso de "nada nesta combinação".
 
 ## Programação e painéis
 

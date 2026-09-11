@@ -571,11 +571,16 @@ export interface EditorRicoProps {
   aoEscolherAtividade?: (a: AtividadeParaHashtag) => void;
   /** classe extra da área (a caixa do chat esconde a barra de rolagem) */
   classe?: string;
+  /**
+   * R249: um PEDIDO de foco vindo de fora — o chat bate este contador quando
+   * a pessoa clica em "Responder aqui", e o cursor aparece na caixa.
+   */
+  focarEm?: number;
 }
 
 export function EditorRico({
   valor, aoMudar, pessoas, placeholder, id, minAltura, somenteLeitura = false, barra = false, estilo, onKeyDown, onFocus, onBlur,
-  atividades, aoEscolherAtividade, classe,
+  atividades, aoEscolherAtividade, classe, focarEm,
 }: EditorRicoProps) {
   const { isLight } = useTheme();
   const areaRef = useRef<HTMLDivElement>(null);
@@ -600,6 +605,26 @@ export function EditorRico({
     raiz.dataset.vazio = valor === "" ? "1" : "0";
     if (focado) cursorNoInicioDoBloco(raiz.firstElementChild as HTMLElement);
   }, [valor]);
+
+/**
+   * R249 (Davi, 10/09/2026): "Quando o usuário clica no botão de 'Responder
+   * aqui' em um card dentro do CHAT, adicione o mecanismo de ativar o cursor de
+   * texto na caixa de texto do chat automaticamente."
+   *
+   * É um CONTADOR, não um booleano: responder numa mensagem e logo depois
+   * noutra são dois pedidos, e um `true` que já era `true` não dispara efeito
+   * nenhum. `preventScroll` porque a lista de mensagens está logo acima — sem
+   * ele o navegador rola o chat inteiro para "mostrar" um campo que já está
+   * visível. O cursor vai para o FIM do que já estava escrito, nunca por cima.
+   */
+  useEffect(() => {
+    if (!focarEm || somenteLeitura) return;
+    const raiz = areaRef.current;
+    if (!raiz) return;
+    raiz.focus({ preventScroll: true });
+    const ultimo = raiz.lastElementChild as HTMLElement | null;
+    if (ultimo) cursorNoFimDoBloco(ultimo);
+  }, [focarEm, somenteLeitura]);
 
   function emitir() {
     const raiz = areaRef.current;
@@ -874,7 +899,7 @@ export function EditorRico({
 // A caixa de comentário com "@" — a mesma área, sem barra, o Enter é do pai
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function TextareaComMencoes({ valor, aoMudar, pessoas, placeholder, estilo, onKeyDown, onFocus, onBlur, id, atividades, aoEscolherAtividade }: {
+export function TextareaComMencoes({ valor, aoMudar, pessoas, placeholder, estilo, onKeyDown, onFocus, onBlur, id, atividades, aoEscolherAtividade, focarEm }: {
   valor: string;
   aoMudar: (v: string) => void;
   pessoas: PessoaParaMencao[];
@@ -889,6 +914,8 @@ export function TextareaComMencoes({ valor, aoMudar, pessoas, placeholder, estil
   /** R245: as atividades que o "#" oferece */
   atividades?: AtividadeParaHashtag[];
   aoEscolherAtividade?: (a: AtividadeParaHashtag) => void;
+  /** R249: contador de pedidos de foco (o "Responder aqui" do chat) */
+  focarEm?: number;
 }) {
   return (
     <EditorRico
@@ -902,6 +929,7 @@ export function TextareaComMencoes({ valor, aoMudar, pessoas, placeholder, estil
       onBlur={onBlur}
       atividades={atividades}
       aoEscolherAtividade={aoEscolherAtividade}
+      focarEm={focarEm}
       // R245: com teto de altura a área rola — mas sem MOSTRAR a barra
       classe={estilo?.maxHeight ? "rolagem-oculta" : undefined}
       estilo={{ ...estilo, overflowY: estilo?.maxHeight ? "auto" : undefined }}

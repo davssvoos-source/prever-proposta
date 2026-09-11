@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 51 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 52 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -41,6 +41,7 @@
   - [6.21 O chat da Início — botão flutuante, a conversa 9:16, o campo colorido e as caixas de mensagem (v17 — 2026-09-09, R215–R217, R222–R223, R240)](#621-o-chat-da-início-botão-flutuante-a-conversa-916-o-campo-colorido-e-as-caixas-de-mensagem-v17-2026-09-09-r215r217-r222r223-r240)
   - [6.22 O editor de texto — uma área, blocos com marcador próprio, menção como chip (v16 — 2026-09-08, R135, R224)](#622-o-editor-de-texto-uma-área-blocos-com-marcador-próprio-menção-como-chip-v16-2026-09-08-r135-r224)
   - [6.23 A tela da atividade — documento à esquerda, ficha à direita (v19 — 2026-09-08, R234–R239)](#623-a-tela-da-atividade-documento-à-esquerda-ficha-à-direita-v19-2026-09-08-r234r239)
+  - [6.24 Os dois quadros — o realce do "A seguir" e o quadro do Comercial (v21 — 2026-09-10, R248/R252)](#624-os-dois-quadros-o-realce-do-a-seguir-e-o-quadro-do-comercial-v21-2026-09-10-r248r252)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
 - [9. Visualização de dados](#9-visualização-de-dados)
@@ -1269,6 +1270,38 @@ Linear, Jira e Notion.
   (`mencao-lista`): mesma casca, mesma marcação por teclado (↑ ↓ Enter Tab
   Esc), e cada item mostra SÓ o nome da atividade (R245). Escolher arma a
   resposta (o chip `#Código`); não insere texto.
+
+### 6.24 Os dois quadros — o realce do "A seguir" e o quadro do Comercial (v21 — 2026-09-10, R248/R252)
+
+**O card em destaque** (`CardAtividade aSeguir`, R248). Um card do quadro pode
+ser marcado como "o próximo" sem virar outro card: **só cor e contraste mudam**.
+
+- **Geometria intocada**: raio 16, padding `12px 14px`, altura mínima 76,
+  largura 100% — os mesmos valores do card normal, herdados por espalhamento do
+  mesmo objeto de estilo. O realce reescreve **uma** propriedade: `boxShadow`.
+- **O anel é `inset`** (`inset 0 0 0 2px`), nunca `outline`: um contorno com
+  `outline-offset` sai 4px para fora e o trilho que rola de lado (`.trilho-x`,
+  `overflow-x: auto`) corta o que passa da borda. Glow de 14px na mesma cor,
+  no lugar dos 6px do card comum.
+- **A etiqueta ocupa a vaga do chip de status**, que no quadro está vazia
+  (`mostrarStatus={false}`) — é por isso que o realce não acrescenta linha e o
+  card não cresce ao lado dos vizinhos.
+- **Duas cores, uma regra**: âmbar (`PRISMA.amarelo`) para o que vem,
+  vermelho (`PRISMA.vermelho`) quando a hora já passou — a mesma faixa de prazo
+  que decide a borda decide a etiqueta, então as duas nunca se contradizem.
+
+**O quadro do Comercial** (`QuadroComercial`, R252) reusa a casca do quadro da
+Início: `.trilho-x.sangra-x`, colunas `flex: 1 1 0` com piso de **200px** (o
+nome de prédio é mais longo que o título de um chamado), `align-items: stretch`
+para a coluna curta continuar existindo ao lado da cheia, cabeçalho com bolinha
+da cor da etapa + rótulo 11/700 caixa alta + contagem à direita, cards com
+`gap: 9`. Diferenças de propósito: **não há arrasto** (a etapa é derivada, não
+um campo) e **o card não repete a etiqueta da etapa** — a coluna já a diz.
+
+**A lição que vale para qualquer visão nova**: lista e quadro são o MESMO
+componente com um `formato`, nunca dois trechos de JSX parecidos
+(`CartaoDaVisita`, como `CardAtividade` já fazia com `mostrarStatus`). Dois
+desenhos do mesmo objeto divergem no primeiro ajuste.
 
 ## 7. Arquitetura de tema
 

@@ -33,7 +33,7 @@ import {
   type Atividade, type ColunaQuadro,
 } from "@/features/atividades/modelo";
 import { CardAtividade, PISO_TIPO } from "./CardAtividade";
-import { ordemDasColunas, moverColuna, ordenarConcluidas } from "./lentes";
+import { ordemDasColunas, moverColuna, ordenarConcluidas, ordenarAgendados, aSeguirDe } from "./lentes";
 
 /**
  * R179 (Davi, 04/09/2026: "a visualização Kanban deverá conter as colunas
@@ -154,7 +154,14 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
           // CONCLUSÃO, a mais recente no topo — FIXA, independente da ordem que
           // a pessoa escolheu para o resto do quadro. As outras colunas vêm na
           // ordem que a Início já aplicou (ordenar(), pela escolha do botão).
-          const itens = c === "concluido" ? ordenarConcluidas(porColuna.get(c) ?? []) : (porColuna.get(c) ?? []);
+          // R248: a coluna Agendado também tem ordem FIXA — o dia marcado mais
+          // próximo em cima —, e o primeiro card com dia marcado é a atividade
+          // "a seguir", que ganha o realce (o banner saiu do topo da tela).
+          const daColuna = porColuna.get(c) ?? [];
+          const itens = c === "concluido" ? ordenarConcluidas(daColuna)
+            : c === "agendado" ? ordenarAgendados(daColuna)
+            : daColuna;
+          const aSeguirId = c === "agendado" ? (aSeguirDe(itens)?.id ?? null) : null;
           const cor = colunaCores(c);
           const destacada = foco.length > 0 && foco.includes(c);
           const apagada = foco.length > 0 && !destacada;
@@ -287,6 +294,7 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
                         <CardAtividade
                           a={a}
                           mostrarStatus={false}
+                          aSeguir={a.id === aSeguirId}
                           pessoas={pessoas}
                           onClick={() => onAbrir(a)}
                         />

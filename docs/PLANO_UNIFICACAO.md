@@ -12043,3 +12043,86 @@ da U127 cita duas vezes para PROVAR que ele não mudou) e foram reapontados.
 **Números.** Verificador: 3.240 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migration **U127 pendente** — rodar antes de subir a v0.0.9; até rodar, o
 cargo operacional não existe no banco (a tela de usuários não consegue gravá-lo).
+
+## U128 — a v0.0.10: "A seguir" vira card do quadro (R248), o cursor na caixa do chat (R249), a busca pelo prédio (R250), o filtro de Tipo (R251) e o Comercial em duas visões (R252)
+
+Cinco pedidos curtos do Davi, todos de tela, nenhum de banco. O fio comum é o
+mesmo das últimas entregas: **cada informação num lugar só**.
+
+**O banner "A seguir" virou card (R248).** Ele morava acima dos filtros, numa
+faixa larga, no desktop: "não faz sentido estar nesta parte da tela". Faz
+sentido onde as outras atividades estão — e como ele É uma atividade agendada,
+o lugar dele é o topo da coluna **Agendado**. Duas coisas precisavam existir
+para isso: a coluna passou a ter **ordem própria e fixa** (dia marcado mais
+próximo em cima, como a Concluído tem a sua desde a R246), e o primeiro card
+com dia marcado ganhou realce.
+
+O realce foi a parte delicada. O Davi foi explícito: **só cor e contraste**, o
+resto igual — "o espaçamento, margem e tamanho também deve ser igual". Então
+nada do que é caixa mudou: o raio, o padding, a altura mínima e a largura vêm
+do mesmo objeto de estilo, e o realce só reescreve a sombra. O anel é `inset`
+de propósito: um `outline` com deslocamento sairia 4px para fora e seria
+cortado pelo trilho que rola de lado. E a etiqueta "A SEGUIR" (ou "ATRASADA",
+em vermelho, quando a hora já passou) ocupa a vaga que o chip de status deixa
+VAZIA no quadro — assim o realce não acrescenta uma linha e o card não cresce.
+
+Duas decisões que o Davi pode rever: (1) o "a seguir" agora é o primeiro da
+coluna POR DATA, não "o meu primeiro" — o banner antigo preferia o compromisso
+de quem estava olhando, e isso fazia sentido quando a Início era pessoal; com a
+Início mostrando as atividades de todos (R221/R246), "o próximo" é o próximo da
+empresa, e o card diz de quem é pela pilha de avatares. (2) No **celular** o
+banner ficou: lá a visão padrão é a lista, o quadro é só leitura, e tirar o
+banner tiraria do técnico a resposta que ele abre o app para ver. Sem a coluna
+por perto, o card não teria substituto.
+
+**O cursor na caixa do chat (R249).** "Responder aqui" armava o chip e deixava
+a pessoa clicar na caixa. Agora ele foca. O pedido de foco é um CONTADOR e não
+um booleano — responder numa mensagem e logo depois noutra são dois pedidos, e
+um `true` que já era `true` não dispara efeito nenhum. Foco sem rolagem
+(`preventScroll`): a caixa já está visível, e "rolar até ela" moveria a
+conversa que a pessoa está lendo.
+
+**A busca achava menos do que dizia (R250).** O campo já varria o nome do
+cliente — mas só o local PRINCIPAL, e só quando a atividade aponta para um
+cliente da base. Num chamado de setor ou de prospecção o nome do prédio vive em
+`locais` (R84/R85) e a busca não o via: digitar "Eneide" não achava a atividade
+que tem "Edifício Eneide" como setor. Agora o texto da busca é número + título
++ todos os locais, numa função só que as duas peneiras (a lista e o recorte dos
+painéis) chamam.
+
+**O filtro de Tipo de Demanda (R251).** Mais um botão na barra, da mesma classe
+da Equipe: recorta a lista, o quadro e os painéis do topo. Entrou também no
+aviso de "nada nesta combinação" e no "limpar filtros" — filtro que recorta em
+silêncio e não se anuncia é o jeito mais barato de a tela mentir.
+
+**O Comercial em duas visões (R252).** O quadro tem uma coluna por etapa do
+ciclo, e as colunas saem da MESMA `etapaDaVisita` que pinta o chip da lista e
+conta o funil logo acima — se o quadro decidisse a coluna por conta própria,
+discordaria dos números na primeira mudança de regra. A linha e o card viraram
+**um componente em dois formatos** (`CartaoDaVisita`), porque duas visões da
+mesma coisa escritas duas vezes divergem no primeiro ajuste; a rota não desenha
+mais visita nenhuma.
+
+O que me **recusei** a fazer ali: arrastar card entre colunas. No quadro da
+Início isso muda o `status`, que é um campo escrito à mão. Aqui a etapa é
+DERIVADA de dois fatos (o status da visita e o carimbo `proposta_enviada_em`), e
+cada transição tem porta própria — aprovar é na tela da visita, enviar é o
+botão "Proposta enviada" (a RPC da R78). Arrastar teria de adivinhar qual das
+duas escritas fazer, e "Cancelada" não tem porta nenhuma. Card que se move sem
+regra é promessa falsa.
+
+Detalhe pequeno com razão grande: o ícone de cada etapa saiu da rota para
+`features/comercial/icones.ts`, e NÃO para `etapas.ts` — aquele arquivo é
+lógica pura e o verificador o carrega de verdade; um import de `lucide-react`
+ali faria as asserções das etapas dependerem de uma biblioteca de ícones.
+
+**O que a verificação pegou.** Um pino da R246 descrevia a linha exata do
+quadro que a R248 reescreveu (as duas colunas com ordem fixa agora saem da
+mesma variável) — reapontado com o motivo. E o `tecMap` da rota guarda
+`string | null`: o quadro pedia `Map<string, string>` e o compilador cobrou na
+hora — o nome do técnico pode faltar, e fingir que não pode era o começo de um
+"undefined" na tela.
+
+**Números.** Verificador: 3.252 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+**Sem migration nova** — mas a **U127 continua pendente** (é ela que cria o
+cargo OPERACIONAL); rodar antes de subir o pacote.

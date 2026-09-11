@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R247 (18)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R252 (23)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-10 (R247). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-11 (R252). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4568,3 +4568,67 @@ adaptado."
   celular com os campos com a largura esticada. Corrija estas telas adaptando o
   layout para PC, seguindo todas as regras de espaçamento, fontes, margens,
   etc..")*
+
+- **R248** — **"A seguir" é o primeiro card da coluna Agendado.** No desktop, o
+  banner que ficava acima dos filtros saiu: a próxima atividade é um **card do
+  Kanban**, no topo da coluna **Agendado**. A coluna tem **ordem própria e
+  fixa** — o dia marcado mais próximo em cima, seja qual for a ordem escolhida
+  no botão (a mesma ideia da R246 para Concluído); sem dia marcado vai para o
+  fim. O primeiro card com dia marcado é a atividade "a seguir" e ganha
+  **realce**: anel interno e etiqueta **A SEGUIR** na vaga que o chip de status
+  deixa vazia no quadro, em âmbar — ou **ATRASADA**, em vermelho, quando a hora
+  já passou. O realce muda **só cor e contraste**: raio, padding, altura e
+  margem continuam iguais aos dos outros cards. No **celular** o banner
+  continua, porque lá a visão padrão é a lista e o quadro é só leitura — sem
+  ele o técnico perderia "o que é o meu próximo" na tela que ele mais usa.
+  *(Davi, 10/09/2026: "O card de Atividade a seguir não faz sentido estar nesta
+  parte da tela no desktop. Ele deve ser um card de atividade agendada, na
+  coluna de status Agendado do Kanban. A coluna de Agendados deve ter ordenação
+  fixa: As mais próximas acima (Datas mais próximas do agendamento). E aí a
+  atividade a seguir deve ter características especiais, apesar de seguir o
+  formato geométrico dos outros cards do kanban, e o espaçamento, margem e
+  tamanho também deve ser igual. Porém as cores, o contraste, enfim, algumas
+  características que você pode alterar para a atividade a seguir no topo da
+  coluna de Agendados.")*
+
+- **R249** — **Responder põe o cursor na caixa.** Clicar em "Responder aqui"
+  num card do chat arma a resposta E **foca a caixa de texto**, com o cursor no
+  fim do que já estava escrito. Sem rolar a tela: a caixa já está visível, e
+  rolar até ela move a conversa que a pessoa está lendo. *(Davi, 10/09/2026:
+  "Quando o usuário clica no botão de 'Responder aqui' em um card dentro do
+  CHAT, adicione o mecanismo de ativar o cursor de texto na caixa de texto do
+  chat automaticamente.")*
+
+- **R250** — **A busca da Início acha pelo nome do prédio.** "Procurar
+  atividade…" passa a varrer, além do número e do título, **todos os locais** da
+  atividade — cliente da base, prospecção e setor (R84/R85). Antes só o local
+  PRINCIPAL entrava, e só quando a atividade apontava para um cliente
+  cadastrado: digitar o nome de um prédio que estava na atividade como setor ou
+  prospecção não achava nada. *(Davi, 10/09/2026: "no campo 'Procurar
+  atividade...', adicione no mecanismo de busca os nomes dos clientes, onde caso
+  o usuário digite o nome do cliente apareça as atividades daquele cliente (Além
+  do mecanismo continuar funcionando por titulo da atividade)")*
+
+- **R251** — **Filtro por Tipo de Demanda na Início.** Mais um botão na barra de
+  filtros, ao lado de Equipe: Corretiva, Preventiva, Operacional, Prospecção,
+  Implantação e Melhoria. Vale nas duas visões (quadro e lista) e também nos
+  painéis do topo, como os outros filtros de "quem/o quê". A visita entra como
+  Prospecção (R29/R48). *(Davi, 10/09/2026: "No Kanban e Lista, também adicione
+  o filtro por Tipo de Demanda")*
+
+- **R252** — **O Painel Comercial tem as duas visões: lista e quadro.** O botão
+  no fim da barra de etapas alterna, e a escolha fica gravada no navegador
+  (como na Início, R175). No **quadro**, uma coluna por etapa do ciclo — Visita
+  técnica pendente · Aguardando revisão · Visita técnica aprovada · Proposta
+  comercial enviada · Cancelada —, na ordem do próprio ciclo. A coluna sai da
+  **mesma função** que pinta o chip da lista e conta o funil (`etapaDaVisita`:
+  o status da visita, com o carimbo de envio vencendo), então quadro, chips e
+  funil nunca discordam. Escolher uma etapa nos chips mostra só aquela coluna.
+  A linha da lista e o card do quadro são **um componente só** em dois
+  formatos; no card a etiqueta de etapa não aparece, porque a coluna já a diz.
+  **Não se arrasta card aqui**: a etapa é derivada de dois fatos (o status e o
+  carimbo `proposta_enviada_em`) e cada transição tem porta própria — aprovar é
+  na tela da visita, enviar é o botão "Proposta enviada"; e "Cancelada" não tem
+  porta nenhuma. Card que se move sem regra é promessa falsa. *(Davi,
+  10/09/2026: "Crie o modo de visualização Kanban e lista no painel Comercial
+  de acordo com o status da visita técnica e proposta comercial.")*

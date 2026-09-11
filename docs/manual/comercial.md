@@ -32,6 +32,29 @@ visita aprovada é venda; achar que proposta cria cliente).
 7. **Aceita?** O cliente é criado **no QAP**, nunca no app (R21). O que a U8
    faz é promover a *situação* de um cliente já existente — não há INSERT.
 
+## As duas visões do painel: lista e quadro (R252, U128)
+
+O botão no fim da barra de etapas alterna **lista** ↔ **quadro**, e a escolha
+fica gravada no navegador de quem olha (não é configuração da empresa).
+
+- **Lista** — uma faixa por proposta, com a etiqueta da etapa à direita. É a
+  visão de varrer muita coisa e comparar datas.
+- **Quadro** — uma coluna por etapa do ciclo, na ordem do ciclo: Visita técnica
+  pendente · Aguardando revisão · Visita técnica aprovada · Proposta comercial
+  enviada · Cancelada. É a visão de "onde está cada uma". No card a etiqueta da
+  etapa não aparece: a coluna já a diz.
+- Escolher uma etapa nos chips mostra **só aquela coluna** no quadro (e só
+  aquelas linhas na lista). "Todas" traz o ciclo inteiro.
+- **Não se arrasta card entre colunas.** A etapa não é um campo: ela é
+  DERIVADA do status da visita e do carimbo `proposta_enviada_em`
+  (`etapaDaVisita`, em `features/comercial/etapas.ts`). Cada transição tem
+  porta própria — aprovar é na tela da visita; enviar é o botão "Proposta
+  enviada", que chama a RPC `registrar_envio_proposta` (R78) e encerra o ciclo
+  (R64). "Cancelada" não tem porta nenhuma.
+- A linha e o card são o **mesmo componente** (`CartaoDaVisita`, com
+  `formato="linha" | "cartao"`). Mexer no que a proposta mostra é mexer num
+  arquivo só.
+
 ## As regras que não se pode violar
 
 - **R4 — aprovada ≠ ganho.** Nenhuma lógica de "negócio fechado" pode olhar

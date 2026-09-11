@@ -100,6 +100,9 @@ export function ChatDeMencoes({ aoAbrirAtividade }: { aoAbrirAtividade: (chamado
   const [aberto, setAberto] = useState(false);
   // a resposta armada (o chip #Código): é a MENSAGEM que a arma, o rodapé a lê
   const [respostaPara, setRespostaPara] = useState<RespostaPara | null>(null);
+  // R249: cada clique em "Responder aqui" é um PEDIDO de foco para a caixa —
+  // contador, não booleano, para o segundo clique também disparar
+  const [pedidoDeFoco, setPedidoDeFoco] = useState(0);
   const [euId, setEuId] = useState<string | null>(null);
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEuId(data.user?.id ?? null));
@@ -303,7 +306,7 @@ export function ChatDeMencoes({ aoAbrirAtividade }: { aoAbrirAtividade: (chamado
               reacoes={reacoes.reacoes}
               faltaReacoes={reacoes.faltaMigration}
               aoAbrir={abrirAtividade}
-              aoResponder={(r) => setRespostaPara(r)}
+              aoResponder={(r) => { setRespostaPara(r); setPedidoDeFoco((n) => n + 1); }}
             />
           ))
         )}
@@ -319,6 +322,7 @@ export function ChatDeMencoes({ aoAbrirAtividade }: { aoAbrirAtividade: (chamado
         recentes={recentes}
         pessoasPorId={pessoasPorId}
         armarResposta={(r) => setRespostaPara(r)}
+        pedidoDeFoco={pedidoDeFoco}
       />
     </section>
   );
@@ -326,7 +330,7 @@ export function ChatDeMencoes({ aoAbrirAtividade }: { aoAbrirAtividade: (chamado
 
 // ── o rodapé: o chip #Código e o campo fixo ────────────────────────────────
 
-function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparResposta, recentes, pessoasPorId, armarResposta }: {
+function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparResposta, recentes, pessoasPorId, armarResposta, pedidoDeFoco }: {
   c: ReturnType<typeof cinzas>;
   isLight: boolean;
   pessoasMencao: PessoaParaMencao[];
@@ -338,6 +342,8 @@ function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparRes
   pessoasPorId: Pessoas;
   /** R245: escolher no "#" é o mesmo gesto do botão Responder */
   armarResposta: (r: RespostaPara) => void;
+  /** R249: sobe a cada "Responder aqui" — a caixa ganha o cursor */
+  pedidoDeFoco: number;
 }) {
   const qc = useQueryClient();
   const [texto, setTexto] = useState("");
@@ -412,6 +418,7 @@ function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparRes
           aoMudar={setTexto}
           pessoas={pessoasMencao}
           rows={1}
+          focarEm={pedidoDeFoco}
           placeholder={resposta ? "Sua resposta… (Enter envia)" : "Escreva para todos… (# escolhe uma atividade)"}
           // R245: o "#" abre as atividades recentes (só o nome); escolher uma
           // ARMA a resposta — o chip #Código aparece acima, e a mensagem vai

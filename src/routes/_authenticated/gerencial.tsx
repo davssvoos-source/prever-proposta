@@ -21,20 +21,23 @@
 import { guardaDeTela, usePermissoes } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, Outlet, useRouterState, useLocation, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Plus, Clock, XCircle, FileText, FileClock, Send, CalendarDays, MapPin, User,
-  Trash2, Building2, ChevronRight,
+  Plus, XCircle, FileText, FileClock, Send, Clock,
+  Building2, ChevronRight, KanbanSquare, List as ListIcon,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { FONT, GOLD_GRAD, card } from "@/lib/ui";
 import {
-  etapaDaVisita, contagemPorEtapa, funilComercial, tituloDaVisita,
+  etapaDaVisita, contagemPorEtapa, funilComercial,
   ETAPA_ORDEM, ETAPA_LABEL, ETAPA_CORES, type EtapaComercial,
 } from "@/features/comercial/etapas";
+import { ETAPA_ICONE } from "@/features/comercial/icones";
+import { CartaoDaVisita } from "@/features/comercial/CartaoDaVisita";
+import { QuadroComercial } from "@/features/comercial/QuadroComercial";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,14 +65,11 @@ export const Route = createFileRoute("/_authenticated/gerencial")({
   component: GerencialPage,
 });
 
-/** Ícone por etapa — status nunca é só cor (design system §2.4). */
-const ETAPA_ICONE: Record<EtapaComercial, React.ElementType> = {
-  visita_pendente: Clock,
-  aguardando_aprovacao: FileClock,
-  falta_proposta: FileText,
-  enviada: Send,
-  cancelada: XCircle,
-};
+/**
+ * R252: lista × quadro é PREFERÊNCIA de quem olha (R175) — mora no navegador,
+ * como a da Início. Chave própria: as duas telas têm eixos diferentes.
+ */
+const CHAVE_VISAO_COMERCIAL = "prever-comercial-visao";
 
 function GerencialPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -84,6 +84,13 @@ function GerencialPage() {
   // filtro por etapa — chips com contagem, o mesmo padrão de Clientes (R41).
   // "todas" é o padrão: a promessa da tela é a lista INTEIRA numa tabela só.
   const [etapa, setEtapa] = useState<"todas" | EtapaComercial>("todas");
+  // R252: o modo de visualização — lista (o de sempre) ou quadro por etapa
+  const [visao, setVisao] = useState<"lista" | "quadro">(() => {
+    try { return localStorage.getItem(CHAVE_VISAO_COMERCIAL) === "quadro" ? "quadro" : "lista"; } catch { return "lista"; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(CHAVE_VISAO_COMERCIAL, visao); } catch { /* modo privado */ }
+  }, [visao]);
 
   const { data: visitasRaw = [], isLoading } = useQuery({
     queryKey: ["gerencial-visitas"],
@@ -337,6 +344,19 @@ function GerencialPage() {
               {`${ETAPA_LABEL[e]} · ${contagem[e]}`}
             </button>
           ))}
+          {/* R252: lista × quadro — a mesma chave da Início, com os mesmos
+              ícones, no fim da barra de filtros. É preferência de quem olha
+              (R175): fica gravada no navegador. */}
+          <div style={{ flex: 1, minWidth: 8 }} />
+          <button
+            type="button"
+            onClick={() => setVisao((atual) => (atual === "lista" ? "quadro" : "lista"))}
+            title={visao === "lista" ? "Ver como quadro por etapa" : "Ver como lista"}
+            aria-label={visao === "lista" ? "Ver como quadro por etapa" : "Ver como lista"}
+            style={{ ...chipFiltro(false), flexShrink: 0, padding: "8px 12px" }}
+          >
+            {visao === "lista" ? <KanbanSquare size={17} color={gold} /> : <ListIcon size={17} color={gold} />}
+          </button>
         </div>
 
         {/* A lista — todas as etapas juntas, cada linha dizendo a sua */}
@@ -368,117 +388,34 @@ function GerencialPage() {
               </span>
             )}
           </div>
+        ) : visao === "quadro" ? (
+          <QuadroComercial
+            visitas={exibidas}
+            colunas={etapa === "todas" ? ETAPA_ORDEM : [etapa]}
+            tecMap={tecMap}
+            isAdmin={isAdmin}
+            marcando={marcarEnviada.isPending}
+            onAbrir={(v) => navigate({ ...visitaRouteFor(v.status as any, v.id), state: { from: location.pathname } } as any)}
+            onMarcarEnviada={(id) => marcarEnviada.mutate(id)}
+            onExcluir={(id) => setDeletingId(id)}
+          />
         ) : (
+          // A lista — todas as etapas juntas, cada linha dizendo a sua. O MESMO
+          // componente do quadro, noutro formato (R252).
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {exibidas.map((v) => {
-              const et = etapaDaVisita(v);
-              const cor = ETAPA_CORES[et];
-              const Icone = ETAPA_ICONE[et];
-              const dataVisita = v.data_hora_agendada
-                ? new Date(v.data_hora_agendada).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
-                : "Sem data";
-              // R78: o nome do lugar, com "Residência" na frente quando é
-              // casa de pessoa física — a regra mora em etapas.ts
-              const clienteNome = tituloDaVisita({
-                tipo_local: v.tipo_local,
-                cliente_nome: v.clientes?.nome,
-                nome_predio: v.nome_predio,
-                nome_sindico: v.nome_sindico,
-                titulo: v.titulo,
-              });
-              const tecnicoNome = v.tecnico_id ? tecMap.get(v.tecnico_id) : null;
-              const enviadaEm = v.proposta_enviada_em
-                ? new Date(v.proposta_enviada_em).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
-                : null;
-
-              return (
-                <div
-                  key={v.id}
-                  className="elevavel"
-                  onClick={() => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)}
-                  style={{
-                    ...card(isLight), borderRadius: 16, padding: "14px 18px",
-                    cursor: "pointer",
-                    display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14,
-                  }}
-                >
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{
-                      fontFamily: FONT, fontWeight: 600, fontSize: 14,
-                      marginBottom: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                    }}>
-                      {clienteNome}
-                    </div>
-                    <div style={{
-                      fontFamily: FONT, fontSize: 12, fontWeight: 400, color: textSecondary,
-                      lineHeight: 1.5, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6,
-                    }}>
-                      <CalendarDays size={12} style={{ opacity: 0.7 }} />
-                      <span>{dataVisita}</span>
-                      {v.endereco ? (<><span style={{ opacity: 0.4 }}>·</span><MapPin size={12} style={{ opacity: 0.7 }} /><span>{v.endereco}</span></>) : null}
-                      {tecnicoNome ? (<><span style={{ opacity: 0.4 }}>·</span><User size={12} style={{ opacity: 0.7 }} /><span>{tecnicoNome}</span></>) : null}
-                      {/* o carimbo que encerra o ciclo merece a linha de meta */}
-                      {enviadaEm ? (<><span style={{ opacity: 0.4 }}>·</span><Send size={12} style={{ opacity: 0.7 }} /><span>Enviada em {enviadaEm}</span></>) : null}
-                    </div>
-                  </div>
-
-                  {/* chip de etapa — véu 12% + borda 30% + ícone (§2.4) */}
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0,
-                    padding: "5px 11px", borderRadius: 999,
-                    background: cor.bg, border: `1px solid ${cor.border}`,
-                    color: isLight ? cor.light : cor.dark,
-                    fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-                    letterSpacing: "0.05em", textTransform: "uppercase",
-                    whiteSpace: "nowrap",
-                  }}>
-                    <Icone size={13} />
-                    {ETAPA_LABEL[et]}
-                  </span>
-
-                  {/* R78 — marcar como enviada, direto do card.
-                      Só aparece na etapa "falta_proposta": antes dela não há
-                      proposta aprovada para enviar, e depois o ciclo já
-                      encerrou (R64). Chama a MESMA RPC que a tela da visita
-                      (`registrar_envio_proposta`) — um segundo caminho de
-                      escrita divergiria dela na primeira mudança de regra.
-                      `stopPropagation` porque o card inteiro navega. */}
-                  {et === "falta_proposta" && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); marcarEnviada.mutate(v.id); }}
-                      disabled={marcarEnviada.isPending}
-                      title="Marcar a proposta como enviada — encerra o ciclo"
-                      style={{
-                        flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6,
-                        height: 34, padding: "0 13px", borderRadius: 17, border: "none",
-                        background: GOLD_GRAD, color: "#0E0E0E",
-                        fontFamily: FONT, fontWeight: 700, fontSize: 11.5,
-                        letterSpacing: "0.03em", whiteSpace: "nowrap",
-                        cursor: marcarEnviada.isPending ? "default" : "pointer",
-                        opacity: marcarEnviada.isPending ? 0.6 : 1,
-                      }}
-                    >
-                      <Send size={13} />
-                      Proposta enviada
-                    </button>
-                  )}
-
-                  {isAdmin && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDeletingId(v.id); }}
-                      aria-label="Excluir proposta"
-                      style={{
-                        flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                        width: 34, height: 34, borderRadius: 10, border: "none",
-                        background: "rgba(230,77,88,0.10)", cursor: "pointer",
-                      }}
-                    >
-                      <Trash2 size={15} color={isLight ? "#B1242E" : "#F17881"} />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+            {exibidas.map((v) => (
+              <CartaoDaVisita
+                key={v.id}
+                v={v}
+                formato="linha"
+                tecnicoNome={v.tecnico_id ? tecMap.get(v.tecnico_id) : null}
+                isAdmin={isAdmin}
+                marcando={marcarEnviada.isPending}
+                onAbrir={() => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)}
+                onMarcarEnviada={() => marcarEnviada.mutate(v.id)}
+                onExcluir={() => setDeletingId(v.id)}
+              />
+            ))}
           </div>
         )}
       </div>

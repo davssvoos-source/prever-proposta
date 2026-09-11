@@ -103,9 +103,14 @@ interface Props {
   mostrarStatus?: boolean;
   /** Perfis para a pilha de avatares dos participantes. */
   pessoas?: Record<string, PessoaAvatar>;
+  /**
+   * R248: esta é a atividade "A SEGUIR" — a primeira da coluna Agendado.
+   * Muda a COR e o CONTRASTE, nunca a geometria.
+   */
+  aSeguir?: boolean;
 }
 
-export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Props) {
+export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas, aSeguir = false }: Props) {
   const { isLight } = useTheme();
   const textPrimary = isLight ? "#212121" : "#ffffff";
   const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.58)";
@@ -160,6 +165,26 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
         minHeight: 76,
       };
 
+  /**
+   * R248: o realce da atividade "A SEGUIR" — a primeira da coluna Agendado.
+   *
+   * Davi: "apesar de seguir o formato geométrico dos outros cards do kanban, e
+   * o espaçamento, margem e tamanho também deve ser igual. Porém as cores, o
+   * contraste […] você pode alterar". Então nada aqui mexe em caixa: o anel é
+   * `inset` (desenha POR DENTRO da borda, não empurra nem protrai — um
+   * `outline` sairia 2px para fora e seria cortado pelo trilho que rola de
+   * lado), o raio, o padding e a altura mínima são os mesmos, e a etiqueta
+   * ocupa a vaga que o chip de status deixa vazia no quadro. O que muda é cor
+   * e contraste: âmbar para o que vem, vermelho quando a hora já passou.
+   */
+  const pDestaque = aSeguir ? (faixa === "atraso" ? PRISMA.vermelho : PRISMA.amarelo) : null;
+  const CARD_FINAL: CSSProperties = pDestaque
+    ? {
+        ...CARD,
+        boxShadow: `${CARD.boxShadow ?? ""}, inset 0 0 0 2px ${isLight ? pDestaque.light : pDestaque.dark}, 0 0 14px ${esmaecer(pDestaque.bg, 0.9)}`,
+      }
+    : CARD;
+
   // `div role="button"` e NÃO `<button>` (U72). O card do quadro fica dentro
   // de um wrapper `draggable`, e Firefox e Safari não iniciam o arrasto do
   // ancestral quando o gesto começa sobre um `<button>` nativo — o mousedown
@@ -175,7 +200,7 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); }
       }}
       className="elevavel"
-      style={CARD}
+      style={CARD_FINAL}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -192,11 +217,22 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
             <span style={{ minWidth: 0 }}>{a.titulo}</span>
           </div>
         </div>
-        {mostrarStatus && (
+        {/* R248: no quadro o chip de status fica vazio (a coluna já diz o
+            status) — é essa vaga que a etiqueta "A SEGUIR" ocupa. Assim o
+            realce não acrescenta linha nenhuma, e o card continua da mesma
+            altura dos vizinhos. */}
+        {pDestaque ? (
+          <span style={{
+            ...chipStyle({ dark: pDestaque.dark, light: pDestaque.light, bg: pDestaque.bg, border: pDestaque.border }, isLight),
+            flexShrink: 0, letterSpacing: "0.08em",
+          }}>
+            {faixa === "atraso" ? "ATRASADA" : "A SEGUIR"}
+          </span>
+        ) : mostrarStatus ? (
           <span style={{ ...chipStyle(a.statusCor, isLight), flexShrink: 0 }}>
             {a.statusLabel}
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* O que a coluna apagou: por que este item está aqui, e com quem está a bola */}

@@ -169,6 +169,8 @@ export interface Filtros {
    *  R139 (U96): casa com as equipes das PESSOAS da atividade (`a.equipes`),
    *  em qualquer natureza — não mais com a coluna do chamado interno. */
   equipe: string;
+  /** R251: tipo de demanda. "todos" | ChamadoTipo (TIPOS_DE_DEMANDA). */
+  tipo: string;
   busca: string;
   /**
    * A ordenação escolhida À MÃO — `null` significa "segue a do padrão
@@ -192,6 +194,7 @@ export const FILTROS_INICIAIS: Filtros = {
   prazo: null,
   pessoa: "todos",
   equipe: "todas",
+  tipo: "todos",
   busca: "",
   ordenacao: null,
 };
@@ -232,6 +235,34 @@ function casaVinculo(a: Atividade, v: Vinculo[]): boolean {
  *  traz toda atividade em que alguém da técnica é responsável ou apoio, seja
  *  de campo, interna ou proposta. (Até a U96 só o interno tinha equipe, e o
  *  filtro escondia campo/comercial por definição; isso acabou.) */
+/**
+ * R251 (Davi, 10/09/2026): "No Kanban e Lista, também adicione o filtro por
+ * Tipo de Demanda." É a mesma classe de "QUEM/O QUÊ" da equipe — vale na lista
+ * e também no recorte dos painéis. "todos" não filtra nada.
+ *
+ * A visita entra como `prospeccao` (R48/R29), então filtrar por Prospecção traz
+ * as visitas junto com os chamados comerciais, que é o que a palavra promete.
+ */
+function casaTipo(a: Atividade, tipo: string): boolean {
+  return tipo === "todos" || a.tipo === tipo;
+}
+
+/**
+ * R250 (Davi, 10/09/2026): "adicione no mecanismo de busca os nomes dos
+ * clientes, onde caso o usuário digite o nome do cliente apareça as atividades
+ * daquele cliente (Além do mecanismo continuar funcionando por titulo da
+ * atividade)."
+ *
+ * O nome do prédio já entrava pelo campo `cliente` — mas só o PRINCIPAL, e só
+ * quando a atividade aponta para um cliente da base. Num chamado de SETOR, de
+ * PROSPECÇÃO ou com vários prédios, o nome que a pessoa conhece mora em
+ * `locais` (R84/R85, U71) e a busca não o via. Agora varre número, título e
+ * TODOS os locais.
+ */
+function textoDaBusca(a: Atividade): string {
+  return [a.numero ?? "", a.titulo, a.cliente ?? "", ...(a.locais ?? [])].join(" ");
+}
+
 function casaEquipe(a: Atividade, equipe: string): boolean {
   return equipe === "todas" || a.equipes.includes(equipe);
 }
@@ -271,9 +302,10 @@ export function aplicarLentes(
     if (!casaVinculo(a, vinculos)) return false;
     if (f.pessoa !== "todos" && a.responsavelId !== f.pessoa) return false;
     if (!casaEquipe(a, f.equipe)) return false;
+    if (!casaTipo(a, f.tipo)) return false;
     if (!dentroDoPrazo(a, f.prazo, ctx.agora)) return false;
     if (!termo) return true;
-    return normalizar(`${a.numero ?? ""} ${a.titulo} ${a.cliente ?? ""}`).includes(termo);
+    return normalizar(textoDaBusca(a)).includes(termo);
   });
 }
 
@@ -320,8 +352,9 @@ export function recorteDosPaineis(
     // equipe é "QUEM" (que time), não "QUANDO" — mesma classe que pessoa,
     // então vale aqui igual, ao contrário de prazo (ver o cabeçalho acima)
     if (!casaEquipe(a, f.equipe)) return false;
+    if (!casaTipo(a, f.tipo)) return false;
     if (!termo) return true;
-    return normalizar(`${a.numero ?? ""} ${a.titulo} ${a.cliente ?? ""}`).includes(termo);
+    return normalizar(textoDaBusca(a)).includes(termo);
   });
 }
 
@@ -395,6 +428,48 @@ export function ordenarConcluidas(lista: readonly Atividade[]): Atividade[] {
     if (ea !== eb) return ea < eb ? 1 : -1;
     return a.criadoEm < b.criadoEm ? 1 : -1;
   });
+}
+
+/**
+ * R248 (Davi, 10/09/2026): "A coluna de Agendados deve ter ordenação fixa: As
+ * mais próximas acima (Datas mais próximas do agendamento)."
+ *
+ * Ordena por INSTANTE, não por texto. `agendadaEm` chega em dois formatos — o
+ * carimbo com fuso da visita (`data_hora_agendada`) e o fim do dia LOCAL do
+ * chamado que só tem dia marcado (`fimDoDiaAgendado`, sem fuso) —, e comparar
+ * as duas strings erra a ordem dentro do mesmo dia. Sem dia marcado vai para o
+ * fim: o card está na coluna por status, não por agenda. Empate desempata pelo
+ * mais antigo, que é quem espera há mais tempo.
+ */
+export function ordenarAgendados(lista: readonly Atividade[]): Atividade[] {
+  const quando = (a: Atividade): number | null => {
+    if (!a.agendadaEm) return null;
+    const t = new Date(a.agendadaEm).getTime();
+    return Number.isNaN(t) ? null : t;
+  };
+  return [...lista].sort((a, b) => {
+    const ta = quando(a);
+    const tb = quando(b);
+    if (ta === null && tb === null) return a.criadoEm < b.criadoEm ? -1 : 1;
+    if (ta === null) return 1;
+    if (tb === null) return -1;
+    if (ta !== tb) return ta - tb;
+    return a.criadoEm < b.criadoEm ? -1 : 1;
+  });
+}
+
+/**
+ * R248: a atividade "A seguir" — a PRIMEIRA da coluna Agendado que tem dia
+ * marcado. Quem manda é a ordem da coluna, não o dono: a Início mostra as
+ * atividades de todos (R221/R246) e o card já diz de quem é pela pilha de
+ * avatares. A atrasada continua sendo a próxima — é ela que está em cima da
+ * hora, e o realce troca de cor para dizer isso.
+ *
+ * Isto substitui o `proximaVisitaDe` como resposta à pergunta "o que vem
+ * agora?" NO DESKTOP: o banner que morava acima dos filtros virou este card.
+ */
+export function aSeguirDe(lista: readonly Atividade[]): Atividade | null {
+  return ordenarAgendados(lista).find((a) => !!a.agendadaEm) ?? null;
 }
 
 // ── A ordem das colunas do quadro (R181) ─────────────────────────────────────

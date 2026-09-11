@@ -33,7 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
 import { toast } from "sonner";
-import { statusDaNatureza, NATUREZA_LABEL, chamadoStatusInfo } from "@/lib/chamado-status";
+import { statusDaNatureza, NATUREZA_LABEL, chamadoStatusInfo, TIPOS_DE_DEMANDA, TIPO_LABEL } from "@/lib/chamado-status";
 import { normalizarTexto } from "@/lib/normalizar";
 import { visitaRouteFor } from "@/lib/visita-route";
 import {
@@ -243,7 +243,7 @@ function Home() {
   // um recorte que a tela já não anuncia mais em lugar nenhum
   useEffect(
     () => setSelecaoPainel(null),
-    [filtros.pessoa, filtros.vinculos, filtros.equipe],
+    [filtros.pessoa, filtros.vinculos, filtros.equipe, filtros.tipo],
   );
 
   /**
@@ -593,6 +593,12 @@ function Home() {
           </h1>
         </div>
 
+        {/* R248: no DESKTOP a próxima atividade é o primeiro card da coluna
+            Agendado do quadro, com realce — este banner não fica mais acima
+            dos filtros. No celular ele continua: lá a visão padrão é a LISTA
+            (o quadro é só leitura), e sem o banner o técnico perderia "o que
+            é o meu próximo" na tela que ele mais abre. */}
+        <div className="so-celular">
         <ProximaVisita
           visita={proxima}
           onAbrir={() => proxima && navigate({
@@ -600,6 +606,7 @@ function Home() {
             state: { from: location.pathname },
           } as any)}
         />
+        </div>
 
         {/* Falha de rede não pode parecer "não tenho trabalho hoje" — é a
             mentira mais cara possível para quem está em campo. */}
@@ -655,6 +662,16 @@ function Home() {
               opcoes={EQUIPES.map((e) => ({ valor: e, label: EQUIPE_LABEL[e] }))}
               selecionados={filtros.equipe === "todas" ? [] : [filtros.equipe]}
               onMudar={(v) => setFiltros((f) => ({ ...f, equipe: v[0] ?? "todas" }))}
+            />
+            {/* R251 (Davi, 10/09/2026): "No Kanban e Lista, também adicione o
+                filtro por Tipo de Demanda." Mesma classe da Equipe — recorta
+                a lista, o quadro e os painéis do topo. */}
+            <MenuFiltro
+              rotulo="Tipo"
+              vazio="Tipo de demanda"
+              opcoes={TIPOS_DE_DEMANDA.map((t) => ({ valor: t, label: TIPO_LABEL[t] }))}
+              selecionados={filtros.tipo === "todos" ? [] : [filtros.tipo]}
+              onMudar={(v) => setFiltros((f) => ({ ...f, tipo: v[0] ?? "todos" }))}
             />
             {veTodos && pessoas.length > 0 && (
               <MenuFiltro
@@ -812,6 +829,7 @@ function Home() {
                     rotuloDaSelecao(selecaoPainel),
                     filtros.vinculos.length ? filtros.vinculos.map((v) => VINCULOS.find((x) => x.chave === v)?.label).join(" + ") : null,
                     filtros.equipe !== "todas" ? EQUIPE_LABEL[filtros.equipe as Equipe] : null,
+                    filtros.tipo !== "todos" ? TIPO_LABEL[filtros.tipo as keyof typeof TIPO_LABEL] : null,
                     filtros.busca.trim() ? `busca "${filtros.busca.trim()}"` : null,
                   ].filter(Boolean).join(" · ")
                 : [
@@ -819,6 +837,7 @@ function Home() {
                     filtros.prazo && PRAZOS.find((p) => p.chave === filtros.prazo)?.label,
                     filtros.vinculos.length ? filtros.vinculos.map((v) => VINCULOS.find((x) => x.chave === v)?.label).join(" + ") : null,
                     filtros.equipe !== "todas" ? EQUIPE_LABEL[filtros.equipe as Equipe] : null,
+                    filtros.tipo !== "todos" ? TIPO_LABEL[filtros.tipo as keyof typeof TIPO_LABEL] : null,
                     filtros.busca.trim() ? `busca "${filtros.busca.trim()}"` : null,
                   ].filter(Boolean).join(" · ") || "Sem atividades em aberto."}
             </span>
@@ -827,7 +846,7 @@ function Home() {
                 Limpar
               </button>
             ) : (filtros.preset || filtros.prazo || filtros.vinculos.length > 0
-              || filtros.equipe !== "todas" || filtros.busca.trim()) && (
+              || filtros.equipe !== "todas" || filtros.tipo !== "todos" || filtros.busca.trim()) && (
               <button style={{ ...chip(false), marginTop: 4 }} onClick={() => { setFiltros(FILTROS_INICIAIS); setBuscaAberta(false); }}>
                 Limpar filtros
               </button>

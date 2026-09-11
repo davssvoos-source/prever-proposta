@@ -3669,6 +3669,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const fs35 = require('fs');
   const ET2 = carregar('src/features/comercial/etapas.ts');
   const ger2 = fs35.readFileSync('src/routes/_authenticated/gerencial.tsx', 'utf8');
+  // R252 (U128): a linha da lista virou o componente CartaoDaVisita (o MESMO
+  // do card do quadro, noutro formato) — os pinos do desenho da linha passam
+  // a descrever o componente; o que continua sendo da rota (consulta, RPC,
+  // invalidação) segue pinado nela.
+  const cv2 = fs35.readFileSync('src/features/comercial/CartaoDaVisita.tsx', 'utf8');
 
   const v = (status, enviada) => ({ status, proposta_enviada_em: enviada ?? null });
 
@@ -3737,11 +3742,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('o filtro por etapa é chip com contagem (padrão de Clientes), com "Todas" na frente',
      /\{`Todas · \$\{funil\.visitas\}`\}/.test(ger2) && /ETAPA_ORDEM\.map\(\(e\) => \(/.test(ger2), true);
   eq('o chip de cada linha vem de ETAPA_CORES/ETAPA_LABEL — a mesma função do filtro e do funil',
-     /const et = etapaDaVisita\(v\);/.test(ger2) && /\{ETAPA_LABEL\[et\]\}/.test(ger2), true);
+     /const et = etapaDaVisita\(v\);/.test(cv2) && /\{ETAPA_LABEL\[et\]\}/.test(cv2), true);
   eq('o chip da linha leva ícone junto da cor (status nunca é só cor, §2.4)',
-     /<Icone size=\{13\} \/>/.test(ger2), true);
+     /<Icone size=\{13\} \/>/.test(cv2), true);
   eq('a linha enviada mostra QUANDO foi enviada (o carimbo que encerrou o ciclo)',
-     /Enviada em \{enviadaEm\}/.test(ger2), true);
+     /Enviada em \{enviadaEm\}/.test(cv2), true);
   eq('a nota do funil diz a verdade nova: o ciclo encerra no envio, aceite não é mapeado',
      /o aceite do cliente não é mapeado aqui/.test(ger2), true);
   eq('os cards usam card(isLight) de lib/ui — a superfície padrão, não um gradiente próprio da página',
@@ -4693,6 +4698,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const fs48 = require('fs');
   const ET3 = carregar('src/features/comercial/etapas.ts');
   const ger3 = fs48.readFileSync('src/routes/_authenticated/gerencial.tsx', 'utf8');
+  // R252 (U128): ver a nota acima — o desenho da linha mora no CartaoDaVisita
+  const cv3 = fs48.readFileSync('src/features/comercial/CartaoDaVisita.tsx', 'utf8');
 
   // ── o nome do lugar ──────────────────────────────────────────────────────
   eq('condomínio: o nome do cliente cadastrado',
@@ -4724,17 +4731,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a tela ───────────────────────────────────────────────────────────────
   eq('a lista usa a função pura, não um ?? solto',
-     /const clienteNome = tituloDaVisita\(\{/.test(ger3), true);
+     /const clienteNome = tituloDaVisita\(\{/.test(cv3), true);
   eq('CRÍTICO: `tipo_local` entrou na consulta — sem ele a regra da residência nunca dispararia',
      /nome_predio,\s*\n\s*tipo_local,/.test(ger3), true);
   eq('o botão "Proposta enviada" só aparece em falta_proposta — antes não há o que enviar, depois o ciclo já encerrou (R64)',
-     /\{et === "falta_proposta" && \(/.test(ger3), true);
+     // R252: virou uma constante nomeada, lida pelos dois formatos
+     /const podeMarcar = et === "falta_proposta";/.test(cv3), true);
   eq('CRÍTICO: usa a MESMA RPC da tela da visita — um segundo caminho de escrita divergiria dela na primeira mudança de regra',
      /supabase\.rpc\("registrar_envio_proposta" as any/.test(ger3), true);
   eq('o clique no botão não navega junto com o card',
-     /onClick=\{\(e\) => \{ e\.stopPropagation\(\); marcarEnviada\.mutate\(v\.id\); \}\}/.test(ger3), true);
+     /onClick=\{\(e\) => \{ e\.stopPropagation\(\); onMarcarEnviada\(\); \}\}/.test(cv3), true);
   eq('não dá para clicar duas vezes enquanto grava',
-     /disabled=\{marcarEnviada\.isPending\}/.test(ger3), true);
+     /disabled=\{marcando\}/.test(cv3) && /marcando=\{marcarEnviada\.isPending\}/.test(ger3), true);
   eq('a lista se atualiza sozinha depois de enviar',
      /queryClient\.invalidateQueries\(\{ queryKey: \["gerencial-visitas"\] \}\)/.test(ger3), true);
 
@@ -20195,7 +20203,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
           { id: 'b', encerradoEm: null, criadoEm: '2026-08-05T00:00:00Z' },
           { id: 'c', encerradoEm: '2026-09-09T10:00:00Z', criadoEm: '2026-08-02T00:00:00Z' },
         ]).map((a) => a.id),
-        /const itens = c === "concluido" \? ordenarConcluidas\(porColuna\.get\(c\) \?\? \[\]\) : \(porColuna\.get\(c\) \?\? \[\]\);/.test(q)],
+        // R248 (U128): a coluna Agendado ganhou ordem fixa também, e as duas
+        // saem da mesma variável `daColuna` — o pino segue a Concluído
+        /const itens = c === "concluido" \? ordenarConcluidas\(daColuna\)/.test(q)],
        [['c', 'a', 'b'], true]);
     eq('R246: o rótulo da ordenação ("Prazo (crescente)") fica à ESQUERDA do botão de ordenar',
        dash.indexOf('aria-live="polite"') > 0 && dash.indexOf('aria-live="polite"') < dash.indexOf('<MenuFiltro\n              rotulo="Ordenar"'), true);
@@ -20263,10 +20273,165 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /\bU127\b/.test(ler127('docs/ESTADO_ATUAL.md')),
       /^## P66 — ~~BAIXO~~ FECHADA/m.test(ler127('docs/PENDENCIAS_TECNICAS.md')),
       /operacional/.test(ler127('docs/manual/permissoes-e-acesso.md')) && /\*\*operacional\*\*/.test(ler127('docs/manual/visao-geral.md')),
+      // U128: a v0.0.9 deixou de ser a mais nova do arquivo; o que se cobra
+      // é que a entrada dela exista dizendo que exige a U127
       /^## v0\.0\.9 [^\n]*U127/m.test(ler127('docs/VERSOES.md')),
       fs127.existsSync('scripts/lib/editar.cjs') && fs127.existsSync('scripts/fechar-entrega.cjs'),
       /fechar-entrega\.cjs/.test(ler127('CLAUDE.md')) && /lib\/editar\.cjs/.test(ler127('CLAUDE.md'))],
      [true, true, true, true, true, true, true, true, true, true, true, true]);
+}
+
+
+// ── U128 — "A seguir" no quadro (R248), o cursor na caixa do chat (R249), a busca pelo prédio (R250), o filtro de Tipo (R251) ──
+{
+  const fs128 = require('fs');
+  const ler128 = (f) => fs128.readFileSync(f, 'utf8');
+  const cod128 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const L8 = carregar('src/features/home/lentes.ts');
+  const ativ = (o) => ({
+    emAberto: true, souResponsavel: false, souApoio: false, souAutor: false,
+    responsavelId: null, equipe: null, equipes: [], sprint: null, quando: null,
+    coluna: 'agendado', tipo: null, numero: null, titulo: '', cliente: null, locais: [],
+    criadoEm: '2026-09-01T00:00:00Z', agendadaEm: null, ...o,
+  });
+
+  // ── R248: a coluna Agendado e o card "A seguir" ──────────────────────────
+  eq('R248 CRÍTICO: a coluna Agendado é ordenada pelo DIA MARCADO — o mais próximo no topo, FIXO —, sem dia marcado vai para o fim, e a comparação é por INSTANTE (o fim do dia local do chamado × o carimbo com fuso da visita, que como TEXTO sairiam trocados)',
+     (() => {
+       const semDia = ativ({ id: 'sem', agendadaEm: null });
+       const visita09 = ativ({ id: 'visita09', agendadaEm: '2026-09-12T12:00:00+00:00' });   // 09:00 em -03
+       const chamadoFimDoDia = ativ({ id: 'chamado', agendadaEm: '2026-09-12T23:59:59' });
+       const depois = ativ({ id: 'depois', agendadaEm: '2026-09-20T10:00:00+00:00' });
+       const atrasada = ativ({ id: 'atrasada', agendadaEm: '2026-09-01T10:00:00+00:00' });
+       const lista = [semDia, depois, chamadoFimDoDia, visita09, atrasada];
+       return [L8.ordenarAgendados(lista).map((a) => a.id), L8.aSeguirDe(lista).id,
+               L8.aSeguirDe([semDia]), L8.aSeguirDe([])];
+     })(),
+     [['atrasada', 'visita09', 'chamado', 'depois', 'sem'], 'atrasada', null, null]);
+  {
+    const q8 = ler128('src/features/home/Quadro.tsx');
+    const c8 = ler128('src/features/home/CardAtividade.tsx');
+    eq('R248 CRÍTICO: o quadro aplica a ordem fixa na coluna Agendado (como já faz na Concluído) e marca o primeiro card com dia marcado como "a seguir"',
+       [/c === "agendado" \? ordenarAgendados\(daColuna\)/.test(q8),
+        /c === "concluido" \? ordenarConcluidas\(daColuna\)/.test(q8),
+        /const aSeguirId = c === "agendado" \? \(aSeguirDe\(itens\)\?\.id \?\? null\) : null;/.test(q8),
+        /aSeguir=\{a\.id === aSeguirId\}/.test(q8)],
+       [true, true, true, true]);
+    eq('R248 CRÍTICO: o realce muda COR e CONTRASTE e NADA de geometria — o anel é inset (não protrai, não é cortado pelo trilho), o raio/padding/altura mínima seguem os mesmos, e a etiqueta A SEGUIR ocupa a vaga vazia do chip de status (Davi: "o espaçamento, margem e tamanho também deve ser igual")',
+       [/aSeguir\?: boolean;/.test(c8),
+        /const pDestaque = aSeguir \? \(faixa === "atraso" \? PRISMA\.vermelho : PRISMA\.amarelo\) : null;/.test(c8),
+        /inset 0 0 0 2px/.test(c8),
+        /outline/.test(cod128(c8)),
+        // só o boxShadow é reescrito: tudo o que é caixa vem de CARD por espalhamento
+        /const CARD_FINAL: CSSProperties = pDestaque\s*\n\s*\? \{\s*\n\s*\.\.\.CARD,\s*\n\s*boxShadow:/.test(c8),
+        (c8.match(/minHeight: 76,/g) ?? []).length, (c8.match(/padding: "12px 14px",/g) ?? []).length,
+        /\{faixa === "atraso" \? "ATRASADA" : "A SEGUIR"\}/.test(c8),
+        /style=\{CARD_FINAL\}/.test(c8)],
+       [true, true, true, false, true, 2, 2, true, true]);
+    eq('R248: no DESKTOP o banner "A seguir" saiu de cima dos filtros; no celular ele fica (lá a visão padrão é a lista e o quadro é só leitura)',
+       (() => {
+         const d8 = ler128('src/routes/_authenticated/dashboard.tsx');
+         const i = d8.indexOf('<div className="so-celular">\n        <ProximaVisita');
+         return [i > 0, d8.slice(i, i + 400).includes('</div>')];
+       })(),
+       [true, true]);
+  }
+
+  // ── R249: o cursor na caixa do chat ──────────────────────────────────────
+  {
+    const ed8 = ler128('src/components/EditorDeDescricao.tsx');
+    const ch8 = ler128('src/features/home/ChatDeMencoes.tsx');
+    eq('R249 CRÍTICO: "Responder aqui" arma a resposta E põe o cursor na caixa — pedido de foco por CONTADOR (o segundo clique também dispara), foco sem rolar a tela e cursor no FIM do que já estava escrito',
+       [/focarEm\?: number;/.test(ed8),
+        /raiz\.focus\(\{ preventScroll: true \}\);/.test(ed8),
+        /const ultimo = raiz\.lastElementChild as HTMLElement \| null;\s*\n\s*if \(ultimo\) cursorNoFimDoBloco\(ultimo\);/.test(ed8),
+        /\}, \[focarEm, somenteLeitura\]\);/.test(ed8),
+        /focarEm=\{focarEm\}/.test(ed8),
+        /const \[pedidoDeFoco, setPedidoDeFoco\] = useState\(0\);/.test(ch8),
+        /aoResponder=\{\(r\) => \{ setRespostaPara\(r\); setPedidoDeFoco\(\(n\) => n \+ 1\); \}\}/.test(ch8),
+        /pedidoDeFoco=\{pedidoDeFoco\}/.test(ch8),
+        /focarEm=\{pedidoDeFoco\}/.test(ch8)],
+       [true, true, true, true, true, true, true, true, true]);
+  }
+
+  // ── R250: a busca acha pelo nome do prédio ───────────────────────────────
+  eq('R250 CRÍTICO: "Procurar atividade…" casa número, título E TODOS os locais — o prédio que entra como SETOR ou PROSPECÇÃO só existe em `locais`, e era ele que a busca não via; sem acento e sem caixa',
+     (() => {
+       const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+       const ctx8 = { agora: new Date(2026, 8, 10) };
+       const porSetor = ativ({ id: 'setor', titulo: 'Trocar câmera', cliente: null, locais: ['Edifício Eneide', 'Portaria'] });
+       const porTitulo = ativ({ id: 'titulo', titulo: 'Adequação da sala', locais: [] });
+       const buscar = (t) => L8.aplicarLentes([porSetor, porTitulo], { ...L8.FILTROS_INICIAIS, busca: t }, ctx8, norm).map((a) => a.id);
+       return [buscar('eneide'), buscar('ENEIDE'), buscar('adequacao'), buscar('portaria'), buscar('nada')];
+     })(),
+     [['setor'], ['setor'], ['titulo'], ['setor'], []]);
+
+  // ── R251: o filtro de Tipo de Demanda ────────────────────────────────────
+  eq('R251 CRÍTICO: o Tipo de Demanda recorta a lista E o recorte dos painéis (é "o quê", da mesma classe da equipe); "todos" não filtra nada',
+     (() => {
+       const ctx8 = { agora: new Date(2026, 8, 10) };
+       const corretiva = ativ({ id: 'cor', tipo: 'corretiva' });
+       const visita = ativ({ id: 'vis', tipo: 'prospeccao' });
+       const semTipo = ativ({ id: 'sem', tipo: null });
+       const todas = [corretiva, visita, semTipo];
+       const f = (tipo) => ({ ...L8.FILTROS_INICIAIS, tipo });
+       return [L8.FILTROS_INICIAIS.tipo,
+               L8.aplicarLentes(todas, f('todos'), ctx8, (x) => x).length,
+               L8.aplicarLentes(todas, f('corretiva'), ctx8, (x) => x).map((a) => a.id),
+               L8.aplicarLentes(todas, f('prospeccao'), ctx8, (x) => x).map((a) => a.id),
+               L8.recorteDosPaineis(todas, f('corretiva'), (x) => x).map((a) => a.id)];
+     })(),
+     ['todos', 3, ['cor'], ['vis'], ['cor']]);
+  {
+    const d8 = ler128('src/routes/_authenticated/dashboard.tsx');
+    eq('R251: o botão "Tipo de demanda" está na barra, com o vocabulário dos SEIS tipos; o filtro entra no aviso de "nada nesta combinação", no "limpar filtros" e zera a seleção do painel como os outros de quem/o quê',
+       [/rotulo="Tipo"\s*\n\s*vazio="Tipo de demanda"/.test(d8),
+        /opcoes=\{TIPOS_DE_DEMANDA\.map\(\(t\) => \(\{ valor: t, label: TIPO_LABEL\[t\] \}\)\)\}/.test(d8),
+        (d8.match(/filtros\.tipo !== "todos" \? TIPO_LABEL/g) ?? []).length,
+        /\|\| filtros\.tipo !== "todos" \|\| filtros\.busca\.trim\(\)\) && \(/.test(d8),
+        /\[filtros\.pessoa, filtros\.vinculos, filtros\.equipe, filtros\.tipo\]/.test(d8),
+        carregar('src/lib/chamado-status.ts').TIPOS_DE_DEMANDA.length],
+       [true, true, 2, true, true, 6]);
+  }
+
+  // ── R252: o Painel Comercial em duas visões ──────────────────────────────
+  {
+    const ger8 = ler128('src/routes/_authenticated/gerencial.tsx');
+    const cv8 = ler128('src/features/comercial/CartaoDaVisita.tsx');
+    const qc8 = ler128('src/features/comercial/QuadroComercial.tsx');
+    const ic8 = ler128('src/features/comercial/icones.ts');
+    const ET8 = carregar('src/features/comercial/etapas.ts');
+    eq('R252 CRÍTICO: o quadro do Comercial tem UMA coluna por etapa do ciclo, na ordem do ciclo, e a coluna sai da MESMA função que pinta o chip e conta o funil (etapaDaVisita) — quadro, chips e funil não têm como discordar',
+       [/import \{ QuadroComercial \} from "@\/features\/comercial\/QuadroComercial";/.test(ger8),
+        /colunas=\{etapa === "todas" \? ETAPA_ORDEM : \[etapa\]\}/.test(ger8),
+        /const e = etapaDaVisita\(v\);/.test(qc8),
+        /colunas\.map\(\(e\) => \{/.test(qc8),
+        ET8.ETAPA_ORDEM,
+        /className="trilho-x sangra-x"/.test(qc8)],
+       [true, true, true, true,
+        ['visita_pendente', 'aguardando_aprovacao', 'falta_proposta', 'enviada', 'cancelada'], true]);
+    eq('R252 CRÍTICO: a linha da lista e o card do quadro são UM componente em dois formatos — a rota não desenha mais visita nenhuma (nem título, nem chip, nem botão), e no formato cartão a etiqueta de etapa some (a coluna já a diz)',
+       [/formato="linha"/.test(ger8), /formato="cartao"/.test(qc8),
+        /tituloDaVisita/.test(ger8), /ETAPA_CORES\[et\]/.test(ger8),
+        /const cartao = formato === "cartao";/.test(cv8),
+        // o chip existe no componente, mas só o ramo "linha" o rende
+        /\{cartao\s*\n\s*\? \(\(podeMarcar \|\| isAdmin\)/.test(cv8),
+        cv8.indexOf('{chipEtapa}') > cv8.indexOf('? ((podeMarcar || isAdmin)')],
+       [true, true, false, false, true, true, true]);
+    eq('R252: o card do quadro segue a geometria dos outros cards do sistema (raio 16, padding 12x14, altura mínima 76) e o quadro NÃO tem arrasto — a etapa é derivada, cada transição tem porta própria',
+       [/borderRadius: 16, padding: "12px 14px", minHeight: 76,/.test(cv8),
+        /draggable/.test(qc8), /onDrop/.test(qc8),
+        /Proposta enviada/.test(cv8), /registrar_envio_proposta/.test(ler128('src/routes/_authenticated/gerencial.tsx'))],
+       [true, false, false, true, true]);
+    eq('R252: a visão é preferência de quem olha (fica no navegador, chave própria) e o ícone da etapa mora FORA de etapas.ts — aquele arquivo é lógica pura e o verificador o carrega de verdade',
+       [/const CHAVE_VISAO_COMERCIAL = "prever-comercial-visao";/.test(ger8),
+        /localStorage\.setItem\(CHAVE_VISAO_COMERCIAL, visao\);/.test(ger8),
+        /<KanbanSquare size=\{17\} color=\{gold\} \/> : <ListIcon size=\{17\} color=\{gold\} \/>/.test(ger8),
+        Object.keys(ET8.ETAPA_LABEL).length,
+        (ic8.match(/: (Clock|FileClock|FileText|Send|XCircle),/g) ?? []).length,
+        /lucide-react/.test(ler128('src/features/comercial/etapas.ts'))],
+       [true, true, true, 5, 5, false]);
+  }
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
