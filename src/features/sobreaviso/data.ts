@@ -44,17 +44,21 @@ import {
 const CAMPOS = "dia, pessoa_id, horas, origem";
 
 /**
- * TODO PROFILE, sem filtro de cargo.
+ * TODO PROFILE, sem filtro NENHUM na consulta.
  *
  * Quem decide o recorte é `pessoasDaGrade()`, no modelo puro, onde ele é
- * exercitado por asserção. Filtrar aqui por `cargo = 'tecnico'` (como faz
- * `fetchTecnicos`) tiraria da escala o coordenador que atende às 2h da manhã, e
- * o filtro ficaria escondido numa camada que ninguém testa.
+ * exercitado por asserção — inclusive o da R254 (só a equipe técnica é
+ * escalada). Filtrar aqui esconderia a regra numa camada que ninguém testa E
+ * apagaria da grade quem tem horas gravadas e hoje está fora do recorte: o
+ * histórico tem de continuar aparecendo, esmaecido.
+ *
+ * R254: a consulta passou a trazer `equipe` — é o campo que decide quem pode
+ * ser escalado.
  */
 export async function fetchPessoasDoSobreaviso(): Promise<PessoaCandidata[]> {
   const { data, error } = await (supabase as any)
     .from("profiles")
-    .select("id, nome, ativo, status, cargo")
+    .select("id, nome, ativo, status, cargo, equipe")
     .order("nome");
   if (error) throw error;
   return (data ?? []) as PessoaCandidata[];
@@ -193,24 +197,25 @@ export interface LinhaDaLimpeza {
  * tem caminho livre, porque limpar sempre perde. A primeira chamada devolve o
  * que morreria e não apaga nada.
  *
- * `_so_padrao` NÃO É PASSADO, e a omissão é o conserto: a RPC o declara com
- * `DEFAULT true` e a tela só tinha um caminho, o `true`. O ramo `false` — que
- * apaga também o digitado à mão — existia no cliente e no texto do modal sem
- * nenhum botão que o alcançasse: código morto documentando um botão que não
- * existe, e a frase mais assustadora da tela sendo escrita para ninguém ler.
- * Regra 8: o ramo saiu daqui. O parâmetro continua na RPC (o PORTÃO da
- * migration o exercita) para o dia em que o botão nascer.
+ * `_so_padrao` VOLTOU (R254), e o motivo é que o botão nasceu: apagar a BARRA
+ * de alguém é dizer "esta semana não é mais dele", e deixar para trás o que ele
+ * digitou à mão deixaria a barra na tela depois de mandar apagá-la. O comentário
+ * que estava aqui — "o ramo saiu, volta quando o botão existir" — descrevia
+ * exatamente este dia. Quem chama decide, e a prévia continua mostrando a coluna
+ * `origem` de cada linha que morre.
  */
 export async function limparSobreaviso(
   pessoa_id: string,
   de: string,
   ate: string,
   confirmar: boolean,
+  so_padrao = true,
 ): Promise<LinhaDaLimpeza[]> {
   const { data, error } = await (supabase as any).rpc("sobreaviso_limpar", {
     _pessoa: pessoa_id,
     _de: de,
     _ate: ate,
+    _so_padrao: so_padrao,
     _confirmar: confirmar,
   });
   if (error) throw error;
@@ -221,8 +226,8 @@ export function useLimpar() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: {
-      pessoa_id: string; de: string; ate: string; confirmar: boolean;
-    }) => limparSobreaviso(v.pessoa_id, v.de, v.ate, v.confirmar),
+      pessoa_id: string; de: string; ate: string; confirmar: boolean; so_padrao?: boolean;
+    }) => limparSobreaviso(v.pessoa_id, v.de, v.ate, v.confirmar, v.so_padrao ?? true),
     onSuccess: () => invalidarTudo(qc),
   });
 }
@@ -232,3 +237,70 @@ export function useLimpar() {
 // português, palavra por palavra, das duas RPCs. Uma casca que traduzisse o
 // SQLSTATE para uma frase genérica apagaria a única coisa que o usuário podia
 // usar, e é a mesma razão pela qual a agenda de campo tem a dela.
+
+export interface LinhaDaTroca {
+  pessoa_id: string;
+  dia: string;
+  antes: number | null;
+  depois: number | null;
+  /** de quem SAI: nada · saiu · reduziu — de quem ENTRA: inserir · igual · somar · trocar */
+  acao: string;
+}
+
+/**
+ * A TROCA DE PLANTONISTA (R254, migration U129) — numa transação só.
+ *
+ * Davi, 11/09/2026: "quando altera o usuário selecionado para fazer o plantão,
+ * as horas zeram do usuário que estava e passa para o que colocou depois. Ou
+ * seja não é cumulativo entre alternância do botão."
+ *
+ * NÃO É `limpar(A)` + `aplicar(B)`, e a diferença não é elegância:
+ *  · seriam DUAS transações — uma falha no meio deixa a semana sem ninguém, e
+ *    como o plantonista é DERIVADO de quem tem mais horas, o nome que a tela
+ *    mostra muda com a falha;
+ *  · `limpar` APAGA a célula inteira e nunca subtrai — na segunda da virada a
+ *    célula de A pode valer 14 (8 da semana anterior + 6 desta), e o DELETE
+ *    levaria junto horas que continuam sendo dela na semana passada;
+ *  · `_confirmar = false` do aplicar NÃO é dry-run: ele já grava quando não há
+ *    colisão, ou seja, "só para ver" escreveria B antes de A sair.
+ *
+ * `de_pessoa` nulo = ninguém sai (é só um lançamento). `para_pessoa` nulo =
+ * ninguém entra (a semana é retirada de quem estava).
+ */
+export async function trocarPlantonista(
+  de_pessoa: string | null,
+  para_pessoa: string | null,
+  segunda: string,
+  celulas: CelulaDoPadrao[],
+): Promise<LinhaDaTroca[]> {
+  const { data, error } = await (supabase as any).rpc("sobreaviso_trocar_plantonista", {
+    _de_pessoa: de_pessoa,
+    _para_pessoa: para_pessoa,
+    _segunda: segunda,
+    _horas: celulas.map((c) => c.horas),
+    _absorve: celulas.map((c) => c.absorve),
+  });
+  if (error) throw error;
+  return (data ?? []) as LinhaDaTroca[];
+}
+
+export function useTrocarPlantonista() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: {
+      de_pessoa: string | null; para_pessoa: string | null; segunda: string; celulas: CelulaDoPadrao[];
+    }) => trocarPlantonista(v.de_pessoa, v.para_pessoa, v.segunda, v.celulas),
+    onSuccess: () => invalidarTudo(qc),
+  });
+}
+
+/**
+ * REGRA 5 (ordem de deploy): enquanto a U129 não roda, a função não existe e o
+ * PostgREST devolve PGRST202. A tela precisa dizer ISSO, e não "erro
+ * desconhecido" — é o mesmo padrão do PGRST205 que a leitura já usa.
+ */
+export function faltaMigrationDaTroca(e: unknown): boolean {
+  const c = (e as { code?: string } | null)?.code;
+  const m = (e as { message?: string } | null)?.message ?? "";
+  return c === "PGRST202" || /sobreaviso_trocar_plantonista/.test(m);
+}

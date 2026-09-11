@@ -12126,3 +12126,108 @@ hora — o nome do técnico pode faltar, e fingir que não pode era o começo de
 **Números.** Verificador: 3.252 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 **Sem migration nova** — mas a **U127 continua pendente** (é ela que cria o
 cargo OPERACIONAL); rodar antes de subir o pacote.
+
+## U129 — o Sobreaviso reestruturado: a semana como unidade (R253) e o calendário com barra (R254)
+
+Duas mensagens do Davi sobre a mesma tela, no mesmo dia. A primeira pediu a
+unidade certa; a segunda, o desenho e os gestos. Como o levantamento desta
+entrega foi feito por seis leitores em paralelo — cada um por um ângulo —, o
+que segue é mais o que eles acharam do que o que eu supus.
+
+**A unidade era a semana, e a tela pedia o dia (R253).** O modelo já sabia a
+regra que o Davi ditou (6h na segunda de entrada, 14 nos úteis, 24 no fim de
+semana e no feriado, 8 na segunda de saída, 118 na semana limpa) desde a U86; o
+que faltava era a tela falar nessa unidade. A faixa "A escala" passou a ter uma
+linha por semana com um seletor de plantonista, e o par Semana | Mês trocou o
+período. Saiu a fileira de dois botões por pessoa — com oito técnicos, dezesseis
+botões no ar para exprimir uma escolha por semana.
+
+**A margem era um atalho de CSS (R254.1).** O levantamento achou a causa em uma
+linha: `style={{ padding: "18px 0 40px" }}` numa página com `.sangra-x`. O
+atalho escreve os quatro lados, e o `0` do meio zera o `padding-left/right:
+var(--gutter)` que a classe dá. Medido: o conteúdo nascia em x=232 (colado na
+sidebar) contra 256 da Início; e como a grade tem `.sangra-x` PRÓPRIA, ela
+recuperava os 24px sozinha e ficava 24px à direita de todo o resto na mesma
+tela. É o anti-padrão nº 10, o mesmo defeito que o Davi tinha visto na tela da
+atividade em 08/09 — e a varredura que o documento propõe (`grep` por
+`pagina-larga|pagina-trabalho` com `padding:`) não o pegava porque esta tela usa
+outra classe de largura. A varredura ampliada virou asserção.
+
+**A barra (R254.2).** Três caminhos foram considerados e dois recusados. Camada
+absoluta por cima da grade: recusada — as colunas são `1fr`, e uma camada
+absoluta teria de re-derivar larguras que só existem depois do layout, saindo do
+prumo no primeiro resize. Fundo da célula: recusado — o fundo carrega a lavagem
+de "não é dia útil", que é o único portador dessa informação (o nome do feriado
+só existe no `title`). O que ficou: **um elemento por trecho, posicionado no
+MESMO grid** por `gridColumn: início / span n`, com `gridRow` explícito em todo
+item da grade (misturar posicionamento explícito com colocação automática é o
+caminho curto para a barra aparecer uma linha abaixo da pessoa dela). Quem faz
+a aritmética das larguras é o navegador.
+
+A cor foi a parte mais disputada. O Davi pediu "um amarelo degrade do nosso
+padrão, um pouco fosco". O degradê dourado cru é o da AÇÃO — e o botão de PDF
+está na MESMA tela; dois dourados idênticos com significados diferentes é o que
+o design system chama de "não lê como escolha, lê como erro". A saída foi usar
+os MESMOS três tons da marca rebaixados por **mistura com a superfície do tema**
+(26% da cor no claro, 22% no escuro), a 90° porque a barra é larga e baixa, com
+borda `inset` de 1px a 30% e **sombra nenhuma** (R174: glow em fundo não entra).
+Mistura e não `opacity`: véu translúcido muda de cor conforme o que está atrás —
+e atrás da barra há célula de dia útil, lavagem de fim de semana, lavagem de
+feriado e a coluna do dia aberto. MEDIDO no navegador: barra de 22px, texto
+#212121 sobre ela a 13,5–14,8:1 no claro, e a barra contra a célula a 1,09–1,20,
+que é baixo de propósito e é por isso que a borda de 30% não é opcional.
+
+**Os gestos (R254.3).** Clicar seleciona o trecho; Delete apaga. A seleção é uma
+ÂNCORA (pessoa + dia) e o trecho é derivado dela a cada render: quando o dia
+âncora perde as horas, a seleção se desfaz sozinha em vez de apontar para uma
+barra que não existe mais. O Delete vindo de dentro de um `<input>` é do input.
+E o modo "Remover dia" pré-visualiza com `filter: opacity(.25)` e não com
+`opacity`, porque a opacidade do dia é escrita inline — e inline vence classe.
+
+**A troca (R254.4) foi a única coisa que precisou de banco.** Compor
+`limpar(A)` + `aplicar(B)` no cliente estava errado por três motivos, e o
+levantamento os nomeou: são duas transações (uma falha no meio deixa a semana
+sem ninguém, e como o plantonista é DERIVADO de quem tem mais horas, o nome que
+a tela mostra muda com a falha); `limpar` APAGA a célula inteira e nunca
+subtrai, então na segunda da virada ele levaria junto as 8h que pertencem à
+semana anterior; e `_confirmar = false` não é dry-run — a regra é `escreve =
+_confirmar OR NOT EXISTS(trocar)`, então uma "prévia" de B gravaria B antes de A
+sair. A U129 cria `sobreaviso_trocar_plantonista`, o espelho exato do
+`aplicar_padrao`: mesmo gate de duas metades (copiado, não reinventado — SECURITY
+DEFINER não passa pela RLS), mesmas validações de oito dias e ISODOW, o mesmo
+CASE de quatro ações para quem entra, e **subtração** para quem sai. O portão da
+migration monta o caso que derruba a composição ingênua — a mesma pessoa
+emendando duas semanas — e confere que a madrugada da semana anterior sobrevive.
+
+**A equipe (R254.6) foi onde quase escrevi o oposto do pedido.** "Somente a
+equipe técnica" tem duas leituras no código, e elas não coincidem: `cargo` é
+permissão, `equipe` é roteamento (o COMMENT no banco diz, com todas as letras,
+"NÃO é permissão"). Filtrar por `cargo = 'tecnico'` tiraria o Nicholas e o Erik
+— que a R244 acabou de mover para OPERACIONAL e são justamente quem faz plantão
+— e traria o T.I. e o Controle Patrimonial, que usam o cargo técnico e não
+atendem. O recorte certo é `equipe = 'tecnica'`, que é o mesmo do painel
+Operacional Técnica desde a R95. Isso REVISA a R116 ("zero filtro por cargo") no
+ponto exato em que ela falava de cargo — e o argumento dela continua valendo:
+é por causa do coordenador que atende às 2h que o filtro não é por cargo.
+
+**Três defeitos que a revisão achou sozinha.** A faixa contava "dia com dois"
+como dia sem cobertura, e a mesma tela dizia "8 dias sem cobertura" e "0 dias
+descobertos". Clicar na última coluna da visão de semana teletransportava a tela
+cinco semanas atrás (o guarda do dia aberto exigia que a segunda da semana dele
+estivesse no mês, e o oitavo dia pertence à semana seguinte). E no celular as
+setas de dia emudeciam na virada do mês, além de a tela afirmar "ninguém de
+sobreaviso" em vermelho para um dia que apenas não estava na janela aberta —
+afirmação que ela não tinha como fazer.
+
+**O que NÃO fiz, e por quê.** Não pus a barra no calendário mensal geral: lá o
+grid tem `gap: 1` e as semanas quebram de linha, então uma barra contínua
+sairia furada e partida por motivo de layout, não de escala. Não dei cor por
+pessoa às barras: cada pessoa já tem a sua LINHA, e nove amarelos diferentes
+seriam decoração. Não troquei o modal artesanal da tela pelo Dialog do design
+system, embora ele esteja em z-60 sem `role="dialog"` (é a R243 esperando
+acontecer de novo) — fica anotado como pendência, porque misturar isso com o
+redesenho da grade tornaria as duas coisas difíceis de conferir.
+
+**Números.** Verificador: {{VERIFICADOR}}. `tsc`: 57 (baseline). Build completa.
+Migration **U129 pendente** — sem ela a troca de plantonista avisa que falta
+rodar, e o resto da tela funciona.

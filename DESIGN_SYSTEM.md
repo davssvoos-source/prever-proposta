@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 52 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 53 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -42,6 +42,7 @@
   - [6.22 O editor de texto — uma área, blocos com marcador próprio, menção como chip (v16 — 2026-09-08, R135, R224)](#622-o-editor-de-texto-uma-área-blocos-com-marcador-próprio-menção-como-chip-v16-2026-09-08-r135-r224)
   - [6.23 A tela da atividade — documento à esquerda, ficha à direita (v19 — 2026-09-08, R234–R239)](#623-a-tela-da-atividade-documento-à-esquerda-ficha-à-direita-v19-2026-09-08-r234r239)
   - [6.24 Os dois quadros — o realce do "A seguir" e o quadro do Comercial (v21 — 2026-09-10, R248/R252)](#624-os-dois-quadros-o-realce-do-a-seguir-e-o-quadro-do-comercial-v21-2026-09-10-r248r252)
+  - [6.25 A barra de plantão — faixa contínua por cima de uma grade de dias (v22 — 2026-09-11, R254)](#625-a-barra-de-plantão-faixa-contínua-por-cima-de-uma-grade-de-dias-v22-2026-09-11-r254)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
 - [9. Visualização de dados](#9-visualização-de-dados)
@@ -1302,6 +1303,63 @@ um campo) e **o card não repete a etiqueta da etapa** — a coluna já a diz.
 componente com um `formato`, nunca dois trechos de JSX parecidos
 (`CartaoDaVisita`, como `CardAtividade` já fazia com `mostrarStatus`). Dois
 desenhos do mesmo objeto divergem no primeiro ajuste.
+
+### 6.25 A barra de plantão — faixa contínua por cima de uma grade de dias (v22 — 2026-09-11, R254)
+
+O primeiro elemento do sistema que atravessa colunas. Nasceu no Sobreaviso e a
+receita vale para qualquer faixa que precise dizer "daqui até aqui".
+
+**Onde ela mora.** No MESMO grid da matriz, como mais um item, posicionado por
+`gridColumn: <coluna inicial> / span <n>` e `gridRow` explícito. Camada absoluta
+por cima está **errado** quando as colunas são `1fr`: a largura só existe depois
+do layout, e a camada sai do prumo no primeiro resize ou rolagem do trilho.
+Consequência: quando um item do grid é posicionado à mão, **todos** os itens
+daquele grid precisam declarar `gridRow` — misturar explícito com automático
+põe a faixa uma linha abaixo da que ela descreve.
+
+**Ela não é o fundo da célula.** O fundo carrega a lavagem de "não é dia útil",
+e essa lavagem é o único portador daquela informação. A faixa é uma barra de
+**22px** centrada numa linha de 34px: sobra lavagem em volta.
+
+**A cor** (`barraDePlantao(isLight)` em `lib/ui.ts`): os três tons da marca
+(SUPERNOVA 300/400/500) **misturados com a superfície do tema** — 26% de cor no
+claro, 22% no escuro — num degradê de **90°**. Valores resolvidos, medidos no
+navegador:
+
+| tema | degradê | borda `inset` | texto |
+|---|---|---|---|
+| claro | `#FEF6CF → #FDF1C1 → #F9EABF` | `rgba(200,136,6,0.30)` | `#212121` (13,5–14,8:1) |
+| escuro | `#47401F → #463C13 → #43360F` | `rgba(248,200,17,0.30)` | `#ffffff` |
+
+Quatro regras que vieram com ela:
+
+- **Mistura, nunca `opacity` nem `rgba`.** Véu translúcido muda de cor conforme
+  o que está atrás — e atrás desta barra há quatro fundos diferentes (dia útil,
+  fim de semana, feriado, dia aberto). `opacity` no contêiner apagaria junto o
+  texto que está dentro.
+- **90° e não 135°.** Num elemento de 22px por até oito colunas, o degradê
+  diagonal colapsa numa lasca.
+- **Sombra nenhuma.** R174: glow de contorno não entra em fundo. A barra contra
+  a célula fica em 1,09–1,20 de contraste no claro **de propósito** (é fundo, e
+  o piso de 2,5:1 da R154 é para preenchimento que carrega informação sozinho);
+  quem a faz existir é a borda de 30%, que por isso **não é opcional**.
+- **Não é o dourado da ação.** `GOLD_GRAD` é do botão, e nesta tela o botão de
+  PDF está a 40px dela. Dois dourados iguais com papéis diferentes lêem como
+  erro (§11.5).
+
+**As pontas.** `border-radius: 999px` arredonda só as duas extremidades do
+trecho, porque o meio não tem ponta. A ponta fica **reta** quando o plantão
+continua fora do período desenhado — e essa é a única exceção de raio
+assimétrico do sistema: ponta quadrada significa "continua fora desta tela".
+
+**Quebrar a faixa não é um gesto.** Os trechos são recalculados das mesmas
+células que a grade desenha (`trechosDaEscala`, no modelo puro): tirar um dia do
+meio produz dois trechos, cada um com as suas pontas. Faixa e números nunca
+podem discordar porque saem da mesma fonte.
+
+**O realce de "selecionada"** é o vocabulário da R248: `inset 0 0 0 2px` na cor
+saturada, nunca `outline` — contorno com deslocamento sai para fora e o trilho
+que rola de lado o corta.
 
 ## 7. Arquitetura de tema
 

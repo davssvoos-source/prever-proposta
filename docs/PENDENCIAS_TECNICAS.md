@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 73 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **63 em aberto, 10 fechadas.**
+> **Sumário** — 74 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **64 em aberto, 10 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -76,6 +76,7 @@
 - [P67 — BAIXO · `--barra` só é remedida no resize (2026-09-08, U122)](#p67-baixo---barra-só-é-remedida-no-resize-2026-09-08-u122)
 - [P68 — MÉDIO · A consolidação assistida (`/clientes/migrar`) ainda chama `criarCliente`, que a RLS recusa (2026-09-09, U124)](#p68-médio-a-consolidação-assistida-clientesmigrar-ainda-chama-criarcliente-que-a-rls-recusa-2026-09-09-u124)
 - [P69 — BAIXO · `sync_user_role_from_cargo` não espelha `operacional` (nem `sac`) em `user_roles` (2026-09-10, U127)](#p69-baixo-syncuserrolefromcargo-não-espelha-operacional-nem-sac-em-userroles-2026-09-10-u127)
+- [P70 — MÉDIO · O modal do Sobreaviso é artesanal: z-60, sem `role="dialog"` e sem foco preso (2026-09-11, U129)](#p70-médio-o-modal-do-sobreaviso-é-artesanal-z-60-sem-roledialog-e-sem-foco-preso-2026-09-11-u129)
 <!-- sumario:fim -->
 
 Registro formal do que a revisão adversarial encontrou.
@@ -2325,3 +2326,28 @@ algum dia uma policy passar a ler `user_roles` para esses dois cargos. Se isso
 acontecer, a migration que a escrever atualiza o gatilho junto — e este item
 fecha. A U127 deixou o gatilho como estava DE PROPÓSITO: mexer nele sem
 leitor é mudança sem prova.
+
+
+## P70 — MÉDIO · O modal do Sobreaviso é artesanal: z-60, sem `role="dialog"` e sem foco preso (2026-09-11, U129)
+
+A confirmação da semana padrão (`Modal`, em `routes/_authenticated/sobreaviso.tsx`)
+é um `div` com `position: fixed` e `zIndex: 60`. Três consequências, e a
+terceira é a que morde:
+
+1. **z-60 é a faixa do botão flutuante e do popover de notificações**; diálogo
+   é **70** na tabela de camadas (DESIGN_SYSTEM §5). Com o menu lateral em 55 a
+   tela não quebra hoje, mas a régua existe para não depender disso.
+2. **Sem `role="dialog"`, sem foco preso e sem Escape**: quem usa teclado
+   continua tabulando pela página atrás do modal.
+3. **É a R243 esperando acontecer de novo.** Aquela regra existe porque um
+   seletor que se desenha por portal no `<body>` fica INERTE dentro de um
+   diálogo modal — e o conserto foi procurar `closest('[role=dialog]')`. Este
+   modal **não tem** esse atributo: qualquer `SeletorDeOpcao` posto dentro dele
+   vai portar para o `<body>` e o clique fechará o modal em vez de escolher.
+   Hoje não há nenhum lá dentro; no dia em que houver, o defeito volta com
+   outra cara.
+
+**O conserto** é trocar o `Modal` local pelo `Dialog` do design system (o mesmo
+de `DialogDaAtividade`), que já resolve camada, papel, Escape e foco. Não entrou
+na U129 para não misturar duas revisões na mesma tela — o redesenho do
+calendário e a troca de casca do modal são difíceis de conferir juntos.

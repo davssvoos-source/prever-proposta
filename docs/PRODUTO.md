@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R253 (24)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R254 (25)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-11 (R253). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-11 (R254). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4669,3 +4669,89 @@ adaptado."
   mecanismo de registrar quem é o plantonista da semana deve ser um mecanismo
   otimizado, eficiente, com boa experiencia do usuario, facilidade para
   leitura e lançamento.")*
+
+- **R254** — **O Sobreaviso, revisado por inteiro: a barra no calendário, a
+  troca que não acumula, e só a equipe técnica.** A tela é do líder da técnica
+  (hoje o Vinicius), e esta revisão mexe em seis coisas.
+
+  1. **A margem volta para a régua do sistema.** O atalho `padding` inline
+     zerava o `padding-left/right` que a `.sangra-x` dá: o título nascia
+     colado na barra lateral e a grade — que tem sangria própria — ficava 24px
+     à direita de todo o resto, dentro da mesma tela. É o anti-padrão nº 10, o
+     mesmo que a tela da atividade já tinha pago. Em página com classe de
+     largura, **estilo inline mexe só no eixo vertical**. *(Davi: "Alinhe
+     todas as margens e espaçamento. A tela deve seguir as margens da tela
+     INICIO por exemplo, que estão dentro do padrão.")*
+
+  2. **A BARRA.** Cada trecho contínuo de dias em que alguém está de
+     sobreaviso é desenhado como uma **faixa arredondada** por cima da grade,
+     no amarelo da marca **rebaixado por mistura com a superfície do tema** —
+     fosco, sem brilho e sem sombra. Não é o degradê dourado cru: esse é o da
+     AÇÃO, e o botão de PDF está na mesma tela. A ponta fica **reta** quando o
+     plantão continua fora do período aberto, porque arredondar ali afirmaria
+     que ele acabou. **Quebrar a barra não é um gesto**: tirar as horas de um
+     dia parte o trecho em dois, e cada metade nasce com as duas pontas
+     arredondadas. *(Davi: "crie uma barra com bordas arredondadas, a barra
+     pode ter um amarelo degrade do nosso padrão, um pouco fosco ou até
+     opacidade reduzida para não ficar cansativo aos olhos do usuário […]
+     Quando ele remove um dia, as bordas do trecho que foi cortado, corrige,
+     arredondando das duas barras.")*
+
+  3. **Os dois gestos sobre a barra.** Clicar **seleciona** o trecho inteiro, e
+     **Delete** (ou Backspace) apaga aquela barra — inclusive o que foi
+     digitado à mão, porque a barra na tela é feita de horas e mandar apagá-la
+     e ver metade ficar seria a tela desobedecendo. O Delete dentro de um campo
+     de texto continua sendo do campo. Com o botão **"Remover dia"** ligado, o
+     clique num dia da barra tira **só aquele dia**, e passar o cursor
+     **pré-visualiza** a remoção esmaecendo o dia. Nenhum dos dois pergunta
+     "tem certeza": os dois dizem, depois, quantos dias saíram e de quem.
+     *(Davi: "adicione um botão de remover DIA […] e ao clicar remove o
+     sobreaviso do dia que ele clicou […] Quando o usuário clica em uma barra
+     sem estar com o seletor de DIA habilitado, ele seleciona a barra inteira,
+     e ao clicar em delete no PC (Apagar ou delete) ele apaga aquela barra.")*
+
+  4. **Trocar o plantonista TROCA — não soma.** Mudar o nome no seletor de uma
+     semana tira a semana de quem estava e dá a quem entrou, **numa transação
+     só** (migration U129). Quem sai perde **exatamente o que a semana padrão
+     pôs** — por subtração, nunca por apagar a célula: na segunda da virada a
+     célula pode valer 14 (8 da semana anterior + 6 desta), e apagá-la roubaria
+     oito horas de um plantão que continua sendo dele. *(Davi: "quando altera o
+     usuário selecionado para fazer o plantão, as horas zeram do usuário que
+     estava e passa para o que colocou depois. Ou seja não é cumulativo entre
+     alternância do botão.")*
+
+  5. **Mais de um plantonista na mesma semana.** O **"+"** à direita da linha
+     abre outro seletor para a mesma semana; escolher um nome nele lança a
+     semana padrão para essa pessoa também, sem tirar de ninguém. A linha passa
+     a mostrar um seletor por plantonista, cada um com as suas horas, e avisa
+     quantos **dias têm dois** — que é arranjo legítimo, em âmbar, e não falta.
+     Quem é plantonista da semana sai de quem tem horas **no miolo** (terça a
+     domingo): o vizinho que só aparece na segunda da virada não ganha seletor.
+     *(Davi: "Adicione um botão na direita da linha do Plantonista escalado,
+     este botão deverá ser para adicionar mais um plantonista para a mesma
+     semana, caso em algum momento mais de um usuário fique de sobreaviso.")*
+
+  6. **Só a EQUIPE TÉCNICA faz sobreaviso.** O seletor e a grade passam a
+     oferecer apenas quem tem `equipe = 'tecnica'` (mais os dois eixos de
+     sempre: ativo e não pendente). **É equipe e não cargo** — os dois
+     vocabulários existem e não coincidem: cargo é permissão, equipe é
+     roteamento, e o próprio banco diz que equipe "NÃO é permissão". Filtrar
+     por cargo faria o oposto do pedido: tiraria o Nicholas e o Erik, que a
+     R244 moveu para OPERACIONAL e continuam fazendo plantão, e traria o T.I. e
+     o Controle Patrimonial, que usam o cargo técnico e não atendem. É o mesmo
+     recorte que o painel Operacional Técnica já usa. **Isto revisa a R116** no
+     ponto "zero filtro por cargo": o argumento de lá (não tirar da escala o
+     coordenador que atende às 2h) continua de pé e é justamente por ele que o
+     filtro não é por cargo. Quem já tem horas gravadas continua na grade,
+     esmaecido, seja de que equipe for — história não se apaga. *(Davi:
+     "Aplique a regra: Somente a equipe técnica faz Sobreaviso. Somente eles
+     devem estar disponíveis na lista do seletor de membro da equipe para fazer
+     o plantão semanal.")*
+
+  **E três defeitos que a revisão sistêmica achou e consertou:** a faixa da
+  semana contava "dia com dois" como **dia sem cobertura**, e dizia "8 dias sem
+  cobertura" na mesma tela em que o selo dizia "0 dias descobertos" (agora
+  buraco é falta e sobra é sobra); clicar na **última coluna** da visão de
+  semana jogava a tela cinco semanas atrás; e no celular as setas de dia
+  ficavam **mudas** na virada do mês, além de a tela dizer "ninguém de
+  sobreaviso" em vermelho para um dia que apenas não estava no período aberto.

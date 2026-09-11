@@ -29,12 +29,12 @@
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, LayoutGrid } from "lucide-react";
+import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Eraser, FileDown, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsGerente } from "@/features/gerencial/data";
-import { FONT, card, goldButton } from "@/lib/ui";
+import { FONT, card, goldButton, rotuloDeSecao } from "@/lib/ui";
 import { ERRO, AVISO } from "@/lib/paleta";
 import { competencia as competenciaDe, dataIso } from "@/lib/periodos";
 import { ANO_CONFERIDO_ATE, conferido, somarDias } from "@/lib/feriados";
@@ -42,13 +42,16 @@ import {
   ACAO_LABEL, VEREDITO_LABEL,
   deslocarCompetencia, diasDaSemana, diasDoMes, gradeDeDias, gradeDoMes,
   plantaoDoDia, precisaConfirmar, resumoDaSemana, rotuloDaCompetencia,
-  rotuloDaSemana, segundaDaSemana, semanaPadrao, semanasDoMes,
+  rotuloDaSemana, segundaDaSemana, semanaPadrao, semanasDoMes, trechosDaEscala,
+  type TrechoDaEscala,
 } from "@/features/sobreaviso/modelo";
 import {
+  faltaMigrationDaTroca,
   useAplicarPadrao, useDefinirCelula, useLimpar, usePessoasDoSobreaviso, useSobreaviso,
-  type LinhaDaLimpeza, type LinhaDaPrevia,
+  useTrocarPlantonista,
+  type LinhaDaPrevia,
 } from "@/features/sobreaviso/data";
-import { GradeMes } from "@/features/sobreaviso/GradeMes";
+import { GradeMes, type DiaSelecionado } from "@/features/sobreaviso/GradeMes";
 import { EscalaDasSemanas } from "@/features/sobreaviso/EscalaDasSemanas";
 import { gerarPdfSobreaviso } from "@/features/sobreaviso/pdf";
 import { PainelDoPlantao } from "@/features/plantao/PainelDoPlantao";
@@ -88,9 +91,18 @@ function SobreavisoPage() {
   // O guarda continua (entrada de URL é entrada de usuário): o que vale agora
   // é o dia pertencer a uma das semanas que TOCAM o mês.
   const diaPedido = busca.dia ?? (competenciaDe(hoje) === mes ? dataIso(hoje) : diasDoMes(mes)[0]);
-  const diaAberto = semanasDoMes(mes).includes(segundaDaSemana(diaPedido))
-    ? diaPedido
-    : diasDoMes(mes)[0];
+  /**
+   * Todos os dias alcançáveis com este mês aberto: os do mês MAIS os das
+   * semanas que o tocam. É maior que `diasDoMes` de propósito — a última
+   * semana do mês tem o oitavo dia no mês seguinte, e era ele que o guarda
+   * antigo recusava: clicar na última coluna da visão de semana jogava a tela
+   * para o dia 1º (cinco semanas atrás).
+   */
+  const diasAlcancaveis = useMemo(
+    () => new Set([...diasDoMes(mes), ...semanasDoMes(mes).flatMap(diasDaSemana)]),
+    [mes],
+  );
+  const diaAberto = diasAlcancaveis.has(diaPedido) ? diaPedido : diasDoMes(mes)[0];
 
 // ── O PERÍODO: semana ou mês (R253) ───────────────────────────────────────
   // A visão mora na URL junto do mês e do dia, pelo mesmo motivo deles: "olha a
@@ -107,6 +119,12 @@ function SobreavisoPage() {
   const definir = useDefinirCelula();
   const aplicar = useAplicarPadrao();
   const limpar = useLimpar();
+  const trocar = useTrocarPlantonista();
+
+  // R254: a barra selecionada (âncora — o trecho é derivado dela a cada
+  // render) e o modo "remover dia".
+  const [selecao, setSelecao] = useState<DiaSelecionado | null>(null);
+  const [removendoDia, setRemovendoDia] = useState(false);
 
   /**
    * A grade DO QUE ESTÁ NA TELA: os 31 dias do mês ou os 8 da semana. A função
@@ -128,6 +146,15 @@ function SobreavisoPage() {
   const gradeDoMesCheio = useMemo(
     () => gradeDoMes(mes, pessoas.data ?? [], escala.data ?? []),
     [mes, pessoas.data, escala.data],
+  );
+
+  /**
+   * R254: os trechos contínuos — as BARRAS. Saem do modelo puro, das MESMAS
+   * células que a grade desenha, para barra e números não poderem discordar.
+   */
+  const trechos = useMemo(
+    () => trechosDaEscala(grade, escala.data ?? []),
+    [grade, escala.data],
   );
 
   /** As semanas da faixa de escala: a do foco, ou todas as que tocam o mês. */
@@ -157,9 +184,6 @@ function SobreavisoPage() {
 
   const [padrao, setPadrao] = useState<{
     pessoaId: string; segunda: string; doBanco: LinhaDaPrevia[];
-  } | null>(null);
-  const [limpeza, setLimpeza] = useState<{
-    pessoaId: string; de: string; ate: string; linhas: LinhaDaLimpeza[];
   } | null>(null);
 
   const textPrimary = isLight ? "#141414" : "rgba(255,255,255,0.92)";
@@ -230,42 +254,70 @@ function SobreavisoPage() {
     }
   }
 
-  // A BORRACHA É O INVERSO EXATO DA VARINHA QUE ESTÁ AO LADO DELA.
+  // ── A TROCA DE PLANTONISTA (R254) ───────────────────────────────────────
   //
-  // A varinha aplica `segundaDaSemana(diaAberto)` + 8 dias, e esses OITO dias
-  // atravessam o mês em 12 das 52 semanas do ano. A borracha apagava
-  // `diasDoMes(mes)` — só o mês aberto. Em novembro de 2026 (01/11 é domingo, e
-  // a segunda da semana é 26/10) a varinha grava SETE dias em outubro e um em
-  // novembro, e a borracha ao lado apagava UM. Sete oitavos do gesto ficavam
-  // fora do alcance do desfazer, em outro mês, invisíveis na grade aberta.
+  // Davi, 11/09/2026: "quando altera o usuário selecionado para fazer o
+  // plantão, as horas zeram do usuário que estava e passa para o que colocou
+  // depois. Ou seja não é cumulativo entre alternância do botão."
   //
-  // Agora as duas falam da MESMA semana, que é o que o `title` do botão promete.
-  async function abrirLimpeza(pessoaId: string, segunda: string) {
-    const dias = diasDaSemana(segunda);
-    const de = dias[0];
-    const ate = dias[dias.length - 1];
+  // Três casos, um gesto só na tela:
+  //  · slot VAZIO recebe um nome  → ninguém sai: é lançar a semana padrão, e
+  //    esse caminho continua sendo o `aplicar_padrao`, com a prévia de duas
+  //    fases para quando houver colisão;
+  //  · slot COM NOME muda de nome → sai um e entra outro NA MESMA TRANSAÇÃO
+  //    (RPC da U129): quem sai perde exatamente o que a semana padrão pôs, e a
+  //    ponta que pertence à semana vizinha FICA;
+  //  · slot COM NOME vira "Sem plantonista" → só a saída, pela mesma RPC.
+  async function trocarNaSemana(segunda: string, de: string | null, para: string | null) {
+    if (de === para) return;
+    if (!de && para) { await abrirPadrao(para, segunda); return; }
     try {
-      const linhas = await limpar.mutateAsync({ pessoa_id: pessoaId, de, ate, confirmar: false });
-      if (linhas.length === 0) {
-        toast.info("Não há nada lançado pela semana padrão nesta semana para esta pessoa.");
+      const linhas = await trocar.mutateAsync({
+        de_pessoa: de, para_pessoa: para, segunda, celulas: semanaPadrao(segunda),
+      });
+      const saiu = linhas.filter((l) => l.pessoa_id === de);
+      const entrou = linhas.filter((l) => l.pessoa_id === para);
+      const substituidos = entrou.filter((l) => l.acao === "trocar").length;
+      // O GESTO NOMEIA O QUE FEZ. Não há "tem certeza?" aqui — a volta é
+      // escolher o nome de antes —, então o recibo é o aviso.
+      const partes: string[] = [];
+      if (para) partes.push(`${entrou.length} dia(s) para quem entrou`);
+      if (de) partes.push(`${saiu.filter((l) => l.acao !== "nada").length} dia(s) tirado(s) de quem saiu`);
+      toast.success(partes.join(" · ") || "Nada mudou nesta semana.");
+      if (substituidos > 0) {
+        toast.warning(`${substituidos} dia(s) tinham horas diferentes e foram substituídos pela semana padrão.`);
+      }
+    } catch (e: any) {
+      if (faltaMigrationDaTroca(e)) {
+        toast.error("A troca de plantonista precisa da migration U129 — ela ainda não foi rodada neste banco.");
         return;
       }
-      setLimpeza({ pessoaId, de, ate, linhas });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Não foi possível listar o que seria apagado.");
+      toast.error(e?.message ?? "Não foi possível trocar o plantonista.");
     }
   }
 
-  async function confirmarLimpeza() {
-    if (!limpeza) return;
+  // ── APAGAR A BARRA (R254) ───────────────────────────────────────────────
+  //
+  // Davi: "Quando o usuário clica em uma barra sem estar com o seletor de DIA
+  // habilitado, ele seleciona a barra inteira, e ao clicar em delete no PC
+  // (Apagar ou delete) ele apaga aquela barra."
+  //
+  // Apaga o TRECHO — os dias contíguos daquela pessoa, nem mais nem menos —,
+  // e alcança também o que foi digitado à mão (`so_padrao: false`): a barra na
+  // tela é feita de horas, e mandar apagá-la e ver metade dela continuar ali
+  // seria a tela desobedecendo. Sem modal: o gesto é de uma tecla, e o recibo
+  // é o aviso que nomeia quantos dias e de quem.
+  async function apagarTrecho(t: TrechoDaEscala) {
+    const pessoa = grade.linhas.find((l) => l.pessoa.id === t.pessoaId)?.pessoa.nome ?? "essa pessoa";
     try {
       const r = await limpar.mutateAsync({
-        pessoa_id: limpeza.pessoaId, de: limpeza.de, ate: limpeza.ate, confirmar: true,
+        pessoa_id: t.pessoaId, de: t.dias[0], ate: t.dias[t.dias.length - 1],
+        confirmar: true, so_padrao: false,
       });
-      toast.success(`${r.length} dia(s) apagado(s).`);
-      setLimpeza(null);
+      setSelecao(null);
+      toast.success(`${r.length} dia(s) de ${pessoa} apagado(s).`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Não foi possível apagar.");
+      toast.error(e?.message ?? "Não foi possível apagar a barra.");
     }
   }
 
@@ -306,7 +358,15 @@ function SobreavisoPage() {
   }
 
   return (
-    <div className="sangra-x" style={{ padding: "18px 0 40px", display: "flex", flexDirection: "column", gap: 14 }}>
+    // R254: a MESMA régua da Início. O atalho `padding` inline escrevia os
+    // QUATRO lados e o "0" do meio zerava o `padding-left/right: var(--gutter)`
+    // que a .sangra-x dá — anti-padrão nº 10, medido: o conteúdo nascia em
+    // x=232 (colado na sidebar) contra 256 da Início, e a grade, que tem
+    // .sangra-x PRÓPRIA, recuperava os 24px sozinha e ficava 24px à direita de
+    // todo o resto DENTRO da mesma tela. Em página com classe de largura, o
+    // estilo inline mexe só no eixo VERTICAL. O paddingTop 4 é o número
+    // literal da Início (R178).
+    <div className="sangra-x" style={{ paddingTop: 4, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 14 }}>
       {/* ── a barra do período (R253) ──────────────────────────────────────
           Título, navegação, as DUAS visões e o PDF. Nada mais: a escala tem
           faixa própria logo abaixo, e filtro esta tela não tem — quem aparece
@@ -430,21 +490,45 @@ function SobreavisoPage() {
           search: (q: any) => ({ ...q, mes: s.slice(0, 7), dia: s }),
           replace: true,
         })}
-        aoEscalar={podeEditar ? (s, pessoaId) => abrirPadrao(pessoaId, s) : undefined}
-        aoLimpar={podeEditar ? (s, pessoaId) => abrirLimpeza(pessoaId, s) : undefined}
-        ocupado={aplicar.isPending || limpar.isPending}
+        aoTrocar={podeEditar ? trocarNaSemana : undefined}
+        ocupado={aplicar.isPending || limpar.isPending || trocar.isPending}
       />
 
-      {/* ── DESKTOP: a matriz do período aberto ────────────────────────────
-          A MESMA `gradeDeDias` desenha os 31 dias do mês e os 8 da semana — o
-          que muda é a lista de dias que entra. Duas funções teriam de
-          concordar sobre cobertura, veredito e censo. */}
-      <div className="so-desktop" style={{ flexDirection: "column", gap: 12 }}>
+      {/* ── O CALENDÁRIO DO PLANTÃO (R254) ──────────────────────────────────
+          Título de seção no padrão da casa e UM botão de modo — o "remover
+          dia". Tudo o mais que se faz aqui é clique na barra ou tecla. */}
+      <div className="so-desktop" style={{ flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={rotuloDeSecao(isLight)}>Calendário do plantão</span>
+          <span style={{ flex: 1 }} />
+          {podeEditar ? (
+            <button
+              type="button"
+              aria-pressed={removendoDia}
+              onClick={() => { setRemovendoDia((v) => !v); setSelecao(null); }}
+              title="Ligado, o clique num dia da barra tira o sobreaviso daquele dia"
+              style={botaoVisao(removendoDia, isLight, textPrimary)}
+            >
+              <Eraser size={13} /> Remover dia
+            </button>
+          ) : null}
+          <span style={{ fontFamily: FONT, fontSize: 11, color: textSecondary }}>
+            {removendoDia
+              ? "Clique no dia que sai da escala."
+              : "Clique na barra para selecionar · Delete apaga · clique num dia vazio para lançar horas"}
+          </span>
+        </div>
+
         <GradeMes
           grade={grade}
+          trechos={trechos}
           isLight={isLight}
           diaAberto={diaAberto}
           aoAbrirDia={(d) => navegar({ search: (s: any) => ({ ...s, dia: d }), replace: true })}
+          selecao={selecao}
+          aoSelecionar={setSelecao}
+          aoRemoverTrecho={podeEditar ? apagarTrecho : undefined}
+          removendoDia={removendoDia && podeEditar}
           // DEVOLVE A PROMESSA, e é isso que deixa a célula desfazer a caixa
           // quando a gravação é recusada. Com `mutate` (fogo e esquece) a
           // recusa só existia num toast de quatro segundos: a caixa seguia
@@ -470,10 +554,12 @@ function SobreavisoPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <button
             type="button" aria-label="dia anterior"
+            // R254: anda DIA A DIA, inclusive virando o mês. Antes ela procurava
+            // o dia na lista do mês aberto e, no dia 1º, simplesmente não fazia
+            // nada — um botão mudo, que é pior que um botão ausente.
             onClick={() => {
-              const dias = diasDoMes(mes);
-              const i = dias.indexOf(diaAberto);
-              if (i > 0) navegar({ search: (s: any) => ({ ...s, dia: dias[i - 1] }), replace: true });
+              const d = somarDias(diaAberto, -1);
+              navegar({ search: (s: any) => ({ ...s, mes: d.slice(0, 7), dia: d }), replace: true });
             }}
             style={botaoIcone(isLight)}
           >
@@ -485,9 +571,8 @@ function SobreavisoPage() {
           <button
             type="button" aria-label="próximo dia"
             onClick={() => {
-              const dias = diasDoMes(mes);
-              const i = dias.indexOf(diaAberto);
-              if (i >= 0 && i < dias.length - 1) navegar({ search: (s: any) => ({ ...s, dia: dias[i + 1] }), replace: true });
+              const d = somarDias(diaAberto, 1);
+              navegar({ search: (s: any) => ({ ...s, mes: d.slice(0, 7), dia: d }), replace: true });
             }}
             style={botaoIcone(isLight)}
           >
@@ -499,7 +584,17 @@ function SobreavisoPage() {
             {plantao.coluna.rotulo}
           </span>
         ) : null}
-        {plantao.quem.length === 0 ? (
+        {/* R254: "ninguém de sobreaviso" é uma AFIRMAÇÃO sobre o dia, e só pode
+            ser feita quando o dia está na janela desenhada. Fora dela o que a
+            tela sabe é que não sabe — e dizer a falta em vermelho seria inventar
+            um buraco na escala de alguém. */}
+        {!plantao.coluna ? (
+          <div style={{ ...card(isLight), padding: "22px 14px", textAlign: "center" }}>
+            <span style={{ fontFamily: FONT, fontSize: 13, color: textSecondary }}>
+              Este dia está fora do período aberto — use as setas do topo.
+            </span>
+          </div>
+        ) : plantao.quem.length === 0 ? (
           <div style={{ ...card(isLight), padding: "22px 14px", textAlign: "center" }}>
             <span style={{ fontFamily: FONT, fontSize: 13, color: isLight ? ERRO.light : ERRO.dark }}>
               Ninguém de sobreaviso neste dia.
@@ -548,47 +643,6 @@ function SobreavisoPage() {
         </Modal>
       ) : null}
 
-      {/* ── A CONFIRMAÇÃO DE LIMPAR: as linhas que morrem ──────────────── */}
-      {limpeza ? (
-        <Modal isLight={isLight} aoFechar={() => setLimpeza(null)}>
-          <h2 style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: isLight ? ERRO.light : ERRO.dark, margin: "0 0 4px" }}>
-            Apagar {limpeza.linhas.length} dia(s), {limpeza.linhas.reduce((s, l) => s + l.horas, 0)} h ao todo
-          </h2>
-          <p style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, margin: "0 0 12px" }}>
-            Nada foi apagado ainda. Só o que a semana padrão lançou, e só nos oito
-            dias de {limpeza.de.split("-").reverse().join("/")} a{" "}
-            {limpeza.ate.split("-").reverse().join("/")} — o que foi digitado à mão fica.
-          </p>
-          <div style={{ maxHeight: 240, overflowY: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 12 }}>
-              <tbody>
-                {limpeza.linhas.map((l) => (
-                  <tr key={l.dia}>
-                    <td style={{ padding: "3px 6px", color: textPrimary }}>{l.dia.split("-").reverse().join("/")}</td>
-                    <td style={{ padding: "3px 6px", color: textPrimary, textAlign: "right", fontWeight: 700 }}>{l.horas}h</td>
-                    <td style={{ padding: "3px 6px", color: textSecondary }}>{l.origem}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
-            <button type="button" onClick={() => setLimpeza(null)} style={botaoPequeno(isLight)}>
-              Manter
-            </button>
-            <button
-              type="button" onClick={confirmarLimpeza} disabled={limpar.isPending}
-              style={{
-                height: 32, padding: "0 14px", fontSize: 12, fontFamily: FONT, fontWeight: 700,
-                borderRadius: 8, cursor: "pointer", color: "#fff", border: "none",
-                background: isLight ? ERRO.light : ERRO.dark,
-              }}
-            >
-              Apagar mesmo assim
-            </button>
-          </div>
-        </Modal>
-      ) : null}
     </div>
   );
 }
@@ -607,7 +661,9 @@ function Aviso({ children, isLight, tom }: {
   const textPrimary = isLight ? "#141414" : "rgba(255,255,255,0.92)";
   const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   return (
-    <div style={{ padding: "18px 0 40px", display: "flex", flexDirection: "column", gap: 14 }}>
+    // R254: carregando e erro na MESMA casca do conteúdo — sem isto a tela
+    // saltava de lugar quando o dado chegava (x≈452 centrado → x=232).
+    <div className="sangra-x" style={{ paddingTop: 4, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <CalendarDays size={18} color={isLight ? "#A06108" : "#F8C811"} />
         <h1 style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: textPrimary, margin: 0 }}>

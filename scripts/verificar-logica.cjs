@@ -12935,11 +12935,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // grep cru casaria justamente a frase que promete a ausência dela.
     const telaCrua = fsS.readFileSync('src/routes/_authenticated/sobreaviso.tsx', 'utf8');
     const tela = telaCrua.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
-    eq('CRÍTICO: a confirmação NOMEIA o que se perde — a de aplicar diz "vai SUBSTITUIR horas já lançadas" e mostra os oito dias com antes/depois; a de limpar diz quantos dias e quantas HORAS morrem. Nenhuma das duas diz "tem certeza"',
+    // R254 (U129): o modal de LIMPAR saiu junto com o gesto que o abria. Tirar
+    // a semana de alguém agora é a TROCA (uma transação, subtração exata) e
+    // apagar a barra é Delete — os dois com RECIBO: o aviso diz quantos dias
+    // saíram e de quem. O que continua valendo, e é o que o pino protege: a de
+    // aplicar mostra os oito dias com antes/depois, e nenhuma pergunta "tem
+    // certeza" (pergunta que treina a clicar sim sem ler).
+    eq('CRÍTICO: o gesto destrutivo NOMEIA o que se perde — a confirmação de aplicar mostra os oito dias com antes/depois, e a troca e o Delete da barra devolvem o recibo no aviso. Nenhum deles diz "tem certeza"',
        [/SUBSTITUIR horas já lançadas/.test(tela),
-        /Apagar \{limpeza\.linhas\.length\} dia\(s\), \{limpeza\.linhas\.reduce/.test(tela),
+        /dia\(s\) tirado\(s\) de quem saiu/.test(tela),
         /Nada foi gravado ainda/.test(tela),
-        /Nada foi apagado ainda/.test(tela),
+        /dia\(s\) de \$\{pessoa\} apagado\(s\)/.test(tela),
         /tem certeza/i.test(tela)],
        [true, true, true, true, false]);
     eq('CRÍTICO: a tela chama gradeDoMes UMA VEZ com o mês inteiro e o celular projeta com plantaoDoDia sobre o MESMO objeto — nunca gradeDoMes com um dia só, que faria o total do mês virar o total do dia e mentir com a mesma cara. E o fallback do celular é declarado (cicatriz da U79: `.so-desktop` some abaixo de 1024px, e o link com ?mes= é o que o gestor manda)',
@@ -12952,20 +12958,31 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── QUEM APARECE NA GRADE: OS DOIS EIXOS, E ZERO LITERAL DE CARGO ──────
   {
+    // R254 (U129): entrou o TERCEIRO eixo — a EQUIPE. Davi, 11/09/2026:
+    // "Somente a equipe técnica faz Sobreaviso." É `profiles.equipe` e NÃO
+    // `cargo`: o cargo é permissão, a equipe é roteamento (o COMMENT dela no
+    // banco diz "NÃO é permissão"), e filtrar por cargo faria o oposto do
+    // pedido — tiraria o Nicholas e o Erik (que a R244 moveu para o cargo
+    // OPERACIONAL e continuam sendo quem faz plantão) e traria o T.I. e o
+    // Controle Patrimonial, que usam o cargo técnico e não atendem sobreaviso.
+    // O argumento antigo ("não tirar o coordenador que atende às 2h") continua
+    // de pé: é POR ELE que o filtro não é por cargo — se o coordenador for da
+    // equipe técnica, ele continua entrando.
     const gente = [
-      { id: 'a', nome: 'Ana', ativo: true, status: 'ativo', cargo: 'tecnico' },
-      { id: 'b', nome: 'Bruno', ativo: true, status: 'ativo', cargo: 'sac' },
-      { id: 'c', nome: 'Carla', ativo: true, status: 'ativo', cargo: null },
-      { id: 'd', nome: 'Davi', ativo: true, status: 'pendente_aprovacao', cargo: 'tecnico' },
-      { id: 'e', nome: 'Elza', ativo: false, status: 'ativo', cargo: 'tecnico' },
-      { id: 'f', nome: 'Fábio', ativo: false, status: 'ativo', cargo: 'tecnico' },
+      { id: 'a', nome: 'Ana', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
+      { id: 'b', nome: 'Bruno', ativo: true, status: 'ativo', cargo: 'sac', equipe: 'tecnica' },
+      { id: 'c', nome: 'Carla', ativo: true, status: 'ativo', cargo: null, equipe: 'ti' },
+      { id: 'd', nome: 'Davi', ativo: true, status: 'pendente_aprovacao', cargo: 'tecnico', equipe: 'tecnica' },
+      { id: 'e', nome: 'Elza', ativo: false, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
+      { id: 'f', nome: 'Fábio', ativo: false, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
+      { id: 'g', nome: 'Gil', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'patrimonio' },
     ];
     const linhas = [{ dia: '2026-08-10', pessoa_id: 'e', horas: 14, origem: 'manual' }];
-    eq('CRÍTICO: entra quem pode ser escalado HOJE mais quem tem horas NESTE mês — o coordenador (cargo sac) entra, porque é ele quem atende às 2h; o convite pendente não entra; quem SAIU da empresa entra ESMAECIDO se tiver horas, e some se não tiver. Zero literal de cargo: filtrar por "tecnico" tiraria o coordenador da escala',
+    eq('R254 CRÍTICO: entra quem pode ser escalado HOJE — ativo, não pendente e DA EQUIPE TÉCNICA — mais quem tem horas NESTE mês. O coordenador (cargo sac) da equipe técnica ENTRA, porque é ele quem atende às 2h; o T.I. e o Controle Patrimonial (cargo técnico, outra equipe) NÃO entram; o convite pendente não entra; quem SAIU da empresa entra ESMAECIDO se tiver horas, e some se não tiver',
        S.pessoasDaGrade(gente, linhas).map((p) => `${p.nome}${p.historico ? '*' : ''}`),
-       ['Ana', 'Bruno', 'Carla', 'Elza*']);
+       ['Ana', 'Bruno', 'Elza*']);
     eq('CRÍTICO: o eixo de status exclui O VALOR QUE SE QUER EXCLUIR (`!== "pendente_aprovacao"`) e não `=== "ativo"` — a segunda forma excluiria qualquer status FUTURO sem ninguém decidir isso, e o primeiro status novo esvaziaria a grade em silêncio',
-       [S.pessoasDaGrade([{ id: 'x', nome: 'Novo', ativo: true, status: 'ferias', cargo: 'tecnico' }], []).length,
+       [S.pessoasDaGrade([{ id: 'x', nome: 'Novo', ativo: true, status: 'ferias', cargo: 'tecnico', equipe: 'tecnica' }], []).length,
         /status !== "pendente_aprovacao"/.test(fsS.readFileSync('src/features/sobreaviso/modelo.ts', 'utf8')),
         /status === "ativo"/.test(fsS.readFileSync('src/features/sobreaviso/modelo.ts', 'utf8'))],
        [1, true, false]);
@@ -13320,13 +13337,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         FEb.somarDias(seg, S3.DIAS_DO_PADRAO - 1)],
        ['2026-10-26', 8, 6, '2026-11-02']);
     eq('CRÍTICO: e a tela usa essa faixa — `abrirLimpeza` e `confirmarLimpeza` saem de `segundaDaSemana(diaAberto)` + DIAS_DO_PADRAO, e NENHUMA das duas chama `diasDoMes` para montar a faixa de apagar',
-       // R253 (U129): a semana não é mais deduzida do dia aberto — ela CHEGA
-       // como parâmetro, vinda da linha da faixa de escala em que se clicou.
-       // O que o pino protege continua o mesmo: a borracha apaga os OITO dias
-       // da semana (diasDaSemana), nunca os dias do mês (diasDoMes).
-       [/async function abrirLimpeza\(pessoaId: string, segunda: string\)/.test(tela),
-        /const dias = diasDaSemana\(segunda\);[\s\S]{0,120}const ate = dias\[dias\.length - 1\];/.test(tela),
-        /abrirLimpeza[\s\S]{0,400}diasDoMes/.test(tela)],
+       // R254 (U129): a borracha da semana saiu — o que apaga agora é o TRECHO
+       // selecionado (a barra), e ele já chega com os próprios dias. O que o
+       // pino protege é o mesmo de sempre: o alvo do apagar sai dos DIAS DO
+       // TRECHO, nunca de `diasDoMes`, que na última semana do mês apagaria um
+       // oitavo do gesto e deixaria sete dias no mês vizinho.
+       [/async function apagarTrecho\(t: TrechoDaEscala\)/.test(tela),
+        /de: t\.dias\[0\], ate: t\.dias\[t\.dias\.length - 1\]/.test(tela),
+        /apagarTrecho[\s\S]{0,400}diasDoMes/.test(tela)],
        [true, true, false]);
   }
 
@@ -13343,11 +13361,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const dados = fsE.readFileSync('src/features/sobreaviso/data.ts', 'utf8')
       .split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
     const u86b = fsE.readFileSync('supabase/migrations/20260908090000_u86_sobreaviso.sql', 'utf8');
-    eq('CRÍTICO (regra 8): o ramo `soPadrao = false` — que apagaria também o digitado à mão — saiu do cliente e do texto do modal. Ele não tinha porta na tela: era código morto documentando um botão inexistente, e a frase mais assustadora da tela estava escrita para ninguém ler. O parâmetro CONTINUA na RPC, com DEFAULT true, para o dia em que o botão nascer',
-       [/soPadrao/.test(dados), /soPadrao/.test(tela), /_so_padrao/.test(dados),
+    // R254 (U129): O BOTÃO NASCEU. Apagar a BARRA é dizer "esta semana não é mais
+  // dele", e deixar para trás o que ele digitou à mão deixaria metade da barra
+  // na tela depois de mandar apagá-la. O ramo `so_padrao = false` voltou ao
+  // cliente COM porta — e só por ela: quem chama decide, o padrão continua true.
+  eq('R254 (regra 8): o ramo `so_padrao = false` voltou ao cliente porque o gesto que o usa nasceu — apagar a barra alcança também o digitado à mão. O parâmetro continua com DEFAULT true na RPC, e quem chama decide',
+       // R254: o cliente voltou a passar `_so_padrao` — com o padrão true e uma
+       // porta só (o Delete da barra, que manda false de propósito).
+       [/soPadrao/.test(dados), /so_padrao = true/.test(dados), /_so_padrao/.test(dados),
         /_so_padrao boolean DEFAULT true/.test(u86b),
-        /inclusive o que foi digitado à mão/.test(tela)],
-       [false, false, false, true, false]);
+        /so_padrao: false/.test(tela)],
+       [false, true, true, true, true]);
   }
 }
 
@@ -13464,11 +13488,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // DEFINER (o SAC monta visita e não é gestor, então não escreveria em
        // prospeccoes pela policy). Menção em documentação, não em decisão de
        // acesso: o alcance da dívida P51 não cresceu.
-       // U127 (+1 arquivo, +2 ocorrências, +0 policy): a conferência da migration
-       // do perfil OPERACIONAL cita is_gestor duas vezes — no rótulo e no
-       // pg_get_functiondef — para PROVAR que ela não mudou (operacional vê,
-       // não manda). Menção em conferência, não em decisão de acesso.
-       [true, false, 34, 139, 52]);
+       // U127 (+1 arquivo, +2 ocorrências): a conferência do perfil OPERACIONAL
+       // cita is_gestor duas vezes para PROVAR que ela não mudou.
+       // U129 (+1 arquivo, +5 ocorrências, +0 policy): a RPC da troca de
+       // plantonista REPETE o gate de duas metades da U86 — is_gestor mais o
+       // teste de ativo/pendente — porque SECURITY DEFINER não passa pela RLS.
+       // Copiar o gate é a regra desta casa; inventar um predicado novo seria a
+       // quarta lista de papéis a ter de concordar com as outras três.
+       [true, false, 35, 144, 52]);
   }
 }
 
@@ -17429,8 +17456,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('ESTADO_ATUAL CRÍTICO: a "última regra" que ele declara É a última do PRODUTO (senão o retrato envelhece em silêncio)',
      Number((estado.match(/última regra: \*\*R(\d+)\*\*/) ?? [])[1]), ultimaRegraProduto);
   eq('ESTADO_ATUAL: diz qual migration está pendente, lista os quatro lembretes do Davi e as perguntas que sobraram',
-     // U106: "pendente" pode ser uma migration nomeada (**Pendente: Uxxx**) ou nenhuma
-     [/[Nn]enhuma\s+migration pendente|\*\*[Pp]endente: U\d+\*\*/.test(estado), /## 7\. O que o Davi disse que vai mandar/.test(estado),
+     // U106: "pendente" pode ser uma migration nomeada (**Pendente: Uxxx**) ou
+     // nenhuma. U129: ou DUAS — o Davi acumulou a U127 e a U129 sem rodar.
+     [/[Nn]enhuma\s+migration pendente|\*\*[Pp]endentes?: U\d+/.test(estado), /## 7\. O que o Davi disse que vai mandar/.test(estado),
       /Q8/.test(estado) && /Q13/.test(estado), /Rodadas até a U1\d\d/.test(estado)], // U117: até a U110 (08/09/2026)
      [true, true, true, true]);
   eq('ONBOARDING e o manual apontam para o ESTADO_ATUAL, e o README do manual cita a faixa atual de regras',
@@ -20122,7 +20150,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /^## U126 /m.test(ler126('docs/PLANO_UNIFICACAO.md')),
       // U127: pino de ESTADO DO BANCO (regra nova: pino descreve arquivo) — aceita
       // as duas formas do cabeçalho, para não ficar vermelho a cada migration nova
-      /[Nn]enhuma migration pendente|\*\*[Pp]endente: U\d+\*\*/.test(ler126('docs/ESTADO_ATUAL.md'))],
+      /[Nn]enhuma migration pendente|\*\*[Pp]endentes?: U\d+/.test(ler126('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true, true]);
 }
 
@@ -20517,15 +20545,23 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   {
     const tela = ler129('src/routes/_authenticated/sobreaviso.tsx');
     const faixa = ler129('src/features/sobreaviso/EscalaDasSemanas.tsx');
-    eq('R253 CRÍTICO: a faixa de escala é UMA linha por semana com UM seletor — a fileira de dois botões por pessoa (varinha + borracha) saiu, e escolher um nome aplica a semana padrão daquela segunda',
+    // R254 (U129): a linha passou a ter UM SELETOR POR PLANTONISTA mais o "+"
+    // (Davi: "adicione um botão na direita da linha do Plantonista escalado […]
+    // para adicionar mais um plantonista para a mesma semana"), e trocar o nome
+    // é UM gesto que sai um e entra outro na MESMA transação. O `Eraser` voltou
+    // à tela — mas como o MODO "remover dia" do calendário, não como a fileira
+    // de uma borracha por pessoa que a R253 tirou.
+    eq('R254 CRÍTICO: a faixa de escala é uma linha por semana com um seletor POR PLANTONISTA e um "+" para somar mais um; trocar o nome troca a semana (não acumula), e a fileira de dois botões por pessoa continua fora',
        [/<EscalaDasSemanas/.test(tela),
-        /aoEscalar=\{podeEditar \? \(s, pessoaId\) => abrirPadrao\(pessoaId, s\) : undefined\}/.test(tela),
-        /aoLimpar=\{podeEditar \? \(s, pessoaId\) => abrirLimpeza\(pessoaId, s\) : undefined\}/.test(tela),
+        /aoTrocar=\{podeEditar \? trocarNaSemana : undefined\}/.test(tela),
+        /aoTrocar\?\.\(s\.segunda, q\.pessoa\.id, v\)/.test(faixa),
         /<SeletorDeOpcao/.test(faixa),
         /vazio="Escalar…"/.test(faixa),
-        /Wand2|Eraser/.test(tela),
-        /semana padrão — segunda 18:00/i.test(tela)],
-       [true, true, true, true, true, false, false]);
+        /Wand2/.test(tela),
+        /semana padrão — segunda 18:00/i.test(tela),
+        /Escalar mais uma pessoa para esta semana/.test(faixa),
+        /s\.plantonistas\.map/.test(faixa)],
+       [true, true, true, true, true, false, false, true, true]);
     eq('R253 CRÍTICO: o par Semana | Mês alterna o PERÍODO (na URL, como o mês e o dia), a grade segue o período aberto e o PDF continua sendo o do MÊS inteiro',
        [/visao: s\.visao === "semana" \|\| s\.visao === "mes"/.test(tela),
         /visao === "semana" \? diasDaSemana\(segundaFoco\) : diasDoMes\(mes\)/.test(cod129(tela)),
@@ -20536,10 +20572,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         // ‹ › anda uma semana OU um mês, conforme a visão
         /if \(visao === "semana"\) \{\s*\n\s*const nova = somarDias\(segundaFoco, 7 \* passo\);/.test(tela)],
        [true, true, true, true, true, true, true]);
-    eq('R253: o seletor do plantonista é um chip NEUTRO — o dourado desta tela é do PDF, e a cor que grita é a do estado da semana',
+    // R254: "dividida com X" saiu — quem divide a semana agora tem SELETOR
+    // PRÓPRIO na linha, que é mais do que a frase dizia. O que sobrou no lugar
+    // é o aviso de dias com DOIS, que é outra coisa: legítimo, e em âmbar.
+    eq('R254: o seletor do plantonista é um chip NEUTRO — o dourado desta tela é do PDF, e a cor que grita é a do estado da semana (falta em vermelho, dois no mesmo dia em âmbar)',
        [/cor: COR_DO_PLANTONISTA/.test(tela), /const COR_DO_PLANTONISTA = \{/.test(tela),
         /dias sem cobertura/.test(faixa), /coberta/.test(faixa),
-        /dividida com/.test(faixa)],
+        /dias com dois/.test(faixa)],
        [true, true, true, true, true]);
     eq('R253 (regra 7): a regra existe com as frases do Davi e o manual de campo conta a escala por semana',
        [/- \*\*R253\*\* —/.test(ler129('docs/PRODUTO.md')),
@@ -20549,5 +20588,155 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        [true, true, true, true]);
   }
 }
+
+// ── R254 — o calendário com BARRA, a troca que não acumula, o "+" e a equipe ──
+{
+  const fs254 = require('fs');
+  const ler254 = (f) => fs254.readFileSync(f, 'utf8');
+  const cod254 = (s) => s.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l) ? '' : l)).join('\n');
+  const SB4 = carregar('src/features/sobreaviso/modelo.ts');
+  const cel = (dia, horas) => ({ dia, horas, origem: horas === null ? null : 'padrao' });
+
+  // ── a barra ──────────────────────────────────────────────────────────────
+  eq('R254 CRÍTICO: a BARRA é um trecho CONTÍNUO de dias com horas na linha da pessoa — um buraco no meio parte a barra em duas, e é por isso que as pontas cortadas se arredondam sozinhas (não existe "quebrar a barra": existe recalcular os trechos)',
+     (() => {
+       const linha = [
+         cel('2026-09-14', 6), cel('2026-09-15', 14), cel('2026-09-16', null),
+         cel('2026-09-17', 14), cel('2026-09-18', 14), cel('2026-09-19', null),
+         cel('2026-09-20', 24),
+       ];
+       const f = SB4.faixasDaLinha(linha);
+       return [f.map((x) => [x.inicio, x.fim]), f.map((x) => x.horas),
+               SB4.faixasDaLinha([]).length, SB4.faixasDaLinha([cel('2026-09-14', null)]).length];
+     })(),
+     [[[0, 1], [3, 4], [6, 6]], [20, 28, 24], 0, 0]);
+
+  eq('R254 CRÍTICO: a ponta do trecho só é ARREDONDADA quando o plantão acaba ali — se ele continua no dia vizinho, fora da janela desenhada, a ponta fica RETA. E quem responde isso são as LINHAS CRUAS, nunca as colunas: a janela de leitura tem o dia vizinho, a grade não',
+     (() => {
+       const pessoas = [{ id: 'a', nome: 'Ana', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' }];
+       // a semana 14/09 inteira, mais o domingo ANTERIOR e a terça SEGUINTE
+       const linhas = [
+         { dia: '2026-09-13', pessoa_id: 'a', horas: 24, origem: 'padrao' },
+         ...SB4.diasDaSemana('2026-09-14').map((d) => ({ dia: d, pessoa_id: 'a', horas: 14, origem: 'padrao' })),
+         { dia: '2026-09-22', pessoa_id: 'a', horas: 14, origem: 'padrao' },
+       ];
+       const semana = SB4.gradeDeDias(SB4.diasDaSemana('2026-09-14'), '2026-09', pessoas, linhas);
+       const t = SB4.trechosDaEscala(semana, linhas);
+       const mes = SB4.gradeDoMes('2026-09', pessoas, linhas);
+       const tm = SB4.trechosDaEscala(mes, linhas);
+       return [t.length, t[0].inicio, t[0].fim, t[0].abertoAntes, t[0].abertoDepois,
+               // no MÊS o mesmo plantão está inteiro dentro da janela: as duas pontas fecham
+               tm.length, tm[0].abertoAntes, tm[0].abertoDepois,
+               SB4.trechoDoDia(t, 'a', '2026-09-17') !== null, SB4.trechoDoDia(t, 'a', '2026-10-01')];
+     })(),
+     [1, 0, 7, true, true, 1, false, false, true, null]);
+
+  // ── quem é plantonista da semana ─────────────────────────────────────────
+  eq('R254 CRÍTICO: plantonista da semana é quem tem hora no MIOLO (terça a domingo) — o vizinho que só aparece na segunda da virada NÃO ganha seletor próprio, senão toda semana bem montada mostraria um plantonista a mais',
+     (() => {
+       const pessoas = [
+         { id: 'a', nome: 'Ana', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
+         { id: 'v', nome: 'Vizinho', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
+         { id: 'd', nome: 'Dupla', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
+       ];
+       const dias = SB4.diasDaSemana('2026-09-14');
+       const linhas = [
+         ...SB4.semanaPadrao('2026-09-14').map((c) => ({ dia: c.dia, pessoa_id: 'a', horas: c.horas, origem: 'padrao' })),
+         { dia: dias[0], pessoa_id: 'v', horas: 8, origem: 'padrao' },
+         { dia: dias[2], pessoa_id: 'd', horas: 14, origem: 'manual' },
+       ];
+       const r = SB4.resumoDaSemana('2026-09-14', pessoas, linhas);
+       return [r.plantonistas.map((q) => `${q.pessoa.nome}:${q.horas}`),
+               r.quem.map((q) => q.pessoa.nome),
+               SB4.plantonistasDaSemana('2026-09-14', pessoas, []).length];
+     })(),
+     [['Ana:118', 'Dupla:14'], ['Ana', 'Dupla', 'Vizinho'], 0]);
+
+  eq('R254 CRÍTICO: BURACO é falta (vazio ou curto) e SOBRA é arranjo — contar a sobra como buraco fazia a faixa dizer "N dias sem cobertura" na mesma tela em que o selo dizia "0 dias descobertos"',
+     (() => {
+       const pessoas = [
+         { id: 'a', nome: 'Ana', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
+         { id: 'b', nome: 'Bia', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
+       ];
+       // a semana inteira da Ana, e a Bia junto em dois dias do miolo
+       const linhas = [
+         ...SB4.semanaPadrao('2026-09-14').map((c) => ({ dia: c.dia, pessoa_id: 'a', horas: c.horas, origem: 'padrao' })),
+         { dia: '2026-09-16', pessoa_id: 'b', horas: 14, origem: 'manual' },
+         { dia: '2026-09-19', pessoa_id: 'b', horas: 24, origem: 'manual' },
+       ];
+       const r = SB4.resumoDaSemana('2026-09-14', pessoas, linhas);
+       return [r.buracos, r.sobrando, r.plantonistas.length];
+     })(),
+     // DOIS buracos, e os dois são as pontas: a segunda de ENTRADA tem só as
+     // 6h desta semana (faltam as 8 de quem sai) e a de SAÍDA tem só as 8h
+     // desta (faltam as 6 de quem entra) — nenhuma das semanas vizinhas foi
+     // lançada neste caso. É exatamente onde a escala de verdade fura.
+     // E 2 dias com duas pessoas, que é arranjo e não falta.
+     [2, 2, 2]);
+
+  // ── a tela ───────────────────────────────────────────────────────────────
+  {
+    const tela254 = ler254('src/routes/_authenticated/sobreaviso.tsx');
+    const grade254 = ler254('src/features/sobreaviso/GradeMes.tsx');
+    const faixa254 = ler254('src/features/sobreaviso/EscalaDasSemanas.tsx');
+    const ui254 = ler254('src/lib/ui.ts');
+    const css254 = ler254('src/styles.css');
+    eq('R254 CRÍTICO: a régua de margem da Início — o atalho `padding` inline saiu das DUAS cascas (conteúdo e carregando/erro), e o que sobrou mexe só no eixo vertical. É o anti-padrão nº 10, que punha o título 24px à esquerda da grade DENTRO da mesma tela',
+       [/className="sangra-x" style=\{\{ paddingTop: 4, paddingBottom: 40/.test(tela254),
+        (tela254.match(/className="sangra-x" style=\{\{ paddingTop: 4/g) ?? []).length,
+        /style=\{\{ padding: "18px 0 40px"/.test(tela254)],
+       [true, 2, false]);
+    eq('R254 CRÍTICO: a barra é UM elemento por trecho posicionado no MESMO grid (gridColumn/gridRow) — nunca uma camada absoluta, que teria de re-derivar larguras de coluna `1fr` que só existem depois do layout; e ela NÃO é o fundo da célula, para a lavagem de fim de semana e feriado continuar aparecendo',
+       [/gridColumn: `\$\{2 \+ t\.inicio\} \/ span \$\{quantos\}`/.test(grade254),
+        /gridRow: linhaDe\(indice\)/.test(grade254),
+        /position: "absolute"/.test(cod254(grade254)),
+        /const ALTURA_BARRA = 22;/.test(grade254),
+        /background: fundoDaColuna\(i\)/.test(grade254)],
+       [true, true, false, true, true]);
+    eq('R254 CRÍTICO: o amarelo da barra é o da MARCA, rebaixado por MISTURA com a superfície (fosco), 90deg, com borda inset de 30% e SEM sombra nenhuma — o degradê dourado cru é da AÇÃO (o botão de PDF está na mesma tela) e glow em fundo é o que a R174 proíbe',
+       [/export const barraDePlantao = \(isLight: boolean\)/.test(ui254),
+        /linear-gradient\(90deg/.test(ui254),
+        /misturar\(hex, chao, f\)/.test(ui254),
+        /GOLD_GRAD/.test(ui254.slice(ui254.indexOf('export const barraDePlantao'))),
+        /boxShadow: `inset 0 0 0 1px/.test(ui254),
+        /export const barraSelecionada = \(isLight: boolean\)/.test(ui254),
+        /inset 0 0 0 2px/.test(ui254.slice(ui254.indexOf('export const barraSelecionada')))],
+       [true, true, true, false, true, true, true]);
+    eq('R254 CRÍTICO: os dois gestos da barra — clicar seleciona o trecho inteiro e Delete/Backspace apaga; o Delete DENTRO de um campo de texto é do campo, e a seleção é uma ÂNCORA (o trecho é derivado a cada render, então ele se desfaz sozinho quando o dia deixa de ter horas)',
+       [/if \(e\.key !== "Delete" && e\.key !== "Backspace"\) return;/.test(grade254),
+        /alvo\.tagName === "INPUT" \|\| alvo\.isContentEditable/.test(grade254),
+        /aoRemoverTrecho\(trechoSelecionado\)/.test(grade254),
+        /if \(selecao && !trechoSelecionado\) aoSelecionar\?\.\(null\);/.test(grade254),
+        /so_padrao: false/.test(tela254)],
+       [true, true, true, true, true]);
+    eq('R254 CRÍTICO: o modo "Remover dia" — o clique num dia da barra tira só aquele dia, e passar o cursor PRÉ-VISUALIZA a remoção esmaecendo o dia. O esmaecimento é `filter` e não `opacity`, porque a opacidade do dia é escrita inline e inline vence classe',
+       [/removendoDia \? "crosshair"/.test(grade254),
+        /className=\{removendoDia \? "dia-removivel" : undefined\}/.test(grade254),
+        /void aoDefinir\(d, l\.pessoa\.id, null\)/.test(grade254),
+        /\.dia-removivel:hover \{ filter: opacity\(0\.25\); \}/.test(css254),
+        /Remover dia/.test(tela254)],
+       [true, true, true, true, true]);
+    eq('R254 CRÍTICO: trocar o plantonista NÃO acumula — sai um e entra outro na MESMA transação (a RPC da U129), e quem sai perde por SUBTRAÇÃO, então a ponta que pertence à semana vizinha fica. Slot vazio continua caindo no aplicar_padrao, que tem prévia para colisão',
+       [/if \(!de && para\) \{ await abrirPadrao\(para, segunda\); return; \}/.test(tela254),
+        /trocar\.mutateAsync\(\{\s*\n\s*de_pessoa: de, para_pessoa: para, segunda, celulas: semanaPadrao\(segunda\),/.test(tela254),
+        /faltaMigrationDaTroca\(e\)/.test(tela254),
+        /precisa da migration U129/.test(tela254),
+        /Escalar mais uma pessoa para esta semana/.test(faixa254)],
+       [true, true, true, true, true]);
+    eq('R254: a migration U129 existe com a RPC da troca, com o gate das duas metades copiado da U86, a subtração de quem sai e o CASE de quatro ações de quem entra — e ela NÃO mexe nas duas funções da U86',
+       (() => {
+         const m = ler254('supabase/migrations/20260927090000_u129_v011_trocar_plantonista.sql');
+         return [/CREATE OR REPLACE FUNCTION public\.sobreaviso_trocar_plantonista\(/.test(m),
+                 /is_gestor\(auth\.uid\(\)\)/.test(m),
+                 /GREATEST\(0, COALESCE\(s\.horas, 0\) - en\.h\)/.test(m),
+                 /WHEN en\.ab IS NOT NULL AND s\.horas = en\.ab/.test(m),
+                 /CREATE OR REPLACE FUNCTION public\.sobreaviso_aplicar_padrao/.test(m),
+                 /CREATE OR REPLACE FUNCTION public\.sobreaviso_limpar/.test(m),
+                 />>> OLHAR <<</.test(m), /DESFAZER/.test(m), /PORTÃO/.test(m)];
+       })(),
+       [true, true, true, true, false, false, true, true, true]);
+  }
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

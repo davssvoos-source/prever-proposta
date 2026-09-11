@@ -1434,3 +1434,10 @@ main:has(.pagina-larga), main:has(.pagina-trabalho) { max-width: none; }
   .fab-chat { right: 24px; bottom: 24px; }
   .fab-chat-painel { right: 24px; bottom: 24px; height: min(676px, calc(100vh - 48px)); }
 }
+
+/* R254: a pré-visualização de "tirar este dia" do sobreaviso. O dia sob o
+   cursor esmaece ANTES do clique — é a única forma de o gesto dizer o que vai
+   acontecer, já que ele não tem confirmação. `filter` e não `opacity`: a
+   opacidade do dia é escrita inline (ela some quando a caixa de digitar sobe
+   por cima), e inline vence classe. */
+.dia-removivel:hover { filter: opacity(0.25); }

@@ -11,6 +11,7 @@
 
 import type React from "react";
 import { degradeDaCor, tintaSobreDegrade, hexParaRgb } from "@/lib/degrade";
+import { SUPERNOVA, cinzas, misturar } from "@/lib/paleta";
 
 export const FONT = "var(--fonte)";
 
@@ -200,4 +201,60 @@ export const title = (isLight: boolean): React.CSSProperties => ({
   fontFamily: FONT,
   fontWeight: 700,
   color: isLight ? "#212121" : "#ffffff",
+});
+
+/**
+ * A BARRA DE PLANTÃO (R254) — o trecho de dias em que alguém está de
+ * sobreaviso, desenhado por cima da grade do Sobreaviso.
+ *
+ * Davi, 11/09/2026: "crie uma barra com bordas arredondadas, a barra pode ter
+ * um amarelo degrade do nosso padrão, um pouco fosco ou até opacidade reduzida
+ * para não ficar cansativo aos olhos do usuário".
+ *
+ * ── POR QUE NÃO É O `GOLD_GRAD` ───────────────────────────────────────────
+ * O amarelo é o certo — é a cor principal do sistema. O DEGRADÊ CRU é que não:
+ * `GOLD_GRAD` é o dourado da AÇÃO (botão, pílula ativa do menu, o botão de PDF
+ * que fica nesta MESMA tela), e §11.5 do DESIGN_SYSTEM já resolveu o caso —
+ * dois dourados idênticos com significados diferentes "não lê como escolha, lê
+ * como erro". Então a barra usa OS MESMOS TRÊS TONS da marca (SUPERNOVA
+ * 300/400/500), REBAIXADOS por mistura com a superfície do tema: é
+ * reconhecidamente o amarelo da casa sem virar um botão de 700px deitado.
+ *
+ * ── POR QUE MISTURA E NÃO `opacity` NEM `rgba` ────────────────────────────
+ * É a lição do §6.17: véu translúcido depende do que está atrás — e atrás da
+ * barra há célula de dia útil, lavagem de fim de semana, lavagem de feriado e
+ * a coluna do dia aberto. Com mistura, a cor é a MESMA nos quatro casos.
+ * `opacity` no elemento seria pior ainda: apagaria junto o número que fica
+ * dentro dele.
+ *
+ * ── 90deg, E NÃO 135deg ───────────────────────────────────────────────────
+ * A barra é larga e baixa (22px de altura por até oito colunas). Num elemento
+ * dessa proporção o degradê de 135° colapsa numa lasca diagonal. `gradienteBarra`
+ * e `degradePrisma` já usam 90° pelo mesmo motivo.
+ *
+ * SEM SOMBRA E SEM GLOW (R174): a barra é fundo, e a tabela de efeitos do
+ * DESIGN_SYSTEM diz onde o glow de contorno não entra — "cards neutros, fundo,
+ * texto". A borda `inset` de 1px na cor a 30% é o que a faz existir onde o
+ * preenchimento é fraco (no tema claro ela é obrigatória: sobre a célula
+ * lavada o miolo sozinho quase some).
+ */
+export const barraDePlantao = (isLight: boolean): React.CSSProperties => {
+  const chao = cinzas(isLight).superficie;
+  // 26% da cor no claro, 22% no escuro — os dois calibrados para ficar acima
+  // do piso de 1,08 de contraste contra a própria célula e MUITO abaixo do
+  // peso de um botão.
+  const f = isLight ? 0.74 : 0.78;
+  const tom = (hex: string) => misturar(hex, chao, f);
+  return {
+    backgroundImage: `linear-gradient(90deg, ${tom(SUPERNOVA[300])}, ${tom(SUPERNOVA[400])}, ${tom(SUPERNOVA[500])})`,
+    // `inset` e não `border`: não há `box-sizing: border-box` global, e uma
+    // borda de 1px engordaria a barra de 22 para 24px dentro da célula.
+    boxShadow: `inset 0 0 0 1px ${isLight ? "rgba(200,136,6,0.30)" : "rgba(248,200,17,0.30)"}`,
+    color: isLight ? "#212121" : "#ffffff",
+  };
+};
+
+/** O anel de "esta barra está selecionada" (R254) — o mesmo vocabulário do card "A seguir" (R248): `inset`, nunca `outline`, porque o trilho corta o que sai para fora. */
+export const barraSelecionada = (isLight: boolean): React.CSSProperties => ({
+  boxShadow: `inset 0 0 0 2px ${isLight ? "#C88806" : "#F8C811"}`,
 });

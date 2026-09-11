@@ -8,16 +8,18 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-11** · última regra: **R253** · último diário:
-**U128** · verificador: **3.252 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-11** · última regra: **R254** · último diário:
+**U129** · verificador: **3.272 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U125** (U123, U124 e U125 em 09/09/2026) ·
-**Pendente: U127** (`20260926090000_u127_v009_perfil_operacional.sql` — rodar
-ANTES de subir o pacote; sem ela o cargo OPERACIONAL não existe no banco, e a
-tela de Usuários não consegue gravá-lo) · **versão no servidor: v0.0.7**
-(192.168.10.182); **esta entrega é a v0.0.10** — e a **v0.0.9** (U127) foi
-entregue e ainda não instalada; o que entrou em cada versão está em
-`docs/VERSOES.md`. Fim de entrega:
-`node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
+**Pendentes: U127 e U129** — a **U127**
+(`20260926090000_u127_v009_perfil_operacional.sql`) cria o cargo OPERACIONAL, e
+sem ela a tela de Usuários não consegue gravá-lo; a **U129**
+(`20260927090000_u129_v011_trocar_plantonista.sql`) cria a troca de plantonista
+do Sobreaviso, e sem ela a tela avisa que falta rodar e o resto continua
+funcionando · **versão no servidor: v0.0.7** (192.168.10.182); a **v0.0.9** e a
+**v0.0.10** foram entregues e ainda não instaladas, e **esta entrega ainda não
+virou versão** — o que entrou em cada uma está em `docs/VERSOES.md`. Fim de
+entrega: `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
 
 ---
 

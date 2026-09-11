@@ -225,6 +225,8 @@ export interface PessoaCandidata {
   /** `NOT NULL DEFAULT 'ativo'` no banco desde 2026-06-29; o `| null` é só o types.ts atrasado. */
   status: string | null;
   cargo: string | null;
+  /** R254: a EQUIPE (roteamento, `profiles.equipe`) — é ela que diz quem faz plantão. */
+  equipe?: string | null;
 }
 
 export interface PessoaDaGrade {
@@ -268,7 +270,29 @@ export function pessoasDaGrade(
   const comHoras = new Set(linhas.map((l) => l.pessoa_id));
   const out: PessoaDaGrade[] = [];
   for (const p of candidatas) {
-    const escalavel = p.ativo === true && p.status !== "pendente_aprovacao";
+      // R254 (Davi, 11/09/2026): "Aplique a regra: Somente a equipe técnica faz
+    // Sobreaviso. Somente eles devem estar disponíveis na lista do seletor de
+    // membro da equipe para fazer o plantão semanal."
+    //
+    // É EQUIPE, E NÃO CARGO — os dois vocabulários existem e não coincidem. O
+    // cargo é PERMISSÃO (admin/comercial/sac/tecnico/operacional); a equipe é
+    // ROTEAMENTO (`profiles.equipe`, U71: ti/patrimonio/tecnica/comercial/sac/
+    // monitoramento/outras), e o COMMENT dela no banco diz, com todas as
+    // letras, "NÃO é permissão". Filtrar por `cargo = 'tecnico'` faria o
+    // OPOSTO do pedido em dois casos reais: tiraria o Nicholas e o Erik, que a
+    // R244 acabou de mover para o cargo OPERACIONAL e continuam sendo quem faz
+    // o plantão; e traria o T.I. e o Controle Patrimonial, que usam o cargo
+    // técnico e não atendem sobreaviso. É o MESMO recorte que o painel
+    // Operacional Técnica já usa (R95/R124: "o recorte é por equipe = técnica,
+    // não por natureza = campo").
+    //
+    // ISTO REVISA A R116 ("zero filtro por cargo"): o argumento de lá — não
+    // tirar da escala o coordenador que atende às 2h — continua de pé e é por
+    // isso que o filtro NÃO é por cargo. Quem já tem horas gravadas continua na
+    // grade, esmaecido, seja de que equipe for: história não se apaga.
+    const escalavel = p.ativo === true
+      && p.status !== "pendente_aprovacao"
+      && p.equipe === "tecnica";
     if (!escalavel && !comHoras.has(p.id)) continue;
     out.push({ id: p.id, nome: p.nome?.trim() || "(sem nome)", historico: !escalavel });
   }
@@ -604,8 +628,15 @@ export interface ResumoDaSemana {
   /** O oitavo dia — a segunda seguinte, das 00:00 às 08:00. */
   fim: string;
   dias: string[];
-  /** Quem tem horas na janela, do MAIOR para o menor. */
+  /** Quem tem horas na janela, do MAIOR para o menor — inclusive o vizinho da virada. */
   quem: QuemNaSemana[];
+  /**
+   * R254: quem é plantonista DESTA semana — quem tem hora no MIOLO (terça a
+   * domingo). É esta lista que vira seletor na faixa de escala; `quem` traria
+   * o vizinho da virada junto, e toda semana bem montada mostraria um seletor
+   * a mais.
+   */
+  plantonistas: QuemNaSemana[];
   /**
    * O plantonista: quem tem mais horas na janela. Não é "quem foi escalado" —
    * essa coluna não existe, e criá-la duplicaria a verdade que já está nas
@@ -624,6 +655,8 @@ export interface ResumoDaSemana {
    * buraco de verdade: nas duas pontas ele só fecha com o vizinho lançado.
    */
   buracos: number;
+  /** Dias em que há MAIS de uma pessoa somando acima da cobertura (R254). */
+  sobrando: number;
   /** Mais de uma pessoa com horas — dizer um nome só seria mentira. */
   dividida: boolean;
 }
@@ -653,10 +686,17 @@ export function resumoDaSemana(
     .map((p) => ({ pessoa: p, horas: porPessoa.get(p.id) as number }))
     .sort((a, b) => b.horas - a.horas || a.pessoa.nome.localeCompare(b.pessoa.nome, "pt-BR"));
 
+  // R254: BURACO é falta (vazio ou curto). `sobra` — mais de uma pessoa no
+  // mesmo dia — é arranjo legítimo e ganhou contador próprio: contá-la como
+  // buraco fazia a faixa dizer "N dias sem cobertura" na mesma tela em que o
+  // selo dizia "0 dias descobertos".
   let buracos = 0;
+  let sobrando = 0;
   for (const dia of dias) {
     const somado = daJanela.reduce((s, l) => (l.dia === dia ? s + l.horas : s), 0);
-    if (vereditoDoDia(somado, coberturaDoDia(dia)) !== "ok") buracos += 1;
+    const v = vereditoDoDia(somado, coberturaDoDia(dia));
+    if (v === "vazio" || v === "curto") buracos += 1;
+    else if (v === "sobra") sobrando += 1;
   }
 
   return {
@@ -664,11 +704,132 @@ export function resumoDaSemana(
     fim: dias[dias.length - 1],
     dias,
     quem,
+    plantonistas: plantonistasDaSemana(segunda, candidatas, linhas),
     plantonista: quem[0]?.pessoa ?? null,
     horas: quem[0]?.horas ?? 0,
     total: daJanela.reduce((s, l) => s + l.horas, 0),
     esperado: totalDoPadrao(semanaPadrao(segunda)),
     buracos,
+    sobrando,
     dividida: quem.length > 1,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A BARRA DE PLANTÃO E QUEM É DA SEMANA (R254, U129)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Um trecho CONTÍNUO de dias com horas, na linha de uma pessoa. */
+export interface TrechoDaEscala {
+  pessoaId: string;
+  /** índice da primeira coluna do trecho em `grade.colunas` */
+  inicio: number;
+  /** índice da última coluna, INCLUSIVE */
+  fim: number;
+  dias: string[];
+  horas: number;
+  /**
+   * O plantão CONTINUA fora da janela desenhada — a ponta fica reta em vez de
+   * arredondada, e é uma verdade sobre a TELA: numa visão de mês o dia 1º pode
+   * ser a quarta-feira de um plantão que começou na segunda anterior.
+   *
+   * Sai das LINHAS CRUAS e nunca das colunas: a janela de leitura é a
+   * competência mais um mês de cada lado, então o dia vizinho ESTÁ no cache —
+   * mas ele não está em `grade.colunas`, e perguntar às colunas responderia
+   * sempre "não continua", que é a mesma cicatriz que a borracha da U86 pagou.
+   */
+  abertoAntes: boolean;
+  abertoDepois: boolean;
+}
+
+/**
+ * Os trechos contínuos de uma linha (R254) — é o que a tela desenha como BARRA.
+ *
+ * Davi, 11/09/2026: "Quando um usuário tem a semana com plantão, no calendário,
+ * crie uma barra com bordas arredondadas […] essa barra pode sinalizar os dias
+ * em que o usuário está de sobreaviso no calendário."
+ *
+ * A corrida é por PESSOA-COM-HORAS, nunca por `origem`: um dia ajustado à mão
+ * no meio da semana (origem 'manual') faz parte do mesmo plantão, e quebrar a
+ * barra ali mostraria um buraco que não existe.
+ *
+ * QUEBRAR A BARRA NÃO É UM GESTO: tirar as horas de um dia faz a célula sumir,
+ * e a corrida se parte em duas sozinha — cada metade com as duas pontas
+ * arredondadas. Barra e números saem da MESMA lista de células, então não têm
+ * como se contradizer.
+ */
+export function faixasDaLinha(celulas: readonly CelulaDaGrade[]): { inicio: number; fim: number; dias: string[]; horas: number }[] {
+  const out: { inicio: number; fim: number; dias: string[]; horas: number }[] = [];
+  let atual: { inicio: number; fim: number; dias: string[]; horas: number } | null = null;
+  celulas.forEach((c, i) => {
+    if (c.horas === null || c.horas <= 0) { atual = null; return; }
+    if (atual && atual.fim === i - 1) {
+      atual.fim = i; atual.dias.push(c.dia); atual.horas += c.horas;
+      return;
+    }
+    atual = { inicio: i, fim: i, dias: [c.dia], horas: c.horas };
+    out.push(atual);
+  });
+  return out;
+}
+
+/** Todos os trechos da grade, de todas as pessoas, com as pontas resolvidas. */
+export function trechosDaEscala(grade: GradeDoMes, linhas: readonly LinhaSobreaviso[]): TrechoDaEscala[] {
+  if (grade.colunas.length === 0) return [];
+  const antes = somarDias(grade.colunas[0].dia, -1);
+  const depois = somarDias(grade.colunas[grade.colunas.length - 1].dia, 1);
+  const temAntes = new Set(linhas.filter((l) => l.dia === antes && l.horas > 0).map((l) => l.pessoa_id));
+  const temDepois = new Set(linhas.filter((l) => l.dia === depois && l.horas > 0).map((l) => l.pessoa_id));
+  const ultima = grade.colunas.length - 1;
+  const out: TrechoDaEscala[] = [];
+  for (const linha of grade.linhas) {
+    for (const f of faixasDaLinha(linha.celulas)) {
+      out.push({
+        pessoaId: linha.pessoa.id,
+        inicio: f.inicio, fim: f.fim, dias: f.dias, horas: f.horas,
+        abertoAntes: f.inicio === 0 && temAntes.has(linha.pessoa.id),
+        abertoDepois: f.fim === ultima && temDepois.has(linha.pessoa.id),
+      });
+    }
+  }
+  return out;
+}
+
+/** O trecho que contém um dia — a barra em que o clique caiu. */
+export function trechoDoDia(trechos: readonly TrechoDaEscala[], pessoaId: string, dia: string): TrechoDaEscala | null {
+  return trechos.find((t) => t.pessoaId === pessoaId && t.dias.includes(dia)) ?? null;
+}
+
+/**
+ * QUEM É PLANTONISTA DESTA SEMANA — e quem só aparece na janela por causa da
+ * virada (R254).
+ *
+ * A janela tem oito dias e as duas pontas são COMPARTILHADAS: na segunda de
+ * entrada convivem as 8h de quem sai e as 6h de quem entra. Contar "quem tem
+ * horas na janela" listaria o vizinho como plantonista desta semana, e a faixa
+ * de escala mostraria um seletor a mais em TODA semana bem montada.
+ *
+ * O corte é o MIOLO: quem tem hora de terça a domingo é plantonista desta
+ * semana. Os seis dias do miolo não pertencem a mais ninguém, por construção.
+ *
+ * CUSTO ASSUMIDO: quem cobre SÓ uma das duas segundas (um quebra-galho de seis
+ * horas) não ganha seletor próprio — aparece na grade, com as horas dele, que
+ * é onde essa exceção vive.
+ */
+export function plantonistasDaSemana(
+  segunda: string,
+  candidatas: PessoaCandidata[],
+  linhas: LinhaSobreaviso[],
+): QuemNaSemana[] {
+  const dias = diasDaSemana(segunda);
+  const miolo = new Set(dias.slice(1, DIAS_DO_PADRAO - 1));
+  const dentro = new Set(dias);
+  const daJanela = linhas.filter((l) => dentro.has(l.dia));
+  const doMiolo = new Set(daJanela.filter((l) => miolo.has(l.dia)).map((l) => l.pessoa_id));
+  const horas = new Map<string, number>();
+  for (const l of daJanela) horas.set(l.pessoa_id, (horas.get(l.pessoa_id) ?? 0) + l.horas);
+  return pessoasDaGrade(candidatas, daJanela)
+    .filter((p) => doMiolo.has(p.id))
+    .map((p) => ({ pessoa: p, horas: horas.get(p.id) ?? 0 }))
+    .sort((a, b) => b.horas - a.horas || a.pessoa.nome.localeCompare(b.pessoa.nome, "pt-BR"));
 }

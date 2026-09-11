@@ -192,6 +192,38 @@ sempre do mês**.
 célula da pessoa naquele dia. Célula vazia é ausência de linha (zerar apaga), e
 a coluna do dia mostra `somado/cobertura` para o buraco aparecer sozinho.
 
+
+### O calendário, a barra e os dois gestos (R254, U129)
+
+Abaixo da faixa de escala está o **calendário do plantão**: uma linha por
+pessoa, uma coluna por dia, e a **barra** — a faixa amarela fosca que mostra,
+de relance, de quando até quando cada um está de sobreaviso.
+
+- **Clicar na barra** seleciona o trecho inteiro; **Delete** (ou Backspace)
+  apaga aquela barra. Apaga também o que foi digitado à mão naqueles dias: a
+  barra é feita de horas, e metade dela ficar na tela depois de mandar apagar
+  seria a tela desobedecendo.
+- **"Remover dia"** (o botão acima do calendário) muda o que o clique faz:
+  com ele ligado, passar o cursor sobre um dia da barra **pré-visualiza** a
+  remoção (o dia esmaece) e clicar tira só aquele dia. A barra se parte em
+  duas, cada metade com as pontas arredondadas.
+- **Ponta reta** quer dizer que o plantão continua fora do período aberto —
+  troque para o mês, ou ande uma semana, para ver o resto.
+- **Lançar horas num dia vazio**: clique na célula e digite. Enter ou sair do
+  campo grava; Escape desfaz; 0 apaga.
+- **Trocar o plantonista** de uma semana (o seletor da faixa) tira a semana de
+  quem estava e dá a quem entrou — **não soma**. Quem sai perde exatamente o
+  que a semana padrão tinha posto, então a madrugada da segunda que pertence à
+  semana anterior **fica** com ele.
+- **Dois de sobreaviso na mesma semana**: o **"+"** à direita da linha abre
+  outro seletor. A faixa passa a dizer quantos dias têm dois — em âmbar, que é
+  arranjo e não falta.
+
+**Quem aparece:** só a **equipe técnica** (o campo Equipe do cadastro, não o
+cargo). Quem não é da equipe mas tem horas gravadas continua aparecendo,
+esmaecido, e não recebe células novas. Se a lista sair vazia, o lugar de
+conferir é Administrativo → Usuários → Equipe.
+
 **O que a tela NÃO faz**: não decide sozinha quem é o próximo do rodízio (o
 rodízio é combinado entre a equipe, e quem escala é o líder), e não guarda uma
 coluna "escalado" — o plantonista da semana é quem tem mais horas nela, para
