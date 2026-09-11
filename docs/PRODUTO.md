@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R257 (28)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R258 (29)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-11 (R257). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-11 (R258). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4803,3 +4803,21 @@ adaptado."
   página INICIO, nos cards das atividades, remova a palavra 'faltam' e 'em
   atraso' […] Quero somente o icone de calendario e o tempo em horas, sem texto
   além disso.")*
+
+- **R258** — **A caixa do chat: o convite na linha certa, e o cursor já nela.**
+  Duas coisas na mesma caixa:
+  1. **O texto "Escreva para todos…" nasce exatamente onde o texto nasce.** Ele
+     ficava **três pixels acima** da linha em que a pessoa escreve — invisível
+     na caixa grande da atividade, gritante na caixa baixa do chat. A causa não
+     era a margem da caixa (essa a R245 já tinha acertado, fazendo o convite
+     herdar o padding da área): é que o texto de verdade não nasce na área,
+     nasce dentro de um BLOCO, e o bloco tem três pixels de respiro em cima.
+     MEDIDO no navegador, com o convite sobreposto ao texto real: antes, duas
+     linhas desencontradas; depois, uma só.
+  2. **Abrir o chat põe o cursor na caixa.** Reusa o mesmo pedido de foco do
+     botão "Responder aqui" (R249) — dois caminhos para a mesma coisa
+     acabariam divergindo.
+  *(Davi, 11/09/2026: "O texto que fica na caixa de texto do CHAT ('Escreva
+  para todos...') precisa corrigir as margens e espaçamento. Ao abrir o chat,
+  adicione o mecanismo de FOCUS, onde o cursor vai direto pra caixa de
+  texto.")*

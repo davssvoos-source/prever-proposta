@@ -20826,5 +20826,22 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, false, true, true, true, true]);
 }
 
+
+// ── R258 — o convite da caixa do chat e o foco ao abrir ────────────────────
+{
+  const fs258 = require('fs');
+  const css258 = fs258.readFileSync('src/styles.css', 'utf8');
+  const chat258 = fs258.readFileSync('src/features/home/ChatDeMencoes.tsx', 'utf8');
+  eq('R258 CRÍTICO: o convite da caixa herda o padding da área E desce os 3px do bloco — o texto de verdade não nasce na área, nasce dentro de um [data-bloco] com `padding: 3px 0`, e sem isso o convite fica três pixels acima da linha em que se escreve',
+     [/padding: inherit; box-sizing: border-box; margin-top: 3px;/.test(css258),
+      /\.editor-rico-area > \[data-bloco\] \{ position: relative; padding: 3px 0;/.test(css258)],
+     [true, true]);
+  eq('R258 CRÍTICO: abrir o chat pede o foco pelo MESMO contador do "Responder aqui" (R249) — um pedido de foco é um pedido de foco',
+     [/const abrir = \(\) => \{ setAberto\(true\); marcarVisto\(\); setPedidoDeFoco\(\(n\) => n \+ 1\); \};/.test(chat258),
+      /focarEm=\{pedidoDeFoco\}/.test(chat258),
+      (chat258.match(/setPedidoDeFoco\(\(n\) => n \+ 1\)/g) ?? []).length],
+     [true, true, 2]);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

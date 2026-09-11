@@ -189,7 +189,11 @@ export function ChatDeMencoes({ aoAbrirAtividade }: { aoAbrirAtividade: (chamado
     if (el) el.scrollTop = el.scrollHeight;
   }, [aberto, itens.length]);
 
-  const abrir = () => { setAberto(true); marcarVisto(); };
+  // R258 (Davi, 11/09/2026): "Ao abrir o chat, adicione o mecanismo de FOCUS,
+  // onde o cursor vai direto pra caixa de texto." Reusa o MESMO contador do
+  // "Responder aqui" (R249) — um pedido de foco é um pedido de foco, e dois
+  // caminhos para a mesma coisa acabariam divergindo.
+  const abrir = () => { setAberto(true); marcarVisto(); setPedidoDeFoco((n) => n + 1); };
   const recolher = () => { setAberto(false); marcarVisto(); };
   const abrirAtividade = (chamadoId: string) => {
     recolher();

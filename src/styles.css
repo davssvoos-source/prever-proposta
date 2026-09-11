@@ -1211,12 +1211,17 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
    "marcado" é atributo do bloco, não um <input>: o CSS espelha o do checklist
    de leitura (.checklist-input:checked + .checklist-check). */
 .editor-rico-area { outline: none; white-space: pre-wrap; word-break: break-word; position: relative; }
-/* R245: o placeholder ("Escreva para todos…") nasce EXATAMENTE onde o texto
-   nasce — herda o padding da área em vez de chutar 13/14px, que era certo
-   para a caixa grande e errado para a do chat (10/12). */
+/* R245/R258: o placeholder ("Escreva para todos…") nasce EXATAMENTE onde o
+   texto nasce. Duas correções, uma em cada eixo:
+   · a R245 fez ele HERDAR o padding da área, em vez de chutar 13/14px — que
+     era certo para a caixa grande e errado para a do chat (10/12);
+   · a R258 acrescentou o `margin-top`, porque o texto de verdade não nasce na
+     área: nasce dentro de um `[data-bloco]`, e o bloco tem `padding: 3px 0`.
+     Sem ele o convite ficava três pixels ACIMA da linha em que a pessoa
+     escreve — invisível na caixa grande, gritante na caixa baixa do chat. */
 .editor-rico-area[data-vazio="1"]::before {
   content: attr(data-placeholder); position: absolute; left: 0; top: 0; right: 0;
-  padding: inherit; box-sizing: border-box;
+  padding: inherit; box-sizing: border-box; margin-top: 3px;
   color: var(--text-muted); pointer-events: none; white-space: pre-wrap;
 }
 /* R245: a caixa do chat rola sem mostrar a barra — 120px de teto continuam
