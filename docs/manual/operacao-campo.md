@@ -1,13 +1,14 @@
 # Operação de campo — chamados, fila e programação
 
 <!-- sumario:inicio -->
-> **Sumário** — 29 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 30 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [Para que serve este documento](#para-que-serve-este-documento)
 - [O ciclo de vida do chamado](#o-ciclo-de-vida-do-chamado)
 - [Quem faz o quê](#quem-faz-o-quê)
 - [A fila canônica: a Início (R17/R31)](#a-fila-canônica-a-início-r17r31)
 - [O que a Início mostra, e em que ordem (R221/R246/R248, U127/U128)](#o-que-a-início-mostra-e-em-que-ordem-r221r246r248-u127u128)
+- [Sobreaviso: a escala por semana (R116/R253, U86/U129)](#sobreaviso-a-escala-por-semana-r116r253-u86u129)
 - [Programação e painéis](#programação-e-painéis)
 - [O dashboard da Operacional Técnica — as três perguntas do Vinicius (R124–R126, U93)](#o-dashboard-da-operacional-técnica-as-três-perguntas-do-vinicius-r124r126-u93)
 - [O calendário tem duas visões — Mensal e Semanal (R133, U94)](#o-calendário-tem-duas-visões-mensal-e-semanal-r133-u94)
@@ -152,6 +153,49 @@ mapa de clientes continua dentro de Clientes.
 - **Os filtros** são Vínculo, Prazo, Equipe, **Tipo de demanda** (R251) e
   Pessoa (para quem vê tudo). Todos valem na lista, no quadro e nos painéis do
   topo, e todos aparecem no aviso de "nada nesta combinação".
+
+## Sobreaviso: a escala por semana (R116/R253, U86/U129)
+
+A tela é do **líder da técnica** (hoje o Vinicius). Ele monta a escala, e as
+horas que ficam ali são o que vai para o financeiro pagar.
+
+**A regra das horas** (o sistema calcula, ninguém digita de cabeça): o plantão
+vai de **segunda 18:00 a segunda 08:00** — oito dias de calendário.
+
+| dia da janela | horas | por quê |
+|---|---|---|
+| segunda de entrada | **6** | das 18:00 à meia-noite |
+| terça a sexta | **14** | 8 da madrugada + 6 da noite |
+| sábado e domingo | **24** | não há expediente para descontar |
+| feriado, em qualquer dia | **24** | idem |
+| segunda de saída | **8** | só a madrugada; o resto já é do próximo |
+
+Uma semana sem feriado dá **118 h**. Com feriado no meio ela passa disso, e
+está certo: o número é consequência do calendário, não uma meta.
+
+**Como se escala.** A faixa "A escala" tem **uma linha por semana**. Em cada
+linha, o seletor com o nome: escolher o nome **lança a semana inteira** (os
+oito dias, com as pontas certas); escolher "ninguém" apaga o que aquela semana
+lançou. A linha diz as horas do plantonista e o estado — **coberta** ou **N
+dias sem cobertura** — e, quando dois dividiram a semana, diz com quem.
+
+Quem aparece no seletor é quem **pode ser escalado hoje** (ativo e aprovado).
+Quem saiu da empresa continua na grade, esmaecido, com as horas que fez — e
+não é oferecido para semanas novas.
+
+**Semana ou mês.** O par de botões troca o período. Na **semana** a grade tem
+oito colunas: é onde se lança a exceção (alguém cobriu a quarta). No **mês**
+estão os 28-31 dias: é onde se confere a folha antes de fechar. O **PDF é
+sempre do mês**.
+
+**A exceção se lança na célula.** Trocou meio plantão? Digite as horas na
+célula da pessoa naquele dia. Célula vazia é ausência de linha (zerar apaga), e
+a coluna do dia mostra `somado/cobertura` para o buraco aparecer sozinho.
+
+**O que a tela NÃO faz**: não decide sozinha quem é o próximo do rodízio (o
+rodízio é combinado entre a equipe, e quem escala é o líder), e não guarda uma
+coluna "escalado" — o plantonista da semana é quem tem mais horas nela, para
+não existirem duas verdades quando alguém troca meio plantão.
 
 ## Programação e painéis
 

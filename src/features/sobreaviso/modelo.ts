@@ -378,8 +378,25 @@ export function gradeDoMes(
   candidatas: PessoaCandidata[],
   linhas: LinhaSobreaviso[],
 ): GradeDoMes {
-  const dias = diasDoMes(competencia);
-  const doMes = linhas.filter((l) => l.dia.slice(0, 7) === competencia);
+  return gradeDeDias(diasDoMes(competencia), competencia, candidatas, linhas);
+}
+
+/**
+ * A MESMA projeção sobre QUALQUER lista de dias (R253): os 28-31 do mês na
+ * visão de mês, os OITO da semana de plantão na visão de semana.
+ *
+ * Uma função só, e é decisão: duas teriam de concordar sobre cobertura,
+ * veredito, censo e quem entra na grade — e a primeira mudança de regra as
+ * faria discordar em silêncio, com as duas parecendo certas.
+ */
+export function gradeDeDias(
+  dias: string[],
+  competencia: string,
+  candidatas: PessoaCandidata[],
+  linhas: LinhaSobreaviso[],
+): GradeDoMes {
+  const dentro = new Set(dias);
+  const doMes = linhas.filter((l) => dentro.has(l.dia));
   const pessoas = pessoasDaGrade(candidatas, doMes);
 
   const porChave = new Map<string, LinhaSobreaviso>();
@@ -529,4 +546,129 @@ export function segundaDaSemana(dia: string): string {
   const d = new Date(Number(dia.slice(0, 4)), Number(dia.slice(5, 7)) - 1, Number(dia.slice(8, 10)), 12);
   const dow = d.getDay();
   return somarDias(dia, dow === 0 ? -6 : 1 - dow);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A SEMANA COMO UNIDADE DE ESCALA (R253, U129)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Davi, 11/09/2026: "Quem faz os plantões são os usuários da equipe Técnica,
+// eles revezam entre si, e quem monta o calendário é o próprio Vinicius. Ele
+// pode montar da semana ou do mês […] O mecanismo de registrar quem é o
+// plantonista da semana deve ser um mecanismo otimizado."
+//
+// A unidade de DECISÃO do Vinicius é a semana ("esta é do Breno"), a de
+// LANÇAMENTO é o dia (a exceção: alguém cobriu a quarta) e a de RELATÓRIO é o
+// mês. O modelo já tinha a do dia (a célula) e a do mês (a grade); faltava a
+// do meio — e era ela que a tela pedia ao gestor que montasse à mão, botão a
+// botão. Estas funções são essa unidade: puras, e a tela só as desenha.
+
+/** Os OITO dias de uma semana de plantão, a partir da segunda (18:00 → 08:00). */
+export function diasDaSemana(segunda: string): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < DIAS_DO_PADRAO; i++) out.push(somarDias(segunda, i));
+  return out;
+}
+
+/**
+ * As semanas que COMEÇAM dentro do mês, mais a que o cobre no dia 1º.
+ *
+ * O primeiro item pode ser uma segunda do mês ANTERIOR — é ela que cobre o
+ * dia 1º quando ele cai no meio da semana, e escondê-la faria a faixa de
+ * escala começar num buraco que não existe. O último pode ser uma segunda que
+ * joga sete dos seus oito dias no mês seguinte: também fica, porque é ali que
+ * o Vinicius escala a virada.
+ */
+export function semanasDoMes(competencia: string): string[] {
+  const dias = diasDoMes(competencia);
+  if (dias.length === 0) return [];
+  const ultimo = dias[dias.length - 1];
+  const out: string[] = [];
+  for (let s = segundaDaSemana(dias[0]); s <= ultimo; s = somarDias(s, 7)) out.push(s);
+  return out;
+}
+
+/** "08/09 → 15/09" — as duas pontas, que é o que identifica a semana. */
+export function rotuloDaSemana(segunda: string): string {
+  const dd = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+  return `${dd(segunda)} → ${dd(somarDias(segunda, DIAS_DO_PADRAO - 1))}`;
+}
+
+export interface QuemNaSemana {
+  pessoa: PessoaDaGrade;
+  horas: number;
+}
+
+export interface ResumoDaSemana {
+  segunda: string;
+  /** O oitavo dia — a segunda seguinte, das 00:00 às 08:00. */
+  fim: string;
+  dias: string[];
+  /** Quem tem horas na janela, do MAIOR para o menor. */
+  quem: QuemNaSemana[];
+  /**
+   * O plantonista: quem tem mais horas na janela. Não é "quem foi escalado" —
+   * essa coluna não existe, e criá-la duplicaria a verdade que já está nas
+   * horas. Numa semana bem formada ele tem 118 e o vizinho tem 8 (a madrugada
+   * da segunda de entrada), então o maior é o certo por construção.
+   */
+  plantonista: PessoaDaGrade | null;
+  /** As horas DO PLANTONISTA na janela (118 numa semana inteira sem feriado). */
+  horas: number;
+  /** Tudo o que está lançado na janela, de todo mundo. */
+  total: number;
+  /** O que a semana padrão lançaria para UM plantonista — a régua do "cheio". */
+  esperado: number;
+  /**
+   * Dias da janela em que a soma de TODOS não chega na cobertura do dia. É o
+   * buraco de verdade: nas duas pontas ele só fecha com o vizinho lançado.
+   */
+  buracos: number;
+  /** Mais de uma pessoa com horas — dizer um nome só seria mentira. */
+  dividida: boolean;
+}
+
+/**
+ * O retrato de uma semana: quem, quanto, e se sobrou buraco.
+ *
+ * Lê as LINHAS CRUAS e não a grade do mês, de propósito: a janela tem oito
+ * dias e atravessa o mês em 12 das 52 semanas do ano (toda última segunda),
+ * então uma conta feita sobre as colunas do mês aberto perderia dias sem
+ * avisar — exatamente a cicatriz que a borracha da U86 já tinha pago.
+ */
+export function resumoDaSemana(
+  segunda: string,
+  candidatas: PessoaCandidata[],
+  linhas: LinhaSobreaviso[],
+): ResumoDaSemana {
+  const dias = diasDaSemana(segunda);
+  const dentro = new Set(dias);
+  const daJanela = linhas.filter((l) => dentro.has(l.dia));
+  const pessoas = pessoasDaGrade(candidatas, daJanela);
+  const porPessoa = new Map<string, number>();
+  for (const l of daJanela) porPessoa.set(l.pessoa_id, (porPessoa.get(l.pessoa_id) ?? 0) + l.horas);
+
+  const quem: QuemNaSemana[] = pessoas
+    .filter((p) => (porPessoa.get(p.id) ?? 0) > 0)
+    .map((p) => ({ pessoa: p, horas: porPessoa.get(p.id) as number }))
+    .sort((a, b) => b.horas - a.horas || a.pessoa.nome.localeCompare(b.pessoa.nome, "pt-BR"));
+
+  let buracos = 0;
+  for (const dia of dias) {
+    const somado = daJanela.reduce((s, l) => (l.dia === dia ? s + l.horas : s), 0);
+    if (vereditoDoDia(somado, coberturaDoDia(dia)) !== "ok") buracos += 1;
+  }
+
+  return {
+    segunda,
+    fim: dias[dias.length - 1],
+    dias,
+    quem,
+    plantonista: quem[0]?.pessoa ?? null,
+    horas: quem[0]?.horas ?? 0,
+    total: daJanela.reduce((s, l) => s + l.horas, 0),
+    esperado: totalDoPadrao(semanaPadrao(segunda)),
+    buracos,
+    dividida: quem.length > 1,
+  };
 }

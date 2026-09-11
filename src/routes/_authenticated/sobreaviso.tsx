@@ -29,7 +29,7 @@
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Eraser, FileDown, Wand2 } from "lucide-react";
+import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -39,15 +39,17 @@ import { ERRO, AVISO } from "@/lib/paleta";
 import { competencia as competenciaDe, dataIso } from "@/lib/periodos";
 import { ANO_CONFERIDO_ATE, conferido, somarDias } from "@/lib/feriados";
 import {
-  ACAO_LABEL, DIAS_DO_PADRAO, VEREDITO_LABEL,
-  deslocarCompetencia, diasDoMes, gradeDoMes, plantaoDoDia, precisaConfirmar,
-  rotuloDaCompetencia, segundaDaSemana, semanaPadrao, totalDoPadrao,
+  ACAO_LABEL, VEREDITO_LABEL,
+  deslocarCompetencia, diasDaSemana, diasDoMes, gradeDeDias, gradeDoMes,
+  plantaoDoDia, precisaConfirmar, resumoDaSemana, rotuloDaCompetencia,
+  rotuloDaSemana, segundaDaSemana, semanaPadrao, semanasDoMes,
 } from "@/features/sobreaviso/modelo";
 import {
   useAplicarPadrao, useDefinirCelula, useLimpar, usePessoasDoSobreaviso, useSobreaviso,
   type LinhaDaLimpeza, type LinhaDaPrevia,
 } from "@/features/sobreaviso/data";
 import { GradeMes } from "@/features/sobreaviso/GradeMes";
+import { EscalaDasSemanas } from "@/features/sobreaviso/EscalaDasSemanas";
 import { gerarPdfSobreaviso } from "@/features/sobreaviso/pdf";
 import { PainelDoPlantao } from "@/features/plantao/PainelDoPlantao";
 
@@ -67,6 +69,8 @@ export const Route = createFileRoute("/_authenticated/sobreaviso")({
   validateSearch: (s: Record<string, unknown>) => ({
     mes: typeof s.mes === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(s.mes) ? s.mes : undefined,
     dia: typeof s.dia === "string" && /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(s.dia) ? s.dia : undefined,
+    // R253: a visão do período. Valor fora do par cai no padrão (mês).
+    visao: s.visao === "semana" || s.visao === "mes" ? (s.visao as "semana" | "mes") : undefined,
   }),
   component: SobreavisoPage,
 });
@@ -79,9 +83,21 @@ function SobreavisoPage() {
 
   const hoje = useMemo(() => new Date(), []);
   const mes = busca.mes ?? competenciaDe(hoje);
-  const diaAberto = busca.dia && busca.dia.slice(0, 7) === mes
-    ? busca.dia
-    : (competenciaDe(hoje) === mes ? dataIso(hoje) : diasDoMes(mes)[0]);
+  // R253: o dia aberto pode ser de OUTRO mês — a semana que cobre o dia 1º
+  // começa na segunda anterior, e é ela a primeira linha da faixa de escala.
+  // O guarda continua (entrada de URL é entrada de usuário): o que vale agora
+  // é o dia pertencer a uma das semanas que TOCAM o mês.
+  const diaPedido = busca.dia ?? (competenciaDe(hoje) === mes ? dataIso(hoje) : diasDoMes(mes)[0]);
+  const diaAberto = semanasDoMes(mes).includes(segundaDaSemana(diaPedido))
+    ? diaPedido
+    : diasDoMes(mes)[0];
+
+// ── O PERÍODO: semana ou mês (R253) ───────────────────────────────────────
+  // A visão mora na URL junto do mês e do dia, pelo mesmo motivo deles: "olha a
+  // semana do Breno" é um link que se manda.
+  const visao: "semana" | "mes" = busca.visao ?? "mes";
+  /** A segunda da semana em foco — a unidade de decisão do Vinicius. */
+  const segundaFoco = segundaDaSemana(diaAberto);
 
   const pessoas = usePessoasDoSobreaviso();
   const escala = useSobreaviso(mes);
@@ -92,9 +108,51 @@ function SobreavisoPage() {
   const aplicar = useAplicarPadrao();
   const limpar = useLimpar();
 
+  /**
+   * A grade DO QUE ESTÁ NA TELA: os 31 dias do mês ou os 8 da semana. A função
+   * é a mesma (`gradeDeDias`) — o que muda é a lista de dias.
+   */
   const grade = useMemo(
+    () => gradeDeDias(
+      visao === "semana" ? diasDaSemana(segundaFoco) : diasDoMes(mes),
+      mes, pessoas.data ?? [], escala.data ?? [],
+    ),
+    [visao, segundaFoco, mes, pessoas.data, escala.data],
+  );
+
+  /**
+   * O PDF é SEMPRE do mês — é a folha que vai para o financeiro, e ela não
+   * muda de tamanho porque o gestor estava olhando uma semana. Sai da mesma
+   * função, com a lista de dias do mês.
+   */
+  const gradeDoMesCheio = useMemo(
     () => gradeDoMes(mes, pessoas.data ?? [], escala.data ?? []),
     [mes, pessoas.data, escala.data],
+  );
+
+  /** As semanas da faixa de escala: a do foco, ou todas as que tocam o mês. */
+  const semanas = useMemo(
+    () => (visao === "semana" ? [segundaFoco] : semanasDoMes(mes))
+      .map((s) => resumoDaSemana(s, pessoas.data ?? [], escala.data ?? [])),
+    [visao, segundaFoco, mes, pessoas.data, escala.data],
+  );
+
+  /**
+   * Quem o seletor da semana oferece: quem pode ser escalado HOJE. O histórico
+   * (quem saiu da empresa) continua aparecendo na grade, esmaecido, e NÃO é
+   * oferecido — escalar um ex-funcionário para a semana que vem não é um
+   * gesto que a tela deva permitir por distração.
+   */
+  const opcoesDePessoa = useMemo(
+    () => grade.linhas.filter((l) => !l.pessoa.historico)
+      // A COR É NEUTRA DE PROPÓSITO. Sem `cor`, o `botaoSelecao` pinta a escolha
+      // com o DOURADO da marca (é o que faz sentido no Status de uma atividade,
+      // onde há um botão só na tela). Aqui são cinco linhas, uma por semana: cinco
+      // pílulas douradas empilhadas roubariam a atenção do único dourado que
+      // importa nesta tela, o PDF — e a cor que precisa gritar é a do estado
+      // ("N dias sem cobertura"), não a do nome de quem está escalado.
+      .map((l) => ({ valor: l.pessoa.id, rotulo: l.pessoa.nome, cor: COR_DO_PLANTONISTA })),
+    [grade.linhas],
   );
 
   const [padrao, setPadrao] = useState<{
@@ -108,8 +166,15 @@ function SobreavisoPage() {
   const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const ano = Number(mes.slice(0, 4));
 
-  const irPara = (novoMes: string) =>
-    navegar({ search: (s: any) => ({ ...s, mes: novoMes, dia: undefined }), replace: true });
+  /** ‹ › — anda uma SEMANA ou um MÊS, conforme a visão (R253). */
+  function andar(passo: number) {
+    if (visao === "semana") {
+      const nova = somarDias(segundaFoco, 7 * passo);
+      navegar({ search: (s: any) => ({ ...s, mes: nova.slice(0, 7), dia: nova }), replace: true });
+      return;
+    }
+    navegar({ search: (s: any) => ({ ...s, mes: deslocarCompetencia(mes, passo), dia: undefined }), replace: true });
+  }
 
   // ── o gesto em massa, fase 1 ────────────────────────────────────────────
   // A PRÉVIA VEM DO BANCO, E NÃO DE UMA SEGUNDA CONTA AQUI. A RPC monta as oito
@@ -175,13 +240,10 @@ function SobreavisoPage() {
   // fora do alcance do desfazer, em outro mês, invisíveis na grade aberta.
   //
   // Agora as duas falam da MESMA semana, que é o que o `title` do botão promete.
-  function faixaDaSemana(): { de: string; ate: string } {
-    const de = segundaDaSemana(diaAberto);
-    return { de, ate: somarDias(de, DIAS_DO_PADRAO - 1) };
-  }
-
-  async function abrirLimpeza(pessoaId: string) {
-    const { de, ate } = faixaDaSemana();
+  async function abrirLimpeza(pessoaId: string, segunda: string) {
+    const dias = diasDaSemana(segunda);
+    const de = dias[0];
+    const ate = dias[dias.length - 1];
     try {
       const linhas = await limpar.mutateAsync({ pessoa_id: pessoaId, de, ate, confirmar: false });
       if (linhas.length === 0) {
@@ -245,38 +307,69 @@ function SobreavisoPage() {
 
   return (
     <div className="sangra-x" style={{ padding: "18px 0 40px", display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* ── barra do mês ───────────────────────────────────────────────── */}
+      {/* ── a barra do período (R253) ──────────────────────────────────────
+          Título, navegação, as DUAS visões e o PDF. Nada mais: a escala tem
+          faixa própria logo abaixo, e filtro esta tela não tem — quem aparece
+          na grade é quem pode ser escalado, e isso não é escolha de quem olha. */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <CalendarDays size={18} color={isLight ? "#A06108" : "#F8C811"} />
-        <h1 style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: textPrimary, margin: 0 }}>
+        <h1 style={{
+          fontFamily: FONT, fontSize: 22, fontWeight: 700, color: textPrimary,
+          margin: 0, letterSpacing: "-0.01em",
+        }}>
           Sobreaviso
         </h1>
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: 6 }}>
           <button
-            type="button" aria-label="mês anterior"
-            onClick={() => irPara(deslocarCompetencia(mes, -1))}
+            type="button" aria-label={visao === "semana" ? "semana anterior" : "mês anterior"}
+            onClick={() => andar(-1)}
             style={botaoIcone(isLight)}
           >
             <ChevronLeft size={16} />
           </button>
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: textPrimary, minWidth: 140, textAlign: "center" }}>
-            {rotuloDaCompetencia(mes)}
+          <span style={{
+            fontFamily: FONT, fontSize: 13, fontWeight: 700, color: textPrimary,
+            minWidth: 150, textAlign: "center", fontVariantNumeric: "tabular-nums",
+          }}>
+            {visao === "semana" ? rotuloDaSemana(segundaFoco) : rotuloDaCompetencia(mes)}
           </span>
           <button
-            type="button" aria-label="próximo mês"
-            onClick={() => irPara(deslocarCompetencia(mes, 1))}
+            type="button" aria-label={visao === "semana" ? "próxima semana" : "próximo mês"}
+            onClick={() => andar(1)}
             style={botaoIcone(isLight)}
           >
             <ChevronRight size={16} />
           </button>
         </div>
+
+        {/* R253 (Davi: "ele pode montar da semana ou do mês, por isso deve ter
+            um botão que alterna o período"). Dois botões e não um menu: são
+            dois valores, e a escolhida fica visível sem abrir nada — o mesmo
+            par do Calendário (R133). */}
+        <div style={{ display: "flex", gap: 4 }}>
+          <button
+            type="button" aria-pressed={visao === "semana"}
+            onClick={() => navegar({ search: (s: any) => ({ ...s, visao: "semana", dia: diaAberto }), replace: true })}
+            style={botaoVisao(visao === "semana", isLight, textPrimary)}
+          >
+            <CalendarRange size={13} /> Semana
+          </button>
+          <button
+            type="button" aria-pressed={visao === "mes"}
+            onClick={() => navegar({ search: (s: any) => ({ ...s, visao: "mes" }), replace: true })}
+            style={botaoVisao(visao === "mes", isLight, textPrimary)}
+          >
+            <LayoutGrid size={13} /> Mês
+          </button>
+        </div>
+
         <span style={{ flex: 1 }} />
         <button
           type="button"
-          onClick={() => gerarPdfSobreaviso(grade).catch(() => toast.error("Não foi possível gerar o PDF."))}
+          title="A folha do MÊS inteiro, em paisagem — é o que vai para o financeiro"
+          onClick={() => gerarPdfSobreaviso(gradeDoMesCheio).catch(() => toast.error("Não foi possível gerar o PDF."))}
           style={{ ...goldButton(), height: 34, padding: "0 14px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
         >
-          <FileDown size={14} /> PDF (paisagem)
+          <FileDown size={14} /> PDF do mês
         </button>
       </div>
 
@@ -296,9 +389,9 @@ function SobreavisoPage() {
         </div>
       ) : null}
 
-      {/* ── resumo do mês ──────────────────────────────────────────────── */}
+      {/* ── o resumo do período ───────────────────────────────────────── */}
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
-        <Selo rotulo="total do mês" valor={`${grade.total} h`} isLight={isLight} />
+        <Selo rotulo={visao === "semana" ? "total da semana" : "total do mês"} valor={`${grade.total} h`} isLight={isLight} />
         <Selo rotulo="dias cobertos" valor={`${grade.censo.ok}/${grade.colunas.length}`} isLight={isLight} />
         {grade.censo.curto + grade.censo.vazio > 0 ? (
           <Selo
@@ -307,9 +400,6 @@ function SobreavisoPage() {
             cor={isLight ? ERRO.light : ERRO.dark}
             isLight={isLight}
           />
-        ) : null}
-        {grade.censo.sobra > 0 ? (
-          <Selo rotulo="dias com mais de um" valor={String(grade.censo.sobra)} isLight={isLight} />
         ) : null}
       </div>
 
@@ -329,7 +419,26 @@ function SobreavisoPage() {
         </Aviso>
       ) : null}
 
-      {/* ── DESKTOP: a matriz ──────────────────────────────────────────── */}
+      {/* ── A ESCALA: uma linha por semana, um seletor por linha (R253) ──
+          Vem ANTES da grade porque é a decisão; a grade é a conferência. */}
+      <EscalaDasSemanas
+        semanas={semanas}
+        opcoes={opcoesDePessoa}
+        isLight={isLight}
+        ativa={segundaFoco}
+        aoFocarSemana={(s) => navegar({
+          search: (q: any) => ({ ...q, mes: s.slice(0, 7), dia: s }),
+          replace: true,
+        })}
+        aoEscalar={podeEditar ? (s, pessoaId) => abrirPadrao(pessoaId, s) : undefined}
+        aoLimpar={podeEditar ? (s, pessoaId) => abrirLimpeza(pessoaId, s) : undefined}
+        ocupado={aplicar.isPending || limpar.isPending}
+      />
+
+      {/* ── DESKTOP: a matriz do período aberto ────────────────────────────
+          A MESMA `gradeDeDias` desenha os 31 dias do mês e os 8 da semana — o
+          que muda é a lista de dias que entra. Duas funções teriam de
+          concordar sobre cobertura, veredito e censo. */}
       <div className="so-desktop" style={{ flexDirection: "column", gap: 12 }}>
         <GradeMes
           grade={grade}
@@ -347,42 +456,6 @@ function SobreavisoPage() {
                 definir.mutateAsync({ dia, pessoa_id: pessoaId, horas })
             : undefined}
         />
-
-        {podeEditar ? (
-          <div style={{ ...card(isLight), padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-            <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: textPrimary }}>
-              Semana padrão — segunda 18:00 à segunda 08:00 ({totalDoPadrao(semanaPadrao(segundaDaSemana(diaAberto)))} h
-              na semana de {segundaDaSemana(diaAberto).split("-").reverse().join("/")})
-            </span>
-            <span style={{ fontFamily: FONT, fontSize: 11, color: textSecondary }}>
-              A semana começa na segunda da coluna aberta ({diaAberto.split("-").reverse().join("/")}).
-              Ela tem OITO dias e pode atravessar o mês — o que estiver do outro lado também é gravado.
-            </span>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {grade.linhas.filter((l) => !l.pessoa.historico).map((l) => (
-                <div key={l.pessoa.id} style={{ display: "flex", gap: 4 }}>
-                  <button
-                    type="button"
-                    disabled={aplicar.isPending}
-                    onClick={() => abrirPadrao(l.pessoa.id, segundaDaSemana(diaAberto))}
-                    style={botaoPequeno(isLight)}
-                  >
-                    <Wand2 size={12} /> {l.pessoa.nome}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={limpar.isPending}
-                    title={`apagar o que a semana padrão lançou para ${l.pessoa.nome} nos MESMOS oito dias que o botão ao lado grava (semana de ${segundaDaSemana(diaAberto).split("-").reverse().join("/")})`}
-                    onClick={() => abrirLimpeza(l.pessoa.id)}
-                    style={{ ...botaoPequeno(isLight), padding: "0 8px" }}
-                  >
-                    <Eraser size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </div>
 
       {/* ── O QUE ACONTECEU: o painel do plantão (R122, U91) ───────────────
@@ -622,6 +695,15 @@ function Modal({ children, isLight, aoFechar }: { children: React.ReactNode; isL
   );
 }
 
+/**
+ * O véu neutro do seletor de plantonista (R253). Cinza puro, como toda
+ * superfície desde a R186 — e com par claro/escuro, que é o anti-padrão nº 9.
+ */
+const COR_DO_PLANTONISTA = {
+  dark: "#d4d4d4", light: "#3f3f3f",
+  bg: "rgba(150,150,150,0.12)", border: "rgba(150,150,150,0.30)",
+};
+
 function botaoIcone(isLight: boolean): React.CSSProperties {
   return {
     height: 30, width: 30, borderRadius: 8, cursor: "pointer",
@@ -629,6 +711,22 @@ function botaoIcone(isLight: boolean): React.CSSProperties {
     background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
     color: isLight ? "#141414" : "rgba(255,255,255,0.92)",
+  };
+}
+
+/**
+ * R253: o par Semana | Mês. É o MESMO botão do Calendário (R133) — a escolhida
+ * em dourado sólido, a outra com borda. Dois valores num par de botões, nunca
+ * num menu: a escolha fica visível sem abrir nada.
+ */
+function botaoVisao(ativa: boolean, isLight: boolean, textPrimary: string): React.CSSProperties {
+  return {
+    display: "inline-flex", alignItems: "center", gap: 5,
+    height: 30, padding: "0 11px", borderRadius: 15, cursor: "pointer",
+    border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+    background: ativa ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)" : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+    color: ativa ? "#0E0E0E" : textPrimary,
+    fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
   };
 }
 

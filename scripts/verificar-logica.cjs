@@ -13254,7 +13254,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const iErro = tela.indexOf('if (escala.isError || pessoas.isError)');
   const iCarga = tela.indexOf('if (escala.isLoading || pessoas.isLoading)');
-  const iPdf = tela.indexOf('gerarPdfSobreaviso(grade)');
+  // R253 (U129): a tela passou a ter duas grades — a do PERÍODO aberto
+  // (semana ou mês) e a do mês inteiro, que é a que vira PDF. O pino segue
+  // a chamada, que é o que ele sempre quis provar: o botão vem DEPOIS dos
+  // dois returns de erro e de carregamento.
+  const iPdf = tela.indexOf('gerarPdfSobreaviso(gradeDoMesCheio)');
   eq('CRÍTICO (regra 5 como propriedade do CÓDIGO): a tela tem estado de ERRO e de CARREGAMENTO, os dois ANTES do botão de PDF — e na ordem invertida de deploy ela se auto-diagnostica pelo PGRST205 em vez de depender de alguém lembrar do cabeçalho da migration. O botão de PDF não é `disabled`: ele NÃO EXISTE nesses dois estados',
      [iErro > 0, iCarga > 0, iPdf > 0, iErro < iPdf, iCarga < iPdf, /PGRST205/.test(tela),
       /isto NÃO é um mês vazio/i.test(tela)],
@@ -13316,9 +13320,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         FEb.somarDias(seg, S3.DIAS_DO_PADRAO - 1)],
        ['2026-10-26', 8, 6, '2026-11-02']);
     eq('CRÍTICO: e a tela usa essa faixa — `abrirLimpeza` e `confirmarLimpeza` saem de `segundaDaSemana(diaAberto)` + DIAS_DO_PADRAO, e NENHUMA das duas chama `diasDoMes` para montar a faixa de apagar',
-       [/const de = segundaDaSemana\(diaAberto\)/.test(tela),
-        /somarDias\(de, DIAS_DO_PADRAO - 1\)/.test(tela),
-        /de: dias\[0\], ate: dias\[dias\.length - 1\]/.test(tela)],
+       // R253 (U129): a semana não é mais deduzida do dia aberto — ela CHEGA
+       // como parâmetro, vinda da linha da faixa de escala em que se clicou.
+       // O que o pino protege continua o mesmo: a borracha apaga os OITO dias
+       // da semana (diasDaSemana), nunca os dias do mês (diasDoMes).
+       [/async function abrirLimpeza\(pessoaId: string, segunda: string\)/.test(tela),
+        /const dias = diasDaSemana\(segunda\);[\s\S]{0,120}const ate = dias\[dias\.length - 1\];/.test(tela),
+        /abrirLimpeza[\s\S]{0,400}diasDoMes/.test(tela)],
        [true, true, false]);
   }
 
@@ -20434,5 +20442,112 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   }
 }
 
+
+// ── U129 — o Sobreaviso montado por SEMANA (R253) ──────────────────────────
+{
+  const fs129 = require('fs');
+  const ler129 = (f) => fs129.readFileSync(f, 'utf8');
+  const cod129 = (s) => s.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l) ? '' : l)).join('\n');
+  const SB = carregar('src/features/sobreaviso/modelo.ts');
+
+  // A REGRA DAS HORAS, DITA PELO DAVI EM 11/09/2026 E CONFERIDA AQUI:
+  // segunda 18:00 → segunda 08:00; 24 h em fim de semana e feriado; 14 h em
+  // dia útil; 6 h na PRIMEIRA segunda e 8 h na ÚLTIMA. 118 h na semana limpa.
+  eq('R253 CRÍTICO: a semana de plantão tem OITO dias e a conta do Davi — 6 na segunda de entrada, 14 nos dias úteis, 24 no sábado e no domingo, 8 na segunda de saída = 118 h',
+     (() => {
+       // 07/09/2026 é uma segunda — e 07/09 é feriado (Independência), então
+       // a semana que EXERCITA a regra limpa é a de 14/09.
+       const c = SB.semanaPadrao('2026-09-14');
+       return [c.length, c.map((x) => x.horas), SB.totalDoPadrao(c),
+               SB.diasDaSemana('2026-09-14'), c[0].absorve, c[7].absorve];
+     })(),
+     [8, [6, 14, 14, 14, 14, 24, 24, 8], 118,
+      ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20', '2026-09-21'],
+      8, 6]);
+  eq('R253: o feriado no meio da semana vale 24 h como um domingo — a semana passa de 118, e isso é o certo (o número é consequência do calendário, não meta)',
+     SB.totalDoPadrao(SB.semanaPadrao('2026-09-07')), 128);
+
+  eq('R253 CRÍTICO: as semanas do mês são as que o TOCAM — a primeira pode começar no mês anterior (é ela que cobre o dia 1º) e todas começam numa segunda',
+     (() => {
+       const s = SB.semanasDoMes('2026-09');   // 01/09/2026 é uma terça
+       return [s, s.every((d) => new Date(d + 'T12:00:00').getDay() === 1), SB.rotuloDaSemana(s[0])];
+     })(),
+     [['2026-08-31', '2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28'], true, '31/08 → 07/09']);
+
+  eq('R253 CRÍTICO: o plantonista da semana é QUEM TEM MAIS HORAS na janela (não uma coluna "escalado", que seria uma segunda verdade) — na virada o vizinho aparece com as 8 h da madrugada e não rouba a semana; a divisão é dita, e o buraco também',
+     (() => {
+       const pessoas = [
+         { id: 'a', nome: 'Breno', ativo: true, status: 'ativo', cargo: 'tecnico' },
+         { id: 'b', nome: 'Gilleno', ativo: true, status: 'ativo', cargo: 'tecnico' },
+       ];
+       const lancar = (quem, segunda) => SB.semanaPadrao(segunda)
+         .map((c) => ({ dia: c.dia, pessoa_id: quem, horas: c.horas, origem: 'padrao' }));
+       // duas semanas seguidas, cada uma de um: na segunda do meio convivem
+       // as 8 h de quem sai e as 6 h de quem entra
+       const linhas = [...lancar('a', '2026-09-14'), ...lancar('b', '2026-09-21')];
+       const cheia = SB.resumoDaSemana('2026-09-14', pessoas, linhas);
+       const vazia = SB.resumoDaSemana('2026-10-05', pessoas, []);
+       return [cheia.plantonista.nome, cheia.horas, cheia.esperado, cheia.buracos, cheia.dividida,
+               cheia.quem.map((q) => `${q.pessoa.nome}:${q.horas}`),
+               vazia.plantonista, vazia.horas, vazia.buracos];
+     })(),
+     // UM buraco, e ele é a regra funcionando: a segunda de ENTRADA (14/09)
+     // recebe 6 h deste plantonista e precisa das 8 h de quem SAI — e a semana
+     // anterior não foi lançada neste caso. A tela diz "1 dia sem cobertura"
+     // exatamente aí, que é onde a escala de verdade costuma furar.
+     ['Breno', 118, 118, 1, true, ['Breno:118', 'Gilleno:6'], null, 0, 8]);
+
+  eq('R253 CRÍTICO: a MESMA função projeta o mês e a semana (gradeDeDias) — cobertura, veredito, censo e quem entra na grade não têm como discordar entre as duas visões',
+     (() => {
+       const pessoas = [{ id: 'a', nome: 'Breno', ativo: true, status: 'ativo', cargo: 'tecnico' }];
+       const linhas = SB.semanaPadrao('2026-09-14')
+         .map((c) => ({ dia: c.dia, pessoa_id: 'a', horas: c.horas, origem: 'padrao' }));
+       const semana = SB.gradeDeDias(SB.diasDaSemana('2026-09-14'), '2026-09', pessoas, linhas);
+       const mes = SB.gradeDoMes('2026-09', pessoas, linhas);
+       const diaNaSemana = semana.colunas.find((c) => c.dia === '2026-09-16');
+       const diaNoMes = mes.colunas.find((c) => c.dia === '2026-09-16');
+       return [semana.colunas.length, mes.colunas.length,
+               diaNaSemana.somado === diaNoMes.somado, diaNaSemana.veredito === diaNoMes.veredito,
+               // o oitavo dia da semana (21/09) está no mês também; o total da
+               // semana é o das 8 colunas, o do mês é o das 30
+               semana.total, mes.total];
+     })(),
+     [8, 30, true, true, 118, 118]);
+
+  {
+    const tela = ler129('src/routes/_authenticated/sobreaviso.tsx');
+    const faixa = ler129('src/features/sobreaviso/EscalaDasSemanas.tsx');
+    eq('R253 CRÍTICO: a faixa de escala é UMA linha por semana com UM seletor — a fileira de dois botões por pessoa (varinha + borracha) saiu, e escolher um nome aplica a semana padrão daquela segunda',
+       [/<EscalaDasSemanas/.test(tela),
+        /aoEscalar=\{podeEditar \? \(s, pessoaId\) => abrirPadrao\(pessoaId, s\) : undefined\}/.test(tela),
+        /aoLimpar=\{podeEditar \? \(s, pessoaId\) => abrirLimpeza\(pessoaId, s\) : undefined\}/.test(tela),
+        /<SeletorDeOpcao/.test(faixa),
+        /vazio="Escalar…"/.test(faixa),
+        /Wand2|Eraser/.test(tela),
+        /semana padrão — segunda 18:00/i.test(tela)],
+       [true, true, true, true, true, false, false]);
+    eq('R253 CRÍTICO: o par Semana | Mês alterna o PERÍODO (na URL, como o mês e o dia), a grade segue o período aberto e o PDF continua sendo o do MÊS inteiro',
+       [/visao: s\.visao === "semana" \|\| s\.visao === "mes"/.test(tela),
+        /visao === "semana" \? diasDaSemana\(segundaFoco\) : diasDoMes\(mes\)/.test(cod129(tela)),
+        /gerarPdfSobreaviso\(gradeDoMesCheio\)/.test(tela),
+        /gradeDoMes\(mes, pessoas\.data \?\? \[\], escala\.data \?\? \[\]\)/.test(tela),
+        /aria-pressed=\{visao === "semana"\}/.test(tela),
+        /aria-pressed=\{visao === "mes"\}/.test(tela),
+        // ‹ › anda uma semana OU um mês, conforme a visão
+        /if \(visao === "semana"\) \{\s*\n\s*const nova = somarDias\(segundaFoco, 7 \* passo\);/.test(tela)],
+       [true, true, true, true, true, true, true]);
+    eq('R253: o seletor do plantonista é um chip NEUTRO — o dourado desta tela é do PDF, e a cor que grita é a do estado da semana',
+       [/cor: COR_DO_PLANTONISTA/.test(tela), /const COR_DO_PLANTONISTA = \{/.test(tela),
+        /dias sem cobertura/.test(faixa), /coberta/.test(faixa),
+        /dividida com/.test(faixa)],
+       [true, true, true, true, true]);
+    eq('R253 (regra 7): a regra existe com as frases do Davi e o manual de campo conta a escala por semana',
+       [/- \*\*R253\*\* —/.test(ler129('docs/PRODUTO.md')),
+        /na primeira segunda \(Inicio do plantão\) que faz 6h/.test(ler129('docs/PRODUTO.md').replace(/\s+/g, ' ')),
+        /um botão que alterna o periodo/.test(ler129('docs/PRODUTO.md').replace(/\s+/g, ' ')),
+        /a escala por semana/i.test(ler129('docs/manual/operacao-campo.md'))],
+       [true, true, true, true]);
+  }
+}
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

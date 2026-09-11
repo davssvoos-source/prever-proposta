@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R252 (23)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R253 (24)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-11 (R252). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-11 (R253). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4632,3 +4632,40 @@ adaptado."
   porta nenhuma. Card que se move sem regra é promessa falsa. *(Davi,
   10/09/2026: "Crie o modo de visualização Kanban e lista no painel Comercial
   de acordo com o status da visita técnica e proposta comercial.")*
+
+- **R253** — **O Sobreaviso é montado por SEMANA, e a tela alterna semana × mês.**
+  A tela é do **líder da técnica** (hoje o Vinicius): é ele quem monta a escala
+  e quem responde pelas horas que vão para o financeiro.
+  1. **A regra das horas, dita por extenso** (já era o que o sistema
+     calculava desde a R116, agora está escrita): o plantão vai de **segunda
+     18:00 a segunda 08:00**. Fim de semana e feriado valem **24 h**; dia útil
+     vale **14 h** (8 da madrugada + 6 da noite); a **primeira segunda** vale
+     **6 h** e a **última**, **8 h**. Uma semana sem feriado dá **118 h**.
+  2. **A escala tem faixa própria**: uma **linha por semana**, e em cada linha
+     um **seletor com o nome do plantonista**. Escolher o nome LANÇA a semana
+     inteira (os oito dias, com as pontas certas); escolher "ninguém" apaga o
+     que aquela semana lançou. A linha diz também as horas e se a semana ficou
+     **coberta** ou com **N dias sem cobertura** — e, quando duas pessoas
+     dividiram a semana, diz com quem. O plantonista não é uma coluna nova no
+     banco: é **quem tem mais horas na janela**, porque uma coluna "escalado"
+     seria uma segunda verdade que discordaria das horas no primeiro remanejo.
+  3. **Semana × Mês**: um par de botões alterna o período, como no Calendário
+     (R133). Na semana a grade tem **oito colunas** (a unidade de lançamento);
+     no mês, os 28-31 dias (a unidade de conferência). O **PDF é sempre do
+     mês** — é a folha do financeiro, e ela não encolhe porque o gestor estava
+     olhando uma semana.
+  4. **Saiu da tela**: a fileira de dois botões por pessoa (aplicar e apagar a
+     semana padrão), que com oito técnicos punha dezesseis botões no ar para
+     exprimir uma escolha; o rótulo comprido que explicava a semana padrão; e
+     o selo "dias com mais de um". Filtro esta tela não tem: quem aparece na
+     grade é quem pode ser escalado, e isso não é escolha de quem olha.
+  *(Davi, 11/09/2026: "Ele é responsável por registrar quantas horas de
+  sobreaviso cada um fez por dia […] o plantonista começa o turno de plantão
+  semanal na segunda as 18h […] cumpre as 24H de Sobreaviso em finais de
+  semanas e feriados, e em dias úteis completa 14h, exceto na segunda que na
+  primeira segunda (Inicio do plantão) que faz 6h de sobreaviso e na última
+  segunda (término do plantão semanal), onde faz 8h […] Ele pode montar da
+  semana ou do mês, por isso deve ter um botão que alterna o periodo […] O
+  mecanismo de registrar quem é o plantonista da semana deve ser um mecanismo
+  otimizado, eficiente, com boa experiencia do usuario, facilidade para
+  leitura e lançamento.")*
