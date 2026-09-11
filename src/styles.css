@@ -1441,3 +1441,30 @@ main:has(.pagina-larga), main:has(.pagina-trabalho) { max-width: none; }
    opacidade do dia é escrita inline (ela some quando a caixa de digitar sobe
    por cima), e inline vence classe. */
 .dia-removivel:hover { filter: opacity(0.25); }
+
+/* R256 (Davi, 11/09/2026): "Remova os ícones de seta para cima e para baixo do
+   calendário de Sobreaviso. O ícone deve aparecer somente quando o usuário
+   clica em um determinado dia, e aí aparece para aquele dia."
+
+   As setinhas são as do `<input type="number">` nativo. Escondidas com
+   `appearance: none` — e não com `opacity: 0` — porque `opacity` as deixa
+   ocupando espaço, e aí o número fica descentralizado em TODAS as células para
+   pagar por uma flecha invisível. No foco elas voltam: o campo em edição é o
+   único lugar onde somar de um em um faz sentido.
+
+   Com a ferramenta de remover dia ligada não existe caixa nenhuma na grade
+   (GradeMes decide isso), então não há setinha para esconder. */
+   MEDIDO NO NAVEGADOR, e a medição derrubou a primeira tentativa: com
+   `-webkit-appearance: none` na setinha ela some e NÃO VOLTA no foco — nem
+   com `inner-spin-button` de volta, nem com `appearance: auto` no campo. A
+   única alavanca que o `:focus` alcança é a OPACIDADE.
+
+   O preço da opacidade é que a seta continua RESERVANDO a largura dela mesmo
+   invisível, e o número ficava 8px à esquerda do centro em toda célula
+   editável. O `padding-left` devolve o número ao centro — e, de quebra, ele
+   não PULA quando a seta aparece, porque o espaço já estava lá. */
+.celula-horas { padding-left: 13px; }
+.celula-horas::-webkit-outer-spin-button,
+.celula-horas::-webkit-inner-spin-button { opacity: 0; }
+.celula-horas:focus::-webkit-outer-spin-button,
+.celula-horas:focus::-webkit-inner-spin-button { opacity: 1; }

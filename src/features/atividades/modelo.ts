@@ -18,7 +18,7 @@
 // tela e não entram aqui — senão o módulo limpo começa a carregar estado de UI.
 
 import {
-  chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo, sprintDoPrazo,
+  chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, prazoEmNumero, sprintDoPrazo,
   TIPO_LABEL, TIPO_CORES, PRIORIDADE_LABEL, PRIORIDADE_CORES, STATUS_ORDEM,
   IMPACTO_LABEL, IMPACTO_CORES, IMPACTO_RANK,
   type ChamadoStatus, type ChamadoPrioridade, type ChamadoTipo, type Natureza,
@@ -574,7 +574,10 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     // R141 (U96): o sprint SAI DO PRAZO, sempre — a coluna morreu.
     sprint: interno ? sprintDoPrazo(c.prazo_limite) : null,
     prazoLimite: agendada ? null : c.prazo_limite,
-    prazoTexto: !agendada && c.prazo_limite && chamadoEmAberto(c.status) ? textoPrazo(c.prazo_limite) : null,
+    // R257: só o número ("2d", "9h"). No card o SENTIDO vem da cor — borda
+    // vermelha em atraso —, e a palavra repetia em cada card o que a cor já
+    // dizia. Fora do card o texto com palavra continua, em `textoPrazo`.
+    prazoTexto: !agendada && c.prazo_limite && chamadoEmAberto(c.status) ? prazoEmNumero(c.prazo_limite) : null,
     prazoEstourado: !agendada && situacaoPrazo(c.prazo_limite, c.status) === "estourado",
     agendadaEm: c.data_hora_agendada ?? fimDoDiaAgendado(c.data_agendada),
     agendada,

@@ -20776,5 +20776,55 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true, true, false]);
 }
 
+
+// ── R256/R257 — as setinhas do campo de horas e o prazo do card ────────────
+{
+  const fs256 = require('fs');
+  const ler256 = (f) => fs256.readFileSync(f, 'utf8');
+  const css256 = ler256('src/styles.css');
+  const cel256 = ler256('src/features/sobreaviso/CelulaHoras.tsx');
+  const gra256 = ler256('src/features/sobreaviso/GradeMes.tsx');
+  const CS256 = carregar('src/lib/chamado-status.ts');
+  const MOD256 = carregar('src/features/atividades/modelo.ts');
+
+  eq('R256 CRÍTICO: a setinha do campo de horas é escondida por OPACIDADE e volta no `:focus` — MEDIDO no navegador: com `appearance: none` ela some e não volta nem no foco. O `padding-left` compensa a largura que ela reserva mesmo invisível, para o número ficar centrado e não pular quando ela aparece',
+     [/\.celula-horas::-webkit-outer-spin-button,\s*\n\.celula-horas::-webkit-inner-spin-button \{ opacity: 0; \}/.test(css256),
+      /\.celula-horas:focus::-webkit-outer-spin-button,\s*\n\.celula-horas:focus::-webkit-inner-spin-button \{ opacity: 1; \}/.test(css256),
+      /\.celula-horas \{ padding-left: 13px; \}/.test(css256),
+      /-webkit-appearance: none/.test(css256.slice(css256.indexOf('.celula-horas'))),
+      /className="celula-horas"/.test(cel256)],
+     [true, true, true, false, true]);
+
+  eq('R256 CRÍTICO: com a ferramenta de REMOVER DIA ligada não há caixa de digitar em lugar nenhum da grade — o clique ali apaga, e uma setinha de somar ao lado de um clique que deleta seria a tela oferecendo duas coisas opostas no mesmo pixel',
+     [/const mostraCaixa = editavel && !removendoDia/.test(gra256),
+      /removendoDia \? "crosshair"/.test(gra256)],
+     [true, true]);
+
+  eq('R257 CRÍTICO: o card mostra só o número ("2d", "9h"); a palavra continua onde o número aparece SOLTO, sem a borda colorida ao lado para dizer o sentido. As duas saem da MESMA conta',
+     (() => {
+       const base = new Date('2026-09-11T12:00:00Z');
+       const daqui2d = new Date('2026-09-13T12:00:00Z').toISOString();
+       const ha9d = new Date('2026-09-02T12:00:00Z').toISOString();
+       const daqui3h = new Date('2026-09-11T15:00:00Z').toISOString();
+       return [CS256.prazoEmNumero(daqui2d, base), CS256.prazoEmNumero(ha9d, base),
+               CS256.prazoEmNumero(daqui3h, base), CS256.prazoEmNumero(null, base),
+               CS256.textoPrazo(daqui2d, base), CS256.textoPrazo(ha9d, base),
+               CS256.textoPrazo(null, base)];
+     })(),
+     ['2d', '9d', '3h', null, 'faltam 2d', '9d em atraso', 'sem prazo']);
+
+  eq('R257 CRÍTICO: é o CARD que perde a palavra — `prazoTexto` da atividade sai de `prazoEmNumero`, e as outras quatro telas continuam chamando `textoPrazo`',
+     [/prazoEmNumero\(c\.prazo_limite\)/.test(ler256('src/features/atividades/modelo.ts')),
+      // sem as linhas de comentário: o arquivo CITA `textoPrazo` na prosa que
+      // explica por que ele não é mais chamado ali
+      /textoPrazo\(/.test(ler256('src/features/atividades/modelo.ts')
+        .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')),
+      /textoPrazo\(os\.prazo_limite\)/.test(ler256('src/features/chamados/DetalheCampo.tsx')),
+      /textoPrazo\(chamado\.prazo_limite\)/.test(ler256('src/features/chamados/DetalheInterno.tsx')),
+      /textoPrazo\(c\.prazo_limite\)/.test(ler256('src/features/programacao/FaixaSemHorario.tsx')),
+      /textoPrazo\(c\.prazo_limite, agora\)/.test(ler256('src/routes/_authenticated/painel.operacional.tsx'))],
+     [true, false, true, true, true, true]);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R255 (26)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R257 (28)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-11 (R255). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-11 (R257). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -4776,3 +4776,30 @@ adaptado."
   *(Davi, 11/09/2026: "Na tela de configuração da atividade, o botão de
   adicionar APOIO está indisponível para alguns usuários quando não tem nada
   registrado no apoio ainda.")*
+
+- **R256** — **As setinhas do campo de horas só existem no dia em que se
+  clicou.** No calendário do Sobreaviso cada célula é um campo numérico, e o
+  navegador desenha as setas de somar e subtrair **em toda célula por onde o
+  cursor passa** — trinta pares de flechas piscando enquanto se lê a escala.
+  Agora elas ficam invisíveis o tempo todo e aparecem **só no campo que está
+  com o cursor de texto**, que é o único lugar onde somar de um em um faz
+  sentido. E com a ferramenta **"Remover dia"** ligada não há campo nenhum na
+  grade: ali o clique apaga, e uma seta de somar ao lado de um clique que
+  deleta seria a tela oferecendo duas coisas opostas no mesmo pixel. *(Davi,
+  11/09/2026: "Remova os ícones de seta para cima e para baixo do calendário de
+  Sobreaviso. O ícone deve aparecer somente quando o usuário clica em um
+  determinado dia, e aí aparece para aquele dia. Caso esteja com a ferramenta
+  de remover dia ativada, então não deve aparecer o ícone das setas pois irá
+  deletar direto.")*
+
+- **R257** — **No card da Início, o prazo é o ícone e o número.** Sai a palavra
+  ("faltam 2d" e "9d em atraso" viram **2d** e **9d**); fica o ícone de
+  calendário e o tempo. Quem diz o SENTIDO no card é a **cor** — a borda é
+  vermelha em atraso desde a R136, e o texto acompanha —, e a palavra repetia
+  em cada um dos trinta cards o que a cor já dizia em todos. **Fora do card a
+  palavra continua**: na ficha da atividade, na faixa sem horário e no painel
+  Operacional o número aparece solto, sem borda colorida ao lado, e ali "9d"
+  sozinho não distingue quem vence de quem venceu. *(Davi, 11/09/2026: "Na
+  página INICIO, nos cards das atividades, remova a palavra 'faltam' e 'em
+  atraso' […] Quero somente o icone de calendario e o tempo em horas, sem texto
+  além disso.")*

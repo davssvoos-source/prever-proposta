@@ -109,6 +109,13 @@ export function CelulaHoras({ horas, ariaLabel, title, estilo, aoDefinir }: Prop
   return (
     <input
       type="number"
+      // R256: a classe existe para UMA coisa — esconder as setinhas do campo
+      // numérico até que este dia seja o escolhido. Setinha em toda célula é
+      // trinta pares de flechas numa grade de mês, e nenhuma delas diz nada
+      // até alguém decidir mexer naquele dia. O CSS está em styles.css, junto
+      // do resto da régua; aqui não entra import nenhum (este arquivo é
+      // transpilado e EXECUTADO pelo verificador, que só tolera react).
+      className="celula-horas"
       min={0}
       max={HORAS_MAX}
       step={1}

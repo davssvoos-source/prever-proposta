@@ -561,14 +561,39 @@ export const PRAZO_LABEL: Record<SituacaoPrazo, string> = {
   encerrado: "",
 };
 
-/** Texto curto de quanto falta (ou passou) do prazo. */
-export function textoPrazo(prazoLimite: string | null | undefined, agora: Date = new Date()): string {
-  if (!prazoLimite) return "sem prazo";
-  const ms = new Date(prazoLimite).getTime() - agora.getTime();
-  const abs = Math.abs(ms);
+/**
+ * SÓ O NÚMERO: quanto falta (ou passou) do prazo, numa unidade — "2d", "9h".
+ *
+ * R257 (Davi, 11/09/2026): "nos cards das atividades, remova a palavra
+ * 'faltam' e 'em atraso' […] Quero somente o ícone de calendário e o tempo em
+ * horas, sem texto além disso." No card quem diz o SENTIDO é a cor: a borda
+ * fica vermelha em atraso (R136) e o texto acompanha. A palavra repetia, em
+ * trinta cards, o que a cor já dizia em cada um.
+ *
+ * Devolve `null` sem prazo — quem tem prazo é que tem o que mostrar. É a
+ * MESMA conta de `textoPrazo`, que agora a chama: duas contas para o mesmo
+ * número acabariam discordando no arredondamento.
+ */
+export function prazoEmNumero(prazoLimite: string | null | undefined, agora: Date = new Date()): string | null {
+  if (!prazoLimite) return null;
+  const abs = Math.abs(new Date(prazoLimite).getTime() - agora.getTime());
   const horas = Math.floor(abs / 3_600_000);
   const dias = Math.floor(horas / 24);
-  const parte = dias >= 1 ? `${dias}d` : `${Math.max(1, horas)}h`;
+  return dias >= 1 ? `${dias}d` : `${Math.max(1, horas)}h`;
+}
+
+/**
+ * Texto curto de quanto falta (ou passou) do prazo, COM a palavra.
+ *
+ * Continua sendo o certo fora do card: na ficha da atividade, na faixa sem
+ * horário e no painel Operacional o número aparece solto, sem borda colorida
+ * ao lado dizendo o sentido — ali "9d" sozinho não distingue quem vence de
+ * quem venceu.
+ */
+export function textoPrazo(prazoLimite: string | null | undefined, agora: Date = new Date()): string {
+  if (!prazoLimite) return "sem prazo";
+  const parte = prazoEmNumero(prazoLimite, agora) as string;
+  const ms = new Date(prazoLimite).getTime() - agora.getTime();
   return ms >= 0 ? `faltam ${parte}` : `${parte} em atraso`;
 }
 

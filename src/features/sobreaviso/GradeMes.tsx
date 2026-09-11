@@ -247,7 +247,11 @@ export function GradeMes({
                 {l.celulas.map((cel, i) => {
                   const naBarra = cobertoPorBarra.has(cel.dia);
                   const editavel = !!aoDefinir && !l.pessoa.historico;
-                  const mostraCaixa = editavel
+                  // R256: com a ferramenta de REMOVER DIA ligada não há caixa
+                  // de digitar em lugar nenhum — o clique ali apaga, e uma
+                  // setinha de somar/subtrair ao lado de um clique que deleta é
+                  // a tela oferecendo duas coisas opostas no mesmo pixel.
+                  const mostraCaixa = editavel && !removendoDia
                     && (!naBarra || (!!selecionadoAqui && selecionadoAqui.dias.includes(cel.dia)));
                   return (
                     <div
