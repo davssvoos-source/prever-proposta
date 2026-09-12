@@ -12342,3 +12342,100 @@ um controle.
 
 **Números.** Verificador: 3.290 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Nenhuma migration nova.
+
+## U131 — o gráfico para de esquecer o que foi feito (R261) e a data de conclusão vira corrigível, com rastro (R262)
+
+**Dois pedidos numa frase cada, e os dois mexem em coisa velha.**
+
+### R261 — o buraco estava na semana corrente
+
+O gráfico "Demanda no tempo" tinha, desde a R65, duas regras: barra do passado
+conta **entregas** da semana, barra do futuro conta **prazos em aberto**. Lendo
+assim, o pedido do Davi ("o filtro deve incluir as atividades concluídas")
+parece já atendido — as barras do passado só mostram concluídas. Não estava: a
+**semana corrente é desenhada pelo lado do futuro**, porque ela só passa a ser
+"passado" na segunda seguinte. Então, durante a semana inteira, concluir uma
+atividade a **tirava** da barra de hoje e não a colocava em barra nenhuma: o
+trabalho sumia do gráfico no instante em que era feito, e voltava a aparecer
+dias depois, na virada da semana.
+
+A correção não foi remendar o lado do futuro: foi **acabar com a assimetria**.
+Agora é uma regra só, para as oito semanas — concluída conta na semana em que
+foi concluída, em aberto conta na semana do prazo. Os dois predicados são
+excludentes (`encerradoEm` é null enquanto está em aberto), então somar os dois
+mapas não conta ninguém duas vezes — e isso virou asserção, porque é o tipo de
+coisa que um refactor futuro quebra sem perceber.
+
+Tem um **efeito colateral, e ele é deliberado**: a barra de uma semana passada
+passa a mostrar também o que venceu nela e continua aberto. Isso é demanda
+daquela semana que ninguém atendeu, e antes não aparecia em barra nenhuma (só
+no KPI de atrasados). Prefiro isso à assimetria: o gráfico passou a ter uma
+frase só — "o que esta semana pediu" —, e a faixa "Mostrando:" foi junto
+("Atividades da semana de DD/MM", em vez de dois rótulos diferentes). A dica do
+mouse ganhou a decomposição, para o número continuar auditável: "N atividades ·
+M concluídas, K em aberto com prazo".
+
+A invariante da R60/R65 — **quem conta é quem filtra** — sobreviveu inteira, e
+ficou mais simples: `demandaPorSemana` desenha, `atividadesDaSemana` abre, e as
+duas leem o mesmo predicado. O campo `passado` saiu da seleção do painel: ele
+existia só para escolher entre as duas regras que agora são uma.
+
+### R262 — corrigir a data de conclusão sem poder mentir
+
+O pedido trazia o contrapeso embutido: pode alterar, **desde que fique
+registrado na timeline quem alterou e de quando para quando**. A pergunta de
+projeto era onde esse registro nasce.
+
+**Não na tela.** Primeiro porque não pode: a policy de INSERT de
+`chamado_eventos` aceita do cliente apenas `tipo = 'comentario'` com o `user_id`
+do próprio autor — todo o resto da linha do tempo nasce de gatilho SECURITY
+DEFINER desde a Etapa 3, e é isso que impede alguém de escrever "Fulano
+aprovou" em nome de Fulano. Segundo porque não deve: registro que depende de a
+tela lembrar de escrever some no dia em que a data mudar por outro caminho —
+uma correção em lote, uma RPC futura, o próprio SQL Editor. A coluna é uma só;
+o gatilho vê todas as escritas dela.
+
+Então a U131 **estende o gatilho que já existia** (`chamado_registrar_evento`,
+da U7) em vez de criar um segundo. Ele passa a olhar `concluida_em` junto com
+`status`, `responsavel_id` e `sprint`, e ganha um quarto ramo. O recorte do ramo
+é o que evita linha duplicada: só registra quando a atividade **já estava e
+continua concluída** e a data mudou. Concluir e reabrir mexem no `status`, e o
+ramo de status já conta essas duas histórias — sem o recorte, toda conclusão
+geraria duas linhas dizendo a mesma coisa. O gatilho volta com o **mesmo nome**,
+porque a ordem de disparo dos gatilhos de `chamados` é alfabética e está
+registrada na U82.
+
+**O que eu me recusei a mexer: o dinheiro.** A correção escreve em
+`concluida_em` — a coluna que a Início, o gráfico e os painéis leem — e NÃO em
+`finalizada_em`/`fechada_em`, de onde sai a competência da cobrança (U4/U7).
+Corrigir a data que a gestão lê não pode reescrever, em silêncio, um mês de
+dinheiro já lançado. Isso está dito na regra e na migration, para ser decisão e
+não esquecimento: se um dia for para mexer no dinheiro também, é outra regra,
+com outro nome e outra conferência.
+
+**Na tela**, a ficha ganhou "Concluída em" nas duas telas de atividade — a
+interna (quem edita) e a de campo (só a gestão: o técnico entrega, a gestão
+corrige). O campo guarda **rascunho** e grava no `blur`, não a cada tecla: quem
+digita "2026" passa por "0002", que é uma data perfeitamente válida, e gravar
+ali encheria a linha do tempo de correções que ninguém fez. Apagar o campo não
+faz nada — tirar a data de conclusão de uma atividade concluída não é corrigir,
+é reabrir, e reabrir tem botão próprio.
+
+**Uma mudança de casa, de quebra.** O par `instanteDoLocal`/`localDoInstante`
+(converter entre o `<input type="datetime-local">` e o instante ISO) morava em
+`features/plantao/modelo.ts` desde a U87. Nunca foi regra de plantão — é
+relógio. Mudou para `lib/periodos`, ao lado de `inicioSemana` e `dataIso`, e o
+plantão reexporta os dois nomes: uma implementação só, e quem importava de lá
+continua importando. A asserção que prova que as duas são inversas continua
+verde, agora do outro lado da mudança.
+
+**O que a verificação pegou.** Reexportar não traz o nome para o escopo do
+módulo: o `montarCorpo` do plantão chamava `instanteDoLocal` e ficou sem ele —
+o `tsc` mostrou na hora (58 contra o baseline de 57), e o conserto foi importar
+além de reexportar. Os dois erros de tipo do `DetalheCampo` que apareceram no
+caminho são **anteriores** a esta entrega (confirmado escondendo as mudanças e
+rodando de novo).
+
+**Números.** Verificador: 3.302 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Migration **U131 pendente** — sem ela a correção da data funciona e a linha do
+tempo simplesmente não registra; com ela, registra.

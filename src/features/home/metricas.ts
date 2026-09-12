@@ -23,10 +23,23 @@ export function chaveSemanaDe(iso: string): string {
 }
 
 // Os DOIS predicados das barras — o de contar e o de filtrar são o MESMO
-// (R65): a barra do passado conta entregas da semana, a do futuro conta
-// prazos em aberto da semana. `atividadesDaSemana` (o clique) filtra por
-// estes exatos predicados, então o número da barra e a lista que ela abre
-// não têm como discordar.
+// (R65), e desde a R261 as duas metades valem para TODA semana.
+//
+// R261 (Davi, 12/09/2026): "O Filtro de Demanda no Tempo da página inicial
+// deve incluir as atividades concluídas." A regra antiga era assimétrica —
+// passado = entregas, futuro = prazos em aberto — e isso abria um buraco na
+// SEMANA CORRENTE, que conta pelo lado do futuro: concluir uma atividade
+// hoje a tirava da barra desta semana e não a punha em nenhuma outra (a
+// semana só vira "passado" na segunda seguinte). O trabalho sumia do
+// gráfico no instante em que era feito.
+//
+// A regra agora é uma só, para as oito semanas: **concluída conta na semana
+// em que foi concluída; em aberto conta na semana do prazo**. Os dois
+// predicados são EXCLUDENTES (`encerradoEm` é null enquanto está em
+// aberto), então ninguém é contado duas vezes. O efeito colateral é
+// deliberado: a barra de uma semana passada passa a mostrar também o que
+// venceu nela e continua aberto — que é demanda daquela semana que ninguém
+// atendeu, e antes não aparecia em barra nenhuma.
 function ehConcluidaDaSemana(a: Atividade, chave: string): boolean {
   // `encerradoEm` é null enquanto está em aberto, e cancelar não é entregar
   if (!a.encerradoEm || a.coluna === "cancelado") return false;
@@ -35,6 +48,10 @@ function ehConcluidaDaSemana(a: Atividade, chave: string): boolean {
 function ehPrevistaDaSemana(a: Atividade, chave: string): boolean {
   if (!a.emAberto || !a.prazoLimite) return false;
   return chaveSemanaDe(a.prazoLimite) === chave;
+}
+/** A semana de uma atividade: a da conclusão, se concluída; a do prazo, se aberta. */
+function ehDaSemana(a: Atividade, chave: string): boolean {
+  return ehConcluidaDaSemana(a, chave) || ehPrevistaDaSemana(a, chave);
 }
 
 export function concluidosPorSemana(atividades: Atividade[]): Record<string, number> {
@@ -62,13 +79,24 @@ export function prazosPorSemana(atividades: Atividade[]): Record<string, number>
   return m;
 }
 
-/** As atividades de UMA barra — passado = entregas da semana, futuro = prazos. */
-export function atividadesDaSemana(
-  chave: string,
-  passado: boolean,
-  atividades: Atividade[],
-): Atividade[] {
-  return atividades.filter((a) => (passado ? ehConcluidaDaSemana(a, chave) : ehPrevistaDaSemana(a, chave)));
+/**
+ * O NÚMERO de cada barra (R261): as concluídas na semana mais as abertas
+ * com prazo nela. É a soma dos dois mapas acima, e some é literal — os
+ * predicados não se sobrepõem, então somar não conta ninguém duas vezes.
+ */
+export function demandaPorSemana(atividades: Atividade[]): Record<string, number> {
+  const concluidas = concluidosPorSemana(atividades);
+  const abertas = prazosPorSemana(atividades);
+  const m: Record<string, number> = {};
+  for (const k of new Set([...Object.keys(concluidas), ...Object.keys(abertas)])) {
+    m[k] = (concluidas[k] ?? 0) + (abertas[k] ?? 0);
+  }
+  return m;
+}
+
+/** As atividades de UMA barra — o MESMO predicado que a desenhou (R65/R261). */
+export function atividadesDaSemana(chave: string, atividades: Atividade[]): Atividade[] {
+  return atividades.filter((a) => ehDaSemana(a, chave));
 }
 
 /**
@@ -170,7 +198,7 @@ export function atividadesDaMeta(atividades: Atividade[], agora: Date = new Date
 
 export type SelecaoPainel =
   | { tipo: "kpi"; chave: ChaveKpi }
-  | { tipo: "semana"; chave: string; rotulo: string; passado: boolean }
+  | { tipo: "semana"; chave: string; rotulo: string }
   | { tipo: "meta" };
 
 /**
@@ -186,7 +214,7 @@ export function atividadesDaSelecao(
 ): Atividade[] {
   switch (sel.tipo) {
     case "kpi": return atividadesDoKpi(sel.chave, atividades, agora);
-    case "semana": return atividadesDaSemana(sel.chave, sel.passado, atividades);
+    case "semana": return atividadesDaSemana(sel.chave, atividades);
     case "meta": return atividadesDaMeta(atividades, agora);
   }
 }
@@ -195,10 +223,9 @@ export function atividadesDaSelecao(
 export function rotuloDaSelecao(sel: SelecaoPainel): string {
   switch (sel.tipo) {
     case "kpi": return KPI_LABEL[sel.chave];
-    case "semana":
-      return sel.passado
-        ? `Concluídas na semana de ${sel.rotulo}`
-        : `Com prazo na semana de ${sel.rotulo}`;
+    // R261: a barra deixou de ter dois sentidos, então o rótulo também não
+    // tem — é a semana inteira, concluídas e em aberto.
+    case "semana": return `Atividades da semana de ${sel.rotulo}`;
     case "meta": return "Meta do mês";
   }
 }

@@ -76,6 +76,7 @@ import {
 import { apoioValeComoVinculo, especieDoApoio } from "@/features/programacao/modelo";
 import { EQUIPE_LABEL, equipeCores, equipesDePessoas, type Equipe } from "@/lib/equipes";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
+import { instanteDoLocal, localDoInstante } from "@/lib/periodos";
 
 const EXT_IMAGEM = /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i;
 
@@ -113,6 +114,14 @@ export function DetalheInterno({ id, embutido = false }: {
   const [novaSerie, setNovaSerie] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [enviandoArquivo, setEnviandoArquivo] = useState(false);
+  /**
+   * R262: o que está sendo digitado no campo da data de conclusão.
+   * `null` = ninguém está mexendo, mostra o que veio do banco. Guardar o
+   * rascunho é o que impede a tela de gravar a cada tecla: digitar "2026"
+   * passa por "0002", que é uma data VÁLIDA — e gravar no ano 2 sujaria
+   * a linha do tempo com correções que ninguém fez.
+   */
+  const [conclusaoRascunho, setConclusaoRascunho] = useState<string | null>(null);
   const arquivoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -351,6 +360,26 @@ export function DetalheInterno({ id, embutido = false }: {
 
   /** R255: já estou no apoio? (com ou sem direito de edição) */
   const souApoio = apoios.some((a) => a.profile_id === (userId ?? ""));
+
+  /**
+   * A data de conclusão que a ficha mostra: `concluida_em` manda, e
+   * `fechada_em` é o fallback dos chamados antigos — a mesma ordem que
+   * `atividadeDoChamado` usa para desenhar o card da Início. Corrigir
+   * escreve SEMPRE em `concluida_em`, que é a coluna que a Início lê.
+   */
+  const conclusaoAtual = chamado.concluida_em ?? chamado.fechada_em ?? null;
+  const gravarConclusao = () => {
+    const digitado = conclusaoRascunho;
+    setConclusaoRascunho(null);
+    if (digitado === null) return;
+    // campo apagado ou pela metade: nada muda. Tirar a data de conclusão
+    // de uma atividade concluída não é corrigir — é REABRIR, e reabrir
+    // tem botão próprio, que também mexe no status.
+    const iso = instanteDoLocal(digitado);
+    if (!iso) return;
+    if (digitado === localDoInstante(conclusaoAtual ?? "")) return;
+    salvar.mutate({ concluida_em: iso });
+  };
 
   // R139: as equipes ENVOLVIDAS — a do responsável e a de cada apoio, pelo
   // cadastro. Não há campo para escolher; troca a pessoa, troca a etiqueta.
@@ -771,6 +800,37 @@ export function DetalheInterno({ id, embutido = false }: {
                     color: sp === "estourado" ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
                   }}>
                     <CalendarClock size={12} /> {textoPrazo(chamado.prazo_limite)}
+                  </span>
+                )}
+              </>
+            ))}
+            {/* R262 (Davi, 12/09/2026): "Ao acessar a tela de configuração de
+                uma atividade que esteja concluída, deve ser possível alterar
+                manualmente a data de conclusão, apesar de ficar registrado na
+                timeline quem alterou, de quando pra quando a data de
+                conclusão."
+
+                A linha só existe quando a atividade ESTÁ concluída — corrigir
+                a data de algo que ainda não terminou não quer dizer nada. E
+                quem escreve a linha do tempo é o BANCO (gatilho da U131): o
+                cliente não tem porta para gravar evento que não seja
+                comentário, e é isso que torna o registro confiável — ele não
+                depende de a tela lembrar de escrever. */}
+            {chamado.status === "concluido" && linha("Concluída em", (
+              <>
+                <input
+                  id="det-concluida-em"
+                  type="datetime-local"
+                  style={{ ...INPUT, height: 32, fontSize: 12.5 }}
+                  disabled={!podeEditar || salvar.isPending}
+                  value={conclusaoRascunho ?? localDoInstante(conclusaoAtual ?? "") ?? ""}
+                  onChange={(e) => setConclusaoRascunho(e.target.value)}
+                  onBlur={gravarConclusao}
+                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                />
+                {podeEditar && (
+                  <span style={LINHA_INFO}>
+                    A correção entra na linha do tempo: quem fez, e de quando para quando.
                   </span>
                 )}
               </>

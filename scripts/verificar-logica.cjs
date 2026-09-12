@@ -3534,7 +3534,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /<TabelaAtividades\s*\n\s*atividades=\{listaAtual\.slice\(0, TETO_TABELA\)\}/.test(dash2), true);
   eq('selecionar a mesma peça de novo desliga o filtro (toggle, não só liga) — nos três: kpi, semana e meta',
      /atual\?\.tipo === "kpi" && atual\.chave === chave \? null : \{ tipo: "kpi", chave \}/.test(dash2)
-     && /atual\?\.tipo === "semana" && atual\.chave === chave \? null : \{ tipo: "semana", chave, rotulo, passado \}/.test(dash2)
+     && /atual\?\.tipo === "semana" && atual\.chave === chave \? null : \{ tipo: "semana", chave, rotulo \}/.test(dash2)
      && /atual\?\.tipo === "meta" \? null : \{ tipo: "meta" \}/.test(dash2), true);
   eq('a tela mostra "Mostrando: <label>" com um jeito de limpar, enquanto uma seleção filtra',
      /Mostrando: <strong[\s\S]{0,80}\{rotuloDaSelecao\(selecaoPainel\)\}<\/strong>/.test(dash2), true);
@@ -3798,12 +3798,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     ];
     const kPassada = semanaDeR('2026-08-10T10:00:00');
     const kFutura = semanaDeR('2026-08-24T10:00:00');
-    eq('CRÍTICO: barra do passado — concluidosPorSemana[k] === atividadesDaSemana(k, true).length',
-       MET2.atividadesDaSemana(kPassada, true, lote).length,
-       MET2.concluidosPorSemana(lote)[kPassada]);
-    eq('CRÍTICO: barra do futuro — prazosPorSemana[k] === atividadesDaSemana(k, false).length',
-       MET2.atividadesDaSemana(kFutura, false, lote).length,
-       MET2.prazosPorSemana(lote)[kFutura]);
+    // R261 (U131): a barra deixou de ter dois sentidos. A invariante da R65
+    // continua sendo a MESMA — quem conta é quem filtra —, só que agora com
+    // uma conta só (`demandaPorSemana`) valendo para as oito semanas.
+    eq('CRÍTICO/R261: barra de semana PASSADA — demandaPorSemana[k] === atividadesDaSemana(k).length',
+       MET2.atividadesDaSemana(kPassada, lote).length,
+       MET2.demandaPorSemana(lote)[kPassada]);
+    eq('CRÍTICO/R261: barra de semana FUTURA — demandaPorSemana[k] === atividadesDaSemana(k).length',
+       MET2.atividadesDaSemana(kFutura, lote).length,
+       MET2.demandaPorSemana(lote)[kFutura]);
+    eq('R261: a soma de uma semana é concluídas + abertas com prazo, e ninguém entra duas vezes',
+       [MET2.demandaPorSemana(lote)[kPassada],
+        MET2.concluidosPorSemana(lote)[kPassada] ?? 0,
+        MET2.prazosPorSemana(lote)[kPassada] ?? 0],
+       [2, 2, 0]);
     eq('CRÍTICO: rosca — atividadesDaMeta().length === metaDoMes().total',
        MET2.atividadesDaMeta(lote, new Date(2026, 7, 21)).length,
        MET2.metaDoMes(lote, new Date(2026, 7, 21)).total);
@@ -3821,25 +3829,35 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        MET2.atividadesDoKpi('concluidas_mes', lote, agoraR).length);
     eq('seleção semana = atividadesDaSemana',
        MET2.atividadesDaSelecao(
-         { tipo: 'semana', chave: semanaDeR('2026-08-24T10:00:00'), rotulo: '24/08', passado: false },
+         { tipo: 'semana', chave: semanaDeR('2026-08-24T10:00:00'), rotulo: '24/08' },
          lote, agoraR,
        ).length, 1);
     eq('seleção meta = atividadesDaMeta',
        MET2.atividadesDaSelecao({ tipo: 'meta' }, lote, agoraR).length,
        MET2.atividadesDaMeta(lote, agoraR).length);
   }
-  eq('rotuloDaSelecao distingue passado ("Concluídas na semana") de futuro ("Com prazo na semana")',
-     [MET2.rotuloDaSelecao({ tipo: 'semana', chave: 'x', rotulo: '10/08', passado: true }),
-      MET2.rotuloDaSelecao({ tipo: 'semana', chave: 'x', rotulo: '24/08', passado: false }),
+  // R261: a faixa "Mostrando:" não fala mais em passado × futuro, porque a
+  // barra não separa mais os dois — é a semana inteira.
+  eq('R261: rotuloDaSelecao anuncia a semana inteira, sem distinguir passado de futuro',
+     [MET2.rotuloDaSelecao({ tipo: 'semana', chave: 'x', rotulo: '10/08' }),
+      MET2.rotuloDaSelecao({ tipo: 'semana', chave: 'x', rotulo: '24/08' }),
       MET2.rotuloDaSelecao({ tipo: 'meta' })],
-     ['Concluídas na semana de 10/08', 'Com prazo na semana de 24/08', 'Meta do mês']);
+     ['Atividades da semana de 10/08', 'Atividades da semana de 24/08', 'Meta do mês']);
 
   // ── Graficos.tsx: as peças são clicáveis de verdade ─────────────────────
   eq('a coluna inteira da barra é um <button aria-pressed> (alvo generoso, não a barra de 3px)',
      /<button\s*\n\s*key=\{b\.chave\}\s*\n\s*className="barra-btn"\s*\n\s*aria-pressed=\{ativa\}/.test(graf2),
      true);
-  eq('GraficoDemanda conta o futuro por prazosPorSemana (metricas.ts) — o inline `futuros` morreu',
+  eq('GraficoDemanda conta pelas funções de metricas.ts — o inline `futuros` morreu',
      /prazosPorSemana\(atividades\)/.test(graf2), true);
+  // R261: a ALTURA da barra é a soma; as duas parcelas sobrevivem só para a
+  // dica dizer de que o número é feito.
+  eq('R261: a barra desenha demandaPorSemana, e a dica separa concluídas de em aberto',
+     [/valor: demanda\[chave\] \?\? 0,/.test(graf2),
+      /const demanda = useMemo\(\(\) => demandaPorSemana\(atividades\), \[atividades\]\);/.test(graf2),
+      /\$\{b\.concluidas\} concluída/.test(graf2),
+      /valor: passado \?/.test(graf2)],
+     [true, true, true, false]);
   eq('a barra ativa ganha anel na própria cor de texto da semana',
      /boxShadow: ativa \? `0 0 0 2px \$\{b\.corTexto\}` : "none",/.test(graf2), true);
   eq('a rosca virou botão com aria-pressed e anel dourado quando ativa',
@@ -15642,7 +15660,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // numa e 100,00 na outra. `erroDoLancamento` e `parcelar` são IMPORTADOS do
   // mesmo lugar que o painel da programação usa; o que se repete é só o JSX.
   eq('U90/R121 CRÍTICO: a conta é IMPORTADA, não recriada — `parcelar` e `erroDoLancamento` vêm dos módulos compartilhados, e o DetalheCampo não tem divisão de parcela nem teto próprios (duas divisões independentes fariam o cliente pagar a menos numa das telas, para sempre)',
-     [/import \{ parcelar \} from "@\/lib\/periodos"/.test(vivo90),
+     [/import \{ parcelar(, [\w, ]+)? \} from "@\/lib\/periodos"/.test(vivo90),
       /erroDoLancamento, reaisDigitados \} from "@\/features\/programacao\/modelo"/.test(vivo90),
       // nenhuma aritmética de parcela LOCAL: nem divisão por centavos, nem os
       // tetos 60/12 escritos à mão neste arquivo.
@@ -19435,7 +19453,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       (di120.match(/linha\("/g) ?? []).length,
       /<span style=\{SEC\}>Propriedades<\/span>/.test(di120), /<span style=\{SEC\}>Pessoas<\/span>/.test(di120),
       /position: sticky/.test(css120.slice(css120.indexOf('.atividade-grade {'), css120.indexOf('.ficha-linhas {'))), /\.atividade-props/.test(css120)],
-     [true, true, 9, false, false, false, false]);
+     // R262 (U131): são DEZ desde que "Concluída em" entrou — e ela só
+     // aparece na tela quando a atividade está concluída; na fonte é uma
+     // chamada a mais, como as outras nove.
+     [true, true, 10, false, false, false, false]);
   eq('R234: os DOIS textos são o miolo da tela — altura mínima de 400px cada na corretiva (480 quando é um só), lado a lado só a partir de 1700px (medido: em 1440 cada um ficava com 382px)',
      [/minAltura=\{ehCorretiva \? 440 : 520\}/.test(di120), /minAltura=\{440\}/.test(di120),  // U121: 520 quando é um só, 440 cada quando são dois
       /@media \(min-width: 1700px\) \{\s*\n\s*\.atividade-textos\.duplo/.test(css120),
@@ -20956,6 +20977,111 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/\{subtitulo \? \(/.test(dlgLimpo),
       /\) : null\}/.test(dlgLimpo)],
      [true, true]);
+}
+
+
+// ── R261/R262 — a semana inteira no gráfico, e a data de conclusão corrigível ──
+{
+  const fs262 = require('fs');
+  const met262 = carregar('src/features/home/metricas.ts');
+  const per262 = carregar('src/lib/periodos.ts');
+  const pl262 = carregar('src/features/plantao/modelo.ts');
+  const di262 = fs262.readFileSync('src/features/chamados/DetalheInterno.tsx', 'utf8');
+  const dc262 = fs262.readFileSync('src/features/chamados/DetalheCampo.tsx', 'utf8');
+  const dados262 = fs262.readFileSync('src/features/chamados/data.ts', 'utf8');
+  const u131 = fs262.existsSync('supabase/migrations/20260928090000_u131_data_de_conclusao_corrigida.sql')
+    ? fs262.readFileSync('supabase/migrations/20260928090000_u131_data_de_conclusao_corrigida.sql', 'utf8')
+    : '';
+
+  const dia262 = (s) => new Date(s).toISOString();
+  const ativ262 = (extra) => ({
+    id: Math.random().toString(36).slice(2), titulo: 'x', coluna: 'concluido',
+    emAberto: false, encerradoEm: null, prazoLimite: null, ...extra,
+  });
+  const semana262 = (s) => per262.dataIso(per262.inicioSemana(new Date(s)));
+
+  // O DEFEITO QUE O DAVI VIU, escrito como teste: a semana corrente é contada
+  // pelo lado do "futuro" (ela só vira passado na segunda seguinte), e o lado
+  // do futuro só olhava `emAberto`. Concluir uma atividade hoje a tirava da
+  // barra desta semana e não a punha em nenhuma outra.
+  {
+    const k = semana262('2026-08-19T10:00:00');
+    const lote262 = [
+      ativ262({ encerradoEm: dia262('2026-08-19T15:00:00') }),                                   // concluída nesta semana
+      ativ262({ emAberto: true, coluna: 'aberto', prazoLimite: dia262('2026-08-21T10:00:00') }), // aberta, vence nesta semana
+      ativ262({ coluna: 'cancelado', encerradoEm: dia262('2026-08-20T10:00:00') }),              // cancelar não é entregar
+    ];
+    eq('R261 CRÍTICO: concluir NÃO tira a atividade do gráfico — a barra da semana conta as concluídas NELA mais as abertas com prazo nela, e cancelada continua fora',
+       [met262.demandaPorSemana(lote262)[k],
+        met262.atividadesDaSemana(k, lote262).length,
+        met262.atividadesDaSemana(k, lote262).filter((a) => a.coluna === 'cancelado').length],
+       [2, 2, 0]);
+  }
+  // A mesma atividade não pode entrar em duas semanas: concluída conta pela
+  // semana da CONCLUSÃO, e a do prazo não a conta de novo.
+  {
+    const kPrazo = semana262('2026-08-24T10:00:00');
+    const kFeita = semana262('2026-08-19T10:00:00');
+    const adiantada = [ativ262({ encerradoEm: dia262('2026-08-19T15:00:00'), prazoLimite: dia262('2026-08-24T10:00:00') })];
+    eq('R261: entregue ANTES do prazo conta na semana em que foi entregue, e só nela — os dois predicados são excludentes',
+       [met262.demandaPorSemana(adiantada)[kFeita] ?? 0, met262.demandaPorSemana(adiantada)[kPrazo] ?? 0],
+       [1, 0]);
+  }
+
+  // ── R262: a data de conclusão ────────────────────────────────────────────
+  eq('R262: o par relógio↔instante mora em lib/periodos e o plantão o reexporta — uma implementação só, e quem importava de lá continua importando',
+     [typeof per262.instanteDoLocal, typeof per262.localDoInstante,
+      typeof pl262.instanteDoLocal, typeof pl262.localDoInstante,
+      per262.localDoInstante(per262.instanteDoLocal('2026-01-12T09:30'))],
+     ['function', 'function', 'function', 'function', '2026-01-12T09:30']);
+
+  eq('R262: a ficha da tela interna edita a data de conclusão, e só quando a atividade ESTÁ concluída',
+     [/\{chamado\.status === "concluido" && linha\("Concluída em"/.test(di262),
+      /type="datetime-local"/.test(di262),
+      /disabled=\{!podeEditar \|\| salvar\.isPending\}/.test(di262),
+      /salvar\.mutate\(\{ concluida_em: iso \}\)/.test(di262)],
+     [true, true, true, true]);
+
+  eq('R262: a tela interna guarda o RASCUNHO e grava no blur — gravar a cada tecla escreveria no ano 0002 (que é data válida) e sujaria a linha do tempo com correções que ninguém fez',
+     [/const \[conclusaoRascunho, setConclusaoRascunho\] = useState<string \| null>\(null\);/.test(di262),
+      /onBlur=\{gravarConclusao\}/.test(di262),
+      /if \(digitado === localDoInstante\(conclusaoAtual \?\? ""\)\) return;/.test(di262)],
+     [true, true, true]);
+
+  eq('R262: a tela de campo também corrige, e ali é só a gestão — o técnico entrega, a gestão corrige',
+     [/const corrigirConclusao = useMutation\(\{/.test(dc262),
+      /mutationFn: \(iso: string\) => atualizarChamado\(id, \{ concluida_em: iso \}\)/.test(dc262),
+      /\{os\.status === "concluido" && \(os\.concluida_em \|\| os\.fechada_em\) && \(/.test(dc262),
+      /\{isGerente \? \(/.test(dc262)],
+     [true, true, true, true]);
+
+  eq('R262 CRÍTICO: a correção escreve em `concluida_em` e NUNCA em finalizada_em/fechada_em — a competência da cobrança sai destas duas (U4/U7), e corrigir a data que a gestão lê não pode reescrever um mês de dinheiro já lançado',
+     [/concluida_em: iso/.test(di262) || /concluida_em: iso/.test(dc262),
+      /finalizada_em: iso/.test(di262), /finalizada_em: iso/.test(dc262),
+      /fechada_em: iso/.test(di262), /fechada_em: iso/.test(dc262)],
+     [true, false, false, false, false]);
+
+  eq('R262: `concluida_em` é escrevível por patch (já era, desde a U7) — a porta da correção é a mesma de sempre, com o `.select("id")` que transforma recusa da RLS em erro visível',
+     [/\| "concluida_em"/.test(dados262), /\.select\("id"\)/.test(dados262)],
+     [true, true]);
+
+  // Quem escreve a linha do tempo é o BANCO. O pino olha o ARQUIVO da
+  // migration (nunca o estado do banco — isso envelhece no dia em que o Davi
+  // roda): o gatilho passa a olhar `concluida_em`, o ramo novo só vale para
+  // quem já estava e continua concluído, e os três ramos antigos continuam lá.
+  eq('R262 CRÍTICO: a migration U131 estende o gatilho da linha do tempo — ele passa a olhar concluida_em, registra "de → para" no fuso de quem lê, e NÃO duplica a linha quando a mudança é concluir ou reabrir',
+     [/AFTER UPDATE OF status, responsavel_id, sprint, concluida_em ON public\.chamados/.test(u131),
+      /conclusao_corrigida/.test(u131),
+      /AND NEW\.status = 'concluido'\s*\n\s*AND OLD\.status = 'concluido'/.test(u131),
+      /America\/Sao_Paulo/.test(u131),
+      /Chamado aberto/.test(u131) && /Responsável definido/.test(u131) && /'sprint', 'Sprint: '/.test(u131),
+      /SECURITY DEFINER/.test(u131)],
+     [true, true, true, true, true, true]);
+
+  eq('R262: a U131 tem pré-voo, portão que desfaz o que escreveu (ROLLBACK) e conferência com veredito',
+     [/U131 PRÉ-VOO/.test(u131), /U131 PORTÃO/.test(u131), /ROLLBACK;/.test(u131),
+      />>> OLHAR <<</.test(u131), /── DESFAZER/.test(u131)],
+     [true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

@@ -78,6 +78,44 @@ export function dataIso(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+
+// ── O relógio de parede e o instante ────────────────────────────────────────
+//
+// Nasceram em `features/plantao/modelo.ts` (U87) e mudaram para cá na U131:
+// converter entre o que o `<input type="datetime-local">` mostra e o instante
+// ISO que o banco guarda não é regra de plantão — é relógio, e agora a ficha
+// da atividade (R262) precisa do mesmo par. O plantão continua exportando os
+// dois nomes, para quem já os importava de lá.
+
+/** "AAAA-MM-DDTHH:mm" (o `datetime-local` também aceita segundos: "…:ss"). */
+export const RELOGIO_LOCAL_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
+
+/**
+ * "2026-08-30T02:30" (relógio do aparelho) → instante ISO com fuso.
+ *
+ * `new Date("AAAA-MM-DDTHH:mm")` SEM `Z` e sem offset é interpretado no fuso
+ * LOCAL pelo ECMAScript — é exatamente o que o `datetime-local` quer dizer.
+ * Devolve `null` para entrada que não é hora, em vez de `Invalid Date`, porque
+ * um `Invalid Date` chegaria ao `.toISOString()` como exceção lá na frente,
+ * longe de onde o erro nasceu.
+ */
+export function instanteDoLocal(local: string): string | null {
+  const s = local.trim();
+  if (!RELOGIO_LOCAL_RE.test(s)) return null;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+/** O caminho de volta — para reabrir um instante dentro do formulário. */
+export function localDoInstante(iso: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const z = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
+    + `T${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+
 // ── Parcelamento (regra do gestor-os) ───────────────────────────────────────
 
 /**

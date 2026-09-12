@@ -57,7 +57,7 @@ import { PRISMA, ESPECTRO, ESPECTRO_STOPS, ESPECTRO_TEXTO, gradienteBarra } from
 import type { Atividade } from "@/features/atividades/modelo";
 // as contas moram em metricas.ts: puras, testáveis, longe da pintura
 import {
-  concluidosPorSemana, prazosPorSemana, metaDoMes, atividadesDoKpi, KPI_LABEL, type ChaveKpi,
+  concluidosPorSemana, prazosPorSemana, demandaPorSemana, metaDoMes, atividadesDoKpi, KPI_LABEL, type ChaveKpi,
 } from "@/features/home/metricas";
 
 const ALTURA = 252;
@@ -88,13 +88,16 @@ interface PropsDemanda {
   /** Chave da semana que está filtrando a lista agora — null = nenhuma (R65). */
   selecionada?: string | null;
   /** Clicar numa barra filtra a lista para as atividades DAQUELA semana. */
-  onSelecionarSemana?: (chave: string, rotulo: string, passado: boolean) => void;
+  onSelecionarSemana?: (chave: string, rotulo: string) => void;
 }
 
 export function GraficoDemanda({ atividades, selecionada = null, onSelecionarSemana }: PropsDemanda) {
   const { isLight, textPrimary, textSecondary, gold } = useCoresBase();
-  // as DUAS contagens vêm de metricas.ts (R65) — o clique na barra filtra
-  // pelas mesmas funções, então número e lista aberta nunca discordam
+  // as contagens vêm de metricas.ts (R65) — o clique na barra filtra pelas
+  // mesmas funções, então número e lista aberta nunca discordam. A barra
+  // mostra a SOMA (R261); as duas parcelas sobrevivem para a dica dizer de
+  // que é feito o número.
+  const demanda = useMemo(() => demandaPorSemana(atividades), [atividades]);
   const concluidos = useMemo(() => concluidosPorSemana(atividades), [atividades]);
   const futuros = useMemo(() => prazosPorSemana(atividades), [atividades]);
 
@@ -105,25 +108,30 @@ export function GraficoDemanda({ atividades, selecionada = null, onSelecionarSem
 
   const barras = useMemo(() => {
     const base = inicioSemana(new Date());
-    const lista: { chave: string; rotulo: string; valor: number; cor: string;
-                   corFim: string; corTexto: string; atual: boolean; passado: boolean }[] = [];
+    const lista: { chave: string; rotulo: string; valor: number; concluidas: number;
+                   abertas: number; cor: string; corFim: string; corTexto: string;
+                   atual: boolean }[] = [];
 
     for (let i = -4; i <= 3; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i * 7);
       const chave = dataIso(d);
-      const passado = i < 0;
       const idx = i + 4;                       // 0..7 ao longo do espectro
       lista.push({
         chave,
         rotulo: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-        valor: passado ? (concluidos[chave] ?? 0) : (futuros[chave] ?? 0),
+        // R261: a MESMA conta nas oito semanas — concluídas na semana mais
+        // abertas com prazo nela. O espectro continua dizendo o tempo (o
+        // passado é quente, o futuro é frio); o estado não muda mais o que
+        // a barra conta.
+        valor: demanda[chave] ?? 0,
+        concluidas: concluidos[chave] ?? 0,
+        abertas: futuros[chave] ?? 0,
         // a barra vai da SUA cor à da próxima: o degradê não quebra na emenda
         cor: rampa[idx],
         corFim: rampa[idx + 1],
         corTexto: rampaTexto[idx],
         atual: i === 0,
-        passado,
       });
     }
     return lista;
@@ -146,8 +154,8 @@ export function GraficoDemanda({ atividades, selecionada = null, onSelecionarSem
               key={b.chave}
               className="barra-btn"
               aria-pressed={ativa}
-              onClick={() => onSelecionarSemana?.(b.chave, b.rotulo, b.passado)}
-              title={`${b.valor} atividade${b.valor === 1 ? "" : "s"} · semana de ${b.rotulo} — clique para filtrar a lista`}
+              onClick={() => onSelecionarSemana?.(b.chave, b.rotulo)}
+              title={`${b.valor} atividade${b.valor === 1 ? "" : "s"} · semana de ${b.rotulo} — ${b.concluidas} concluída${b.concluidas === 1 ? "" : "s"}, ${b.abertas} em aberto com prazo. Clique para filtrar a lista`}
               style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 5 }}
             >
               <span style={{

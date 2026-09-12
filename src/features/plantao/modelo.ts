@@ -42,6 +42,8 @@
 // Digitar "02:30" num celular configurado para Brasília é 02:30 de Brasília. É
 // o contrato do controle, e o preço de não ter um seletor de fuso na tela.
 
+import { RELOGIO_LOCAL_RE as LOCAL_RE, instanteDoLocal, localDoInstante } from "@/lib/periodos";
+
 /** Remoto ou presencial — e é SÓ isto que a marca muda. Ver `TIPO_NOTA`. */
 export type TipoDoAtendimento = "remoto" | "presencial";
 
@@ -93,9 +95,6 @@ export const RASCUNHO_VAZIO: RascunhoDoAtendimento = {
   chamadoId: null,
 };
 
-/** "AAAA-MM-DDTHH:mm" (o `datetime-local` também aceita segundos: "…:ss"). */
-const LOCAL_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
-
 /**
  * O GÊMEO PURO DAS RECUSAS DA PORTA — as MESMAS palavras, na mesma ordem.
  *
@@ -123,34 +122,16 @@ export function erroDoAtendimento(r: RascunhoDoAtendimento): string | null {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// O RELÓGIO DE PAREDE E O INSTANTE
+// O RELÓGIO DE PAREDE E O INSTANTE (moraram aqui até a U131)
 // ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * "2026-08-30T02:30" (relógio do aparelho) → instante ISO com fuso.
- *
- * `new Date("AAAA-MM-DDTHH:mm")` SEM `Z` e sem offset é interpretado no fuso
- * LOCAL pelo ECMAScript — é exatamente o que o `datetime-local` quer dizer.
- * Devolve `null` para entrada que não é hora, em vez de `Invalid Date`, porque
- * um `Invalid Date` chegaria ao `.toISOString()` como exceção lá na frente,
- * longe de onde o erro nasceu.
- */
-export function instanteDoLocal(local: string): string | null {
-  const s = local.trim();
-  if (!LOCAL_RE.test(s)) return null;
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
-
-/** O caminho de volta — para reabrir um atendimento no formulário. */
-export function localDoInstante(iso: string): string | null {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  const z = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
-    + `T${z(d.getHours())}:${z(d.getMinutes())}`;
-}
+//
+// Converter o que o `<input type="datetime-local">` mostra no instante ISO
+// que o banco guarda nunca foi regra de PLANTÃO — é relógio. Quando a ficha
+// da atividade passou a corrigir a data de conclusão (R262) o par virou
+// vizinho de `inicioSemana` e `dataIso`, em `lib/periodos`. Fica a reexporta-
+// ção: quem importava daqui continua importando daqui, e existe UMA
+// implementação — duas se afastariam no primeiro conserto.
+export { instanteDoLocal, localDoInstante };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // O CORPO DA RPC

@@ -8,10 +8,11 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-12** · última regra: **R260** · último diário:
-**U130** · verificador: **3.290 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-12** · última regra: **R262** · último diário:
+**U131** · verificador: **3.302 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U129** (U127 e U129 em 11/09/2026) ·
-**nenhuma migration pendente** · **versão no servidor: v0.0.7**
+**Pendente: U131** (a linha do tempo da correção da data de conclusão) ·
+**versão no servidor: v0.0.7**
 (192.168.10.182); **esta entrega é a v0.0.11**, e ela sobe de uma vez o que a
 v0.0.8, a v0.0.9 e a v0.0.10 já tinham entregue — o que entrou em cada versão
 está em `docs/VERSOES.md`. Fim de entrega:
@@ -112,6 +113,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U128 | a **v0.0.10**: a **próxima atividade virou card** (R248 — o banner saiu do topo do desktop e é o primeiro card da coluna Agendado, que ganhou ordem fixa pelo dia marcado; realce só de cor e contraste, etiqueta A SEGUIR/ATRASADA na vaga do chip de status; no celular o banner fica), **"Responder aqui" foca a caixa** do chat (R249), a **busca acha pelo nome do prédio** (R250 — inclusive setor e prospecção), **filtro por Tipo de Demanda** (R251) e o **Painel Comercial em duas visões** (R252 — quadro por etapa do ciclo, linha e card no MESMO componente, sem arrasto porque a etapa é derivada). Sem migration nova |
 | U129 | a **v0.0.11**: o **Sobreaviso reestruturado** — a semana virou a unidade da tela (R253: uma linha por semana com o seletor do plantonista, par Semana \| Mês, grade de 8 colunas) e o calendário ganhou a **barra** (R254: faixa amarela fosca por trecho contíguo, clicar seleciona e Delete apaga, modo "Remover dia" com pré-visualização, "+" para o segundo plantonista, troca que NÃO acumula pela RPC nova, e só a **equipe técnica** é escalada). Três defeitos consertados no caminho: buraco × sobra, o clique na última coluna que teletransportava a semana, e as setas mudas do celular. Migration **U129** |
 | U130 | **as correções pedidas antes do executável** (sem versão nova: o Davi disse que pediria o executável no fim). **R255** — quem não edita a atividade vê o botão **"Entrar como apoio"**, e o apoio que a pessoa se dá NÃO vira permissão (o gêmeo `podeEditar` do cliente voltou a falar a língua do `pode_editar_chamado` do banco); **R256** — as setinhas do campo de horas só no dia clicado (MEDIDO: `appearance: none` não volta no foco; a alavanca é a opacidade, e o `padding-left: 13px` paga a largura reservada); **R257** — no card da Início, o prazo é o ícone e o número, sem "faltam"/"em atraso" (fora do card a palavra fica); **R258** — o convite do chat na linha do texto (os 3px eram do `[data-bloco]`) e o foco na caixa ao abrir; **R259** — a Proposta Comercial fala menos (cinco textos fora, "Cliente" virou **LOCAL**, nome do campo em tinta primária e a nota em opacidade menor, barra de rolagem nossa) e a **revisão de margem** que o Davi mandou fazer depois achou 9px de desalinho entre as colunas e 11px que vinham do `<p>` do navegador; **R260** — Proposta Comercial nasce com responsável da **equipe** Comercial. De quebra: o comentário da R256 fechava duas vezes e derrubava a folha inteira no `vite dev` (anti-padrões nº 11 e 12). Sem migration nova |
+| U131 | **R261** — a **Demanda no tempo** conta a semana INTEIRA: concluída entra na semana em que foi concluída, aberta entra na do prazo. A assimetria da R65 (passado = entregas, futuro = prazos) abria um buraco na semana CORRENTE, que é desenhada pelo lado do futuro: concluir uma atividade hoje a tirava do gráfico e não a punha em barra nenhuma até a virada da semana. Uma conta só (`demandaPorSemana`), a faixa anuncia "Atividades da semana de DD/MM" e a dica decompõe o número. **R262** — a **data de conclusão** vira campo corrigível na ficha das duas telas de atividade (na de campo, só a gestão), e a correção entra na **linha do tempo** por GATILHO — "de → para", com quem fez. Escreve em `concluida_em` e não em `finalizada_em`/`fechada_em`, que é de onde sai a competência da cobrança. O par relógio↔instante mudou de `features/plantao` para `lib/periodos`. Migration **U131 (pendente)** |
 
 ## 4. Banco: migrations
 
@@ -119,6 +121,21 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
+- **U131** (`20260928090000_u131_data_de_conclusao_corrigida.sql`, **PENDENTE**)
+  — o gatilho **`chamado_registrar_evento`** (da U7) passa a olhar também
+  `concluida_em` e ganha um quarto ramo: corrigir a data de uma atividade que
+  **já estava e continua concluída** escreve uma linha na timeline —
+  "Data de conclusão: 10/01/2026 15:00 → 12/01/2026 09:30" — com `auth.uid()` e
+  no fuso de São Paulo (R262). O recorte por status é o que evita linha dupla:
+  concluir e reabrir já têm o evento de status. O gatilho volta com o MESMO
+  NOME, porque a ordem de disparo em `chamados` é alfabética e está registrada
+  na U82. Não toca em `finalizada_em`/`fechada_em` (a competência da cobrança
+  sai delas). O portão insere um chamado, corrige, reabre, conclui de novo e
+  confere que só a correção gerou linha — tudo numa transação que termina em
+  **ROLLBACK**, então não sobra nada nem nas tabelas que os outros gatilhos
+  tocam. Oito itens de conferência; o DESFAZER recria o gatilho sem a coluna.
+  **Sem ela a tela funciona**: a data é corrigida e a linha do tempo apenas não
+  registra.
 - **U129** (`20260927090000_u129_v011_trocar_plantonista.sql`, rodada em
   11/09/2026) — a RPC **`sobreaviso_trocar_plantonista`** (R254): tira a semana
   de quem sai por **subtração** (nunca por DELETE cego, que levaria junto a

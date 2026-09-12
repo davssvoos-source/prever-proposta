@@ -563,8 +563,8 @@ function Home() {
           <GraficoDemanda
             atividades={paraPaineis}
             selecionada={selecaoPainel?.tipo === "semana" ? selecaoPainel.chave : null}
-            onSelecionarSemana={(chave, rotulo, passado) => setSelecaoPainel((atual) =>
-              (atual?.tipo === "semana" && atual.chave === chave ? null : { tipo: "semana", chave, rotulo, passado }))}
+            onSelecionarSemana={(chave, rotulo) => setSelecaoPainel((atual) =>
+              (atual?.tipo === "semana" && atual.chave === chave ? null : { tipo: "semana", chave, rotulo }))}
           />
           <GraficoMeta
             atividades={paraPaineis}

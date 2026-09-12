@@ -43,7 +43,7 @@ import {
   useAfirmarVisitas, useConcluirComCobranca, sqlstateDoErro, RecusaDaAgenda,
 } from "@/features/programacao/data";
 import { erroDoLancamento, reaisDigitados } from "@/features/programacao/modelo";
-import { parcelar } from "@/lib/periodos";
+import { parcelar, instanteDoLocal, localDoInstante } from "@/lib/periodos";
 
 /** As três decisões de `concluir_chamado_com_cobranca` (U80), na conferência. */
 type DecisaoDoFechamento = "conferir_depois" | "nada_a_cobrar" | "lancar";
@@ -503,6 +503,19 @@ export function DetalheCampo({ id, embutido = false }: {
     },
     onSuccess: () => { invalidar(); setCancelando(false); toast.success("Chamado cancelado."); },
     onError: (e: Error) => { guardarErroDaVisita(e); toast.error(e.message); },
+  });
+
+  /**
+   * R262: a data de conclusão corrigida à mão. Aqui é a gestão que corrige
+   * (o técnico não volta num chamado encerrado), e escreve em
+   * `concluida_em` — NÃO em `finalizada_em`/`fechada_em`, que é de onde a
+   * cobrança tira a competência: corrigir a data de gestão não pode
+   * reescrever um mês de dinheiro já lançado.
+   */
+  const corrigirConclusao = useMutation({
+    mutationFn: (iso: string) => atualizarChamado(id, { concluida_em: iso }),
+    onSuccess: () => { invalidar(); toast.success("Data de conclusão corrigida."); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const trocarTecnico = useMutation({
@@ -1485,6 +1498,35 @@ export function DetalheCampo({ id, embutido = false }: {
                       day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
                     })}
                   </span>
+                </div>
+              )}
+              {/* R262: concluída na data errada se conserta aqui, e a linha do
+                  tempo guarda quem trocou e de quando para quando (gatilho da
+                  U131). Só a gestão: o técnico entrega, a gestão corrige. */}
+              {os.status === "concluido" && (os.concluida_em || os.fechada_em) && (
+                <div style={linha}>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Concluída em</span>
+                  {isGerente ? (
+                    <input
+                      type="datetime-local"
+                      aria-label="Data de conclusão"
+                      defaultValue={localDoInstante(os.concluida_em ?? os.fechada_em ?? "") ?? ""}
+                      disabled={corrigirConclusao.isPending}
+                      onBlur={(e) => {
+                        const iso = instanteDoLocal(e.target.value);
+                        if (!iso) return;
+                        if (e.target.value === localDoInstante(os.concluida_em ?? os.fechada_em ?? "")) return;
+                        corrigirConclusao.mutate(iso);
+                      }}
+                      style={{ ...INPUT, width: "auto", padding: "6px 10px", fontSize: 12, textAlign: "right" }}
+                    />
+                  ) : (
+                    <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
+                      {new Date(os.concluida_em ?? os.fechada_em ?? "").toLocaleString("pt-BR", {
+                        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+                      })}
+                    </span>
+                  )}
                 </div>
               )}
               <div style={linha}>

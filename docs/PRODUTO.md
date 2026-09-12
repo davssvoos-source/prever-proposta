@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R260 (31)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R262 (33)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -4884,3 +4884,53 @@ adaptado."
   abrir uma nova atividade e o tipo de demanda selecionado for 'Proposta
   Comercial', altere o Responsável para um usuário pertencente a equipe
   Comercial (Atualmente só o Davi Voos)")*
+
+- **R261** — **A Demanda no tempo conta a semana inteira: o que foi concluído
+  nela e o que vence nela.** Uma regra só para as oito barras — **concluída
+  conta na semana em que foi concluída; em aberto conta na semana do prazo** —,
+  e os dois predicados são excludentes, então ninguém é contado duas vezes.
+  Isso REVISA a R65, que separava passado (entregas) de futuro (prazos em
+  aberto), e conserta o buraco que essa assimetria abria: **a semana corrente é
+  contada pelo lado do futuro** (ela só vira passado na segunda seguinte), e o
+  lado do futuro só olhava o que estava em aberto — concluir uma atividade hoje
+  a tirava da barra desta semana e não a punha em nenhuma outra. **O trabalho
+  sumia do gráfico no instante em que era feito.** O clique continua abrindo
+  exatamente o que a barra conta (a invariante da R60/R65 vale igual, agora com
+  uma função só, `demandaPorSemana`), a faixa passa a anunciar "Atividades da
+  semana de DD/MM" — sem distinguir passado de futuro, porque a barra também
+  não distingue mais — e a dica do mouse diz de que o número é feito ("N
+  atividades · M concluídas, K em aberto com prazo"). Efeito colateral
+  deliberado: a barra de uma semana passada passa a mostrar também **o que
+  venceu nela e continua aberto** — demanda daquela semana que ninguém atendeu,
+  e que antes não aparecia em barra nenhuma. *(Davi, 12/09/2026: "O Filtro de
+  Demanda no Tempo da página inicial deve incluir as atividades concluídas.")*
+
+- **R262** — **A data de conclusão é corrigível à mão, e a correção fica na
+  linha do tempo.** Na ficha da atividade **concluída** existe o campo
+  **"Concluída em"** (data e hora). Quem edita a atividade corrige na tela
+  interna; na tela de campo, **só a gestão** — o técnico entrega, a gestão
+  corrige. Três decisões que a regra carrega:
+  1. **Quem registra é o BANCO, não a tela.** A correção vira uma linha da
+     timeline — "Data de conclusão: 10/01/2026 15:00 → 12/01/2026 09:30 —
+     Fulano" — escrita por **gatilho** (U131). Não é preciosismo: a policy de
+     `chamado_eventos` aceita do cliente apenas `tipo = 'comentario'` do
+     próprio autor, e registro que depende de a tela lembrar de escrever some no
+     dia em que a data mudar por outro caminho. O gatilho vê todas as escritas
+     da coluna.
+  2. **Só conta como correção o que é correção.** A linha nasce quando a
+     atividade **já estava e continua concluída** e a data mudou. Concluir e
+     reabrir mexem no `status`, e o evento de status já conta essas duas
+     histórias — sem o recorte, toda conclusão geraria duas linhas dizendo o
+     mesmo.
+  3. **Corrige a data da GESTÃO, não a do dinheiro.** Escreve em
+     `concluida_em`, que é o que a Início, o gráfico e os painéis leem. NÃO
+     toca em `finalizada_em`/`fechada_em`, de onde sai a competência da
+     cobrança (U4/U7): corrigir a data que a gestão lê não pode reescrever, em
+     silêncio, um mês de dinheiro já lançado. Se um dia for para mexer também
+     no dinheiro, é outra regra, com outro nome.
+  Apagar o campo não reabre nada: tirar a data de conclusão de uma atividade
+  concluída não é corrigir, é **reabrir** — e reabrir tem botão próprio, que
+  também mexe no status. *(Davi, 12/09/2026: "Ao acessar a tela de configuração
+  de uma atividade que esteja concluída, deve ser possível alterar manualmente
+  a data de conclusão, apesar de ficar registrado na timeline quem alterou, de
+  quando pra quando a data de conclusão.")*
