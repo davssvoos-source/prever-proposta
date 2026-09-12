@@ -18022,13 +18022,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        pos.every((p, i) => p >= 0 && (i === 0 || pos[i - 1] < p)), true);
   }
   eq('R194: a coluna 1 tem cliente, nome, tipo, endereço e fachada; a 2 tem contatos, serviços e descrição; a 3 tem data, técnico e o resumo com o botão',
-     [/aria-labelledby="nv-local"[\s\S]*?Buscar cliente já cadastrado[\s\S]*?Nome do Prédio[\s\S]*?Tipo de Local[\s\S]*?<label style=\{LABEL\}>Endereço<\/label>[\s\S]*?Foto da Fachada[\s\S]*?aria-labelledby="nv-contatos"/.test(nv),
-      /aria-labelledby="nv-contatos"[\s\S]*?\{labelResponsavel1\} \(opcional\)[\s\S]*?\{labelResponsavel2\} \(opcional\)[\s\S]*?Serviços Propostos[\s\S]*?Descrição do Pedido[\s\S]*?aria-labelledby="nv-agendamento"/.test(nv),
+     // R259 (U130): o campo de cliente virou LOCAL ("Insira o nome do local…")
+     // e a nota "(opcional)" saiu do texto do rótulo para um <span> de opacidade
+     // menor. A ORDEM das colunas, que é o que este pino protege, é a mesma.
+     [/aria-labelledby="nv-local"[\s\S]*?Insira o nome do local[\s\S]*?Nome do Prédio[\s\S]*?Tipo de Local[\s\S]*?<label style=\{LABEL\}>Endereço<\/label>[\s\S]*?Foto da Fachada[\s\S]*?aria-labelledby="nv-contatos"/.test(nv),
+      /aria-labelledby="nv-contatos"[\s\S]*?\{labelResponsavel1\}<span style=\{NOTA\}>\(opcional\)[\s\S]*?\{labelResponsavel2\}<span style=\{NOTA\}>\(opcional\)[\s\S]*?Serviços Propostos[\s\S]*?Descrição do Pedido[\s\S]*?aria-labelledby="nv-agendamento"/.test(nv),
       /aria-labelledby="nv-agendamento"[\s\S]*?Data e Horário[\s\S]*?Técnico Responsável[\s\S]*?Resumo da visita[\s\S]*?Agendar visita/.test(nv)],
      [true, true, true]);
   const css107 = ler107('src/styles.css');
-  eq('R194: .nova-visita-colunas é uma coluna no celular, duas a partir de 1024px (agendamento embaixo, na largura toda) e três a partir de 1360px',
-     [/\.nova-visita-colunas \{ display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; \}/.test(css107),
+  // R259 (U130): o gap virou 16px — a régua da R239 diz 16 ENTRE CARDS E
+  // ENTRE COLUNAS, e 14 era um quinto número que só existia aqui.
+  eq('R194/R259: .nova-visita-colunas é uma coluna no celular, duas a partir de 1024px (agendamento embaixo, na largura toda) e três a partir de 1360px — com o gap de 16px da régua',
+     [/\.nova-visita-colunas \{ display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; \}/.test(css107),
       /@media \(min-width: 1024px\) \{\s*\n\s*\.nova-visita-colunas \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}\s*\n\s*\.nova-visita-colunas > section:last-child \{ grid-column: 1 \/ -1; \}/.test(css107),
       /@media \(min-width: 1360px\) \{\s*\n\s*\.nova-visita-colunas \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}\s*\n\s*\.nova-visita-colunas > section:last-child \{ grid-column: auto; \}/.test(css107)],
      [true, true, true]);
@@ -19893,11 +19898,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /achar_ou_criar_prospeccao_do_local/.test(cli124),
       /precisa da migration U124/.test(cli124)],
      [1, true, true, true, true, true]);
-  eq('R21: a tela DIZ a regra antes de qualquer erro — sem cliente vinculado, uma linha explica que o prédio entra como prospecção porque cliente vem do QAP',
+  // R259 (U130): O PARÁGRAFO SAIU DA TELA A PEDIDO DO DAVI (12/09/2026), junto
+  // com outros quatro textos da mesma janela. A REGRA não mudou — o que mudou é
+  // que ela deixou de estar escrita ali: prédio sem cliente continua entrando
+  // como PROSPECÇÃO, pelo mesmo caminho (`acharOuCriarProspeccao`), e a recusa da
+  // RLS continua voltando em português pelo `criarCliente`. O pino passa a guardar
+  // o que REALMENTE protege a regra — o caminho —, e não a frase; e guarda
+  // também que ela SUMIU, para a remoção ser decisão e não apagamento calado.
+  eq('R21/R259: a regra da prospecção vive no CAMINHO (a tela não a explica mais em texto, a pedido do Davi) — prédio sem cliente vai para acharOuCriarProspeccao, e o INSERT em clientes devolve a regra em português',
      [/este prédio entra como <strong style=\{\{ fontWeight: 600 \}\}>prospecção<\/strong>/.test(nv124),
-      /proposta comercial não faz de um condomínio nosso cliente/.test(nv124),
+      /acharOuCriarProspeccao/.test(nv124),
       /\{!clienteSelecionado && \(/.test(nv124)],
-     [true, true, true]);
+     [false, true, true]);
   eq('U124 migration CRÍTICO: a função do local é SECURITY DEFINER, acha pelo nome normalizado, só preenche o VAZIO (coalesce), lê o jsonb COLUNA POR COLUNA (não escreve situacao/cliente_id/origem de fora), tem pré-voo, conferência e DESFAZER — e NÃO recria policy de INSERT em clientes',
      [/CREATE OR REPLACE FUNCTION public\.achar_ou_criar_prospeccao_do_local\(/.test(mig124),
       /LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = public/.test(mig124),
@@ -20841,6 +20853,109 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /focarEm=\{pedidoDeFoco\}/.test(chat258),
       (chat258.match(/setPedidoDeFoco\(\(n\) => n \+ 1\)/g) ?? []).length],
      [true, true, 2]);
+}
+
+
+// ── R259/R260 — a Proposta Comercial fala menos, e o que sobrou fica alinhado ──
+{
+  const fs259 = require('fs');
+  const nv259 = fs259.readFileSync('src/features/gerencial/NovaVisitaTecnica.tsx', 'utf8');
+  const dlg259 = fs259.readFileSync('src/features/home/NovaAtividadeDialog.tsx', 'utf8');
+  const css259 = fs259.readFileSync('src/styles.css', 'utf8');
+  // ARMADILHA Nº 3: grep vê comentário, e os comentários desta tela CITAM as
+  // frases removidas para explicar por que saíram. Aqui se lê só o que a tela
+  // manda para o navegador.
+  // E a PRIMEIRA troca é por causa do `accept="image/*"` do campo de foto: o
+  // `/*` dentro da aspa abre um comentário que não existe e engole 12 mil
+  // caracteres do arquivo até achar um `*/` — foi o que fez esta asserção
+  // contar 1 onde havia 5.
+  const semComentario = (s) => s
+    .replace(/"[^"\n]*"/g, (m) => (m.includes('/*') ? '""' : m))
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  const nvLimpo = semComentario(nv259);
+  const dlgLimpo = semComentario(dlg259);
+
+  eq('R259: os cinco textos que o Davi mandou tirar da Proposta Comercial não chegam mais ao navegador — nem o subtítulo do diálogo, nem as duas linhas de apoio das colunas 2 e 3, nem os dois parágrafos do bloco do local',
+     [/Proposta Comercial — o local, os contatos/.test(dlgLimpo),
+      /Deixe em branco para cadastrar um cliente novo/.test(nvLimpo),
+      /proposta comercial não faz de um condomínio nosso cliente/.test(nvLimpo),
+      /sub="Com quem falar e o que propor"/.test(nvLimpo),
+      /sub="Quando e com quem"/.test(nvLimpo)],
+     [false, false, false, false, false]);
+
+  eq('R259: o primeiro campo chama-se LOCAL e convida pelo nome do local — "Cliente" e "Buscar cliente já cadastrado" saíram, porque ali se busca o prédio, que pode ser cliente do QAP ou prospecção',
+     [/<label style=\{LABEL\}>Local<\/label>/.test(nvLimpo),
+      /placeholder="Insira o nome do local…"/.test(nvLimpo),
+      /Buscar cliente já cadastrado/.test(nvLimpo)],
+     [true, true, false]);
+
+  eq('R259: o NOME do campo é tinta primária e a NOTA é que perde opacidade — e a margem do rótulo é declarada na forma curta, porque este estilo também é espalhado em <p>, que nasce com `margin: 1em 0` do navegador (MEDIDO: o rótulo do resumo nascia a 28px do topo do card, contra 17px de todos os outros)',
+     [/color: cz\.texto, margin: "0 0 8px", display: "block",/.test(nvLimpo),
+      /const NOTA: CSSProperties = \{ opacity: 0\.55, fontWeight: 600, marginLeft: 5 \};/.test(nvLimpo),
+      /color: cz\.textoSecundario, marginBottom: 8, display: "block",/.test(nvLimpo),
+      (nvLimpo.match(/<span style=\{NOTA\}>/g) ?? []).length],
+     [true, true, false, 5]);
+
+  eq('R259 CRÍTICO: a dica do cabeçalho de coluna vive na MESMA linha do título. Empilhada — e com as das colunas 2 e 3 removidas — ela fazia o cabeçalho da coluna 1 medir 35px contra 26px dos vizinhos, e o primeiro card dela nascia 9px abaixo dos outros dois (MEDIDO no navegador; depois: 24px nos três e zero de desalinho)',
+     [/alignItems: "baseline", gap: 8, minWidth: 0 \}\}>/.test(nvLimpo),
+      /\{sub \? <span style=\{\{ fontFamily: FONT, fontSize: 11, color: c\.textoSecundario \}\}>\{sub\}<\/span> : null\}/.test(nvLimpo),
+      /\{sub \? <div /.test(nvLimpo),
+      /padding: "2px 2px 0" \}\}>/.test(nvLimpo)],
+     [true, true, false, false]);
+
+  eq('R259: a tela inteira foi para a régua da R239 — 16 entre cards (as três colunas) e entre colunas, 8 entre vizinhos, 12 dentro do card; o 14, o 10 e o 6 de layout sumiram',
+     [(nvLimpo.match(/flexDirection: "column", gap: 16, minWidth: 0/g) ?? []).length,
+      /\.nova-visita-colunas \{ display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; \}/.test(css259),
+      /gap: 14/.test(nvLimpo),
+      /gap: 10/.test(nvLimpo),
+      /marginTop: 10/.test(nvLimpo)],
+     [3, true, false, false, false]);
+
+  eq('R259: a barra de rolagem é a nossa — o polegar sai de token (com par no tema claro, anti-padrão nº 9), a pista é transparente e o Firefox recebe a versão dele',
+     [/\* \{ scrollbar-width: thin; scrollbar-color: var\(--barra-polegar\) transparent; \}/.test(css259),
+      /::-webkit-scrollbar \{ width: 10px; height: 10px; \}/.test(css259),
+      /::-webkit-scrollbar-track \{ background: transparent; \}/.test(css259),
+      /background: var\(--barra-polegar\); border-radius: 999px;/.test(css259),
+      /border: 2px solid transparent; background-clip: content-box;/.test(css259)],
+     [true, true, true, true, true]);
+
+  // CICATRIZ DA U130. O comentário da R256 tinha DOIS `*/`: o primeiro fechava
+  // o bloco no meio, e a prosa seguinte voltava ao parser como seletor. No
+  // `vite build` o lightningcss avisa e descarta; no `vite dev` é ERRO FATAL —
+  // a folha inteira não carrega, e o app abre sem estilo nenhum. Nenhum pino de
+  // CSS pegava isso, porque a regra que eu queria ESTAVA escrita.
+  const comentariosQueFechamDuasVezes = (() => {
+    let i = 0, erros = 0;
+    for (;;) {
+      const abre = css259.indexOf('/*', i);
+      if (abre < 0) break;
+      const fecha = css259.indexOf('*/', abre + 2);
+      if (fecha < 0) { erros++; break; }
+      const proximoAbre = css259.indexOf('/*', fecha + 2);
+      const entre = css259.slice(fecha + 2, proximoAbre < 0 ? css259.length : proximoAbre);
+      if (entre.includes('*/')) erros++;
+      i = fecha + 2;
+    }
+    return erros;
+  })();
+  eq('R259 CRÍTICO (cicatriz da U130): nenhum comentário do styles.css fecha duas vezes. Um `*/` sobrando devolve a prosa ao parser como seletor — o lightningcss só AVISA no build, mas o vite dev trata como erro fatal e a folha inteira deixa de carregar',
+     [comentariosQueFechamDuasVezes], [0]);
+
+  eq('R260: escolher Proposta Comercial põe alguém da EQUIPE comercial no Responsável — pela equipe do cadastro e nunca pelo cargo (R254); quem já é do comercial fica, eu mesmo tenho preferência, e sem ninguém do comercial o campo fica como está em vez de escalar o primeiro da lista',
+     [/if \(tipo !== "prospeccao"\) return;/.test(dlgLimpo),
+      /if \(equipeDaPessoa\(pessoas, responsavelId\) === "comercial"\) return;/.test(dlgLimpo),
+      /const doComercial = pessoasOrdenadas\.filter\(\(p: any\) => p\.equipe === "comercial"\);/.test(dlgLimpo),
+      /const alvo = doComercial\.find\(\(p: any\) => p\.id === euId\) \?\? doComercial\[0\];/.test(dlgLimpo),
+      /if \(alvo\) setResponsavelId\(alvo\.id as string\);/.test(dlgLimpo),
+      /p\.cargo === "comercial"/.test(dlgLimpo)],
+     [true, true, true, true, true, false]);
+
+  eq('R259: o subtítulo do diálogo só vira elemento quando tem texto — MEDIDO que um <div> vazio não gera caixa de linha (a fileira dá 32px com ou sem ele), então isto não conserta espaço perdido: conserta a marcação',
+     [/\{subtitulo \? \(/.test(dlgLimpo),
+      /\) : null\}/.test(dlgLimpo)],
+     [true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

@@ -187,6 +187,34 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
     if (tipo !== "implantacao") setPropostaId(null);
   }, [tipo]);
 
+  /**
+   * R260 (Davi, 12/09/2026): "Sempre que um usuário for abrir uma nova
+   * atividade e o tipo de demanda selecionado for 'Proposta Comercial', altere
+   * o Responsável para um usuário pertencente a equipe Comercial (Atualmente
+   * só o Davi Voos)."
+   *
+   * É a EQUIPE do cadastro (`profiles.equipe`), como no Sobreaviso (R254): o
+   * cargo é permissão, a equipe é roteamento — e quem faz proposta é a equipe
+   * comercial, tenha o cargo que tiver.
+   *
+   * TRÊS CUIDADOS:
+   *  · quem JÁ está no campo e é do comercial fica — trocar o nome de quem a
+   *    pessoa acabou de escolher seria a tela discordando dela;
+   *  · se EU sou do comercial, o escolhido sou eu: o caso normal é o comercial
+   *    abrindo a própria proposta;
+   *  · se não houver NINGUÉM com equipe comercial no cadastro, o campo fica
+   *    como está. Melhor vazio do que escalar o primeiro da lista por sorteio —
+   *    e o campo continua aberto para escolher à mão, sempre.
+   */
+  useEffect(() => {
+    if (tipo !== "prospeccao") return;
+    if (equipeDaPessoa(pessoas, responsavelId) === "comercial") return;
+    const doComercial = pessoasOrdenadas.filter((p: any) => p.equipe === "comercial");
+    const alvo = doComercial.find((p: any) => p.id === euId) ?? doComercial[0];
+    if (alvo) setResponsavelId(alvo.id as string);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, pessoasOrdenadas, euId]);
+
   function limpar() {
     setTipo(null); setTitulo(""); setDescricao(""); setLocais([]);
     setImpacto(null); setPrazo(""); setAgendarPara(""); setApoios([]); setPropostaId(null); setArquivos([]);
@@ -276,7 +304,9 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
     : !pronto
       ? "Duas perguntas decidem o resto: o tipo de demanda e quem é o responsável."
       : ehProposta
-        ? "Proposta Comercial — o local, os contatos, os serviços propostos e a visita, aqui mesmo."
+        // R259: a proposta não ganha subtítulo — a tela abaixo já diz o que
+        // ela pede, em três colunas numeradas.
+        ? ""
         : ehTecnico
           ? "Responsável da equipe Técnica — o chamado é de campo, com cliente, sistema e agenda."
           : `${TIPO_LABEL[tipo!]} · ${equipeDoResponsavel ? EQUIPE_LABEL[equipeDoResponsavel] : "sem equipe no cadastro"}`;
@@ -312,9 +342,18 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
             <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 15.5, color: textPrimary }}>
               {modoPlantao ? "Atendimento de plantão" : "Nova atividade"}
             </div>
-            <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary }}>
-              {subtitulo}
-            </div>
+            {/* R259: a proposta não tem subtítulo, e o que não tem texto não
+                vira elemento. MEDIDO: um <div> vazio não gera caixa de linha,
+                então ele não empurrava nada — a altura da fileira dá 32px com
+                ou sem ele, e o título continua centrado no ícone. Ou seja,
+                isto NÃO conserta um espaço perdido: conserta a marcação, que
+                não deve declarar um parágrafo que não existe (o leitor de
+                tela e o próximo que ler o código agradecem). */}
+            {subtitulo ? (
+              <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary }}>
+                {subtitulo}
+              </div>
+            ) : null}
           </div>
           <button
             onClick={fechar}

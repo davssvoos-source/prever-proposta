@@ -155,11 +155,27 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
   const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
   /** o card de cada bloco do formulário */
   const SECAO: CSSProperties = { ...card(isLight), padding: 16 };
-  /** micro-rótulo de campo (DESIGN_SYSTEM §6.2) */
+  /**
+   * Micro-rótulo de campo (DESIGN_SYSTEM §6.2).
+   *
+   * R259 (Davi, 12/09/2026): "Os títulos de cada tópico, deixe o tom mais
+   * branco, e quando for escrito '(OPCIONAL)' você pode reduzir um pouco a
+   * opacidade." O secundário, num rótulo de 10,5px em caixa alta, lê como
+   * campo DESABILITADO — o nome do campo passa a usar a tinta primária, e o
+   * que é NOTA sobre ele ("(opcional)", "(selecione um ou mais)") desce de
+   * opacidade, porque nota não é nome.
+   *
+   * A margem é a FORMA CURTA de propósito: este estilo também é espalhado
+   * em <p> (a agenda do técnico, o resumo), e <p> nasce com `margin: 1em 0`
+   * do navegador. `marginBottom` sozinho não desliga o TOPO — os dois
+   * rótulos desciam ~11px e não alinhavam com os rótulos dos outros cards,
+   * que começam a 16px da borda de cima.
+   */
   const LABEL: CSSProperties = {
     fontFamily: FONT, fontWeight: 700, fontSize: 10.5, letterSpacing: "0.10em",
-    textTransform: "uppercase", color: cz.textoSecundario, marginBottom: 8, display: "block",
+    textTransform: "uppercase", color: cz.texto, margin: "0 0 8px", display: "block",
   };
+  const NOTA: CSSProperties = { opacity: 0.55, fontWeight: 600, marginLeft: 5 };
   const INPUT: CSSProperties = {
     width: "100%", background: cz.campo, border: `1px solid ${cz.divisoria}`, borderRadius: 12,
     color: cz.texto, fontFamily: FONT, fontWeight: 400, fontSize: 14, padding: "11px 13px",
@@ -471,7 +487,7 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
     <div className={embutido ? "nova-visita-embutida" : "sangra-x"} style={{ paddingTop: embutido ? 0 : 14, paddingBottom: embutido ? 0 : 40, color: cz.texto }}>
       {/* Cabeçalho — só na rota; embutido no "+" da Início, o diálogo já tem o seu (R214) */}
       {!embutido && (
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <button
           onClick={aoVoltar}
           aria-label="Voltar ao Painel Comercial"
@@ -497,16 +513,16 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
       <div className="nova-visita-colunas">
 
         {/* ══ 1 · LOCAL ═══════════════════════════════════════════════════════ */}
-        <section aria-labelledby="nv-local" style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+        <section aria-labelledby="nv-local" style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
           <TituloDaColuna n={1} id="nv-local" titulo="Local" sub="Quem é e onde fica" />
 
           {/* Cliente: vincula a visita ao cadastro (Etapa 1 do sistema de OS).
               Antes, cada visita criava um cliente novo e descartável. R147: ao
               escolher, a visita herda os dados e a fachada do cadastro. */}
           <div style={SECAO}>
-            <label style={LABEL}>Cliente</label>
+            <label style={LABEL}>Local</label>
             {clienteSelecionado ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Building2 size={18} color={gold} style={{ flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 14, color: cz.texto }}>
@@ -521,13 +537,6 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
                 </button>
               </div>
             ) : null}
-            {!clienteSelecionado && (
-              // R21: dizer a regra ANTES, na tela — não depois, num erro de RLS
-              <span style={{ fontFamily: FONT, fontSize: 11.5, color: cz.textoSecundario, lineHeight: 1.5 }}>
-                Sem cliente vinculado, este prédio entra como <strong style={{ fontWeight: 600 }}>prospecção</strong> —
-                proposta comercial não faz de um condomínio nosso cliente. Cliente vem do QAP, pelo Sincronizar.
-              </span>
-            )}
             {clienteSelecionado && clienteDivergente && (
               <button
                 onClick={() => setSincronizarCliente((v) => !v)}
@@ -551,12 +560,12 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
               <>
                 <input
                   style={INPUT}
-                  placeholder="Buscar cliente já cadastrado…"
+                  placeholder="Insira o nome do local…"
                   value={buscaCliente}
                   onChange={(e) => setBuscaCliente(e.target.value)}
                 />
                 {buscaCliente.trim() !== "" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
                     {clientesFiltrados.length === 0 ? (
                       <span style={{ fontFamily: FONT, fontSize: 12, color: cz.textoSecundario }}>
                         Nenhum cliente encontrado — os dados preenchidos abaixo criarão um cadastro novo.
@@ -593,9 +602,6 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
                     )}
                   </div>
                 )}
-                <div style={{ fontFamily: FONT, fontSize: 11, color: cz.textoSecundario, marginTop: 8 }}>
-                  Deixe em branco para cadastrar um cliente novo com os dados desta visita.
-                </div>
               </>
             )}
           </div>
@@ -685,7 +691,7 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
               </button>
             </div>
             {geoStatus === "loading" && (
-              <p style={{ marginTop: 8, fontSize: 11, color: cz.textoSecundario, fontFamily: FONT, margin: "8px 0 0" }}>
+              <p style={{ fontSize: 11, color: cz.textoSecundario, fontFamily: FONT, margin: "8px 0 0" }}>
                 Buscando localização...
               </p>
             )}
@@ -718,18 +724,18 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
               </p>
             )}
             {mapUrl && (
-              <div style={{ marginTop: 10, borderRadius: 12, overflow: "hidden", border: `1px solid ${cz.divisoria}` }}>
+              <div style={{ marginTop: 12, borderRadius: 12, overflow: "hidden", border: `1px solid ${cz.divisoria}` }}>
                 <iframe title="mapa" src={mapUrl} style={{ width: "100%", height: 160, border: 0 }} />
               </div>
             )}
-            <div style={{ marginTop: 10 }}>
+            <div style={{ marginTop: 12 }}>
               <label style={LABEL}>Complemento</label>
               <input style={INPUT} placeholder="Apto, andar, bloco..." value={complemento} onChange={(e) => setComplemento(e.target.value)} />
             </div>
           </div>
 
           <div style={SECAO}>
-            <label style={LABEL}>Foto da Fachada (opcional)</label>
+            <label style={LABEL}>Foto da Fachada<span style={NOTA}>(opcional)</span></label>
             <div
               onClick={() => document.getElementById("foto-fachada-input")?.click()}
               style={{
@@ -778,12 +784,12 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
         </section>
 
         {/* ══ 2 · CONTATOS E SERVIÇOS ════════════════════════════════════════ */}
-        <section aria-labelledby="nv-contatos" style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-          <TituloDaColuna n={2} id="nv-contatos" titulo="Contatos e serviços" sub="Com quem falar e o que propor" />
+        <section aria-labelledby="nv-contatos" style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+          <TituloDaColuna n={2} id="nv-contatos" titulo="Contatos e serviços" />
 
           {/* Residência/Galpão não têm síndico/zelador — os rótulos seguem o tipo */}
           <div style={SECAO}>
-            <label style={LABEL}>{labelResponsavel1} (opcional)</label>
+            <label style={LABEL}>{labelResponsavel1}<span style={NOTA}>(opcional)</span></label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder={`Nome do ${labelResponsavel1.toLowerCase()}`} />
               <input style={INPUT} value={telefoneSindico} onChange={(e) => setTelefoneSindico(e.target.value)} placeholder="WhatsApp — (11) 90000-0000" />
@@ -792,7 +798,7 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
           </div>
 
           <div style={SECAO}>
-            <label style={LABEL}>{labelResponsavel2} (opcional)</label>
+            <label style={LABEL}>{labelResponsavel2}<span style={NOTA}>(opcional)</span></label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder={`Nome do ${labelResponsavel2.toLowerCase()}`} />
               <input style={INPUT} value={telefoneZelador} onChange={(e) => setTelefoneZelador(e.target.value)} placeholder="WhatsApp — (11) 90000-0000" />
@@ -801,13 +807,13 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
           </div>
 
           <div style={SECAO}>
-            <label style={LABEL}>Serviços Propostos (selecione um ou mais)</label>
+            <label style={LABEL}>Serviços Propostos<span style={NOTA}>(selecione um ou mais)</span></label>
             {tipoLocal === "residencia" && (
               <p style={{ fontFamily: FONT, fontSize: 11, color: cz.textoSecundario, margin: "0 0 8px" }}>
                 Controle de Acesso e serviços de portaria não se aplicam a Residência.
               </p>
             )}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {SERVICOS_PROPOSTOS
                 .filter((s) => !(tipoLocal === "residencia" && SERVICOS_INDISPONIVEIS_RESIDENCIA.includes(s.key)))
                 .map((s) => {
@@ -852,12 +858,12 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
         </section>
 
         {/* ══ 3 · AGENDAMENTO ════════════════════════════════════════════════ */}
-        <section aria-labelledby="nv-agendamento" style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-          <TituloDaColuna n={3} id="nv-agendamento" titulo="Agendamento" sub="Quando e com quem" />
+        <section aria-labelledby="nv-agendamento" style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+          <TituloDaColuna n={3} id="nv-agendamento" titulo="Agendamento" />
 
           <div style={SECAO}>
-            <label style={LABEL}>Data e Horário (opcional)</label>
-            <div style={{ display: "flex", gap: 10 }}>
+            <label style={LABEL}>Data e Horário<span style={NOTA}>(opcional)</span></label>
+            <div style={{ display: "flex", gap: 8 }}>
               <input
                 type="date"
                 style={{ ...INPUT, flex: 2 }}
@@ -867,7 +873,7 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
               />
               <input type="time" style={{ ...INPUT, flex: 1 }} value={hora} onChange={(e) => setHora(e.target.value)} />
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
               {[
                 { label: "Amanhã 09:00", days: 1, time: "09:00" },
                 { label: "Amanhã 14:00", days: 1, time: "14:00" },
@@ -902,7 +908,7 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
 
             {tecnicoId && visitasTecnico.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <p style={{ ...LABEL, color: gold, marginBottom: 6 }}>Agenda dos próximos 7 dias</p>
+                <p style={{ ...LABEL, color: gold }}>Agenda dos próximos 7 dias</p>
                 {visitasTecnico.map((v, i) => (
                   <div
                     key={i}
@@ -947,7 +953,7 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
               },
               { label: "Técnico", value: tecnicos.find((t) => t.id === tecnicoId)?.nome ?? "Não definido" },
             ].map((row) => (
-              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "5px 0", borderBottom: `1px solid ${cz.divisoria}` }}>
+              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "5px 0", borderBottom: `1px solid ${cz.divisoria}` }}>
                 <span style={{ fontFamily: FONT, fontSize: 11.5, color: cz.textoSecundario, flexShrink: 0 }}>{row.label}</span>
                 <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 600, color: cz.texto, textAlign: "right", minWidth: 0, overflowWrap: "anywhere" }}>
                   {row.value || "—"}
@@ -987,11 +993,14 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
 }
 
 /** O título de cada coluna (R194): número dourado + nome + o que ela responde. */
-function TituloDaColuna({ n, id, titulo, sub }: { n: number; id: string; titulo: string; sub: string }) {
+function TituloDaColuna({ n, id, titulo, sub }: { n: number; id: string; titulo: string; sub?: string }) {
   const { isLight } = useTheme();
   const c = cinzas(isLight);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "2px 2px 0" }}>
+    // SEM PADDING À ESQUERDA: a bolinha encosta na mesma coluna em que os
+    // cards abaixo encostam. Dois pixels de recuo aqui desalinhavam o
+    // cabeçalho de tudo o que vem embaixo dele.
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <span aria-hidden style={{
         width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
         background: GOLD_GRAD, color: "#0E0E0E",
@@ -1000,9 +1009,21 @@ function TituloDaColuna({ n, id, titulo, sub }: { n: number; id: string; titulo:
       }}>
         {n}
       </span>
-      <div style={{ minWidth: 0 }}>
+      {/* R259: a linha de apoio só existe onde ela AJUDA — o Davi tirou as
+          das colunas 2 e 3 ("Com quem falar e o que propor", "Quando e com
+          quem"), que repetiam o título logo acima com outras palavras.
+
+          E a que SOBROU passou para a MESMA LINHA do título, que é como
+          esta casa escreve cabeçalho de bloco (DESIGN_SYSTEM: rótulo e, na
+          mesma linha, a dica em 11 secundário). Não é gosto: empilhada, ela
+          fazia o cabeçalho da coluna 1 ficar mais alto que o das colunas 2 e
+          3. MEDIDO no navegador: 35px contra 26px, e o primeiro card da
+          coluna 1 nascia 9px abaixo dos outros dois. Na mesma linha, os três
+          cabeçalhos têm 24px (a altura da bolinha) e os cards de todas as
+          colunas começam na mesma régua. */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
         <h2 id={id} style={{ fontFamily: FONT, fontWeight: 700, fontSize: 13.5, margin: 0, color: c.texto }}>{titulo}</h2>
-        <div style={{ fontFamily: FONT, fontSize: 11, color: c.textoSecundario }}>{sub}</div>
+        {sub ? <span style={{ fontFamily: FONT, fontSize: 11, color: c.textoSecundario }}>{sub}</span> : null}
       </div>
     </div>
   );

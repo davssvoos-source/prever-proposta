@@ -400,7 +400,13 @@ Regras de implementação:
   (`innerWidth − clientWidth`, no load e no resize) e escreve `--barra`, que a
   `.sangra-x` desconta pela metade nos dois lados. Piso `0px`: sem o JS o
   comportamento é o de antes, não um layout quebrado. Depois disso as três
-  telas MEDEM 256 à esquerda e 24 à direita em 1920.
+  telas MEDEM 256 à esquerda e 24 à direita em 1920.- **A barra de rolagem é nossa (R259)**: `--barra-polegar` e `--barra-hover`
+  (com par no `[data-theme="light"]`), polegar de 6px dentro de uma pista de
+  10px — a borda de 2px transparente com `background-clip: content-box` dá o
+  respiro —, pista e canto transparentes, e o Firefox recebe a versão dele
+  (`scrollbar-width: thin` + `scrollbar-color`). Não mexe em quem esconde a
+  própria barra: `.trilho-x` e `.rolagem-oculta` declaram `scrollbar-width:
+  none` na classe, que é mais específica que o seletor universal.
 - **As camadas (z-index)**, de baixo para cima: conteúdo `1` · barra inferior
   do celular `50` · menu lateral `55` · botão flutuante e popover de
   notificações `60` · **diálogo e folha lateral `70`** · avisos (sonner) acima
@@ -1461,6 +1467,33 @@ Todos abaixo foram bugs de produção — verifique cada um antes de entregar.
     ser iguais, prefira `main:has(.sua-classe) { max-width: none }` + a régua
     `--gutter` (R239) — e onde a sangria for mesmo necessária (o quadro da
     Início), desconte `var(--barra)/2` dos dois lados.
+
+
+11. **Comentário de CSS que fecha duas vezes.** Um `*/` sobrando no meio de um
+    comentário do `styles.css` encerra o bloco ali, e a prosa seguinte volta ao
+    parser **como seletor**. O `vite build` apenas AVISA (`lightningcss:
+    Invalid token in pseudo element`) e descarta o trecho — o pacote sai
+    inteiro e ninguém percebe; o `vite dev` trata como **erro fatal** e serve o
+    app **sem folha de estilo nenhuma**. Foi o que aconteceu com o comentário
+    da R256 (12/09/2026), e nenhuma asserção pegava: a regra que se queria
+    estava escrita, o problema era o texto ao redor dela. Tem pino permanente
+    desde a R259 (nenhum comentário do `styles.css` pode fechar duas vezes).
+    Varredura:
+    ```bash
+    npx vite build 2>&1 | grep -i "invalid token"
+    ```
+
+12. **Estilo de rótulo espalhado em `<p>` sem zerar a margem de cima.** `<p>`
+    nasce com `margin: 1em 0` da folha do navegador. Um estilo de rótulo que
+    declara só `marginBottom` deixa o topo por conta do navegador: onde o
+    rótulo é `<label>` ele encosta no padding do card, e onde é `<p>` ele
+    desce ~11px. MEDIDO na Nova Atividade (R259): 28px do topo do card contra
+    17px de todos os outros rótulos da mesma tela. Regra: estilo de rótulo
+    reusável declara a margem na **forma curta** (`margin: "0 0 8px"`), que
+    zera os quatro lados. Varredura:
+    ```bash
+    grep -rn '<p style={{ \.\.\.' src/ | grep -v 'margin'
+    ```
 
 ---
 

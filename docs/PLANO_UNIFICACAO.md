@@ -12231,3 +12231,114 @@ redesenho da grade tornaria as duas coisas difíceis de conferir.
 **Números.** Verificador: 3.272 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migration **U129 pendente** — sem ela a troca de plantonista avisa que falta
 rodar, e o resto da tela funciona.
+
+## U130 — as correções pedidas antes do executável: o apoio que faltava (R255), as setinhas (R256), o prazo sem palavra (R257), a caixa do chat (R258) e a Proposta Comercial que fala menos e fica alinhada (R259/R260)
+
+**O contexto.** O Davi abriu esta rodada dizendo: *"Faremos diversas correções
+e alterações, para que ao final eu peça o executavel."* Então nada aqui sobe
+versão nem gera pacote: a v0.0.11 continua sendo a entrega instalável, e este
+diário junta as seis regras que vieram depois dela, na ordem em que ele pediu.
+
+**R255 — o apoio que não podia ser adicionado.** O relato veio com print: o
+botão de adicionar APOIO ficava indisponível "para alguns usuários quando não
+tem nada registrado no apoio ainda". Era um ovo e galinha com uma trava de
+segurança no meio. Quem edita a atividade é quem tem vínculo com ela, e a S2
+diz que apoio só vale como vínculo quando `criado_por IS DISTINCT FROM
+profile_id` — ou seja, apoio que a pessoa se deu sozinha não conta. Enquanto
+NINGUÉM tinha sido registrado como apoio, quem não era responsável nem criador
+não podia editar, e por isso não via o seletor de pessoas — inclusive para se
+oferecer. A saída não foi afrouxar a regra: quem não edita passou a ver um
+botão **"Entrar como apoio"**, que grava o apoio com `criado_por = ele mesmo` e
+portanto NÃO vira permissão de edição. De quebra, o gêmeo do cliente
+(`podeEditar`) estava desatualizado em relação ao `pode_editar_chamado` do
+banco, e passou a usar o mesmo `apoioValeComoVinculo` que o servidor usa.
+
+**R256 — as setinhas do campo de horas, e uma medição que derrubou a primeira
+tentativa.** O pedido era simples: as setas de `<input type="number">` só no dia
+em que a pessoa clica, e nunca com a ferramenta de remover dia ligada. A
+primeira versão escondia com `appearance: none` e trazia de volta no `:focus`.
+MEDIDO no navegador: **não volta** — nem com `inner-spin-button` de volta, nem
+com `appearance: auto` no campo. A única alavanca que o `:focus` alcança é a
+OPACIDADE, e opacidade deixa a seta reservando a largura dela mesmo invisível,
+o que jogava o número 8px à esquerda do centro em TODA célula editável. O preço
+virou `padding-left: 13px`, que devolve o número ao centro e faz a seta aparecer
+sem empurrar nada — o espaço já estava lá.
+
+**R257 — o prazo é o ícone e o número.** Saíram as palavras "faltam" e "em
+atraso" do card da Início. Quem diz o sentido no card é a COR (a borda é
+vermelha em atraso desde a R136), e a palavra repetia em trinta cards o que a
+cor já dizia. Fora do card — na ficha, na faixa sem horário, no painel
+Operacional — o número aparece solto, sem borda colorida ao lado, e ali a
+palavra ficou: "9d" sozinho não distingue quem vence de quem venceu. A função
+pura ganhou um irmão (`prazoEmNumero`), e `textoPrazo` passou a ser ele mais a
+palavra — uma fonte só para os dois formatos.
+
+**R258 — três pixels.** O convite "Escreva para todos…" nascia três pixels
+acima da linha em que a pessoa escreve. A R245 já tinha feito o convite herdar
+o padding da área, então a margem da caixa não era a causa: é que o texto de
+verdade não nasce na área, nasce dentro de um `[data-bloco]`, e o bloco tem três
+pixels de respiro em cima. MEDIDO sobrepondo o convite ao texto real numa
+prévia: antes, duas linhas desencontradas; depois, uma só. E abrir o chat passou
+a pedir foco pelo MESMO contador do "Responder aqui" (R249).
+
+**R259 — a Proposta Comercial fala menos.** Cinco textos fora, "Cliente" virou
+**LOCAL**, o nome do campo subiu para a tinta primária e a nota "(opcional)"
+desceu de opacidade, e a barra de rolagem virou a nossa. O ponto que merece
+diário é o do **parágrafo da prospecção**. Ele era uma tela DIZENDO a regra
+antes do erro — e tinha asserção guardando a frase. Tirar a frase não tira a
+regra: o prédio sem cliente continua entrando pelo
+`achar_ou_criar_prospeccao_do_local` e a RLS continua recusando o INSERT em
+`clientes` em português. Então o pino foi REAPONTADO com o motivo ao lado: ele
+guarda agora o CAMINHO (que é o que protege a regra) e guarda que a frase
+sumiu, para a remoção ser decisão e não apagamento calado.
+
+**A revisão de margem que o Davi mandou fazer depois — e os dois defeitos que
+ela achou.** O pedido foi explícito: *"Não se esqueça de que após realizar as
+alterações solicitadas, deverão ser realizadas as correções de margem,
+alinhamento, espaçamento da tela."* MEDIDO no navegador, numa prévia
+descartável que carrega `paleta.ts` de verdade:
+
+1. **9px de desalinho que as próprias remoções criaram.** Com as dicas das
+   colunas 2 e 3 removidas, o cabeçalho da coluna 1 (que manteve a dele) ficou
+   com 35px contra 26px dos vizinhos — e o primeiro card dela nascia 9px abaixo
+   dos outros dois. A dica que sobrou passou para a MESMA LINHA do título, que
+   é como esta casa escreve cabeçalho de bloco. Os três cabeçalhos voltaram a
+   ter 24px e o desalinho foi a zero.
+2. **11px que vinham do navegador.** O estilo de rótulo é espalhado em dois
+   `<p>`, e `<p>` nasce com `margin: 1em 0`. Como o estilo só declarava
+   `marginBottom`, o TOPO continuava do navegador: o rótulo do resumo nascia a
+   28px da borda do card, contra 17px de todos os outros. A forma curta
+   (`margin: "0 0 8px"`) zera os quatro lados.
+
+O resto foi para a régua da R239 — 8 entre vizinhos, 12 dentro do card, 16
+entre cards e entre colunas: sumiram o gap de 14 das colunas, os de 10 e os de
+6 de layout (os 6 que sobraram são geometria de dentro do chip, não espaçamento
+entre coisas).
+
+**O defeito que a medição achou no caminho, e que nenhum pino pegava.** Ao
+abrir a tela no navegador, o `vite dev` estava servindo o app SEM FOLHA DE
+ESTILO: o comentário que eu escrevi na R256 tinha **dois `*/`**. O primeiro
+fechava o bloco no meio, e a prosa seguinte voltava ao parser como seletor —
+`lightningcss` avisava no `vite build` (que completava assim mesmo, descartando)
+e tratava como ERRO FATAL no `vite dev`. Nenhuma asserção de CSS pegava isso,
+porque a regra que eu queria ESTAVA escrita. Virou pino permanente: nenhum
+comentário do `styles.css` pode fechar duas vezes.
+
+**R260 — quem responde por uma proposta é do Comercial.** Escolher "Proposta
+Comercial" já põe alguém da equipe comercial no Responsável. É a EQUIPE do
+cadastro, nunca o cargo — a mesma decisão da R254, e pelo mesmo motivo: cargo é
+permissão, equipe é roteamento. Três cuidados ficaram na regra: não trocar quem
+a pessoa acabou de escolher se ele já é do comercial; preferir a própria pessoa
+quando ela é do comercial; e não escalar ninguém quando não há ninguém com
+equipe comercial — melhor o campo como está do que um responsável por sorteio.
+
+**O que NÃO fiz, e por quê.** Não tirei a dica "Quem é e onde fica" da coluna 1:
+o Davi listou cinco textos, e esse não estava na lista — resolvi o desalinho
+mudando o LUGAR dela, não removendo o que ele não pediu para remover. Não subi
+versão nem gerei pacote, porque ele disse que pediria o executável no fim. E não
+mexi nos `gap: 6` que são a distância entre o ícone e o rótulo DENTRO de um
+chip: a régua da R239 fala de espaço entre coisas, não da geometria interna de
+um controle.
+
+**Números.** Verificador: 3.290 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Nenhuma migration nova.

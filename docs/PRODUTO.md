@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R258 (29)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R260 (31)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -4821,3 +4821,66 @@ adaptado."
   para todos...') precisa corrigir as margens e espaçamento. Ao abrir o chat,
   adicione o mecanismo de FOCUS, onde o cursor vai direto pra caixa de
   texto.")*
+
+- **R259** — **A tela da Proposta Comercial fala menos — e o que sobrou fica
+  alinhado.** Cinco mudanças pedidas e uma consequência medida:
+  1. **Cinco textos saem.** O subtítulo do diálogo ("Proposta Comercial — o
+     local, os contatos, os serviços propostos e a visita, aqui mesmo."), o
+     "Deixe em branco para cadastrar um cliente novo com os dados desta
+     visita", o parágrafo da prospecção ("Sem cliente vinculado, este prédio
+     entra como prospecção…") e as duas linhas de apoio das colunas 2 e 3
+     ("Com quem falar e o que propor", "Quando e com quem"). A REGRA da
+     prospecção não mudou por isso: o prédio sem cliente continua entrando
+     pelo `achar_ou_criar_prospeccao_do_local` (R21/R22), e a recusa do INSERT
+     em `clientes` continua voltando em português. O que mudou é que a tela
+     não a explica mais em texto — e a asserção que guardava a FRASE passou a
+     guardar o CAMINHO, mais a prova de que a frase sumiu.
+  2. **O primeiro campo chama-se LOCAL**, não "Cliente", e convida por
+     "Insira o nome do local…". É o nome certo para o que ele faz: ali se
+     busca o prédio, que pode ser cliente do QAP ou prospecção.
+  3. **O nome do campo é tinta primária; a nota sobre ele, não.** O rótulo de
+     10,5px em caixa alta no cinza secundário lia como campo desabilitado.
+     "(opcional)" e "(selecione um ou mais)" descem para 55% de opacidade,
+     porque nota não é nome.
+  4. **A barra de rolagem é nossa** (`--barra-polegar`/`--barra-hover`, com par
+     no tema claro): polegar de 6px com respiro, pista transparente, e a
+     versão do Firefox (`scrollbar-width: thin`) junto. Quem já esconde a
+     própria barra (`.trilho-x`, `.rolagem-oculta`) não é afetado.
+  5. **A revisão de margem, alinhamento e espaçamento que o Davi pediu depois
+     — e ela achou dois defeitos que só existiam por causa das remoções.**
+     MEDIDO no navegador: (a) com as dicas das colunas 2 e 3 fora, o cabeçalho
+     da coluna 1 ficou 35px contra 26px dos outros dois, e o primeiro card
+     dela nascia **9px abaixo** dos vizinhos — a dica que sobrou passou para a
+     MESMA LINHA do título (que é como esta casa escreve cabeçalho de bloco), e
+     os três cabeçalhos voltaram a ter 24px; (b) o rótulo espalhado em `<p>`
+     herdava o `margin: 1em 0` do navegador e nascia a **28px** do topo do
+     card, contra 17px de todos os outros — o estilo passou a declarar a
+     margem na forma curta, que zera os quatro lados. O resto da tela foi para
+     a régua da R239 (8 entre vizinhos · 12 dentro do card · 16 entre cards e
+     entre colunas): sumiram o gap de 14 das colunas, os de 10 e os de 6.
+  *(Davi, 12/09/2026: "Na tela de abrir atividade, no tipo de demanda Proposta
+  Comercial, remova os textos abaixo […] no campo 'CLIENTE', o primeiro campo
+  da tela, altere por LOCAL. Altere também o texto 'Buscar cliente já
+  cadastrado...', altere por 'Insira o nome do local...' Os titulos de cada
+  tópico, deixe o tom mais branco, e quando for escrito '(OPCIONAL)' você pode
+  reduzir um pouco a opacidade. […] Altere o design do scroll da página para um
+  de acordo com o nosso design, atualmente é o scroll padrão do windows" e, em
+  seguida: "Não se esqueça de que após realizar as alterações solicitadas,
+  deverão ser realizadas as correções de margem, alinhamento, espaçamento da
+  tela.")*
+
+- **R260** — **Proposta Comercial nasce com responsável do Comercial.** Ao
+  escolher o tipo de demanda "Proposta Comercial", o campo Responsável já vem
+  preenchido com alguém da **equipe Comercial** — hoje só o Davi Voos. É a
+  EQUIPE do cadastro (`profiles.equipe`), nunca o cargo: cargo é permissão,
+  equipe é roteamento (R254), e quem faz proposta é o Comercial, tenha o cargo
+  que tiver. Três cuidados que a regra carrega: **quem já está no campo e é do
+  Comercial fica** (trocar o nome que a pessoa acabou de escolher seria a tela
+  discordando dela); **se quem está abrindo é do Comercial, o escolhido é ele**
+  (o caso normal é o comercial abrindo a própria proposta); e **se não houver
+  ninguém com equipe comercial no cadastro, o campo fica como está** — melhor
+  vazio do que escalar o primeiro da lista por sorteio. O campo continua aberto
+  para trocar à mão, sempre. *(Davi, 12/09/2026: "Sempre que um usuário for
+  abrir uma nova atividade e o tipo de demanda selecionado for 'Proposta
+  Comercial', altere o Responsável para um usuário pertencente a equipe
+  Comercial (Atualmente só o Davi Voos)")*
