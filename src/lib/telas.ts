@@ -86,8 +86,13 @@ export const TELAS: Tela[] = [
   // não há rota. Ele entra pela terceira opção do "+" da Início (R91), e este
   // catálogo é o mapa de ROTAS — uma chave sem rota seria órfã nos dois
   // sentidos da asserção que compara catálogo e semente.
-  T("sobreaviso", "Sobreaviso", "/sobreaviso", "Trabalho", [true, true, true], {
-    nota: "todos VEEM a escala (cobertura não é dinheiro); quem edita é gestor, e gestor inclui o SAC",
+  // R263 (U132): o TÉCNICO saiu daqui — as três telas dele são Início, Agenda
+  // e Perfil, e a semana em que ele é o plantonista está nas duas primeiras
+  // e na última. A LEITURA da tabela continua aberta a ele pela policy (é o
+  // que a Início dele usa para saber que é o plantonista); o que fechou foi
+  // a TELA da grade, que é do Vinicius.
+  T("sobreaviso", "Sobreaviso", "/sobreaviso", "Trabalho", [false, true, true], {
+    nota: "a grade é do gestor (e gestor inclui o SAC); o técnico não abre a tela — a semana dele está na Início e no Perfil (R263)",
   }),
 
   // ── Chamados ──────────────────────────────────────────────────────────────

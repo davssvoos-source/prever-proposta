@@ -85,6 +85,8 @@ import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import { PainelChamado } from "@/features/chamados/PainelChamado";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
+import { useSessao } from "@/features/home/data";
+import { SeletorMinhasEquipe, useRecorteDoTecnico } from "@/features/home/RecorteDoTecnico";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   // Revisão de 03/09/2026: a chave "calendario" existia na matriz e nenhuma
@@ -348,6 +350,16 @@ function CalendarioPage() {
   const { data: cargo } = useUserCargo();
   // SAC é gestor de chamados: vê o calendário de TODOS (R8/R26)
   const isGestor = cargo === "admin" || cargo === "sac" || cargo === "comercial";
+  // R263: o técnico de campo tem o interruptor Minhas | Equipe — o MESMO da
+  // Início dele (a chave do localStorage é uma). "Minhas" é responsável ou
+  // apoio; "Equipe" é tudo o que o banco lhe devolve (R264: só campo).
+  // O cargo vem de `useSessao` — a MESMA fonte da Início —, e não do
+  // `useUserCargo` acima, que até a U132 devolvia "tecnico" para o operacional.
+  const { data: sessaoAgenda } = useSessao();
+  const ehTecnico = sessaoAgenda?.cargo === "tecnico";
+  const [recorte, setRecorte] = useRecorteDoTecnico();
+  // gestor vê as visitas de todos; o técnico em "Equipe" também; o resto vê só as suas
+  const soAsMinhasVisitas = !isGestor && !(ehTecnico && recorte === "equipe");
 
   const [pessoaFiltro, setPessoaFiltro] = useState("todos");
   const [tipoFiltro, setTipoFiltro] = useState("todos");
@@ -394,7 +406,7 @@ function CalendarioPage() {
   const chaveJanela = `${chaveDia(janela.de)}_${chaveDia(janela.ate)}`;
 
   const { data: visitas = [], isLoading: carregandoVisitas } = useQuery({
-    queryKey: ["calendario", "visitas", chaveJanela, isGestor],
+    queryKey: ["calendario", "visitas", chaveJanela, isGestor, soAsMinhasVisitas],
     queryFn: async () => {
       let q = supabase
         .from("visitas_tecnicas")
@@ -405,7 +417,7 @@ function CalendarioPage() {
         .not("data_hora_agendada", "is", null)
         .gte("data_hora_agendada", janela.de.toISOString())
         .lte("data_hora_agendada", janela.ate.toISOString());
-      if (!isGestor) {
+      if (soAsMinhasVisitas) {
         const { data: u } = await supabase.auth.getUser();
         if (u.user) q = q.eq("tecnico_id", u.user.id);
       }
@@ -424,11 +436,11 @@ function CalendarioPage() {
    * o dia é `quando`, no useMemo abaixo, e ele prefere a conclusão.
    */
   const { data: chamados = [], isLoading: carregandoChamados } = useQuery({
-    queryKey: ["calendario", "chamados", chaveJanela],
+    queryKey: ["calendario", "chamados", chaveJanela, ehTecnico],
     queryFn: async () => {
       const de = janela.de.toISOString();
       const ate = janela.ate.toISOString();
-      const { data, error } = await supabase
+      let q = supabase
         .from("chamados" as any)
         // responsavel_id, NÃO tecnico_id: a coluna mudou de nome na U7 e o
         // nome velho derrubava a consulta inteira (42703).
@@ -439,6 +451,11 @@ function CalendarioPage() {
           + `and(status.neq.concluido,data_hora_agendada.gte.${de},data_hora_agendada.lte.${ate}),`
           + `and(status.neq.concluido,data_hora_agendada.is.null,prazo_limite.gte.${de},prazo_limite.lte.${ate})`,
         );
+      // R264 (U132): cinto e suspensório. Quem recorta é o BANCO; o front só
+      // deixa de mostrar o interno ao técnico na janela entre subir o pacote
+      // e rodar a migration — e poupa o 4G dele.
+      if (ehTecnico) q = q.neq("natureza", "interno");
+      const { data, error } = await q;
       if (error) throw error;
       return (data as any[]) ?? [];
     },
@@ -655,13 +672,15 @@ function CalendarioPage() {
 
   const eventos = useMemo(
     () => todosEventos
+      // R263: o técnico em "Minhas" vê só o que é dele (responsável ou apoio)
+      .filter((e) => !ehTecnico || recorte === "equipe" || (!!sessaoAgenda?.userId && e.pessoas.includes(sessaoAgenda.userId)))
       .filter((e) => pessoaFiltro === "todos" || e.pessoas.includes(pessoaFiltro))
       .filter((e) => tipoFiltro === "todos" || e.tipo === tipoFiltro)
       // Escolher um setor esconde quem não é de setor nenhum — atividade
       // interna, prospecção, cliente sem serviço marcado. É o que filtrar
       // significa, mas surpreende, então o menu avisa quantos ficam de fora.
       .filter((e) => setorFiltro === "todos" || e.setores.includes(setorFiltro)),
-    [todosEventos, pessoaFiltro, tipoFiltro, setorFiltro],
+    [todosEventos, pessoaFiltro, tipoFiltro, setorFiltro, ehTecnico, recorte, sessaoAgenda?.userId],
   );
 
   const porDia = useMemo(() => {
@@ -711,7 +730,9 @@ function CalendarioPage() {
     [inicioSem],
   );
 
-  const carregando = carregandoVisitas || carregandoChamados;
+  // a sessão entra: sem ela o recorte "Minhas" do técnico não tem o id para
+  // comparar, e a grade apareceria VAZIA em vez de "carregando"
+  const carregando = carregandoVisitas || carregandoChamados || sessaoAgenda === undefined;
 
   function abrir(e: Evento) {
     // a visita tem fluxo próprio; o chamado abre no painel de propriedades
@@ -802,6 +823,7 @@ function CalendarioPage() {
               <CalendarRange size={13} /> Semanal
             </button>
           </div>
+          {ehTecnico && <SeletorMinhasEquipe valor={recorte} aoMudar={setRecorte} />}
 
           <div style={{ flex: 1 }} />
 

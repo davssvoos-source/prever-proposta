@@ -153,6 +153,12 @@ export function useUserCargo() {
       if (roleStrs.includes("admin") || roleStrs.includes("comercial")) return "admin" as const;
       if (c === "admin" || c === "comercial") return "admin" as const;
       if (roleStrs.includes("sac") || c === "sac") return "sac" as const;
+      // R244/R263 (U132): o OPERACIONAL tem barra própria (Início, Calendário,
+      // Clientes, Perfil) e NÃO é técnico. Este balde devolvia "tecnico" para
+      // ele — o Nicholas e o Erik viam a barra de TRÊS itens do técnico desde a
+      // R244, sem Clientes, e na U132 ganhariam o interruptor do técnico na
+      // Agenda. A Início já distinguia (useSessao); aqui faltava.
+      if (c === "operacional") return "operacional" as const;
       return "tecnico" as const;
     },
     staleTime: 60_000,

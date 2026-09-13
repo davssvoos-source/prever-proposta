@@ -219,13 +219,13 @@ export function GradeMes({
                 <div
                   style={{
                     ...colunaFixa, gridRow: linhaDe(indice), gridColumn: 1, borderBottom: linhaFina,
-                    // Quem saiu da empresa (ou não é da equipe técnica) continua
+                    // Quem saiu da empresa (ou não tem cargo técnico, R265) continua
                     // no histórico, esmaecido. É o ON DELETE RESTRICT da FK
                     // contado em pixels.
                     opacity: l.pessoa.historico ? 0.55 : 1,
                   }}
                   title={l.pessoa.historico
-                    ? "não pode ser escalado (fora da equipe técnica, inativo ou convite pendente) — continua aqui porque tem horas neste período"
+                    ? "não pode ser escalado (sem cargo técnico, inativo ou convite pendente) — continua aqui porque tem horas neste período"
                     : undefined}
                 >
                   <span

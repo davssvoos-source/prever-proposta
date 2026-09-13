@@ -381,6 +381,9 @@ const ARQUIVOS_SEMENTE = [
   'supabase/migrations/20260918090000_u109_patrimonio_do_qap.sql',
   // U127 (R244): a semente do perfil OPERACIONAL — uma linha por tela
   'supabase/migrations/20260926090000_u127_v009_perfil_operacional.sql',
+  // U132 (R263): a chave 'sobreaviso' FECHA para o técnico — o UPSERT conta
+  // na semente, senão o catálogo (que já diz false) divergiria dela.
+  'supabase/migrations/20260929090000_u132_o_tecnico_le_so_campo.sql',
 ];
 const semente = {};
 // REGRA 2, E ELA MORDEU AQUI: este leitor casava COMENTÁRIO. O bloco DESFAZER
@@ -2320,8 +2323,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /tiposPresentes = useMemo\(\s*\(\) => Array\.from\(new Set\(todosEventos\.map/.test(cal3), true);
   eq('e não mais do array `eventos` (o que causava o bug)',
      /tiposPresentes = useMemo\(\s*\(\) => Array\.from\(new Set\(eventos\.map/.test(cal3), false);
-  eq('o filtro de pessoa/tipo aplica sobre a base COMPLETA (todosEventos)',
-     /todosEventos\s*\.filter\(\(e\) => pessoaFiltro/.test(cal3), true);
+  // R263 (U132): o PRIMEIRO filtro passou a ser o recorte do técnico (Minhas |
+  // Equipe); o de pessoa/tipo vem logo depois — e os dois continuam sobre a
+  // base COMPLETA, que é o que este pino protege.
+  eq('o filtro de pessoa/tipo aplica sobre a base COMPLETA (todosEventos) — depois do recorte do técnico (R263)',
+     /todosEventos\s*\n\s*\/\/ R263[^\n]*\n\s*\.filter\(\(e\) => !ehTecnico[^\n]*\n\s*\.filter\(\(e\) => pessoaFiltro/.test(cal3), true);
 
   // visita usa o vocabulário DELA — chamadoStatusInfo(status de visita)
   // caía sempre no cinza de fallback (nenhuma chave bate)
@@ -9705,7 +9711,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
    *   vivo é o mesmo teste de dois eixos de `pessoasDaGrade()` movido para a
    *   fronteira, e ele é medido pela conferência 106 da própria migration.
    */
-  eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 26, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
+  eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 25, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
      censoPermissivas(),
      ['agenda_campo|agenda_campo_select',
       'blocos_itens|blocos_itens read all auth',
@@ -9717,7 +9723,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       'chamado_equipes|chamado_equipes_select',
       'chamado_locais|chamado_locais_select',
       'chamado_sla|chamado_sla_select',
-      'chamados|chamados_select',                 // R221 (U119): toda pessoa logada vê toda atividade — Davi, 08/09/2026
+      // 'chamados|chamados_select' SAIU DAQUI na U132 (R264): a policy continua
+      // aberta para todo mundo (R221), mas o predicado deixou de ser `true` —
+      // o cargo TÉCNICO lê só o que não é interno. Não é frouxa; é recortada.
       'cliente_equipamento_unidades|unidades_select',
       'duplas_escala_semanas|duplas_escala_semanas_select',
       'duplas_escala|duplas_escala_select',
@@ -12976,16 +12984,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── QUEM APARECE NA GRADE: OS DOIS EIXOS, E ZERO LITERAL DE CARGO ──────
   {
-    // R254 (U129): entrou o TERCEIRO eixo — a EQUIPE. Davi, 11/09/2026:
-    // "Somente a equipe técnica faz Sobreaviso." É `profiles.equipe` e NÃO
-    // `cargo`: o cargo é permissão, a equipe é roteamento (o COMMENT dela no
-    // banco diz "NÃO é permissão"), e filtrar por cargo faria o oposto do
-    // pedido — tiraria o Nicholas e o Erik (que a R244 moveu para o cargo
-    // OPERACIONAL e continuam sendo quem faz plantão) e traria o T.I. e o
-    // Controle Patrimonial, que usam o cargo técnico e não atendem sobreaviso.
-    // O argumento antigo ("não tirar o coordenador que atende às 2h") continua
-    // de pé: é POR ELE que o filtro não é por cargo — se o coordenador for da
-    // equipe técnica, ele continua entrando.
+    // R265 (U132): o terceiro eixo é o CARGO. Davi, 12/09/2026: "Sobreaviso é
+    // só para quem for do cargo TÉCNICO, Galera do Operacional não vai entrar
+    // nisso por exemplo." Isto REVISA a R254 (U129), que tinha escolhido a
+    // EQUIPE por causa do Nicholas e do Erik (operacionais que faziam plantão):
+    // o Davi decidiu o contrário um dia depois. Com isso, quem tem cargo
+    // técnico entra seja de que equipe for (Gil, do patrimônio, entra — mas o
+    // Gilleno real vira SAC), e o coordenador de cargo SAC da equipe técnica
+    // (Bruno) NÃO entra mais: a escala é de quem trabalha na rua.
     const gente = [
       { id: 'a', nome: 'Ana', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
       { id: 'b', nome: 'Bruno', ativo: true, status: 'ativo', cargo: 'sac', equipe: 'tecnica' },
@@ -12996,9 +13002,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       { id: 'g', nome: 'Gil', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'patrimonio' },
     ];
     const linhas = [{ dia: '2026-08-10', pessoa_id: 'e', horas: 14, origem: 'manual' }];
-    eq('R254 CRÍTICO: entra quem pode ser escalado HOJE — ativo, não pendente e DA EQUIPE TÉCNICA — mais quem tem horas NESTE mês. O coordenador (cargo sac) da equipe técnica ENTRA, porque é ele quem atende às 2h; o T.I. e o Controle Patrimonial (cargo técnico, outra equipe) NÃO entram; o convite pendente não entra; quem SAIU da empresa entra ESMAECIDO se tiver horas, e some se não tiver',
+    eq('R265 CRÍTICO: entra quem pode ser escalado HOJE — ativo, não pendente e de CARGO TÉCNICO — mais quem tem horas NESTE mês. O cargo técnico entra seja de que equipe for (Gil); o coordenador de cargo SAC (Bruno) e quem não tem cargo (Carla) NÃO entram; o convite pendente não entra; quem SAIU da empresa entra ESMAECIDO se tiver horas, e some se não tiver',
        S.pessoasDaGrade(gente, linhas).map((p) => `${p.nome}${p.historico ? '*' : ''}`),
-       ['Ana', 'Bruno', 'Elza*']);
+       ['Ana', 'Gil', 'Elza*']);
     eq('CRÍTICO: o eixo de status exclui O VALOR QUE SE QUER EXCLUIR (`!== "pendente_aprovacao"`) e não `=== "ativo"` — a segunda forma excluiria qualquer status FUTURO sem ninguém decidir isso, e o primeiro status novo esvaziaria a grade em silêncio',
        [S.pessoasDaGrade([{ id: 'x', nome: 'Novo', ativo: true, status: 'ferias', cargo: 'tecnico', equipe: 'tecnica' }], []).length,
         /status !== "pendente_aprovacao"/.test(fsS.readFileSync('src/features/sobreaviso/modelo.ts', 'utf8')),
@@ -16439,8 +16445,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        [true, true, true]);
     eq('U94/R133 CRÍTICO: a JANELA consultada segue a visão e entra na chave das consultas — mês e semana não se contaminam no cache',
        [/const janela = visao === "mes" \? \{ de: inicioMes, ate: fimMes \} : \{ de: inicioSem, ate: fimSem \};/.test(cal),
-        /queryKey: \["calendario", "visitas", chaveJanela, isGestor\]/.test(cal),
-        /queryKey: \["calendario", "chamados", chaveJanela\]/.test(cal),
+        // R263 (U132): a chave ganhou `soAsMinhasVisitas` — o interruptor do técnico
+        /queryKey: \["calendario", "visitas", chaveJanela, isGestor, soAsMinhasVisitas\]/.test(cal),
+        // R264 (U132): a chave ganhou `ehTecnico` — o técnico não pede o interno
+        /queryKey: \["calendario", "chamados", chaveJanela, ehTecnico\]/.test(cal),
         /queryKey: \["calendario", "apoios", chaveJanela\]/.test(cal),
         /queryKey: \["calendario", "locais", chaveJanela\]/.test(cal)],
        [true, true, true, true, true]);
@@ -21084,5 +21092,190 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true]);
 }
 
+
+// ── R263/R264/R265 — o app do técnico de campo: três telas, só campo, escala por cargo ──
+{
+  const fs263 = require('fs');
+  const TC = carregar('src/features/home/tecnico.ts');
+  const ini263 = fs263.readFileSync('src/features/home/InicioDoTecnico.tsx', 'utf8');
+  const rec263 = fs263.readFileSync('src/features/home/RecorteDoTecnico.tsx', 'utf8');
+  const dash263 = fs263.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
+  const cal263 = fs263.readFileSync('src/routes/_authenticated/calendario.tsx', 'utf8');
+  const perfil263 = fs263.readFileSync('src/routes/_authenticated/perfil.tsx', 'utf8');
+  const nav263 = fs263.readFileSync('src/components/nav-itens.ts', 'utf8');
+  const modeloSob263 = fs263.readFileSync('src/features/sobreaviso/modelo.ts', 'utf8');
+  const NAV263 = carregar('src/components/nav-itens.ts');
+  const u132 = fs263.existsSync('supabase/migrations/20260929090000_u132_o_tecnico_le_so_campo.sql')
+    ? fs263.readFileSync('supabase/migrations/20260929090000_u132_o_tecnico_le_so_campo.sql', 'utf8')
+    : '';
+
+  // uma atividade mínima para as funções puras — só os campos que elas leem
+  const agora263 = new Date(2026, 8, 16, 10, 0, 0);            // quarta, 16/09/2026 10:00
+  const iso263 = (d, h = 9) => new Date(2026, 8, d, h, 0, 0).toISOString();
+  const at263 = (id, extra) => ({
+    id, fonte: 'chamado', registroId: id, titulo: id, coluna: 'aberto', emAberto: true,
+    souResponsavel: false, souApoio: false, souAutor: false,
+    agendadaEm: null, prazoLimite: null, prazoEstourado: false, quando: null, ...extra,
+  });
+  const lote263 = [
+    at263('minha-hoje',       { souResponsavel: true, agendadaEm: iso263(16, 14), quando: iso263(16, 14) }),
+    at263('minha-atrasada',   { souApoio: true, prazoLimite: iso263(10), prazoEstourado: true, quando: iso263(10) }),
+    at263('minha-amanha',     { souResponsavel: true, agendadaEm: iso263(17, 8), quando: iso263(17, 8) }),
+    at263('minha-concluida',  { souResponsavel: true, emAberto: false, coluna: 'concluido' }),
+    at263('do-colega-hoje',   { agendadaEm: iso263(16, 9), quando: iso263(16, 9) }),
+    at263('do-colega-depois', { prazoLimite: iso263(25), quando: iso263(25) }),
+  ];
+
+  eq('R263 CRÍTICO: "Minhas" é responsável ou apoio, "Equipe" é tudo — e nos dois só o que está EM ABERTO (concluída não é pendência)',
+     [TC.atividadesDoTecnico(lote263, 'minhas').map((a) => a.id).sort(),
+      TC.atividadesDoTecnico(lote263, 'equipe').map((a) => a.id).sort()],
+     [['minha-amanha', 'minha-atrasada', 'minha-hoje'],
+      ['do-colega-depois', 'do-colega-hoje', 'minha-amanha', 'minha-atrasada', 'minha-hoje']]);
+
+  eq('R263/R11 CRÍTICO: "Você tem N atividades hoje" conta SEMPRE as dele — dia marcado hoje, prazo hoje, atrasada ou em andamento —, mesmo com a lista em "Equipe"',
+     [TC.minhasDeHoje(lote263, agora263).map((a) => a.id).sort(), TC.fraseDoDia(2), TC.fraseDoDia(1), TC.fraseDoDia(0)],
+     [['minha-atrasada', 'minha-hoje'], 'Você tem 2 atividades hoje.', 'Você tem 1 atividade hoje.', 'Nada para hoje.']);
+
+  eq('R263 CRÍTICO: dois grupos, cada um da mais próxima para a mais distante — a ATRASADA vem antes de tudo em "Hoje", e o que não é de hoje vai para "A seguir" pela ordem do prazo/dia marcado',
+     (() => { const g = TC.gruposDoTecnico(TC.atividadesDoTecnico(lote263, 'equipe'), agora263);
+              return [g.hoje.map((a) => a.id), g.depois.map((a) => a.id)]; })(),
+     [['minha-atrasada', 'do-colega-hoje', 'minha-hoje'], ['minha-amanha', 'do-colega-depois']]);
+
+  eq('R263: a saudação segue o relógio, o nome é só o primeiro, e qualquer recorte que não seja "equipe" é "minhas"',
+     [TC.saudacao(new Date(2026, 8, 16, 7)), TC.saudacao(new Date(2026, 8, 16, 13)), TC.saudacao(new Date(2026, 8, 16, 19)),
+      TC.primeiroNome('Breno Silva'), TC.primeiroNome('  '), TC.lerRecorte('equipe'), TC.lerRecorte('qualquer coisa'), TC.lerRecorte(null)],
+     ['Bom dia', 'Boa tarde', 'Boa noite', 'Breno', null, 'equipe', 'minhas', 'minhas']);
+
+  // a semana de sobreaviso do técnico: a MESMA conta da tela do Vinicius
+  {
+    const eu = { id: 'eu', nome: 'Eu', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' };
+    const outro = { id: 'outro', nome: 'Outro', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' };
+    const linhas = [];
+    // eu: a semana de 14/09 (miolo 15..20); outro: a de 21/09
+    for (let d = 15; d <= 20; d++) linhas.push({ dia: `2026-09-${d}`, pessoa_id: 'eu', horas: 14, origem: 'padrao' });
+    for (let d = 22; d <= 27; d++) linhas.push({ dia: `2026-09-${d}`, pessoa_id: 'outro', horas: 14, origem: 'padrao' });
+    eq('R263 CRÍTICO: "minhas semanas de sobreaviso" devolve as segundas em que EU sou plantonista (hora no miolo), nesta competência e na seguinte — pela MESMA plantonistasDaSemana da grade do Vinicius; sem id não devolve nada',
+       [TC.minhasSemanasDeSobreaviso('2026-09', [eu, outro], linhas, 'eu'),
+        TC.minhasSemanasDeSobreaviso('2026-09', [eu, outro], linhas, 'outro'),
+        TC.minhasSemanasDeSobreaviso('2026-09', [eu, outro], linhas, null)],
+       [['2026-09-14'], ['2026-09-21'], []]);
+  }
+
+  // a revisão adversarial da U132: `return null` deixava a Início de TODOS em branco enquanto a sessão carrega
+  eq('R263 CRÍTICO: a rota da Início decide pelo CARGO — técnico cai na InicioDoTecnico, o resto na InicioDoGestor, e enquanto o cargo não chegou desenha a frase de espera (nunca uma das telas, nem o vazio)',
+     [/function Home\(\) \{\s*\n\s*const \{ data: sessao \} = useSessao\(\);\s*\n(?:\s*\/\/[^\n]*\n)*\s*if \(!sessao\) return <div[^\n]*>Carregando seu dia<\/div>;\s*\n\s*if \(sessao\.cargo === "tecnico"\) return <InicioDoTecnico sessao=\{sessao\} \/>;\s*\n\s*return <InicioDoGestor \/>;/.test(dash263),
+      /^function InicioDoGestor\(\) \{/m.test(dash263)],
+     [true, true]);
+
+  eq('R263 CRÍTICO: a Início do técnico NÃO é a do gestor com menos coisas — sem painéis, sem quadro, sem barra de filtros, sem busca; tem o interruptor, os dois grupos, o "+" e abre o card na PÁGINA (não no diálogo largo)',
+     [/GraficoDemanda|PainelKpis|GraficoMeta/.test(ini263), /<Quadro\b/.test(ini263), /MenuFiltro/.test(ini263), /CampoBusca/.test(ini263),
+      /<SeletorMinhasEquipe/.test(ini263), /secao\("Hoje"/.test(ini263) && /secao\("A seguir"/.test(ini263),
+      /<NovaAtividadeDialog aberto=\{novaAberta\}/.test(ini263),
+      /navigate\(\{ to: "\/chamados\/\$id", params: \{ id: a\.registroId \} \}\)/.test(ini263), /DialogDaAtividade/.test(ini263)],
+     [false, false, false, false, true, true, true, true, false]);
+
+  eq('R263: a faixa de sobreaviso aparece quando ELE é o plantonista da semana, pela mesma plantonistasDaSemana da grade — e a Início lê a escala da competência corrente',
+     [/plantonistasDaSemana\(segunda, candidatas, linhasEscala\)\.some\(\(q\) => q\.pessoa\.id === sessao\.userId\)/.test(ini263),
+      /useSobreaviso\(competenciaDe\(agora\)\)/.test(ini263),
+      /Você é o plantonista desta semana/.test(ini263)],
+     [true, true, true]);
+
+  eq('R263 CRÍTICO: o interruptor Minhas | Equipe é UM para as duas telas — a mesma chave do localStorage, lida pela Início e pela Agenda',
+     [/localStorage\.getItem\(CHAVE_RECORTE\)/.test(rec263), /localStorage\.setItem\(CHAVE_RECORTE, recorte\)/.test(rec263),
+      TC.CHAVE_RECORTE,
+      /useRecorteDoTecnico\(\)/.test(ini263), /useRecorteDoTecnico\(\)/.test(cal263),
+      /\{ehTecnico && <SeletorMinhasEquipe valor=\{recorte\} aoMudar=\{setRecorte\} \/>\}/.test(cal263)],
+     [true, true, 'prever:tecnico-recorte', true, true, true]);
+
+  eq('R263 CRÍTICO: na Agenda o técnico em "Minhas" vê só o que é dele (responsável ou apoio) — chamados E visitas —, e em "Equipe" tudo o que o banco devolve; antes os chamados de TODA a empresa vazavam para a agenda dele',
+     [/\.filter\(\(e\) => !ehTecnico \|\| recorte === "equipe" \|\| \(!!sessaoAgenda\?\.userId && e\.pessoas\.includes\(sessaoAgenda\.userId\)\)\)/.test(cal263),
+      /const soAsMinhasVisitas = !isGestor && !\(ehTecnico && recorte === "equipe"\);/.test(cal263),
+      /if \(soAsMinhasVisitas\) \{/.test(cal263)],
+     [true, true, true]);
+
+  eq('R263: o Perfil do técnico mostra "Meu sobreaviso" — as semanas dele, com "esta semana" marcada — e só para o cargo técnico',
+     [/\{perfil\?\.cargo === "tecnico" && \(/.test(perfil263), /Meu sobreaviso/.test(perfil263),
+      /minhasSemanasDeSobreaviso\(competenciaAtual, candidatasEscala, linhasEscala, perfil\?\.id \?\? null\)/.test(perfil263)],
+     [true, true, true]);
+
+  eq('R263: a navegação do técnico são TRÊS itens — Início, Agenda, Perfil — e a chave da grade do sobreaviso fechou para ele no catálogo',
+     [NAV263.itensDoCargo('tecnico').map((i) => i.label), TL.TELAS.find((t) => t.chave === 'sobreaviso').padrao.tecnico],
+     [['Início', 'Agenda', 'Perfil'], false]);
+
+  eq('R265 CRÍTICO: a escala é do CARGO técnico (revisa a R254, que era por equipe) — `p.cargo === "tecnico"` e nenhum resto de `equipe === "tecnica"` no modelo',
+     [/&& p\.cargo === "tecnico";/.test(modeloSob263), /p\.equipe === "tecnica"/.test(modeloSob263)],
+     [true, false]);
+
+  // A migration: o pino olha o ARQUIVO (nunca o estado do banco).
+  // a revisão adversarial da U132: o app deixa dar uma INTERNA a alguém de cargo
+  // técnico (e os gatilhos o avisam dela) — sem a exceção o aviso abriria uma
+  // página vazia e ele não leria nem editaria a própria tarefa
+  eq('R264 CRÍTICO: a U132 recorta a LEITURA de chamados para o cargo técnico — campo e a capa da proposta entram, o interno dos OUTROS não, e a tarefa que é DELE (responsável, autor ou apoio) entra seja de que natureza for — e pode_acessar_chamado ganha o MESMO recorte; visitas ficam abertas',
+     [/CREATE POLICY chamados_select ON public\.chamados\s*\n\s*FOR SELECT TO authenticated\s*\n\s*USING \(\s*\n\s*NOT public\.eh_tecnico\(auth\.uid\(\)\)\s*\n\s*OR natureza <> 'interno'\s*\n\s*OR responsavel_id = auth\.uid\(\)\s*\n\s*OR aberto_por = auth\.uid\(\)\s*\n\s*OR EXISTS \(SELECT 1 FROM public\.chamado_apoios a/.test(u132),
+      /CREATE OR REPLACE FUNCTION public\.eh_tecnico\(_user_id uuid\)/.test(u132) && /SECURITY DEFINER/.test(u132),
+      /REVOKE EXECUTE ON FUNCTION public\.eh_tecnico\(uuid\) FROM PUBLIC, anon;/.test(u132),
+      /OR c\.natureza <> 'interno'\s*\n\s*OR c\.responsavel_id = auth\.uid\(\)\s*\n\s*OR c\.aberto_por = auth\.uid\(\)/.test(u132),
+      /DROP POLICY IF EXISTS "visitas_select"/.test(u132)],
+     [true, true, true, true, false]);
+
+  eq('R263: a U132 fecha a chave sobreaviso para o técnico com a forma de INSERT que a semente do verificador lê, e tem pré-voo, conferência e DESFAZER',
+     [/INSERT INTO public\.permissoes_tela \(tela, cargo, permitido\) VALUES\s*\n\s*\('sobreaviso', 'tecnico', false\)\s*\n\s*ON CONFLICT \(tela, cargo\) DO UPDATE SET permitido = EXCLUDED\.permitido;/.test(u132),
+      /U132 PRÉ-VOO/.test(u132), />>> OLHAR <<</.test(u132), /── DESFAZER/.test(u132)],
+     [true, true, true, true]);
+}
+
+
+// ── U132, a revisão adversarial: o que quatro lentes e três céticos por achado confirmaram ──
+{
+  const fsRv = require('fs');
+  const gerRv = fsRv.readFileSync('src/features/gerencial/data.ts', 'utf8');
+  const calRv = fsRv.readFileSync('src/routes/_authenticated/calendario.tsx', 'utf8');
+  const dadosRv = fsRv.readFileSync('src/features/home/data.ts', 'utf8');
+  const iniRv = fsRv.readFileSync('src/features/home/InicioDoTecnico.tsx', 'utf8');
+  const perfilRv = fsRv.readFileSync('src/routes/_authenticated/perfil.tsx', 'utf8');
+  const pdfRv = fsRv.readFileSync('src/features/sobreaviso/pdf.ts', 'utf8');
+  const SRv = carregar('src/features/sobreaviso/modelo.ts');
+
+  eq('R244/R263 CRÍTICO: useUserCargo devolve "operacional" para o operacional — o balde "tecnico" engolia o cargo, e o Nicholas e o Erik viam a barra de TRÊS itens do técnico desde a R244 (achado da revisão da U132)',
+     [/if \(c === "operacional"\) return "operacional" as const;/.test(gerRv)], [true]);
+
+  eq('R263: a Agenda decide "técnico" pela SESSÃO (a mesma fonte da Início), nunca por useUserCargo — e o carregando inclui a sessão, senão o recorte "Minhas" mostraria a grade VAZIA em vez de "carregando"',
+     [/const ehTecnico = sessaoAgenda\?\.cargo === "tecnico";/.test(calRv),
+      /\|\| sessaoAgenda === undefined;/.test(calRv),
+      /const ehTecnico = cargo === "tecnico";/.test(calRv)],
+     [true, true, false]);
+
+  eq('R264: cinto e suspensório — a Início e a Agenda do técnico não PEDEM o interno ao banco (quem recorta é a policy; o front só deixa de mentir na janela entre subir o pacote e rodar a migration, e poupa o 4G)',
+     [/s\.cargo === "tecnico" \? q\.neq\("natureza", "interno"\) : q/.test(dadosRv),
+      /if \(ehTecnico\) q = q\.neq\("natureza", "interno"\);/.test(calRv)],
+     [true, true]);
+
+  eq('R263: a Início do técnico não carrega o histórico dos painéis nem as 300 encerradas (semEncerradas) — e o Perfil só consulta a escala para o técnico, na janela da competência SEGUINTE (que cobre o mês seguinte inteiro, mesmo quando ele termina numa segunda)',
+     [/useAtividades\(sessao, "todos", agora, \{ semEncerradas: true \}\)/.test(iniRv),
+      /useHistoricoAmplo\(s, !opcoes\.semEncerradas\)/.test(dadosRv),
+      /enabled: !!s\.userId && habilitado,/.test(dadosRv),
+      /useSobreaviso\(deslocarCompetencia\(competenciaAtual, 1\), \{ enabled: ehTecnicoPerfil \}\)/.test(perfilRv),
+      /usePessoasDoSobreaviso\(\{ enabled: ehTecnicoPerfil \}\)/.test(perfilRv)],
+     [true, true, true, true, true]);
+
+  // o motivo do esmaecido: quem está esmaecido diz por quê, e o PDF só chama de
+  // "(saiu)" quem saiu — o operacional que fez plantão e está na casa vai limpo
+  const genteRv = [
+    { id: 'op', nome: 'Op', ativo: true, status: 'ativo', cargo: 'operacional', equipe: 'tecnica' },
+    { id: 'ex', nome: 'Ex', ativo: false, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
+    { id: 'pe', nome: 'Pe', ativo: true, status: 'pendente_aprovacao', cargo: 'tecnico', equipe: 'tecnica' },
+    { id: 'ok', nome: 'Ok', ativo: true, status: 'ativo', cargo: 'tecnico', equipe: 'tecnica' },
+  ];
+  const linhasRv = ['op', 'ex', 'pe'].map((p) => ({ dia: '2026-08-10', pessoa_id: p, horas: 14, origem: 'manual' }));
+  eq('R265 CRÍTICO: quem está esmaecido diz POR QUÊ — inativo, pendente ou fora do cargo — e o PDF só escreve "(saiu)" para quem SAIU: o operacional que fez plantão e está na casa não pode aparecer como desligado na folha que paga as horas dele',
+     [SRv.pessoasDaGrade(genteRv, linhasRv).map((p) => p.nome + ':' + p.motivo),
+      /l\.pessoa\.motivo === "inativo" \? `\(saiu\) \$\{l\.pessoa\.nome\}` : l\.pessoa\.nome/.test(pdfRv),
+      /l\.pessoa\.historico \? `\(saiu\)/.test(pdfRv)],
+     [['Ok:null', 'Ex:inativo', 'Op:fora_do_cargo', 'Pe:pendente'], true, false]);
+
+  eq('R263: no desktop o cabeçalho da Início do técnico é uma COLUNA (o .so-desktop é flex em linha) e a lista é uma coluna só (a .lista-atividades viraria três dentro de 720px)',
+     [/<div className="so-desktop" style=\{\{ flexDirection: "column", gap: 2 \}\}>/.test(iniRv), /lista-atividades/.test(iniRv)],
+     [true, false]);
+}
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

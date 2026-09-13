@@ -4,7 +4,7 @@
 > **Sumário** — 9 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Quem é quem](#1-quem-é-quem)
-- [1b. Em que aparelho cada um trabalha (R134)](#1b-em-que-aparelho-cada-um-trabalha-r134)
+- [1b. Em que aparelho cada um trabalha (R134, revista pela R263)](#1b-em-que-aparelho-cada-um-trabalha-r134-revista-pela-r263)
 - [2. As três atividades do técnico de campo](#2-as-três-atividades-do-técnico-de-campo)
 - [3. A página do cliente é o centro](#3-a-página-do-cliente-é-o-centro)
 - [4. As integrações moram no Administrativo](#4-as-integrações-moram-no-administrativo)
@@ -39,8 +39,8 @@ está errado.
 |---|---|---|---|
 | **Davi** | dita as regras de produto; admin do sistema | Admin | — |
 | **Vinicius** | **gestor da equipe técnica de campo**: programa, acompanha, faz vistorias validando o trabalho dos técnicos, decide cobrança extra | Admin | Técnica (coordenação) |
-| **Erik, Nicholas** | T.I. | Técnico | T.I. |
-| **Gilleno** | Controle Patrimonial (opera o QAP ERP) | Técnico | Controle Patrimonial |
+| **Erik, Nicholas** | T.I. | Operacional (R244) | T.I. |
+| **Gilleno** | Controle Patrimonial (opera o QAP ERP) | SAC (o Davi troca — 12/09/2026) | Controle Patrimonial |
 | **Rubia** | supervisora, líder da equipe de atendimento da Portaria Remota — recebe todos os pedidos de chamado que chegam pelo atendimento e abre/gerencia os chamados técnicos (R158, Q5) | SAC | Portaria Remota (atendimento) |
 | **Breno e os líderes das duplas** | técnicos de campo | Técnico | Técnica |
 
@@ -61,16 +61,25 @@ Dois fatos que estruturam tudo:
 > claro para você. Ou seja, o T.I também pode fazer atividade EM CAMPO, porém
 > não entra nesta conta, no Operacional Técnica são EQUIP. TECNICA."*
 
-## 1b. Em que aparelho cada um trabalha (R134)
+## 1b. Em que aparelho cada um trabalha (R134, revista pela R263)
 
-Quem **não** é da área técnica — T.I., Controle Patrimonial, SAC, comercial,
-gestão — usa o sistema **no computador**. Os **técnicos de campo** usam **no
-celular** (e depois no aplicativo). O técnico tem três telas: **Perfil**,
-**Calendário** e uma **Início própria**, sem dashboard: "Bom dia, você tem X
-chamados hoje" e os cards dos chamados em que ele participa (responsável ou
-apoio). Clicar no card abre o **fluxo** daquele chamado. Toda tela tem de saber
-para qual dos dois aparelhos nasceu — a tela da atividade interna (R135), por
-exemplo, é do computador.
+O que separa os dois mundos é o **cargo** (desde 12/09/2026; antes era "a área
+técnica"): quem tem **cargo TÉCNICO** trabalha na rua, pelo **celular** — e vai
+receber um aparelho da empresa; todo o resto — admin, comercial, SAC,
+**operacional** (R244: o Nicholas e o Erik) — usa o sistema **no computador**.
+O técnico tem três telas: **Início**, **Agenda** e **Perfil**. A Início é
+própria (R263): "Bom dia, Breno. Você tem 3 atividades hoje", a faixa de
+sobreaviso quando ele é o plantonista, o interruptor **Minhas | Equipe** e os
+cards da mais próxima para a mais distante. Ele lê **só atividade de campo**,
+mas **todas as da equipe** (R264). Toda tela tem de saber para qual dos dois
+aparelhos nasceu — a tela da atividade interna (R135), por exemplo, é do
+computador.
+
+> Davi, 12/09/2026: *"Os técnicos de campo são os com cargo TÉCNICO, eles
+> utilizarão pelo celular. Eles devem ter em seu app somente 3 páginas: INICIO,
+> AGENDA, PERFIL. […] desde que criamos o tipo de perfil OPERACIONAL, ficou
+> fácil de distinguirmos quem trabalha em campo de quem trabalha na sede no
+> desktop."*
 
 > Davi, 03/09/2026: *"Todos que são do T.I, Controle Patrimonial, SAC, qualquer
 > setor que não seja a área técnica, irão utilizar o sistema no computador. A

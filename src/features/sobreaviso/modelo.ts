@@ -225,7 +225,7 @@ export interface PessoaCandidata {
   /** `NOT NULL DEFAULT 'ativo'` no banco desde 2026-06-29; o `| null` é só o types.ts atrasado. */
   status: string | null;
   cargo: string | null;
-  /** R254: a EQUIPE (roteamento, `profiles.equipe`) — é ela que diz quem faz plantão. */
+  /** Fica na consulta só pelo nome no histórico da grade; desde a R265 quem decide a escala é `cargo`. */
   equipe?: string | null;
 }
 
@@ -233,24 +233,32 @@ export interface PessoaDaGrade {
   id: string;
   nome: string;
   /**
-   * Está na grade só porque tem horas gravadas neste mês — saiu da empresa, ou
-   * está pendente de aprovação. Aparece ESMAECIDA e não recebe célula nova.
+   * Está na grade só porque tem horas gravadas neste mês — não pode mais ser
+   * escalada. Aparece ESMAECIDA e não recebe célula nova.
    */
   historico: boolean;
+  /**
+   * POR QUE não pode (R265/U132): saiu da empresa, convite pendente, ou não
+   * tem cargo técnico. O PDF do financeiro precisa distinguir: "(saiu)" é para
+   * quem saiu — o operacional que fez plantão em agosto e está na casa não
+   * pode aparecer como desligado na folha que paga as horas dele.
+   */
+  motivo: "inativo" | "pendente" | "fora_do_cargo" | null;
 }
 
 /**
  * QUEM APARECE NA GRADE: quem pode ser escalado HOJE, mais quem tem horas
  * gravadas NESTE mês.
  *
- * ZERO literal de `cargo`, e é decisão. O CHECK vivo de `profiles.cargo` é
- * `cargo IS NULL OR cargo IN ('admin','comercial','sac','tecnico')`
- * (`20260818230000_u6a_papel_sac.sql:43`). Filtrar por `'tecnico'` tiraria da
- * escala o coordenador que atende às 2h da manhã — e ele atende. E `NULL` é o
- * convidado que ainda não tem papel: ele TEM linha em `profiles` e não pode ser
- * escalado, o que já é dito pelos outros dois eixos.
+ * TRÊS EIXOS desde a R265 (U132): `ativo`, `status` e `cargo === "tecnico"`.
+ * O terceiro foi decisão do Davi em 12/09/2026 ("Sobreaviso é só para quem
+ * for do cargo TÉCNICO, Galera do Operacional não vai entrar nisso") e
+ * REVOGA o argumento que este cabeçalho carregou da R116 à R254 — "não tirar
+ * da escala o coordenador que atende às 2h": o coordenador só entra no
+ * seletor se tiver o cargo; a célula continua aceitando horas de qualquer
+ * pessoa (a porta é a mesma), então lançar à mão continua possível.
  *
- * OS DOIS EIXOS QUE VALEM: `ativo` (quem saiu da empresa) e `status`
+ * OS DOIS EIXOS DE SEMPRE: `ativo` (quem saiu da empresa) e `status`
  * (`pendente_aprovacao` é convite não aceito). A comparação é
  * `!== "pendente_aprovacao"` e não `=== "ativo"` de propósito: excluir O VALOR
  * QUE SE QUER EXCLUIR sobrevive a um status novo; `=== "ativo"` excluiria
@@ -270,31 +278,29 @@ export function pessoasDaGrade(
   const comHoras = new Set(linhas.map((l) => l.pessoa_id));
   const out: PessoaDaGrade[] = [];
   for (const p of candidatas) {
-      // R254 (Davi, 11/09/2026): "Aplique a regra: Somente a equipe técnica faz
-    // Sobreaviso. Somente eles devem estar disponíveis na lista do seletor de
-    // membro da equipe para fazer o plantão semanal."
+    // R265 (Davi, 12/09/2026): "Sobreaviso é só para quem for do cargo
+    // TÉCNICO, Galera do Operacional não vai entrar nisso por exemplo."
     //
-    // É EQUIPE, E NÃO CARGO — os dois vocabulários existem e não coincidem. O
-    // cargo é PERMISSÃO (admin/comercial/sac/tecnico/operacional); a equipe é
-    // ROTEAMENTO (`profiles.equipe`, U71: ti/patrimonio/tecnica/comercial/sac/
-    // monitoramento/outras), e o COMMENT dela no banco diz, com todas as
-    // letras, "NÃO é permissão". Filtrar por `cargo = 'tecnico'` faria o
-    // OPOSTO do pedido em dois casos reais: tiraria o Nicholas e o Erik, que a
-    // R244 acabou de mover para o cargo OPERACIONAL e continuam sendo quem faz
-    // o plantão; e traria o T.I. e o Controle Patrimonial, que usam o cargo
-    // técnico e não atendem sobreaviso. É o MESMO recorte que o painel
-    // Operacional Técnica já usa (R95/R124: "o recorte é por equipe = técnica,
-    // não por natureza = campo").
+    // É CARGO — e isto REVISA a R254, que recortava por equipe técnica. A R254
+    // escolheu equipe por causa do Nicholas e do Erik, que a R244 tinha movido
+    // para o cargo OPERACIONAL e, naquele dia, faziam plantão. O Davi decidiu
+    // o contrário em 12/09: o operacional NÃO entra na escala. Com isso o
+    // cargo TÉCNICO passou a significar uma coisa só no sistema inteiro — quem
+    // trabalha na rua, pelo celular, faz sobreaviso e responde pelas
+    // atividades de campo (R263/R264) — e o T.I. e o Controle Patrimonial,
+    // que eram a objeção da R254, já não têm esse cargo (Gilleno vira SAC).
     //
-    // ISTO REVISA A R116 ("zero filtro por cargo"): o argumento de lá — não
-    // tirar da escala o coordenador que atende às 2h — continua de pé e é por
-    // isso que o filtro NÃO é por cargo. Quem já tem horas gravadas continua na
-    // grade, esmaecido, seja de que equipe for: história não se apaga.
+    // O que NÃO mudou desde a R116: quem já tem horas gravadas continua na
+    // grade, esmaecido, seja de que cargo for — história não se apaga.
     const escalavel = p.ativo === true
       && p.status !== "pendente_aprovacao"
-      && p.equipe === "tecnica";
+      && p.cargo === "tecnico";
     if (!escalavel && !comHoras.has(p.id)) continue;
-    out.push({ id: p.id, nome: p.nome?.trim() || "(sem nome)", historico: !escalavel });
+    const motivo: PessoaDaGrade["motivo"] = escalavel ? null
+      : p.ativo !== true ? "inativo"
+      : p.status === "pendente_aprovacao" ? "pendente"
+      : "fora_do_cargo";
+    out.push({ id: p.id, nome: p.nome?.trim() || "(sem nome)", historico: !escalavel, motivo });
   }
   // Quem pode ser escalado primeiro; dentro de cada bloco, por nome.
   out.sort((a, b) =>

@@ -60,6 +60,7 @@ import { CriarRapido } from "@/features/home/CriarRapido";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { Quadro } from "@/features/home/Quadro";
 import { ProximaVisita, proximaVisitaDe } from "@/features/home/ProximaVisita";
+import { InicioDoTecnico } from "@/features/home/InicioDoTecnico";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Home,
@@ -101,7 +102,24 @@ const PRAZOS: { chave: Exclude<Prazo, null>; label: string; nota?: string }[] = 
   { chave: "atrasados", label: "Atrasados", nota: "Prazo vencido, ou parado 5+ dias" },
 ];
 
+/**
+ * A Início tem DUAS telas atrás de uma rota (R263). O cargo TÉCNICO cai na
+ * dele — a do celular, sem painéis (`InicioDoTecnico`) —; todo o resto cai na
+ * do gestor. Decide-se AQUI, antes de qualquer hook da tela grande: as duas
+ * não compartilham estado nenhum, e a do gestor tem dezenas de hooks que o
+ * técnico nunca usaria. Enquanto o cargo não chegou, nada — um piscar da tela
+ * errada seria pior do que meio segundo de vazio.
+ */
 function Home() {
+  const { data: sessao } = useSessao();
+  // enquanto o cargo não chegou: a frase de espera que as duas telas já usam,
+  // e não uma das telas — um piscar da tela errada seria pior
+  if (!sessao) return <div style={{ padding: "24px 0", fontFamily: FONT, fontSize: 13, opacity: 0.6 }}>Carregando seu dia</div>;
+  if (sessao.cargo === "tecnico") return <InicioDoTecnico sessao={sessao} />;
+  return <InicioDoGestor />;
+}
+
+function InicioDoGestor() {
   const navigate = useNavigate();
   /** chamado aberto no painel lateral (null = fechado) */
   /** R238: a atividade aberta no diálogo — pelo card do quadro ou pelo chat */

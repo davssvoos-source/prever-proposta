@@ -1,13 +1,14 @@
 # Operação de campo — chamados, fila e programação
 
 <!-- sumario:inicio -->
-> **Sumário** — 31 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 32 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [Para que serve este documento](#para-que-serve-este-documento)
 - [O ciclo de vida do chamado](#o-ciclo-de-vida-do-chamado)
 - [Quem faz o quê](#quem-faz-o-quê)
 - [A fila canônica: a Início (R17/R31)](#a-fila-canônica-a-início-r17r31)
 - [O que a Início mostra, e em que ordem (R221/R246/R248, U127/U128)](#o-que-a-início-mostra-e-em-que-ordem-r221r246r248-u127u128)
+- [O app do técnico de campo — Início, Agenda, Perfil (R263/R264/R265, U132)](#o-app-do-técnico-de-campo-início-agenda-perfil-r263r264r265-u132)
 - [Sobreaviso: a escala por semana (R116/R253, U86/U129)](#sobreaviso-a-escala-por-semana-r116r253-u86u129)
 - [Programação e painéis](#programação-e-painéis)
 - [O dashboard da Operacional Técnica — as três perguntas do Vinicius (R124–R126, U93)](#o-dashboard-da-operacional-técnica-as-três-perguntas-do-vinicius-r124r126-u93)
@@ -155,6 +156,37 @@ mapa de clientes continua dentro de Clientes.
   Pessoa (para quem vê tudo). Todos valem na lista, no quadro e nos painéis do
   topo, e todos aparecem no aviso de "nada nesta combinação".
 
+## O app do técnico de campo — Início, Agenda, Perfil (R263/R264/R265, U132)
+
+Quem tem **cargo TÉCNICO** usa o sistema pelo celular e vê três páginas:
+
+- **Início.** "Bom dia, Breno. Você tem 3 atividades hoje." — o número é
+  sempre o **dele**: dia marcado hoje, prazo hoje, atrasada ou em andamento,
+  em que ele é responsável ou apoio. Se ele é o **plantonista da semana**, uma
+  faixa diz isso com as datas. Abaixo, o interruptor **Minhas | Equipe**
+  ("Equipe" mostra as atividades de campo dos colegas — o Davi quis que ele
+  saiba o que os outros têm) e os cards em dois grupos, **Hoje** e **A
+  seguir**, cada um da mais próxima para a mais distante; a atrasada vem antes
+  de tudo. Tocar no card abre o fluxo da atividade. O **"+"** registra um
+  atendimento de plantão — o técnico não abre chamado (R163).
+- **Agenda.** O calendário, com o **mesmo** interruptor: trocar aqui troca na
+  Início. Em "Minhas", só os chamados e as visitas em que ele está.
+- **Perfil.** Os dados dele e **"Meu sobreaviso"**: as semanas em que ele é o
+  plantonista, neste mês e no próximo.
+
+O que ele **não** vê, e o banco garante: atividade **interna** das outras
+equipes (T.I., patrimônio, comercial, SAC). Ele lê o que é de **campo** e a
+capa da proposta comercial — e lê **todas as da equipe**, não só as suas
+(R264). Todo mundo que não tem cargo técnico continua vendo tudo (R221).
+
+**Sobreaviso é do cargo técnico** (R265): só quem tem esse cargo entra no
+seletor de plantonista; o operacional não. Quem já tem horas gravadas continua
+na grade, esmaecido.
+
+Ainda em decisão do Davi (12/09/2026): para onde o app Android aponta, se o
+aviso chega com o app fechado (push), e o que define a urgência fora do horário
+que vai para o plantonista.
+
 ## Sobreaviso: a escala por semana (R116/R253, U86/U129)
 
 A tela é do **líder da técnica** (hoje o Vinicius). Ele monta a escala, e as
@@ -180,7 +212,8 @@ oito dias, com as pontas certas); escolher "ninguém" apaga o que aquela semana
 lançou. A linha diz as horas do plantonista e o estado — **coberta** ou **N
 dias sem cobertura** — e, quando dois dividiram a semana, diz com quem.
 
-Quem aparece no seletor é quem **pode ser escalado hoje** (ativo e aprovado).
+Quem aparece no seletor é quem **pode ser escalado hoje** (ativo, aprovado e de
+**cargo técnico**, R265).
 Quem saiu da empresa continua na grade, esmaecido, com as horas que fez — e
 não é oferecido para semanas novas.
 

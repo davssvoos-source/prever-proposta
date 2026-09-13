@@ -110,7 +110,10 @@ export async function gerarPdfSobreaviso(grade: GradeDoMes): Promise<void> {
     // hidden` (corte seco), então o que está no fim é o primeiro a cair — e o
     // marcador sumia justamente nos nomes compridos. Na tela quem carrega essa
     // informação é a opacidade; no PDF é só esta palavra.
-    l.pessoa.historico ? `(saiu) ${l.pessoa.nome}` : l.pessoa.nome,
+    // R265 (U132): "(saiu)" é para quem SAIU. O operacional que fez plantão e
+    // está na casa aparece esmaecido na tela (não é mais escalável), mas na
+    // folha que paga as horas dele o nome vai limpo.
+    l.pessoa.motivo === "inativo" ? `(saiu) ${l.pessoa.nome}` : l.pessoa.nome,
     ...l.celulas.map((c) => (c.horas === null ? "" : String(c.horas))),
     String(l.total),
   ]);

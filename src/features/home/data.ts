@@ -89,25 +89,35 @@ export function useSessao() {
   });
 }
 
-export function useChamadosDaHome(s: Sessao) {
+/**
+ * `semEncerradas` (R263): a Início do técnico só lista pendência — as 300
+ * encerradas são peso morto num aparelho em 4G.
+ */
+export function useChamadosDaHome(s: Sessao, semEncerradas = false) {
   return useQuery({
-    queryKey: ["home-chamados", s.userId, s.cargo],
+    queryKey: ["home-chamados", s.userId, s.cargo, semEncerradas],
     enabled: !!s.userId,
     queryFn: async (): Promise<BrutoChamado[]> => {
       // R246: DUAS consultas — as em aberto TODAS, e as encerradas pelas 300
       // mais recentes (ver TETO_ENCERRADAS_NA_INICIO). Era uma só, com a poda
       // de 7 dias por updated_at; a poda saiu.
-      const { data: encerradas, error: erroEnc } = await supabase
-        .from("chamados" as any)
-        .select(CAMPOS_DA_HOME)
-        .neq("natureza", "comercial")
-        .in("status", ["concluido", "cancelado"])
-        .order("updated_at", { ascending: false })
-        .limit(TETO_ENCERRADAS_NA_INICIO);
+      // R264 (U132): cinto e suspensório para o técnico — quem recorta é o
+      // banco; o front só deixa de pedir o interno na janela entre subir o
+      // pacote e rodar a migration (e poupa o 4G dele).
+      const soCampo = (q: any) => (s.cargo === "tecnico" ? q.neq("natureza", "interno") : q);
+      const { data: encerradas, error: erroEnc } = semEncerradas
+        ? { data: [] as any[], error: null }
+        : await soCampo(supabase
+          .from("chamados" as any)
+          .select(CAMPOS_DA_HOME)
+          .neq("natureza", "comercial"))
+          .in("status", ["concluido", "cancelado"])
+          .order("updated_at", { ascending: false })
+          .limit(TETO_ENCERRADAS_NA_INICIO);
       if (erroEnc) throw erroEnc;
-      const { data, error } = await supabase
+      const { data, error } = await soCampo(supabase
         .from("chamados" as any)
-        .select(CAMPOS_DA_HOME)
+        .select(CAMPOS_DA_HOME))
         // A CAPA DA PROPOSTA FICA DE FORA — a visita já a representa.
         //
         // Desde a U29 toda visita tem um chamado com o MESMO id do lado. Os
@@ -276,13 +286,18 @@ export interface AtividadesDaHome {
  * quadro — sem consulta paralela, então o número do banner não pode discordar
  * do que está na tela.
  */
-export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): AtividadesDaHome {
-  const chamados = useChamadosDaHome(s);
+export function useAtividades(
+  s: Sessao,
+  tecnicoFiltro: string,
+  agora: Date,
+  opcoes: { semEncerradas?: boolean } = {},
+): AtividadesDaHome {
+  const chamados = useChamadosDaHome(s, !!opcoes.semEncerradas);
   const apoios = useMeusApoios(s);
   const apoiosDeTodos = useApoiosDeTodos();
   const locaisDeTodos = useLocaisDeTodos();
   const visitas = useVisitasDaHome(s, tecnicoFiltro);
-  const historicoBruto = useHistoricoAmplo(s);
+  const historicoBruto = useHistoricoAmplo(s, !opcoes.semEncerradas);
   // R139: a equipe de cada atividade sai do cadastro das PESSOAS nela. Os
   // perfis já estão em cache (a Início inteira os usa para os avatares).
   const { data: pessoas = [] } = usePessoas();
@@ -372,7 +387,8 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
  * exatamente como o quadro embaixo. É o que o Davi pediu: gráfico e quadro
  * contando a mesma história.
  */
-export function useHistoricoAmplo(s: Sessao) {
+/** `habilitado = false` (R263): a Início do técnico não tem painéis — não pede o histórico. */
+export function useHistoricoAmplo(s: Sessao, habilitado = true) {
   const desde = useMemo(() => {
     const agora = new Date();
     const quatroSemanas = inicioSemana(agora);
@@ -383,7 +399,7 @@ export function useHistoricoAmplo(s: Sessao) {
 
   return useQuery({
     queryKey: ["home-historico", s.userId, s.cargo, desde.slice(0, 10)],
-    enabled: !!s.userId,
+    enabled: !!s.userId && habilitado,
     staleTime: 60_000,
     queryFn: async (): Promise<BrutoChamado[]> => {
       // Filtra pela DATA DE ENCERRAMENTO, não por `updated_at`.

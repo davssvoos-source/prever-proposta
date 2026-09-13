@@ -1,7 +1,11 @@
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Camera, Eye, EyeOff, LogOut, Pencil, Check, X, Sun, Moon } from "lucide-react";
+import { Camera, Eye, EyeOff, LogOut, Pencil, Check, X, Sun, Moon, ShieldAlert } from "lucide-react";
+import { dataIso } from "@/lib/periodos";
+import { useSobreaviso, usePessoasDoSobreaviso } from "@/features/sobreaviso/data";
+import { segundaDaSemana, rotuloDaSemana, deslocarCompetencia } from "@/features/sobreaviso/modelo";
+import { competenciaDe, minhasSemanasDeSobreaviso } from "@/features/home/tecnico";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "@/components/StatusBadge";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
@@ -121,6 +125,20 @@ function PerfilPage() {
     },
     staleTime: 60_000,
   });
+
+  // R263: as semanas de sobreaviso do técnico — a MESMA conta da tela do
+  // Vinicius (plantonista é quem tem hora no miolo da semana, R254); a janela
+  // da competência já traz um mês de cada lado.
+  const competenciaAtual = competenciaDe(new Date());
+  const ehTecnicoPerfil = perfil?.cargo === "tecnico";
+  // a janela é a da competência SEGUINTE (ela traz um mês de cada lado: este,
+  // o próximo e o depois) — a do mês corrente perdia a última semana do mês
+  // seguinte quando ele termina numa segunda-feira. E só o técnico consulta:
+  // para os outros cargos a seção não existe.
+  const { data: linhasEscala = [] } = useSobreaviso(deslocarCompetencia(competenciaAtual, 1), { enabled: ehTecnicoPerfil });
+  const { data: candidatasEscala = [] } = usePessoasDoSobreaviso({ enabled: ehTecnicoPerfil });
+  const segundaAtual = segundaDaSemana(dataIso(new Date()));
+  const minhasSemanas = minhasSemanasDeSobreaviso(competenciaAtual, candidatasEscala, linhasEscala, perfil?.id ?? null);
 
   const { data: ultimasVisitas = [] } = useQuery({
     queryKey: ["perfil-visitas", perfil?.id],
@@ -504,6 +522,32 @@ function PerfilPage() {
         </div>
       </div>
 
+      {/* R263: o sobreaviso visto pelo técnico — as semanas em que ELE é o
+          plantonista, nesta competência e na seguinte. A grade inteira é do
+          Vinicius (a tela /sobreaviso fechou para o cargo técnico na U132);
+          o que o técnico precisa saber é isto, e é aqui que ele procura. */}
+      {perfil?.cargo === "tecnico" && (
+        <div style={cardStyle(isLight)}>
+          <div style={lblStyle(isLight)}>Meu sobreaviso</div>
+          {minhasSemanas.length === 0 ? (
+            <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, marginTop: 10 }}>
+              Nenhuma semana escalada para você neste mês e no próximo.
+            </div>
+          ) : (
+            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+              {minhasSemanas.map((segunda) => (
+                <div key={segunda} style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
+                  <ShieldAlert size={14} color={goldDark} />
+                  <span>Semana de {rotuloDaSemana(segunda)}</span>
+                  {segunda === segundaAtual && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: goldDark }}>esta semana</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {/* Seção 3 - Últimas visitas */}
       <div style={cardStyle(isLight)}>
         <div style={lblStyle(isLight)}>Atividade recente</div>

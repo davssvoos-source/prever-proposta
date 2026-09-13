@@ -12439,3 +12439,137 @@ rodando de novo).
 **Números.** Verificador: 3.302 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migration **U131 pendente** — sem ela a correção da data funciona e a linha do
 tempo simplesmente não registra; com ela, registra.
+
+## U132 — o app do técnico de campo, primeira etapa: três telas (R263), só campo (R264) e a escala por cargo (R265)
+
+**O contexto.** O Davi abriu a frente que vai ocupar a semana: os técnicos de
+campo (cargo TÉCNICO) vão receber um celular cada um e usar o sistema por ele;
+o app deles tem três páginas — Início, Agenda, Perfil —; a Início diz quantas
+atividades ele tem hoje e lista os cards da mais próxima para a mais distante;
+e o técnico "só terá acesso às atividades do cargo técnico". Pediu uma revisão
+geral do que esse usuário vê e mandou pensar "na estrutura como um todo",
+inclusive: se ele é o plantonista da semana, receberá as atividades fora do
+horário comercial.
+
+**A mudança de critério que ele anunciou.** Até aqui o que separava campo de
+sede era "a área técnica" (R134, 03/09) — e a R254 chegou a recortar o
+sobreaviso por `profiles.equipe`. Com o OPERACIONAL (R244) existindo para quem
+está na sede sem ser gestor, o Davi trocou o critério: **é o cargo TÉCNICO**.
+Perguntei o que precisava e ele respondeu três coisas: o técnico vê **todas as
+atividades da equipe** ("para saber o que os colegas têm"); o sobreaviso é **só
+do cargo técnico** ("galera do operacional não vai entrar nisso"); e o Gilleno
+**vira SAC**. Três perguntas ficaram para depois — para onde o APK aponta, se o
+push entra nesta semana, e o que define "urgência fora do horário" e se o
+plantonista vira responsável automaticamente — e esta entrega não as decide.
+
+**O retrato que a revisão achou, antes de mexer.** Sete coisas, e as quatro
+primeiras contradiziam a regra nova:
+1. **Ele via tudo.** Desde a R221 a leitura de `chamados` e `visitas` é
+   `USING (true)`; o "Meu dia" era um preset que ele tirava com um toque, e a
+   Início dele era a MESMA tela do gestor — filtros, busca, quadro, atividades
+   internas de todo mundo.
+2. **A Agenda vazava.** As visitas eram filtradas por técnico, mas os chamados
+   do calendário não tinham filtro nenhum para quem não é gestor: o técnico via
+   os chamados da empresa inteira.
+3. **A matriz ainda abria a grade do Sobreaviso** para ele (a U24 já tinha
+   tirado Clientes; Histórico e Mapa saíram do sistema).
+4. **O sobreaviso era por equipe** (R254), e a razão registrada era exatamente
+   o Nicholas e o Erik.
+5. **"Plantonista recebe urgência fora do horário" não existe em peça nenhuma**
+   — há a escala, o registro do atendimento (R117) e a notificação in-app; falta
+   o encaminhamento e falta o que faz o celular tocar com o app fechado.
+6. **O APK existe** (Capacitor, commit `fb4cf3d`) e aponta para a Lovable; sem
+   FCM (limitação registrada em `SISTEMA_OS.md` §7 desde agosto). O servidor
+   Windows é HTTP interno — um técnico no 4G não chega nele.
+7. **Esta máquina não compila o APK**: sem SDK, sem Android Studio, Java 8.
+
+**O que entrou.**
+
+*A Início do técnico é outra tela* (`InicioDoTecnico.tsx`), e a rota decide
+pelo cargo ANTES de qualquer hook da tela grande: `Home()` virou um despacho de
+três linhas, e a tela do gestor virou `InicioDoGestor()`. Enquanto o cargo não
+chegou, nada — um piscar da tela errada seria pior do que meio segundo de
+vazio. A tela nova tem a frase do dia (o número é SEMPRE o dele, pela régua da
+R11, mesmo com a lista em "Equipe" — o banner responde "quanto EU tenho", a
+lista responde "o que estou olhando"), a faixa de sobreaviso quando ele é o
+plantonista, o interruptor Minhas | Equipe, os dois grupos (Hoje · A seguir,
+cada um pela ordem `prazo` da Início do gestor — as duas telas não podem
+discordar sobre "a próxima") e o "+" do plantão. Toda a conta está em
+`tecnico.ts`, puro, com asserção: recorte, hoje, grupos, saudação, frase, e as
+semanas de sobreaviso dele — pela MESMA `plantonistasDaSemana` da grade do
+Vinicius, porque a resposta aqui não pode ser outra que a de lá.
+
+*O interruptor é um só para as duas telas*: uma chave no localStorage, lida
+pela Início e pela Agenda. Dois interruptores independentes fariam a Agenda
+dizer "equipe" enquanto a Início diz "minhas". Na Agenda, "Minhas" filtra
+chamados E visitas (responsável ou apoio) — e fecha o vazamento do item 2.
+
+*O Perfil ganhou "Meu sobreaviso"*: as semanas dele, nesta competência e na
+seguinte, com "esta semana" marcada. A grade inteira fechou para o cargo técnico
+na matriz — é do Vinicius.
+
+*A leitura no banco (U132)*: `eh_tecnico(uid)` (STABLE SECURITY DEFINER, como
+`is_gestor`), `chamados_select` vira `NOT eh_tecnico(auth.uid()) OR natureza <>
+'interno'` — o técnico lê campo e a capa da proposta (a visita para proposta é
+o quarto fluxo dele, R134); todo mundo mais continua na R221 —, e
+`pode_acessar_chamado()` ganha o mesmo recorte, senão ele veria o chat de uma
+atividade cuja linha não lê. É a primeira leitura recortada por cargo deste
+banco. O censo de policies `USING (true)` do verificador caiu de 26 para 25, com
+o motivo escrito no lugar da linha que saiu.
+
+*A escala é do cargo* (R265): `pessoasDaGrade` troca `equipe === "tecnica"` por
+`cargo === "tecnico"`. O pino que fixava o caso da R254 ("o coordenador SAC da
+equipe técnica entra; o Gil do patrimônio não") inverteu: agora o Gil entra e o
+Bruno não — e o texto do pino diz por quê.
+
+**O que eu me recusei a fazer, e por quê.** Não construí o encaminhamento da
+urgência ao plantonista nem o push: os dois dependem das respostas 5 e 6, e
+"quem vira responsável automaticamente" não é decisão que eu deva inventar. Não
+mexi no APK: ele aponta para a Lovable, que é a recomendação para esta semana,
+e compilar exige SDK nesta máquina — software que só o Davi autoriza. Não tirei
+`presetPadrao('tecnico')` de `lentes.ts`: o técnico não chega mais à Início do
+gestor, então o preset virou caminho morto — fica registrado aqui para sair na
+próxima passada, com o pino dele. E não pus a Agenda em "Equipe" por padrão: a
+Agenda é a semana DELE; a equipe está a um toque.
+
+**O que a verificação pegou.** Os dois erros de tipo que o `tsc` mostrou no
+calendário e na tela de campo são ANTERIORES (confirmado escondendo as mudanças
+e rodando de novo) — o baseline continua 57. Cinco pinos ficaram vermelhos, os
+cinco esperados: a semente da matriz (a U132 entrou na lista de arquivos), o
+regex do filtro do calendário (o recorte do técnico vem antes do de pessoa), o
+censo de `USING (true)` (a `chamados_select` deixou de ser `true`), o pino da
+grade (R254 → R265, com o caso invertido) e a chave da consulta de visitas do
+calendário (ganhou o interruptor).
+
+**O que a revisão adversarial achou (13/09).** Antes de publicar, quatro
+agentes leram o diff por lentes diferentes (banco, React, produto, regressão)
+e cada achado passou por três céticos tentando refutá-lo. Sobraram, e foram
+consertados: **(1) `useUserCargo()` devolvia "tecnico" para o OPERACIONAL** —
+o Nicholas e o Erik viam a barra de três itens do técnico desde a R244, sem
+Clientes, e na U132 ganhariam o interruptor do técnico na Agenda; a raiz foi
+corrigida (a Agenda passou a ler o cargo da mesma sessão que a Início). **(2) A
+policy escondia do técnico a INTERNA que é dele** — o app deixa dar uma
+interna a alguém de cargo técnico, os gatilhos o avisam, e o aviso abriria uma
+página vazia; a policy e `pode_acessar_chamado` ganharam a exceção da tarefa
+dele (responsável, autor ou apoio), e a conferência trocou a comparação byte a
+byte do `qual` por LIKEs. **(3) O PDF do financeiro chamaria de "(saiu)" o
+operacional que fez plantão e está na casa** — `PessoaDaGrade` ganhou
+`motivo` (inativo · pendente · fora do cargo) e o PDF só prefixa quem saiu.
+**(4) Gilleno vira SAC ANTES de rodar a U132**, senão perde a própria fila —
+registrado no cabeçalho da migration, no ESTADO §4/§7/§8 e na R264. E os
+menores: o cabeçalho do desktop da Início nova ficava em linha (o
+`.so-desktop` é flex), a lista virava três colunas dentro de 720px, o botão
+"+" encostava na barra inferior, a Agenda em "Minhas" mostrava vazio (não
+"carregando") antes da sessão chegar, a Início do técnico baixava as 300
+encerradas e o histórico dos painéis que nunca desenha, o Perfil de todo cargo
+consultava a escala, o "Meu sobreaviso" perdia a última semana do mês seguinte
+quando ele termina numa segunda, a Home de TODOS ficava em branco enquanto a
+sessão carrega, e seis lugares de texto (ESTADO §7/§8, manual, visão geral,
+docblocks da grade) ainda contavam a regra antiga. O que ficou registrado e não
+consertado: `chamado_locais`/`chamado_apoios` continuam `USING (true)` e
+vazam METADADO ao técnico (P72). Dezessete céticos da lente "regressão" caíram
+no limite de uso do Davi — esses seis achados foram triados à mão, e todos
+estão na lista acima.
+
+**Números.** Verificador: 3.323 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Migrations **U131 e U132 pendentes**.

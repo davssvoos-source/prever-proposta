@@ -47,13 +47,14 @@ const CAMPOS = "dia, pessoa_id, horas, origem";
  * TODO PROFILE, sem filtro NENHUM na consulta.
  *
  * Quem decide o recorte é `pessoasDaGrade()`, no modelo puro, onde ele é
- * exercitado por asserção — inclusive o da R254 (só a equipe técnica é
- * escalada). Filtrar aqui esconderia a regra numa camada que ninguém testa E
+ * exercitado por asserção — inclusive o da R265 (só o CARGO técnico é
+ * escalado). Filtrar aqui esconderia a regra numa camada que ninguém testa E
  * apagaria da grade quem tem horas gravadas e hoje está fora do recorte: o
  * histórico tem de continuar aparecendo, esmaecido.
  *
- * R254: a consulta passou a trazer `equipe` — é o campo que decide quem pode
- * ser escalado.
+ * `cargo` é o campo que decide quem pode ser escalado (R265). `equipe`
+ * continua vindo: a R254 decidiu por ela em 11/09 e o Davi reverteu em 12/09
+ * — a coluna fica na consulta para o histórico da grade não perder o nome.
  */
 export async function fetchPessoasDoSobreaviso(): Promise<PessoaCandidata[]> {
   const { data, error } = await (supabase as any)
@@ -64,11 +65,13 @@ export async function fetchPessoasDoSobreaviso(): Promise<PessoaCandidata[]> {
   return (data ?? []) as PessoaCandidata[];
 }
 
-export function usePessoasDoSobreaviso() {
+/** `enabled` (R263): o Perfil só consulta a escala quando quem abriu é técnico. */
+export function usePessoasDoSobreaviso(opcoes: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["sobreaviso", "pessoas"],
     queryFn: fetchPessoasDoSobreaviso,
     staleTime: 5 * 60_000,
+    enabled: opcoes.enabled ?? true,
   });
 }
 
@@ -91,11 +94,12 @@ export async function fetchSobreaviso(competencia: string): Promise<LinhaSobreav
  * sem canal de realtime, e o foco de janela só ajuda se o dado envelhecer
  * rápido o bastante para o refetch acontecer.
  */
-export function useSobreaviso(competencia: string) {
+export function useSobreaviso(competencia: string, opcoes: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["sobreaviso", "janela", competencia],
     queryFn: () => fetchSobreaviso(competencia),
     staleTime: 30_000,
+    enabled: opcoes.enabled ?? true,
   });
 }
 

@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 75 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **65 em aberto, 10 fechadas.**
+> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **66 em aberto, 10 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -78,6 +78,7 @@
 - [P69 — BAIXO · `sync_user_role_from_cargo` não espelha `operacional` (nem `sac`) em `user_roles` (2026-09-10, U127)](#p69-baixo-syncuserrolefromcargo-não-espelha-operacional-nem-sac-em-userroles-2026-09-10-u127)
 - [P70 — MÉDIO · O modal do Sobreaviso é artesanal: z-60, sem `role="dialog"` e sem foco preso (2026-09-11, U129)](#p70-médio-o-modal-do-sobreaviso-é-artesanal-z-60-sem-roledialog-e-sem-foco-preso-2026-09-11-u129)
 - [P71 — BAIXO · Quatro telas usam o peso 500, que a R195 proibiu — e a asserção não os vê (2026-09-11, achado na revisão da U129)](#p71-baixo-quatro-telas-usam-o-peso-500-que-a-r195-proibiu-e-a-asserção-não-os-vê-2026-09-11-achado-na-revisão-da-u129)
+- [P72 — BAIXO · `chamado_locais` e `chamado_apoios` continuam `USING (true)`: o técnico lê, por outra tabela, que existe atividade interna sobre o cliente X e quem a apoia (2026-09-13, achado na revisão da U132)](#p72-baixo-chamadolocais-e-chamadoapoios-continuam-using-true-o-técnico-lê-por-outra-tabela-que-existe-atividade-interna-sobre-o-cliente-x-e-quem-a-apoia-2026-09-13-achado-na-revisão-da-u132)
 <!-- sumario:fim -->
 
 Registro formal do que a revisão adversarial encontrou.
@@ -2379,3 +2380,23 @@ uma na asserção: trocar a extração por algo que enxergue o ternário, por ex
 na U129 porque nenhum dos quatro está na tela de Sobreaviso, e misturar um
 varrimento de tipografia global com o redesenho do calendário tornaria as duas
 coisas difíceis de conferir.
+
+## P72 — BAIXO · `chamado_locais` e `chamado_apoios` continuam `USING (true)`: o técnico lê, por outra tabela, que existe atividade interna sobre o cliente X e quem a apoia (2026-09-13, achado na revisão da U132)
+
+A U132 recortou a leitura de `chamados` para o cargo técnico (R264), mas duas
+satélites continuam abertas a toda pessoa logada (U7 §policies): `chamado_locais`
+(o local de cada atividade) e `chamado_apoios` (quem apoia). Nenhuma das duas
+devolve o título ou o texto da atividade — mas devolvem que EXISTE uma atividade
+interna sobre o cliente X e quem está nela, o que a R264 quis esconder.
+
+**O conserto** é o mesmo gesto que a S4 fez em `chamado_eventos`: trocar as duas
+policies para `USING (public.pode_acessar_chamado(chamado_id))`. Para quem não é
+técnico a função devolve `true` para toda linha existente, então a Início do
+gestor não muda — e é isso que a migration de acompanhamento tem de CONFERIR
+(o `useApoiosDeTodos` e o `useLocaisDeTodos` da Início leem as duas tabelas
+inteiras). Não mexer em `agenda_campo`: o denominador do chip de ocupação
+depende de ler todas as linhas (U78).
+
+Não entrou na U132 porque o custo de uma função por linha nessas duas tabelas
+(lidas inteiras pela Início de todo mundo) merece medição antes, e porque o
+vazamento é de METADADO, não de conteúdo.

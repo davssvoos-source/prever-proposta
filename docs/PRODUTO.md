@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R262 (33)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R265 (36)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -4934,3 +4934,89 @@ adaptado."
   de uma atividade que esteja concluída, deve ser possível alterar manualmente
   a data de conclusão, apesar de ficar registrado na timeline quem alterou, de
   quando pra quando a data de conclusão.")*
+
+- **R263** — **O app do técnico de campo: três telas, e a Início é dele.** O
+  **cargo TÉCNICO** é quem trabalha na rua, pelo celular — desde que o
+  OPERACIONAL (R244) passou a existir para quem está na sede sem ser gestor, é
+  o **cargo** que separa os dois mundos, e não mais "a área técnica" da R134
+  (que fica reafirmada no resto). Esse cargo tem **três páginas**: **Início**,
+  **Agenda** e **Perfil** — a matriz fecha tudo o mais (a chave da grade de
+  Sobreaviso, que ainda abria para ele, fecha na U132 — a **leitura** da
+  tabela continua aberta a ele, como a R116 quer; o que fechou foi a **tela**).
+  1. **A Início é outra tela** (`InicioDoTecnico`), não a do gestor com menos
+     coisas: sem painéis, sem quadro, sem barra de filtros, sem busca. Abre com
+     **"Bom dia, Breno. Você tem 3 atividades hoje."** — o número conta
+     **sempre as dele** (responsável ou apoio; dia marcado hoje, prazo hoje,
+     atrasada ou em andamento — a régua da R11), seja qual for o recorte da
+     lista. Se ele é o **plantonista da semana**, uma faixa diz isso, com as
+     datas. Abaixo, **um interruptor**: **Minhas | Equipe** — "Minhas" é
+     responsável ou apoio, "Equipe" é tudo o que o banco lhe devolve (R264).
+     Os cards vêm em **dois grupos**, **Hoje** e **A seguir**, cada um **da
+     mais próxima para a mais distante** — a atrasada antes de tudo. Tocar no
+     card abre o **fluxo** da atividade, na página (no celular não há diálogo
+     largo). O **"+"** continua sendo só o registro de plantão (R163/R231).
+  2. **A Agenda** é o calendário com o **mesmo interruptor** — uma chave só no
+     aparelho, então trocar numa tela troca na outra. Em "Minhas" ele vê os
+     chamados e as visitas em que está; em "Equipe", os da equipe. Isso fecha
+     um vazamento: desde a R221 os **chamados** do calendário não eram
+     filtrados para quem não é gestor, e o técnico via a agenda da empresa
+     inteira.
+  3. **O Perfil** ganha **"Meu sobreaviso"**: as semanas em que ele é o
+     plantonista, nesta competência e na seguinte — pela **mesma conta** da
+     grade do Vinicius (`plantonistasDaSemana`, R254): plantonista é quem tem
+     hora no miolo da semana.
+  No computador as três abrem também — a Início numa coluna só, sem o banner —
+  porque a pessoa pode estar na sede; mas a tela foi desenhada para o polegar.
+  **O que ainda não está aqui, por decisão pendente do Davi:** o encaminhamento
+  da urgência fora do horário ao plantonista da semana, e o aviso que chega com
+  o app fechado (push). *(Davi, 12/09/2026: "Os técnicos de campo são os com
+  cargo TÉCNICO, eles utilizarão pelo celular. Eles devem ter em seu app
+  somente 3 páginas: INICIO, AGENDA, PERFIL. A página INICIO Deve aparecer
+  quantas atividades ele tem pendente hoje, além de aparecer em ordem da mais
+  próxima no topo os cards das atividades na tela INICIO." E, perguntado se ele
+  vê só as dele ou as da equipe: "Todas as atividades da equipe para saber o
+  que os colegas tem".)*
+
+- **R264** — **O técnico lê só atividade de campo — e todas as da equipe.** No
+  banco: o cargo TÉCNICO lê em `chamados` o que **não é interno** — campo e a
+  capa da proposta (natureza `comercial`), porque a visita técnica para
+  proposta é o quarto fluxo dele (R134) e a capa é a metade "chamado" dela. O
+  que ele **não** lê é a atividade interna das outras equipes (T.I.,
+  patrimônio, comercial, SAC). As visitas continuam abertas — toda visita
+  técnica é campo. Para **todo mundo que não tem cargo técnico, a R221 continua
+  inteira** (toda pessoa logada vê toda atividade). A régua
+  `pode_acessar_chamado()` — que abre chat, reações, fotos e movimentos de
+  equipamento — ganha o **mesmo recorte**, senão ele veria a conversa de uma
+  atividade cuja linha não lê. É a **primeira leitura recortada por cargo**
+  deste banco, e está certo assim: cargo é permissão (o COMMENT de
+  `profiles.equipe` diz que equipe não é), e o Davi definiu que o cargo TÉCNICO
+  é o que separa quem está na rua de quem está na sede. Migration **U132**
+  (`eh_tecnico()`, `chamados_select`, `pode_acessar_chamado`). **A tarefa que é
+  dele entra seja de que natureza for** — responsável, autor ou apoio: o app
+  deixa dar uma interna a alguém de cargo técnico e os gatilhos o avisam dela;
+  sem a exceção o aviso abriria uma página vazia e ele não leria nem editaria a
+  própria tarefa. O que ele não lê é a interna dos **outros**. **Ordem de
+  subida:** trocar o cargo do Gilleno para SAC **antes** de rodar a U132 — ele
+  opera o Controle Patrimonial em atividade interna. *(Davi,
+  12/09/2026: "os usuário com CARGO TÉCNICO no tipo de perfil só terão acesso
+  as atividades do cargo TÉCNICO. Essas atividades são aquelas que o Vinicius
+  fará lançamento de cobrança".)*
+
+- **R265** — **Sobreaviso é do cargo TÉCNICO.** Só quem tem esse cargo entra
+  no seletor de plantonista e na lista da grade; o **operacional não entra**.
+  Isto **revisa a R254** (item 6), que tinha escolhido a **equipe** técnica por
+  causa do Nicholas e do Erik — operacionais que, naquele dia, faziam plantão.
+  O Davi decidiu o contrário em 12/09: com isso o cargo TÉCNICO passa a
+  significar **uma coisa só** no sistema — quem trabalha na rua, pelo celular,
+  faz sobreaviso e responde pelas atividades de campo (R263/R264) —, e a
+  objeção da R254 (T.I. e Controle Patrimonial com cargo técnico) já não
+  existe: o Nicholas e o Erik são operacionais e o **Gilleno passa a SAC**. O
+  que não mudou desde a R116: quem já tem horas gravadas continua na grade,
+  esmaecido — história não se apaga — e passa a dizer **por quê** (saiu, convite
+  pendente ou fora do cargo), porque o PDF do financeiro só pode chamar de
+  "(saiu)" quem saiu. **Revisa também a R116** no ponto "zero filtro por cargo":
+  o coordenador que atende às 2h só entra no seletor se tiver cargo técnico —
+  a célula continua aceitando horas de qualquer pessoa, então lançar à mão
+  continua possível. *(Davi, 12/09/2026: "Sobreaviso é só para
+  quem for do cargo TÉCNICO, Galera do Operacional não vai entrar nisso por
+  exemplo"; e sobre o Gilleno: "Não, Gilleno terá cargo de SAC".)*

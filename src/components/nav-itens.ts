@@ -80,6 +80,11 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
   }
+  // R263 (Davi, 12/09/2026): "Eles devem ter em seu app somente 3 páginas:
+  // INICIO, AGENDA, PERFIL." O cargo TÉCNICO é quem trabalha na rua, pelo
+  // celular; a Início dele é outra tela (InicioDoTecnico), a Agenda é o
+  // calendário com o interruptor Minhas | Equipe, e a matriz fecha tudo o
+  // mais (U132).
   return [
     { to: "/dashboard", label: "Início", icon: Home, tela: "dashboard" },
     { to: "/calendario", label: "Agenda", icon: Calendar, tela: "calendario" },

@@ -8,10 +8,11 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-12** · última regra: **R262** · último diário:
-**U131** · verificador: **3.302 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-13** · última regra: **R265** · último diário:
+**U132** · verificador: **3.323 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U129** (U127 e U129 em 11/09/2026) ·
-**Pendente: U131** (a linha do tempo da correção da data de conclusão) ·
+**Pendentes: U131** (a linha do tempo da correção da data de conclusão) **e
+U132** (o técnico lê só campo; a grade do sobreaviso fecha para ele) ·
 **versão no servidor: v0.0.7**
 (192.168.10.182); **esta entrega é a v0.0.11**, e ela sobe de uma vez o que a
 v0.0.8, a v0.0.9 e a v0.0.10 já tinham entregue — o que entrou em cada versão
@@ -114,6 +115,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U129 | a **v0.0.11**: o **Sobreaviso reestruturado** — a semana virou a unidade da tela (R253: uma linha por semana com o seletor do plantonista, par Semana \| Mês, grade de 8 colunas) e o calendário ganhou a **barra** (R254: faixa amarela fosca por trecho contíguo, clicar seleciona e Delete apaga, modo "Remover dia" com pré-visualização, "+" para o segundo plantonista, troca que NÃO acumula pela RPC nova, e só a **equipe técnica** é escalada). Três defeitos consertados no caminho: buraco × sobra, o clique na última coluna que teletransportava a semana, e as setas mudas do celular. Migration **U129** |
 | U130 | **as correções pedidas antes do executável** (sem versão nova: o Davi disse que pediria o executável no fim). **R255** — quem não edita a atividade vê o botão **"Entrar como apoio"**, e o apoio que a pessoa se dá NÃO vira permissão (o gêmeo `podeEditar` do cliente voltou a falar a língua do `pode_editar_chamado` do banco); **R256** — as setinhas do campo de horas só no dia clicado (MEDIDO: `appearance: none` não volta no foco; a alavanca é a opacidade, e o `padding-left: 13px` paga a largura reservada); **R257** — no card da Início, o prazo é o ícone e o número, sem "faltam"/"em atraso" (fora do card a palavra fica); **R258** — o convite do chat na linha do texto (os 3px eram do `[data-bloco]`) e o foco na caixa ao abrir; **R259** — a Proposta Comercial fala menos (cinco textos fora, "Cliente" virou **LOCAL**, nome do campo em tinta primária e a nota em opacidade menor, barra de rolagem nossa) e a **revisão de margem** que o Davi mandou fazer depois achou 9px de desalinho entre as colunas e 11px que vinham do `<p>` do navegador; **R260** — Proposta Comercial nasce com responsável da **equipe** Comercial. De quebra: o comentário da R256 fechava duas vezes e derrubava a folha inteira no `vite dev` (anti-padrões nº 11 e 12). Sem migration nova |
 | U131 | **R261** — a **Demanda no tempo** conta a semana INTEIRA: concluída entra na semana em que foi concluída, aberta entra na do prazo. A assimetria da R65 (passado = entregas, futuro = prazos) abria um buraco na semana CORRENTE, que é desenhada pelo lado do futuro: concluir uma atividade hoje a tirava do gráfico e não a punha em barra nenhuma até a virada da semana. Uma conta só (`demandaPorSemana`), a faixa anuncia "Atividades da semana de DD/MM" e a dica decompõe o número. **R262** — a **data de conclusão** vira campo corrigível na ficha das duas telas de atividade (na de campo, só a gestão), e a correção entra na **linha do tempo** por GATILHO — "de → para", com quem fez. Escreve em `concluida_em` e não em `finalizada_em`/`fechada_em`, que é de onde sai a competência da cobrança. O par relógio↔instante mudou de `features/plantao` para `lib/periodos`. Migration **U131 (pendente)** |
+| U132 | **o app do técnico de campo, primeira etapa.** **R263** — o cargo TÉCNICO é quem trabalha na rua, pelo celular, e tem TRÊS telas: uma **Início própria** (`InicioDoTecnico`: "Bom dia, Breno. Você tem 3 atividades hoje" com o número SEMPRE dele, a faixa de sobreaviso quando é o plantonista, o interruptor **Minhas \| Equipe** e os cards em Hoje · A seguir da mais próxima para a mais distante; o "+" é só o plantão), a **Agenda** com o mesmo interruptor (fecha o vazamento dos chamados de toda a empresa no calendário dele) e o **Perfil** com "Meu sobreaviso". **R264** — no banco, o técnico lê só o que não é interno (campo + capa da proposta) e TODAS as da equipe; `pode_acessar_chamado` com o mesmo recorte. **R265** — o Sobreaviso é do **cargo** técnico (revisa a R254; o operacional não entra; Gilleno vira SAC). Ficam para o Davi: para onde o APK aponta, o push, e a urgência fora do horário → plantonista. Migration **U132 (pendente)** |
 
 ## 4. Banco: migrations
 
@@ -121,6 +123,23 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
+- **U132** (`20260929090000_u132_o_tecnico_le_so_campo.sql`, **PENDENTE**) — a
+  primeira LEITURA recortada por cargo deste banco (R264): `eh_tecnico(uid)`
+  (STABLE SECURITY DEFINER, como `is_gestor`), `chamados_select` vira
+  `NOT eh_tecnico(auth.uid()) OR natureza <> 'interno'` — o cargo TÉCNICO lê
+  campo e a capa da proposta, nunca a atividade interna das outras equipes; todo
+  mundo mais continua na R221 —, e `pode_acessar_chamado()` ganha o mesmo
+  recorte (senão ele veria o chat de uma atividade cuja linha não lê). Visitas
+  continuam abertas. E a chave `sobreaviso` da matriz FECHA para o técnico
+  (R263: três telas). Pré-voo exige a policy da U119 e `permissoes_tela` (U11).
+  Nove itens de conferência — o último lista quem tem cargo técnico hoje, para
+  você conferir a lista. A tarefa que é DELE (responsável, autor ou apoio)
+  entra seja de que natureza for — sem essa exceção o aviso de uma interna
+  atribuída a ele abriria uma página vazia. O DESFAZER volta a R221 inteira.
+  **Antes de rodar:** trocar o cargo do Gilleno para SAC. **Sem ela** a Início
+  nova do técnico funciona, mas ele ainda lê a atividade interna dos outros E a
+  grade /sobreaviso continua abrindo para ele pela URL (a linha da U86 na matriz
+  diz true; o catálogo do código só vale quando não há linha no banco).
 - **U131** (`20260928090000_u131_data_de_conclusao_corrigida.sql`, **PENDENTE**)
   — o gatilho **`chamado_registrar_evento`** (da U7) passa a olhar também
   `concluida_em` e ganha um quarto ramo: corrigir a data de uma atividade que
@@ -361,7 +380,8 @@ Das 23 perguntas do plano, ficam duas:
 
 1. **A estrutura dos fluxos de cada tipo de demanda da área técnica** —
    corretiva, preventiva, implantação: campos de cada um e o caminho. **É o
-   próximo passo**: destrava B2 (Início do técnico), C (validação, R155/R162),
+   próximo passo**: destrava C (validação, R155/R162) — a B2 (Início do
+   técnico) foi entregue na U132, e o que resta dela são os fluxos —,
    H.1 (mini-calendário e a visita que trava a agenda, R172), a tela da data
    agendada (R168), a proposta em duas atividades (R170) e a revisão da lista
    de tipos do chamado de campo (`TIPOS_DA_NATUREZA.campo`, R156).
@@ -376,6 +396,18 @@ Das 23 perguntas do plano, ficam duas:
    (a lista e o checklist) ele "estrutura em breve".
 4. **A leitura da proposta aprovada (PDF) pela IA** para criar as atividades
    da implantação (R148, H.6).
+5. **Para onde o app Android aponta** (12/09/2026) — proposto: continuar na
+   Lovable (HTTPS); o servidor Windows é HTTP interno e o 4G não chega nele.
+   Os celulares terão chip de dados ou só Wi-Fi?
+6. **Push com o app fechado** — proposto: nesta semana a urgência é card mais
+   aviso in-app; o toque no celular (FCM) vem depois e exige uma conta Firebase
+   que só ele cria. Esta máquina não compila o APK (sem SDK, Java 8).
+7. **O que define "urgência fora do horário"** e se o plantonista vira o
+   responsável automaticamente — proposto: chamado de campo urgente/emergencial
+   criado fora de 08–18h ou em fim de semana/feriado vai para o plantonista da
+   semana e o avisa. Quem abre à noite é a Rubia?
+8. **Trocar o cargo do Gilleno para SAC** em Administrativo › Usuários — ANTES
+   de rodar a U132 (ele opera o Controle Patrimonial em atividade interna).
 
 ## 8. Quem é quem (resumo — o completo está em `CONTEXTO_OPERACAO_TECNICA.md` §1)
 
@@ -384,8 +416,8 @@ Das 23 perguntas do plano, ficam duas:
 | Davi | dono do produto; dita as regras; aprova e envia propostas | admin |
 | Vinicius | gestor da equipe técnica de campo; valida o executado e lança cobrança | admin |
 | Rubia | supervisora do atendimento da Portaria Remota; abre e gerencia chamados (R158) | sac |
-| Erik, Nicholas | T.I. | tecnico (equipe T.I.) |
-| Gilleno | Controle Patrimonial (opera o QAP ERP) | tecnico (equipe Controle Patrimonial) |
+| Erik, Nicholas | T.I. | operacional (R244) |
+| Gilleno | Controle Patrimonial (opera o QAP ERP) | sac (R265 — o Davi troca ANTES de rodar a U132) |
 | Breno e os líderes das duplas | técnicos de campo | tecnico |
 | Lopes | desenvolvedor do QAP ERP (externo) — a integração, quando chegar a hora | — |
 
