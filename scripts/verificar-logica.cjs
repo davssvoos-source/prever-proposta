@@ -21512,6 +21512,27 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [telaV, faixaV, painelV, inicioV].map((a) => /gap: 10\b|gap: 14\b|marginTop: 14\b|marginTop: 10\b/.test(a)),
      [false, false, false, false]);
 
+  // ── A ARMADILHA DO ROLLBACK (cicatriz da U136) ──────────────────────────
+  // O SQL Editor do Supabase roda o script INTEIRO numa transação. Uma
+  // migration que termina o portão em `ROLLBACK;` sem ter fechado o trabalho
+  // num `COMMIT;` antes desfaz o script todo — DDL e tudo. Ela roda, não dá
+  // erro, e não aplica nada; o Davi rodou a U136 duas vezes antes de o defeito
+  // aparecer. Esta asserção varre TODAS as migrations, não só a de hoje.
+  {
+    const dirM = 'supabase/migrations';
+    const semCommit = [];
+    for (const f of fsV.readdirSync(dirM).sort()) {
+      if (!f.endsWith('.sql')) continue;
+      const linhas = fsV.readFileSync(`${dirM}/${f}`, 'utf8').split(/\r?\n/);
+      const iRollback = linhas.findIndex((l) => /^ROLLBACK;\s*$/.test(l));
+      if (iRollback < 0) continue;                       // sem portão: nada a cobrar
+      const iCommit = linhas.findIndex((l) => /^COMMIT;\s*$/.test(l));
+      if (iCommit < 0 || iCommit > iRollback) semCommit.push(f);
+    }
+    eq('MIGRATIONS CRÍTICO (cicatriz da U136): toda migration com portão que termina em ROLLBACK fecha o TRABALHO num COMMIT antes — senão o editor do Supabase, que roda o script inteiro numa transação, desfaz o DDL junto com o portão (roda, não dá erro, não aplica nada)',
+       semCommit, []);
+  }
+
   const mig136 = fsV.existsSync('supabase/migrations/20261001090000_u136_viaturas_sem_km.sql')
     ? fsV.readFileSync('supabase/migrations/20261001090000_u136_viaturas_sem_km.sql', 'utf8') : '';
 

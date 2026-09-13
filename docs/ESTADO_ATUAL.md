@@ -9,7 +9,7 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-13** · última regra: **R276** · último diário:
-**U136** · verificador: **3.349 asserções, 0 falharam** · `tsc`: baseline
+**U136** · verificador: **3.350 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U134** (U131, U132 e U134 em 13/09/2026,
 nesta ordem) · **Pendente: U136** (o km sai das viaturas — o registro de viagem
 fica parado até ela rodar) ·

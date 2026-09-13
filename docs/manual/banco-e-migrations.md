@@ -110,3 +110,27 @@ com triggers no caminho: `ALTER TABLE ... DISABLE TRIGGER USER` antes,
   `20260821160000_u29` (satélite + trigger + policy),
   `20260821180000_u30` (DELETE na semente).
 - `docs/PLANO_UNIFICACAO.md` — o diário com o porquê de cada uma.
+
+## A armadilha do ROLLBACK (U136, 13/09/2026)
+
+O SQL Editor do Supabase roda **o script inteiro dentro de uma transação**.
+Quem escreve um portão de teste que termina em `ROLLBACK;` precisa ter
+fechado o trabalho num `COMMIT;` **antes** dele — como fazem a U131 e a
+U134, que abrem em `BEGIN;` no topo e dão `COMMIT;` depois das funções.
+
+A U136 nasceu sem esse par. O `BEGIN;` do portão virou um aviso inofensivo
+("there is already a transaction in progress") e o `ROLLBACK;` do fim desfez
+**o script todo**, DDL incluído. O sintoma é traiçoeiro: ela roda, **não dá
+erro**, a conferência até imprime — e o banco continua igual. O Davi rodou a
+U136 duas vezes e reportou "rodei, mas continua false".
+
+O que ficou:
+
+- **Estrutura obrigatória**: `BEGIN;` → trabalho → `COMMIT;` → conferência →
+  `BEGIN;` portão `ROLLBACK;`.
+- **Asserção permanente** no verificador varrendo todas as migrations:
+  arquivo com `ROLLBACK;` de primeira coluna sem `COMMIT;` antes é falha.
+- **Como conferir do lado do banco**, sempre, depois de rodar: uma linha de
+  `SELECT` que pergunte por um objeto que a migration cria. Foi o que
+  desmascarou esta — a porta VELHA ainda executava e respondia com a frase do
+  corpo dela, o que só é possível se o DROP tivesse sido desfeito.

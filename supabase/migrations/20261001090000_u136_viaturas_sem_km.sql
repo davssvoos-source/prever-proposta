@@ -21,7 +21,14 @@
 --
 -- Exige a U134 (as tabelas e as portas) e, por tabela, a U132 (`eh_tecnico`).
 -- Rodar duas vezes dá no mesmo.
+--
+-- O TRABALHO VAI DENTRO DE BEGIN/COMMIT, e não é enfeite: o SQL Editor do
+-- Supabase roda o script inteiro numa transação, então o `ROLLBACK;` do portão
+-- lá embaixo desfaria TUDO se o COMMIT não viesse antes. (Foi o que aconteceu
+-- na primeira versão deste arquivo: rodava, não dava erro, e não aplicava nada.)
 -- ═══════════════════════════════════════════════════════════════════════════
+
+BEGIN;
 
 -- ── §0  PRÉ-VOO ────────────────────────────────────────────────────────────
 DO $$
@@ -217,7 +224,9 @@ GRANT  EXECUTE ON FUNCTION public.viatura_corrigir_viagem(uuid, timestamptz, tex
 COMMENT ON FUNCTION public.viatura_corrigir_viagem(uuid, timestamptz, text) IS
   'R276 (U136): a gestão encerra a viagem deixada aberta (encerramento = gestor) e registra observação. Grava corrigida_por/em.';
 
--- ── §4  CONFERÊNCIA ────────────────────────────────────────────────────────
+COMMIT;
+
+-- ── §4  CONFERÊNCIA (fora da transação do trabalho, e ANTES do portão) ─────
 WITH conferencia AS (
   SELECT 1 AS n, 'as quatro colunas de km sumiram de viagens_viatura' AS o_que,
          (SELECT count(*) FROM information_schema.columns

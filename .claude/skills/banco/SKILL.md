@@ -155,3 +155,31 @@ Curto, com o nome do arquivo copiável. Ele roda entre duas reuniões.
 | `docs/manual/banco-e-migrations.md` | convenções da casa e as cicatrizes completas |
 | `supabase/migrations/20260915090000_u99_respostas_do_davi.sql` | exemplo real recente com pré-voo, DELETE na semente, DROP, CHECK, coluna e conferência |
 | `supabase/migrations/20260819180000_u11_permissoes_tela.sql` | a semente de permissões (modelo de INSERT … ON CONFLICT) |
+
+---
+
+## A armadilha do ROLLBACK (cicatriz da U136)
+
+O editor roda o script inteiro numa transação — o mesmo fato da regra 7 tem
+um segundo efeito, e este é silencioso. Se a migration termina com um portão
+em `BEGIN; … ROLLBACK;` e o **trabalho não foi fechado num `COMMIT;` antes**,
+o `ROLLBACK;` desfaz o script TODO: ela roda, não dá erro, imprime a
+conferência, e o banco continua igual.
+
+**Estrutura obrigatória de toda migration com portão:**
+
+```sql
+BEGIN;
+  -- §0 pré-voo · §1..§n o trabalho
+COMMIT;
+
+-- conferência (SELECT obtido × esperado × veredito)
+
+BEGIN;
+  -- portão: prova as invariantes com dados de mentira
+ROLLBACK;
+```
+
+O verificador cobra isso em todas as migrations. E depois de o Davi rodar,
+confira **pelo banco** que um objeto novo existe — não confie no "rodou sem
+erro".
