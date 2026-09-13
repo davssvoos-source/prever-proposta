@@ -73,7 +73,7 @@ export function FaixaDaViatura({ sessao, atividadesDeHoje }: { sessao: Sessao; a
       style={{
         ...card(isLight), padding: "12px 14px", textAlign: "left", cursor: "pointer", width: "100%",
         border: `1px solid ${misturar(gold, cz.superficie, chegou ? 0.35 : 0.55)}`,
-        display: "flex", alignItems: "center", gap: 10, color: textPrimary,
+        display: "flex", alignItems: "center", gap: 12, color: textPrimary,
       }}
     >
       <Car size={20} color={gold} style={{ flexShrink: 0 }} />

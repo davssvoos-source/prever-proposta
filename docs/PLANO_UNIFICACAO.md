@@ -12730,3 +12730,74 @@ Davi.
 **Números.** Verificador: 3.343 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migrations **U131, U132 e U134 pendentes** — a U134 exige a U132 antes
 (`eh_tecnico`), e o pré-voo aborta se ela não rodou.
+
+## U135 — a revisão de margem das telas novas: o chip que a casa já tinha, a grade da folha e a régua (R275)
+
+**O pedido.** O Davi rodou as três migrations (U131, U132 e U134) e mandou:
+"Além de realizar testes de verificação da funcionalidade do sistema, eu quero
+que você verifique e corrija margens, espaçamentos, alinhamentos...". A parte
+de margem está aqui; o teste funcional contra o banco de verdade **não foi
+feito** — ele passou usuário e senha, e eu não digito senha em campo nenhum.
+Fica para ele fazer o login (o porquê e o que testar estão no fim).
+
+**Como medi.** Uma rota descartável (`previa-viatura.tsx`, fora do
+`_authenticated`) que renderiza os componentes **de verdade** com um
+QueryClient semeado — não uma imitação de HTML copiada à mão, que é o jeito de
+medir uma tela que não existe. Duas armadilhas no caminho: `useViagensAbertas`
+tem `refetchOnWindowFocus: true` (certo em produção) e limpava a semente assim
+que a janela ganhava foco — resolvido com `focusManager.setFocused(false)` e
+`onlineManager.setOnline(false)`; e o compositor de captura da aba devolveu
+quadros em branco no fim, então as últimas conferências saíram do DOM
+(`getBoundingClientRect` e `getComputedStyle`), que é a medida mesmo.
+
+**O que estava errado, com o número.**
+
+1. **O chip de estado era invenção minha** — texto na cor sobre a própria cor
+   misturada com a superfície. MEDIDO no tema claro: **4,45:1**, abaixo do
+   piso de 4,5 que a casa cobra para texto. A troca não foi inventar outro
+   tom: é `etiqueta()` do design system, o MESMO chip do card da Início e do
+   Sobreaviso (fundo sólido no tom rebaixado, tinta clara). Agora LIVRE 5,43 ·
+   EM VIAGEM 4,99 · EM USO 5,71 · ATIVA 5,43 · ASSUMIDA 5,71 · CONFERIR 5,71.
+   O ponto "●" saiu junto: a etiqueta já é a forma, e o rótulo continua ali
+   (status nunca só por cor).
+2. **A aba Viaturas usava a grade do painel de usuários** (`.admin-colunas`,
+   1.45fr | 1fr). Aquilo foi desenhado para DUAS LISTAS parecidas; aqui a
+   primeira coluna é um formulário de três campos e a segunda tem a folha, com
+   nove colunas de tabela. MEDIDO: o cadastro ficava com 669px de sobra
+   enquanto a tabela de 1.367px rolava dentro de 427px. Nasceu
+   `.viaturas-colunas` — 360px de formulário | o resto, uma coluna só abaixo
+   de 1024px.
+3. **A folha ainda não cabia** (1.229px numa coluna de 736). Os dois km viraram
+   UMA coluna — "100.431 → 100.500", que é como se lê o odômetro, e dois
+   campos lado a lado quando se corrige — e os cabeçalhos longos encurtaram
+   ("Km", "Destino"): o conteúdo já dizia o que eles explicavam. Só a coluna
+   do destino quebra linha.
+4. **Espaçamentos fora da régua da R239** (8 · 12 · 16 · 24): `gap: 10` em
+   quatro lugares, `gap: 14`, `marginTop: 14`, `marginTop: 4/6` nos totais.
+   Todos para o degrau vizinho da régua. O verificador agora recusa 10 e 14
+   nos quatro arquivos do técnico.
+5. **Um defeito de verdade no meio da revisão**: o placeholder do km, na tela
+   de um carro que está com OUTRO técnico, mostrava "0" — a condição estava
+   escrita para dois casos e caía no terceiro. Agora mostra o km de saída da
+   viagem aberta, que é a dica certa para quem vai assumir.
+
+**O que NÃO mexi, de propósito.** A `InicioDoTecnico` só recebeu o `gap` da
+faixa de sobreaviso (10 → 12), por leitura de código: ela não entrou na prévia,
+e eu não vou dizer que medi o que não medi. As telas de viatura, sim — as três
+cenas da etiqueta e as duas da faixa foram medidas em **375px**, que é o
+celular do técnico.
+
+**O que o verificador passou a travar** (R275): o chip é `etiqueta()` nos dois
+arquivos e nenhum deles volta a montar chip próprio; a aba tem grade própria e
+não a do painel de usuários; os dois km são uma coluna; e 10/14 não são números
+desta casa. A regra vale para tela nova em geral, não só para estas.
+
+**Números.** Verificador: 3.346 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+**Migrations U131, U132 e U134 rodadas pelo Davi em 13/09/2026** — nenhuma
+pendente. A prévia foi apagada e o servidor, parado.
+
+**O que falta, e depende do Davi.** (1) O **teste funcional** contra o banco:
+preciso que ele faça o login. (2) Mesmo logado como `davi@`, o fluxo de
+iniciar/encerrar viagem **não roda** — as portas exigem `eh_tecnico`, e ele é
+gestão: ou um login de técnico, ou o cargo dele trocado por um minuto. (3) A
+lista de viaturas para cadastrar e o ajuste fino da coordenada da sede.

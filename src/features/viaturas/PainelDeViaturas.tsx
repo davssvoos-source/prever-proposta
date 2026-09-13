@@ -16,7 +16,7 @@ import { useMemo, useState, type CSSProperties, type ReactElement, type ReactNod
 import { Car, Check, Pencil, Plus, Trash2, X, MapPin, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card, goldButton, rotuloDeSecao } from "@/lib/ui";
+import { FONT, card, goldButton, rotuloDeSecao, etiqueta } from "@/lib/ui";
 import { PRISMA, cinzas, misturar } from "@/lib/paleta";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { usePessoas, mapaDePessoas } from "@/features/chamados/data";
@@ -66,8 +66,9 @@ export function PainelDeViaturas() {
     height: 34, padding: "0 12px", borderRadius: 10, background: cz.campo, border: `1px solid ${cz.divisoria}`,
     color: textPrimary, fontFamily: FONT, fontWeight: 600, fontSize: 12, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
   };
-  const chip = (cor: string, texto: string) => (
-    <span style={{ display: "inline-flex", alignItems: "center", padding: "3px 9px", borderRadius: 999, fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase", color: cor, background: misturar(cor, cz.superficie, 0.86), border: `1px solid ${misturar(cor, cz.superficie, 0.6)}`, whiteSpace: "nowrap" }}>{texto}</span>
+  /** O mesmo chip do resto do app (`etiqueta`, DS §6) — o porquê está na TelaDaViatura. */
+  const chip = (cor: { dark: string; light: string }, texto: string) => (
+    <span style={{ display: "inline-flex", alignItems: "center", padding: "3px 9px", borderRadius: 999, fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap", ...etiqueta(cor) }}>{texto}</span>
   );
   const nomeDe = (id: string | null | undefined) => (id ? pessoasPorId[id]?.nome ?? "—" : "—");
   const viaturaDe = (id: string) => viaturas.find((v) => v.id === id);
@@ -81,7 +82,7 @@ export function PainelDeViaturas() {
   }
 
   return (
-    <div className="admin-colunas" style={{ alignItems: "start" }}>
+    <div className="viaturas-colunas">
       {/* ── coluna 1: o cadastro e a sede ─────────────────────────────────── */}
       <section aria-labelledby="adm-viaturas" style={{ ...card(isLight), borderRadius: 18, padding: 16, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
         <h2 id="adm-viaturas" style={{ ...rotuloDeSecao(isLight), display: "flex", alignItems: "center", gap: 6, margin: 0 }}>
@@ -106,7 +107,7 @@ export function PainelDeViaturas() {
             selecionados={tecnicoFiltro ? [tecnicoFiltro] : []} onMudar={(v) => setTecnicoFiltro(v[0] ?? null)} />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
           {[
             { n: String(resumo.viagens), l: "viagens" },
             { n: `${formatarKm(resumo.km)} km`, l: "rodados" },
@@ -130,8 +131,11 @@ export function PainelDeViaturas() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 12.5 }}>
               <thead>
                 <tr>
-                  {["Dia", "Viatura", "Técnico", "Saída → chegada", "Km saída", "Km chegada", "Rodados", "Tempo", "Atividade / destino", ""].map((h, i) => (
-                    <th key={h + i} style={{ textAlign: i >= 4 && i <= 7 ? "right" : "left", fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", color: textSecondary, fontWeight: 700, padding: "8px 10px", borderBottom: `1px solid ${cz.divisoria}`, whiteSpace: "nowrap" }}>{h}</th>
+                  {/* Os dois km numa coluna só: "100.431 → 100.500" é como se
+                      lê o odômetro, e separados eles custavam 236px de largura
+                      numa tabela que já rolava dentro da coluna. */}
+                  {["Dia", "Viatura", "Técnico", "Saída → chegada", "Km", "Rodados", "Tempo", "Destino", ""].map((h, i) => (
+                    <th key={h + i} style={{ textAlign: i >= 4 && i <= 6 ? "right" : "left", fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", color: textSecondary, fontWeight: 700, padding: "8px 10px", borderBottom: `1px solid ${cz.divisoria}`, whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -150,7 +154,7 @@ export function PainelDeViaturas() {
             <div>
               <span style={rotuloDeSecao(isLight)}>Por técnico</span>
               {porTecnico.map((t) => (
-                <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "6px 0", fontFamily: FONT, fontSize: 12.5, borderBottom: `1px solid ${cz.divisoria}` }}>
+                <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "6px 0", fontFamily: FONT, fontSize: 12.5, borderBottom: `1px solid ${cz.divisoria}` }}>
                   <span>{nomeDe(t.id)}</span>
                   <span style={{ fontVariantNumeric: "tabular-nums", color: textSecondary }}>{t.resumo.viagens} viag. · <b style={{ color: textPrimary, fontWeight: 600 }}>{formatarKm(t.resumo.km)} km</b> · {formatarDuracao(t.resumo.minutos)}</span>
                 </div>
@@ -159,7 +163,7 @@ export function PainelDeViaturas() {
             <div>
               <span style={rotuloDeSecao(isLight)}>Por viatura</span>
               {porViatura.map((t) => (
-                <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "6px 0", fontFamily: FONT, fontSize: 12.5, borderBottom: `1px solid ${cz.divisoria}` }}>
+                <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "6px 0", fontFamily: FONT, fontSize: 12.5, borderBottom: `1px solid ${cz.divisoria}` }}>
                   <span>{viaturaDe(t.id)?.apelido ?? "—"}</span>
                   <span style={{ fontVariantNumeric: "tabular-nums", color: textSecondary }}>{t.resumo.viagens} viag. · <b style={{ color: textPrimary, fontWeight: 600 }}>{formatarKm(t.resumo.km)} km</b> · {formatarDuracao(t.resumo.minutos)}</span>
                 </div>
@@ -168,7 +172,7 @@ export function PainelDeViaturas() {
             {paradas.length > 0 && (
               <div>
                 <span style={rotuloDeSecao(isLight)}>Permanência nos clientes <span style={{ opacity: 0.55, fontWeight: 600 }}>(entre trechos)</span></span>
-                <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, marginTop: 6, lineHeight: 1.5 }}>
+                <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, marginTop: 8, lineHeight: 1.5 }}>
                   {paradas.length} parada{paradas.length === 1 ? "" : "s"} · média de {formatarDuracao(paradas.reduce((s, p) => s + p.minutos, 0) / paradas.length)} por parada
                 </div>
               </div>
@@ -184,7 +188,7 @@ export function PainelDeViaturas() {
 function LinhaDaFolha({ v, viatura, nome, encerradaPor, titulo, agora, cores, chip, INPUT }: {
   v: Viagem; viatura: Viatura | undefined; nome: string; encerradaPor: string | null; titulo: string | null; agora: Date;
   cores: { gold: string; laranja: string; textSecondary: string; textPrimary: string; divisoria: string; campo: string };
-  chip: (cor: string, texto: string) => ReactElement; INPUT: CSSProperties;
+  chip: (cor: { dark: string; light: string }, texto: string) => ReactElement; INPUT: CSSProperties;
 }) {
   const corrigir = useCorrigirViagem();
   const [editando, setEditando] = useState(false);
@@ -192,8 +196,14 @@ function LinhaDaFolha({ v, viatura, nome, encerradaPor, titulo, agora, cores, ch
   const [chegada, setChegada] = useState(v.km_chegada === null ? "" : String(v.km_chegada));
   const aberta = !v.chegada_em;
   const hora = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  const td = (filho: ReactNode, alinhar: "left" | "right" = "left") => (
-    <td style={{ padding: "8px 10px", borderBottom: `1px solid ${cores.divisoria}`, whiteSpace: "nowrap", textAlign: alinhar, fontVariantNumeric: "tabular-nums", color: aberta ? cores.gold : cores.textPrimary }}>{filho}</td>
+  const td = (filho: ReactNode, alinhar: "left" | "right" = "left", quebra = false) => (
+    <td style={{
+      padding: "8px 10px", borderBottom: `1px solid ${cores.divisoria}`, textAlign: alinhar,
+      // só o destino quebra: o resto é data, hora e número, que ficam
+      // ilegíveis partidos ao meio
+      whiteSpace: quebra ? "normal" : "nowrap", minWidth: quebra ? 160 : undefined,
+      fontVariantNumeric: "tabular-nums", color: aberta ? cores.gold : cores.textPrimary,
+    }}>{filho}</td>
   );
 
   async function salvar() {
@@ -213,14 +223,28 @@ function LinhaDaFolha({ v, viatura, nome, encerradaPor, titulo, agora, cores, ch
       {td(viatura?.apelido ?? "—")}
       {td(nome)}
       {td(<>{hora(v.saida_em)} → {v.chegada_em ? hora(v.chegada_em) : <i>em viagem</i>}
-        {v.encerramento === "assumida" && <span style={{ marginLeft: 6 }}>{chip(cores.laranja, encerradaPor ? `assumida por ${encerradaPor}` : "assumida")}</span>}
-        {v.encerramento === "gestor" && <span style={{ marginLeft: 6 }}>{chip(cores.textSecondary, "encerrada pela gestão")}</span>}
+        {v.encerramento === "assumida" && <span title={encerradaPor ? `assumida por ${encerradaPor}` : "assumida por outro técnico"} style={{ marginLeft: 8 }}>{chip(PRISMA.laranja, "assumida")}</span>}
+        {v.encerramento === "gestor" && <span title="encerrada pela gestão, na folha" style={{ marginLeft: 8 }}>{chip(PRISMA.neutro, "pela gestão")}</span>}
       </>)}
-      {td(editando ? <input value={saida} onChange={(e) => setSaida(e.target.value)} inputMode="numeric" aria-label="Km de saída" style={{ ...INPUT, width: 96, height: 30, textAlign: "right" }} /> : <>{formatarKm(v.km_saida)}{v.aviso_saida && <span title="km abaixo do anterior — conferir" style={{ marginLeft: 6 }}>{chip(cores.laranja, "conferir")}</span>}</>, "right")}
-      {td(editando ? <input value={chegada} onChange={(e) => setChegada(e.target.value)} inputMode="numeric" placeholder="—" aria-label="Km de chegada" style={{ ...INPUT, width: 96, height: 30, textAlign: "right" }} /> : <>{v.km_chegada === null ? "—" : formatarKm(v.km_chegada)}{v.aviso_chegada && <span title="km de chegada abaixo do de saída — conferir" style={{ marginLeft: 6 }}>{chip(cores.laranja, "conferir")}</span>}</>, "right")}
+      {td(editando ? (
+        <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <input value={saida} onChange={(e) => setSaida(e.target.value)} inputMode="numeric" aria-label="Km de saída" style={{ ...INPUT, width: 88, height: 30, textAlign: "right" }} />
+          <span style={{ color: cores.textSecondary }}>→</span>
+          <input value={chegada} onChange={(e) => setChegada(e.target.value)} inputMode="numeric" placeholder="—" aria-label="Km de chegada" style={{ ...INPUT, width: 88, height: 30, textAlign: "right" }} />
+        </span>
+      ) : (
+        <>
+          {formatarKm(v.km_saida)}
+          <span style={{ color: cores.textSecondary }}> → </span>
+          {v.km_chegada === null ? "—" : formatarKm(v.km_chegada)}
+          {(v.aviso_saida || v.aviso_chegada) && (
+            <span title={v.aviso_saida ? "km de saída abaixo do último desta viatura — conferir" : "km de chegada abaixo do de saída — conferir"} style={{ marginLeft: 8 }}>{chip(PRISMA.laranja, "conferir")}</span>
+          )}
+        </>
+      ), "right")}
       {td(kmRodados(v) === null ? "—" : formatarKm(kmRodados(v)), "right")}
       {td(formatarDuracao(minutosDeViagem(v, agora)), "right")}
-      {td(titulo ?? <span style={{ color: cores.textSecondary }}>—</span>)}
+      {td(titulo ?? <span style={{ color: cores.textSecondary }}>—</span>, "left", true)}
       {td(editando ? (
         <span style={{ display: "inline-flex", gap: 4 }}>
           <button onClick={() => void salvar()} disabled={corrigir.isPending} title="Salvar" aria-label="Salvar correção" style={{ ...goldButton(), width: 30, height: 30, borderRadius: 8, display: "grid", placeItems: "center", cursor: "pointer" }}><Check size={14} /></button>
@@ -236,7 +260,7 @@ function LinhaDaFolha({ v, viatura, nome, encerradaPor, titulo, agora, cores, ch
 // ── o cadastro (R271) ───────────────────────────────────────────────────────
 function Cadastro({ viaturas, isLight, INPUT, BOTAO_SEC, chip, cores }: {
   viaturas: Viatura[]; isLight: boolean; INPUT: CSSProperties; BOTAO_SEC: CSSProperties;
-  chip: (cor: string, texto: string) => ReactElement;
+  chip: (cor: { dark: string; light: string }, texto: string) => ReactElement;
   cores: { gold: string; verde: string; textSecondary: string; textPrimary: string; divisoria: string };
 }) {
   const salvar = useSalvarViatura();
@@ -272,7 +296,7 @@ function Cadastro({ viaturas, isLight, INPUT, BOTAO_SEC, chip, cores }: {
       <input value={form.placa} onChange={(e) => setForm((f) => ({ ...f, placa: e.target.value.toUpperCase() }))} placeholder="Placa (ex.: ABC-1D23)" aria-label="Placa" style={INPUT} />
       <div>
         <input value={form.codigo} onChange={(e) => { setCodigoTocado(true); setForm((f) => ({ ...f, codigo: e.target.value.toLowerCase() })); }} placeholder="Código da etiqueta (ex.: fiorino-1)" aria-label="Código da etiqueta" style={INPUT} />
-        <div style={{ fontFamily: FONT, fontSize: 11, color: cores.textSecondary, marginTop: 4, lineHeight: 1.5 }}>
+        <div style={{ fontFamily: FONT, fontSize: 11, color: cores.textSecondary, marginTop: 8, lineHeight: 1.5 }}>
           É o que vai gravado na etiqueta: <code style={{ fontFamily: "ui-monospace, Consolas, monospace", color: cores.textPrimary }}>{typeof window !== "undefined" ? window.location.origin : ""}/viatura/{form.codigo || "…"}</code>
         </div>
       </div>
@@ -292,9 +316,9 @@ function Cadastro({ viaturas, isLight, INPUT, BOTAO_SEC, chip, cores }: {
       )}
       {viaturas.map((v) => (
         editando === v.id ? <div key={v.id}>{formulario}</div> : (
-          <div key={v.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, border: `1px solid ${cores.divisoria}`, opacity: v.ativa ? 1 : 0.6 }}>
+          <div key={v.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 14, border: `1px solid ${cores.divisoria}`, opacity: v.ativa ? 1 : 0.6 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 13.5, display: "flex", alignItems: "center", gap: 8 }}>{v.apelido} {v.ativa ? chip(cores.verde, "ativa") : chip(cores.textSecondary, "removida")}</div>
+              <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 13.5, display: "flex", alignItems: "center", gap: 8 }}>{v.apelido} {v.ativa ? chip(PRISMA.verde, "ativa") : chip(PRISMA.neutro, "removida")}</div>
               <div style={{ fontFamily: FONT, fontSize: 11.5, color: cores.textSecondary, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{v.placa} · etiqueta <code style={{ fontFamily: "ui-monospace, Consolas, monospace" }}>{v.codigo}</code></div>
             </div>
             <button onClick={() => abrir(v)} title="Editar" aria-label={`Editar ${v.apelido}`} style={{ ...BOTAO_SEC, width: 32, padding: 0, justifyContent: "center" }}><Pencil size={13} /></button>
@@ -324,7 +348,7 @@ function Sede({ sede, INPUT, BOTAO_SEC, textSecondary }: {
   const salvar = useSalvarLocalDeReferencia();
   const [coord, setCoord] = useState(sede && sede.latitude !== null && sede.longitude !== null ? `${sede.latitude}, ${sede.longitude}` : "");
   const [endereco, setEndereco] = useState(sede?.endereco ?? "");
-  if (!sede) return <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, marginTop: 6 }}>A sede entra com a migration U134.</div>;
+  if (!sede) return <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, marginTop: 8 }}>A sede entra com a migration U134.</div>;
 
   async function gravar() {
     const m = coord.trim().match(/^(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)$/);

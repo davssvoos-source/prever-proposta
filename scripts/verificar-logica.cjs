@@ -21471,6 +21471,31 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /avisado\.current === chegada\.chegou\.id/.test(faixaV)],
      [true, true, true, true, false, true]);
 
+  // ── R275 (U135): a revisão de margem das telas de viatura ──────────────
+  // Três defeitos MEDIDOS no navegador, cada um travado pela própria linha:
+  // o chip inventado (4,45:1, abaixo do piso de 4,5 para texto), a grade do
+  // Administrativo emprestada de `.admin-colunas` (1.45fr | 1fr deixava o
+  // cadastro com 669px sobrando e a folha de nove colunas rolando dentro de
+  // 427px) e os espaçamentos fora da régua da R239.
+  const cssV = fsV.readFileSync('src/styles.css', 'utf8');
+
+  eq('R275 CRÍTICO: o chip de estado das viaturas é a `etiqueta()` do design system, nos DOIS arquivos — nenhum dos dois monta chip próprio misturando a cor com a superfície (era assim, e media 4,45:1 no tema claro)',
+     [telaV.includes('...etiqueta(cor)'), painelV.includes('...etiqueta(cor)'),
+      telaV.includes('misturar(cor,'), painelV.includes('misturar(cor,'),
+      telaV.includes('chip(PRISMA.verde, "Livre")'), telaV.includes('chip(PRISMA.neutro, "Removida")'),
+      painelV.includes('chip(PRISMA.laranja,'), painelV.includes('chip(PRISMA.verde, "ativa")')],
+     [true, true, false, false, true, true, true, true]);
+
+  eq('R275: a aba Viaturas tem grade PRÓPRIA (`.viaturas-colunas`, formulário de 360px | resto) e não a do painel de usuários — e os dois km da folha são UMA coluna só',
+     [cssV.includes('.viaturas-colunas {'), cssV.includes('.viaturas-colunas { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); }'),
+      painelV.includes('className="viaturas-colunas"'), painelV.includes('className="admin-colunas"'),
+      painelV.includes('["Dia", "Viatura", "Técnico", "Saída → chegada", "Km", "Rodados", "Tempo", "Destino", ""]')],
+     [true, true, true, false, true]);
+
+  eq('R239/R275: as quatro telas do técnico espaçam pela régua da casa — 10 e 14 não são números desta casa (8 · 12 · 16 · 24)',
+     [telaV, faixaV, painelV, inicioV].map((a) => /gap: 10\b|gap: 14\b|marginTop: 14\b|marginTop: 10\b/.test(a)),
+     [false, false, false, false]);
+
   eq('R266/R271: a Início do técnico tem a faixa da viatura, e o Administrativo tem a aba Viaturas com cadastro, sede e folha',
      [/<FaixaDaViatura sessao=\{sessao\} atividadesDeHoje=\{hoje\} \/>/.test(inicioV),
       /const ABAS = \["usuarios", "permissoes", "apis", "viaturas"\] as const;/.test(admV), /aba === "viaturas" \? \(\s*\n\s*<PainelDeViaturas \/>/.test(admV),

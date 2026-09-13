@@ -1511,3 +1511,15 @@ main:has(.pagina-larga), main:has(.pagina-trabalho) { max-width: none; }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--barra-hover); background-clip: content-box;
 }
+
+/* ── A aba VIATURAS do Administrativo (R271/R272, U134) ─────────────────────
+   Duas colunas de larguras DIFERENTES, e é o que a separa de `.admin-colunas`
+   (Usuários | Permissões, duas listas parecidas, 1.45fr | 1fr): aqui a
+   primeira é um formulário de três campos e a segunda tem a FOLHA — nove
+   colunas de tabela. MEDIDO com a proporção de lá: o cadastro ficava com
+   669px de sobra e a tabela de 1.367px rolava dentro de 427px.
+   O cadastro tem largura de formulário (360px) e a folha fica com o resto. */
+.viaturas-colunas { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 1024px) {
+  .viaturas-colunas { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); }
+}

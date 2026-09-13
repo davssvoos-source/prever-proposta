@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R274 (45)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R275 (46)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5122,3 +5122,17 @@ adaptado."
   "Abastecimento é controlado no QAP ERP, não será inserido neste sistema";
   Q27: "vamos fornecer um celular para cada técnico, que terá a localização
   ligada do inicio do expediente ao término".)*
+
+- **R275** — **Tela nova não fica pronta sem a revisão de margem — e o
+  vocabulário visual é o que o app JÁ fala.** Toda tela entregue passa por
+  uma conferência de margem, espaçamento, alinhamento e contraste **medida
+  no navegador**, não estimada: o espaçamento vem da régua da R239 (8 · 12 ·
+  16 · 24 — 10 e 14 não existem), o contraste de texto fica em **4,5:1** e o
+  de não-texto em 3:1, cada grade de duas colunas tem largura pensada para o
+  que carrega, e **nenhum componente reinventa o que o design system já tem**
+  — se o app mostra estado com `etiqueta()`, a tela nova mostra com
+  `etiqueta()`. A revisão das telas de viatura (U135) é o caso que criou a
+  regra: o chip que eu tinha inventado media 4,45:1 no tema claro. *(Davi,
+  13/09/2026: "Além de realizar testes de verificação da funcionalidade do
+  sistema, eu quero que você verifique e corrija margens, espaçamentos,
+  alinhamentos...")*

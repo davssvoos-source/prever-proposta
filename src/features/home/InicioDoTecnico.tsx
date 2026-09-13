@@ -210,7 +210,7 @@ export function InicioDoTecnico({ sessao }: { sessao: Sessao }) {
           <div style={{
             ...card(isLight), padding: "12px 14px",
             border: `1px solid ${misturar(gold, cz.superficie, 0.55)}`,
-            display: "flex", alignItems: "center", gap: 10,
+            display: "flex", alignItems: "center", gap: 12,
           }}>
             <ShieldAlert size={18} color={gold} style={{ flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>

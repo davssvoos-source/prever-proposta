@@ -15,7 +15,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Car, ShieldAlert, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card, goldButton, rotuloDeSecao, botaoSelecao } from "@/lib/ui";
+import { FONT, card, goldButton, rotuloDeSecao, botaoSelecao, etiqueta } from "@/lib/ui";
 import { PRISMA, cinzas, misturar } from "@/lib/paleta";
 import { useAtividades, useSessao } from "@/features/home/data";
 import { minhasDeHoje } from "@/features/home/tecnico";
@@ -98,15 +98,19 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
     width: "100%", height: 44, borderRadius: 14, background: "transparent", border: `1px solid ${cz.divisoria}`,
     color: textSecondary, fontFamily: FONT, fontWeight: 600, fontSize: 13, cursor: "pointer",
   };
-  const chip = (cor: string, texto: string) => (
+  /** O chip de estado — o MESMO do resto do app (`etiqueta`, DS §6): fundo
+   *  sólido no tom rebaixado e tinta clara. O que eu tinha antes (texto na
+   *  cor sobre a cor esmaecida) media 4,45:1 no tema claro, abaixo do piso
+   *  de 4,5 para texto — MEDIDO no navegador. */
+  const chip = (cor: { dark: string; light: string }, texto: string) => (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999,
+      display: "inline-flex", alignItems: "center", padding: "4px 10px", borderRadius: 999,
       fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase",
-      color: cor, background: misturar(cor, cz.superficie, 0.86), border: `1px solid ${misturar(cor, cz.superficie, 0.6)}`,
-    }}>● {texto}</span>
+      whiteSpace: "nowrap", ...etiqueta(cor),
+    }}>{texto}</span>
   );
   const linha = (rotulo: string, valor: string) => (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", borderTop: `1px solid ${cz.divisoria}`, fontFamily: FONT, fontSize: 12.5 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "8px 0", borderTop: `1px solid ${cz.divisoria}`, fontFamily: FONT, fontSize: 12.5 }}>
       <span style={{ color: textSecondary }}>{rotulo}</span>
       <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{valor}</span>
     </div>
@@ -174,12 +178,12 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
           <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 16 }}>{v.apelido}</div>
           <div style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, fontVariantNumeric: "tabular-nums", marginTop: 2 }}>{v.placa}</div>
         </div>
-        {estado.tipo === "livre" && chip(verde, "Livre")}
-        {estado.tipo === "minha" && chip(gold, "Em viagem")}
-        {estado.tipo === "de_outro" && chip(laranja, "Em uso")}
-        {estado.tipo === "inativa" && chip(textSecondary, "Removida")}
+        {estado.tipo === "livre" && chip(PRISMA.verde, "Livre")}
+        {estado.tipo === "minha" && chip(PRISMA.amarelo, "Em viagem")}
+        {estado.tipo === "de_outro" && chip(PRISMA.laranja, "Em uso")}
+        {estado.tipo === "inativa" && chip(PRISMA.neutro, "Removida")}
       </div>
-      <div style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 12 }}>
         {estado.tipo === "livre" && (
           <>
             {linha("Último registro", ultimo ? `${formatarKm(ultimo.km)} km` : "nenhum ainda")}
@@ -230,7 +234,7 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
           inputMode="numeric"
           pattern="[0-9.]*"
           autoFocus
-          placeholder={estado.tipo === "livre" && ultimo ? formatarKm(ultimo.km) : estado.tipo === "minha" ? formatarKm(estado.viagem.km_saida) : "0"}
+          placeholder={estado.tipo === "livre" ? (ultimo ? formatarKm(ultimo.km) : "0") : formatarKm(estado.viagem.km_saida)}
           value={kmTexto}
           onChange={(e) => { setKmTexto(e.target.value); setErro(null); }}
           onKeyDown={(e) => { if (e.key === "Enter") { if (estado.tipo === "minha") void aoEncerrar(); else void aoIniciar(estado.tipo === "de_outro"); } }}
@@ -295,7 +299,7 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
       <>
         {cabecalho}
         {chegada.chegou && (
-          <div style={{ ...card(isLight), padding: "12px 14px", border: `1px solid ${misturar(gold, cz.superficie, 0.45)}`, display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ ...card(isLight), padding: "12px 14px", border: `1px solid ${misturar(gold, cz.superficie, 0.45)}`, display: "flex", alignItems: "center", gap: 12 }}>
             <ShieldAlert size={18} color={gold} style={{ flexShrink: 0 }} />
             <div style={{ fontFamily: FONT, fontSize: 13, lineHeight: 1.4 }}>
               <b style={{ fontWeight: 600 }}>Você chegou a {chegada.chegou.nome}?</b>
@@ -321,7 +325,7 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
   return casca(
     <>
       {cabecalho}
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 12, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, background: misturar(laranja, cz.superficie, 0.88), border: `1px solid ${misturar(laranja, cz.superficie, 0.6)}` }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 14px", borderRadius: 12, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, background: misturar(laranja, cz.superficie, 0.88), border: `1px solid ${misturar(laranja, cz.superficie, 0.6)}` }}>
         <ShieldAlert size={16} color={laranja} style={{ flexShrink: 0, marginTop: 2 }} />
         <span>{nomeDe(estado.viagem.tecnico_id)} não encerrou a viagem. Se o carro está com você, <b style={{ fontWeight: 600 }}>assuma</b>: a viagem dele encerra com o km que você digitar, e a sua começa dali.</span>
       </div>

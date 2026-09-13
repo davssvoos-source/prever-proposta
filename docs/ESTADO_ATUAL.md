@@ -8,12 +8,10 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-13** · última regra: **R274** · último diário:
-**U134** · verificador: **3.343 asserções, 0 falharam** · `tsc`: baseline
-**57** · migrations rodadas até a **U129** (U127 e U129 em 11/09/2026) ·
-**Pendentes: U131** (a linha do tempo da correção da data de conclusão),
-**U132** (o técnico lê só campo; a grade do sobreaviso fecha para ele) **e U134**
-(as viaturas — exige a U132 antes) ·
+Última atualização: **2026-09-13** · última regra: **R275** · último diário:
+**U135** · verificador: **3.346 asserções, 0 falharam** · `tsc`: baseline
+**57** · migrations rodadas até a **U134** (U131, U132 e U134 em 13/09/2026,
+nesta ordem) · **nenhuma migration pendente** ·
 **versão no servidor: v0.0.7**
 (192.168.10.182); **esta entrega é a v0.0.11**, e ela sobe de uma vez o que a
 v0.0.8, a v0.0.9 e a v0.0.10 já tinham entregue — o que entrou em cada versão
@@ -122,6 +120,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U132 | **o app do técnico de campo, primeira etapa.** **R263** — o cargo TÉCNICO é quem trabalha na rua, pelo celular, e tem TRÊS telas: uma **Início própria** (`InicioDoTecnico`: "Bom dia, Breno. Você tem 3 atividades hoje" com o número SEMPRE dele, a faixa de sobreaviso quando é o plantonista, o interruptor **Minhas \| Equipe** e os cards em Hoje · A seguir da mais próxima para a mais distante; o "+" é só o plantão), a **Agenda** com o mesmo interruptor (fecha o vazamento dos chamados de toda a empresa no calendário dele) e o **Perfil** com "Meu sobreaviso". **R264** — no banco, o técnico lê só o que não é interno (campo + capa da proposta) e TODAS as da equipe; `pode_acessar_chamado` com o mesmo recorte. **R265** — o Sobreaviso é do **cargo** técnico (revisa a R254; o operacional não entra; Gilleno vira SAC). Ficam para o Davi: para onde o APK aponta, o push, e a urgência fora do horário → plantonista. Migration **U132 (pendente)** |
 | U133 | **as viaturas — o documento mestre e as regras (R266–R273).** O Davi abriu o controle da viatura usada pelo técnico (etiqueta NFC num suporte em cada carro; bipar para iniciar e para encerrar, km nas duas pontas; só o cargo técnico registra). Mockup publicado ANTES do código e cinco respostas dele viraram regra: cada **trecho** é uma viagem, km fora de ordem **passa com aviso**, atividade **opcional** (o cliente dela é o destino), cadastro e **folha** na aba Viaturas do Administrativo, tempo de deslocamento por trecho, e a **chegada por localização** (2 minutos no raio → SUGERE encerrar) como etapa 3. A decisão técnica: a etiqueta guarda um **endereço** — funciona hoje pelo Chrome, e o APK abre direto quando registrar o App Link. Contexto em `docs/CONTEXTO_VIATURAS.md` (D1–D11, Q24–Q27). **Sem migration** — a implementação é a U134 |
 | U134 | **as viaturas, construídas** (R266–R274). Migration com as três tabelas, os índices únicos parciais e as três portas; o modelo puro (`features/viaturas/modelo.ts`: estado da tela, km, duração, permanência, folha, chegada — 150 m, 2 minutos, máquina de estados); a **tela da etiqueta** `/viatura/$codigo` (livre → iniciar · minha → encerrar · de outro → assumir) e a lista `/viatura`; a **faixa** na Início do técnico, que vira "Você chegou a X?" quando o GPS diz (só com viagem aberta e a página visível; a posição não é gravada); a **aba Viaturas** do Administrativo (cadastro, sede ajustável, folha com correção de km na linha). A `Atividade` ganhou `clienteId`. **R274**: os destinos são TODAS as atividades do dia mais a sede; abastecimento fica no QAP. Migration **U134 (pendente, depois da U132)** |
+| U135 | **a revisão de margem das telas novas** (R275), com o Davi já tendo rodado as três migrations. O **chip de estado das viaturas** passou a ser a `etiqueta()` do design system — o que eu tinha inventado media **4,45:1** no tema claro, abaixo do piso de 4,5 (agora 4,99 a 5,71); a **aba Viaturas** ganhou grade própria (`.viaturas-colunas`, 360px de formulário \| o resto) porque a do painel de usuários deixava o cadastro com 669px de sobra e a folha rolando dentro de 427px; os **dois km viraram uma coluna** ("100.431 → 100.500") e os cabeçalhos encurtaram; os espaçamentos voltaram para a **régua da R239** (10 e 14 não existem). De quebra, o placeholder do km na tela do carro que está com outro técnico mostrava "0". **Teste funcional pendente** — exige o login do Davi, e o fluxo do técnico exige conta de técnico. Sem migration nova |
 
 ## 4. Banco: migrations
 
@@ -129,7 +128,7 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **U134** (`20260930090000_u134_viaturas.sql`, **PENDENTE — depois da U132**) — as
+- **U134** (`20260930090000_u134_viaturas.sql`, rodada em 13/09/2026) — as
   VIATURAS (R266–R274): `locais_de_referencia` (a sede, semeada com o centro da
   rua no OSM; `ON CONFLICT DO NOTHING` preserva o ajuste fino feito na aba),
   `viaturas` (placa, apelido, código da etiqueta, ativa) e `viagens_viatura`
@@ -142,7 +141,7 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   `is_gestor`. Portão numa transação que termina em ROLLBACK. Dez itens de
   conferência; o último conta as viaturas cadastradas. **Sem ela** a tela da
   etiqueta e a aba dizem que precisam da migration.
-- **U132** (`20260929090000_u132_o_tecnico_le_so_campo.sql`, **PENDENTE**) — a
+- **U132** (`20260929090000_u132_o_tecnico_le_so_campo.sql`, rodada em 13/09/2026) — a
   primeira LEITURA recortada por cargo deste banco (R264): `eh_tecnico(uid)`
   (STABLE SECURITY DEFINER, como `is_gestor`), `chamados_select` vira
   `NOT eh_tecnico(auth.uid()) OR natureza <> 'interno'` — o cargo TÉCNICO lê
@@ -159,7 +158,8 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   nova do técnico funciona, mas ele ainda lê a atividade interna dos outros E a
   grade /sobreaviso continua abrindo para ele pela URL (a linha da U86 na matriz
   diz true; o catálogo do código só vale quando não há linha no banco).
-- **U131** (`20260928090000_u131_data_de_conclusao_corrigida.sql`, **PENDENTE**)
+- **U131** (`20260928090000_u131_data_de_conclusao_corrigida.sql`, rodada em
+  13/09/2026)
   — o gatilho **`chamado_registrar_evento`** (da U7) passa a olhar também
   `concluida_em` e ganha um quarto ramo: corrigir a data de uma atividade que
   **já estava e continua concluída** escreve uma linha na timeline —
