@@ -40,6 +40,7 @@ import {
 import { useSobreaviso, usePessoasDoSobreaviso } from "@/features/sobreaviso/data";
 import { plantonistasDaSemana, segundaDaSemana, rotuloDaSemana } from "@/features/sobreaviso/modelo";
 import type { Atividade } from "@/features/atividades/modelo";
+import { FaixaDaViatura } from "@/features/viaturas/FaixaDaViatura";
 
 export function InicioDoTecnico({ sessao }: { sessao: Sessao }) {
   const navigate = useNavigate();
@@ -222,6 +223,11 @@ export function InicioDoTecnico({ sessao }: { sessao: Sessao }) {
             </div>
           </div>
         )}
+
+        {/* R266/R273: a viatura — a faixa "Você está com a Fiorino…" enquanto há
+            viagem aberta (vira a sugestão de encerrar quando a localização diz
+            que ele chegou), ou o atalho discreto para a lista quando não há. */}
+        <FaixaDaViatura sessao={sessao} atividadesDeHoje={hoje} />
 
         <SeletorMinhasEquipe
           valor={recorte}

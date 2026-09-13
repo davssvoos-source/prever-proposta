@@ -28,7 +28,9 @@ import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedChamadosRouteImport } from './routes/_authenticated/chamados'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedViaturaIndexRouteImport } from './routes/_authenticated/viatura.index'
 import { Route as AuthenticatedVisitaIdRouteImport } from './routes/_authenticated/visita.$id'
+import { Route as AuthenticatedViaturaCodigoRouteImport } from './routes/_authenticated/viatura.$codigo'
 import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authenticated/projeto.$id'
 import { Route as AuthenticatedPainelOperacionalRouteImport } from './routes/_authenticated/painel.operacional'
 import { Route as AuthenticatedPainelComercialRouteImport } from './routes/_authenticated/painel.comercial'
@@ -156,11 +158,23 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedViaturaIndexRoute =
+  AuthenticatedViaturaIndexRouteImport.update({
+    id: '/viatura/',
+    path: '/viatura/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedVisitaIdRoute = AuthenticatedVisitaIdRouteImport.update({
   id: '/visita/$id',
   path: '/visita/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedViaturaCodigoRoute =
+  AuthenticatedViaturaCodigoRouteImport.update({
+    id: '/viatura/$codigo',
+    path: '/viatura/$codigo',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProjetoIdRoute = AuthenticatedProjetoIdRouteImport.update({
   id: '/projeto/$id',
   path: '/projeto/$id',
@@ -378,7 +392,9 @@ export interface FileRoutesByFullPath {
   '/painel/comercial': typeof AuthenticatedPainelComercialRoute
   '/painel/operacional': typeof AuthenticatedPainelOperacionalRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
+  '/viatura/$codigo': typeof AuthenticatedViaturaCodigoRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
+  '/viatura/': typeof AuthenticatedViaturaIndexRoute
   '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
   '/visita/$id/pagamento': typeof AuthenticatedVisitaIdPagamentoRoute
   '/visita/$id/pendente': typeof AuthenticatedVisitaIdPendenteRoute
@@ -429,7 +445,9 @@ export interface FileRoutesByTo {
   '/painel/comercial': typeof AuthenticatedPainelComercialRoute
   '/painel/operacional': typeof AuthenticatedPainelOperacionalRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
+  '/viatura/$codigo': typeof AuthenticatedViaturaCodigoRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
+  '/viatura': typeof AuthenticatedViaturaIndexRoute
   '/visita/$id/pagamento': typeof AuthenticatedVisitaIdPagamentoRoute
   '/visita/$id/pendente': typeof AuthenticatedVisitaIdPendenteRoute
   '/visita/$id/reagendar': typeof AuthenticatedVisitaIdReagendarRoute
@@ -481,7 +499,9 @@ export interface FileRoutesById {
   '/_authenticated/painel/comercial': typeof AuthenticatedPainelComercialRoute
   '/_authenticated/painel/operacional': typeof AuthenticatedPainelOperacionalRoute
   '/_authenticated/projeto/$id': typeof AuthenticatedProjetoIdRoute
+  '/_authenticated/viatura/$codigo': typeof AuthenticatedViaturaCodigoRoute
   '/_authenticated/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
+  '/_authenticated/viatura/': typeof AuthenticatedViaturaIndexRoute
   '/_authenticated/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
   '/_authenticated/visita/$id/pagamento': typeof AuthenticatedVisitaIdPagamentoRoute
   '/_authenticated/visita/$id/pendente': typeof AuthenticatedVisitaIdPendenteRoute
@@ -534,7 +554,9 @@ export interface FileRouteTypes {
     | '/painel/comercial'
     | '/painel/operacional'
     | '/projeto/$id'
+    | '/viatura/$codigo'
     | '/visita/$id'
+    | '/viatura/'
     | '/visita/$id/orcamento'
     | '/visita/$id/pagamento'
     | '/visita/$id/pendente'
@@ -585,7 +607,9 @@ export interface FileRouteTypes {
     | '/painel/comercial'
     | '/painel/operacional'
     | '/projeto/$id'
+    | '/viatura/$codigo'
     | '/visita/$id'
+    | '/viatura'
     | '/visita/$id/pagamento'
     | '/visita/$id/pendente'
     | '/visita/$id/reagendar'
@@ -636,7 +660,9 @@ export interface FileRouteTypes {
     | '/_authenticated/painel/comercial'
     | '/_authenticated/painel/operacional'
     | '/_authenticated/projeto/$id'
+    | '/_authenticated/viatura/$codigo'
     | '/_authenticated/visita/$id'
+    | '/_authenticated/viatura/'
     | '/_authenticated/visita/$id/orcamento'
     | '/_authenticated/visita/$id/pagamento'
     | '/_authenticated/visita/$id/pendente'
@@ -791,11 +817,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/viatura/': {
+      id: '/_authenticated/viatura/'
+      path: '/viatura'
+      fullPath: '/viatura/'
+      preLoaderRoute: typeof AuthenticatedViaturaIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/visita/$id': {
       id: '/_authenticated/visita/$id'
       path: '/visita/$id'
       fullPath: '/visita/$id'
       preLoaderRoute: typeof AuthenticatedVisitaIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/viatura/$codigo': {
+      id: '/_authenticated/viatura/$codigo'
+      path: '/viatura/$codigo'
+      fullPath: '/viatura/$codigo'
+      preLoaderRoute: typeof AuthenticatedViaturaCodigoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/projeto/$id': {
@@ -1172,7 +1212,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPainelComercialRoute: typeof AuthenticatedPainelComercialRoute
   AuthenticatedPainelOperacionalRoute: typeof AuthenticatedPainelOperacionalRoute
   AuthenticatedProjetoIdRoute: typeof AuthenticatedProjetoIdRoute
+  AuthenticatedViaturaCodigoRoute: typeof AuthenticatedViaturaCodigoRoute
   AuthenticatedVisitaIdRoute: typeof AuthenticatedVisitaIdRouteWithChildren
+  AuthenticatedViaturaIndexRoute: typeof AuthenticatedViaturaIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1196,7 +1238,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPainelComercialRoute: AuthenticatedPainelComercialRoute,
   AuthenticatedPainelOperacionalRoute: AuthenticatedPainelOperacionalRoute,
   AuthenticatedProjetoIdRoute: AuthenticatedProjetoIdRoute,
+  AuthenticatedViaturaCodigoRoute: AuthenticatedViaturaCodigoRoute,
   AuthenticatedVisitaIdRoute: AuthenticatedVisitaIdRouteWithChildren,
+  AuthenticatedViaturaIndexRoute: AuthenticatedViaturaIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

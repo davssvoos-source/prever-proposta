@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R273 (44)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R274 (45)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5101,3 +5101,24 @@ adaptado."
   endereço de cada cliente, quando o técnico fica mais de 2 minutos num raio
   próximo do cliente, o sistema entende que ele chegou no cliente, e sugere
   término da viagem.")*
+
+- **R274** — **A chegada por localização olha TODAS as atividades do dia — e a
+  sede.** Os destinos que fazem o sistema entender "chegou" são os clientes de
+  **todas as atividades de hoje do técnico** que têm coordenada (não só a
+  atividade vinculada ao trecho, porque ele pode trocar a ordem dos chamados do
+  dia), mais a **sede** — Rua Conde de Linhares, 243, Interlagos — para o
+  trecho de volta. O raio é **150 m** (Q24: o GPS urbano erra 10–30 m e a
+  portaria fica longe do centro do endereço); a permanência é a dos **2
+  minutos** da R273. A sede é um **ponto de referência** cadastrado
+  (`locais_de_referencia`, código `sede`), com a coordenada semeada pelo centro
+  da rua e ajustável na aba Viaturas. Só funciona com a **localização ligada**
+  no aparelho — e os celulares da empresa a terão ligada do início ao fim do
+  expediente (Q27) —, e só com o app **na frente**: em segundo plano é plugin
+  nativo, etapa própria. **Abastecimento fica fora** deste sistema — é
+  controlado no QAP ERP (Q26). *(Davi, 13/09/2026 — Q24: "Serve, deve ser para
+  todas as atividades que existem no dia para aquele usuário, pois existe a
+  possibilidade de ele trocar a ordem dos chamados do dia"; Q25: "O endereço da
+  sede é Rua Conde de Linhares, 243 - Interlagos, São Paulo"; Q26:
+  "Abastecimento é controlado no QAP ERP, não será inserido neste sistema";
+  Q27: "vamos fornecer um celular para cada técnico, que terá a localização
+  ligada do inicio do expediente ao término".)*

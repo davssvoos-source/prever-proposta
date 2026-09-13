@@ -20,10 +20,11 @@ atividades). O texto dele está transcrito na íntegra na seção 1; o resto é 
 leitura estruturada que o sistema segue, as decisões que o assistente tomou
 onde o texto admitia duas leituras, e o que ainda está em aberto.
 
-As regras de produto que saíram daqui são a **R266 a R273** em
+As regras de produto que saíram daqui são a **R266 a R274** em
 `docs/PRODUTO.md`. Este documento e as regras são a **U133** em
 `docs/PLANO_UNIFICACAO.md`; a implementação (banco, tela do técnico, aba do
-Administrativo) é a **U134**. O mockup aprovado antes do código está em
+Administrativo, a chegada por localização) é a **U134** — construída em
+13/09/2026, depois de o Davi responder as Q24–Q27 (§6). O mockup aprovado antes do código está em
 `https://claude.ai/code/artifact/7a301e0f-95f1-4d88-a9fa-fcd2daed1ec4`.
 
 > **Uma frase para guardar:** a etiqueta NFC no carro guarda um **endereço**;
@@ -319,33 +320,46 @@ a sede como ponto (Q25) e o raio (Q24).
   urbano erra 10–30 m; condomínio grande tem portaria longe do centro do
   endereço). E conta só o cliente da atividade vinculada, ou qualquer
   cliente cadastrado?
+  **Respondida (13/09/2026):** *"Serve, deve ser para todas as atividades que
+  existem no dia para aquele usuário, pois existe a possibilidade de ele trocar
+  a ordem dos chamados do dia."* → 150 m, e os destinos são TODAS as atividades
+  do dia (R274, `destinosDoDia`).
 - **Q25 — A sede como ponto.** "do cliente z à sede": para a chegada por
   localização sugerir encerrar na volta, a sede precisa de endereço e
   coordenada no cadastro. Qual é o endereço da sede?
+  **Respondida (13/09/2026):** *"O endereço da sede é Rua Conde de Linhares,
+  243 - Interlagos, São Paulo"* → semeada em `locais_de_referencia` (código
+  `sede`) com o centro da rua no OSM; o ajuste fino é na aba Viaturas.
 - **Q26 — Abastecimento.** Fica fora por enquanto (o Davi não pediu)? Se
   entrar um dia, é outro registro no carro (litros, valor, km), não um campo
   da viagem.
+  **Respondida (13/09/2026):** *"Abastecimento é controlado no QAP ERP, não será
+  inserido neste sistema que estamos desenvolvendo."* → fora.
 - **Q27 — Localização sempre ligada nos celulares da empresa.** A etapa 3
   depende de o técnico permitir a localização no aparelho que a empresa vai
   entregar. É política a combinar antes de construir.
+  **Respondida (13/09/2026):** *"Sim, vamos fornecer um celular para cada técnico,
+  que terá a localização ligada do inicio do expediente ao término."* → a
+  chegada por localização nasceu junto com a U134 (em primeiro plano; o segundo
+  plano é plugin nativo, depois).
 
 ---
 
 ## 7. Onde está o quê (o mapa desta estrutura no código — U134)
 
-| O quê | Onde (planejado na U134) |
+| O quê | Onde (U134, construída em 13/09/2026) |
 |---|---|
-| as viaturas e as viagens | `viaturas`, `viagens_viatura` (migration U134), restrições de "uma aberta por carro" e "uma aberta por técnico" |
+| as viaturas, as viagens e a sede | `viaturas`, `viagens_viatura`, `locais_de_referencia` (`supabase/migrations/20260930090000_u134_viaturas.sql`); os índices únicos parciais `viagens_uma_aberta_por_viatura` e `viagens_uma_aberta_por_tecnico` |
 | iniciar / encerrar / assumir / corrigir | funções `viatura_iniciar_viagem`, `viatura_encerrar_viagem`, `viatura_corrigir_viagem` (SECURITY DEFINER, gate por cargo) |
 | a lógica pura (estado da tela, km rodados, duração, permanência, aviso) | `src/features/viaturas/modelo.ts`, com asserção no verificador |
-| a tela da etiqueta | rota `/viatura/$codigo` → `src/features/viaturas/TelaDaViatura.tsx` (celular) |
-| a faixa e o atalho na Início do técnico | `src/features/home/InicioDoTecnico.tsx` |
-| o cadastro e a folha | Painel Administrativo › aba **Viaturas** (`painel.administrativo.tsx`, chave já existente na matriz) |
+| a tela da etiqueta | rota `/viatura/$codigo` (`routes/_authenticated/viatura.$codigo.tsx`) → `src/features/viaturas/TelaDaViatura.tsx` (celular); `/viatura` é a lista para quando a etiqueta falha |
+| a faixa e o atalho na Início do técnico | `src/features/viaturas/FaixaDaViatura.tsx`, dentro de `InicioDoTecnico.tsx` |
+| o cadastro, a sede e a folha | Painel Administrativo › aba **Viaturas** — `src/features/viaturas/PainelDeViaturas.tsx` (a chave `painel.administrativo` já existia na matriz) |
 | o endereço da etiqueta | `https://<app>/viatura/<código>` — o App Link no APK é a etapa 2 |
-| a chegada por localização | etapa 3 — `navigator.geolocation` com viagem aberta; a sugestão em `modelo.ts` (raio, 2 minutos) |
+| a chegada por localização | `src/features/viaturas/useChegada.ts` (`watchPosition` só com viagem aberta e a página visível) + `destinosDoDia`/`avaliarChegada` em `modelo.ts` (150 m, 2 minutos) |
 
 ### As etapas
 
-1. **U134 — banco + tela do técnico + faixa na Início + aba Viaturas** (cadastro e folha). Sem etiqueta ainda funciona pela Início.
+1. **U134 — banco + tela do técnico + faixa na Início + aba Viaturas + chegada por localização em primeiro plano.** ENTREGUE em 13/09/2026. Sem etiqueta funciona pela Início.
 2. **App Link no APK** — a etiqueta passa a abrir direto no app Prever. Depende do APK (SDK nesta máquina, ou gerar em outra) e do arquivo `assetlinks.json` servido pelo endereço do app.
-3. **Chegada por localização** — a sugestão de encerrar (2 minutos no raio). Depende de Q24, Q25 e Q27; em segundo plano, de plugin nativo.
+3. **Chegada por localização em SEGUNDO PLANO** (app fechado) — plugin nativo de geolocalização no APK. A de primeiro plano já está na U134.

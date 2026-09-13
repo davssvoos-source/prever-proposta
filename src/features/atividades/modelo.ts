@@ -77,6 +77,12 @@ export interface Atividade {
    * três são a mesma coisa: onde a atividade acontece.
    */
   locais: string[];
+  /**
+   * R270/R274 (U134): o cliente PRINCIPAL, por id — é o destino do trecho da
+   * viatura e um dos alvos da chegada por localização. Nulo em setor,
+   * prospecção e atividade interna sem cliente.
+   */
+  clienteId: string | null;
 
   responsavelId: string | null;
   /** Quem está na atividade: responsável + apoios (ids de perfil, sem repetição). */
@@ -329,6 +335,7 @@ export interface BrutoChamado {
   cliente?: { nome: string } | null;
   /** U31: o nome como veio do Notion, quando não casou com cliente do QAP */
   cliente_origem_nome?: string | null;
+  cliente_id?: string | null;
 }
 
 export interface BrutoVisita {
@@ -342,6 +349,7 @@ export interface BrutoVisita {
   proposta_enviada_em?: string | null;
   proposta_resultado?: string | null;
   clientes?: { nome: string } | null;
+  cliente_id?: string | null;
   /**
    * U29: a visita passou a ter um chamado-capa com o MESMO id. Estes campos
    * vêm dele por join, e são o que tira a proposta da condição de cidadã de
@@ -548,6 +556,7 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
       c.cliente?.nome ?? c.cliente_origem_nome ?? null,
       ctx.locaisDoChamado?.get(c.id) ?? [],
     ),
+    clienteId: c.cliente_id ?? null,
     responsavelId: c.responsavel_id,
     participantes,
     souResponsavel: !!ctx.userId && c.responsavel_id === ctx.userId,
@@ -647,6 +656,7 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     // a lista aqui é sempre de zero ou um. Ela existe para o card ter uma
     // forma só de desenhar local, venha de chamado ou de visita.
     locais: rotulosDeLocal(v.nome_predio ?? v.titulo ?? v.clientes?.nome ?? null, []),
+    clienteId: v.cliente_id ?? null,
     responsavelId: v.tecnico_id,
     participantes: v.tecnico_id ? [v.tecnico_id] : [],
     souResponsavel: !!ctx.userId && v.tecnico_id === ctx.userId,

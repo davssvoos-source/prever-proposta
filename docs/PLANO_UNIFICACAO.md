@@ -12626,3 +12626,107 @@ Q24–Q27, está no mapa do CLAUDE e na lista do sumário) e das regras R266–R
 
 **Números.** Verificador: 3.326 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Sem migration nesta entrega (a U134 traz `viaturas` e `viagens_viatura`).
+
+## U134 — as viaturas, construídas: o banco, a tela da etiqueta, a faixa na Início, a aba Viaturas e a chegada por localização (R266–R274)
+
+**O pedido.** Depois do documento mestre (U133), o Davi respondeu as quatro
+perguntas que faltavam e disse "Construa tudo, vai!". As respostas mudaram uma
+coisa no desenho: a chegada por localização, que estava planejada como etapa 3,
+**nasce junto** — porque os destinos passaram a ser TODAS as atividades do dia
+(Q24: "existe a possibilidade de ele trocar a ordem dos chamados do dia"), a
+sede ganhou endereço (Q25) e os celulares terão localização ligada do início ao
+fim do expediente (Q27). Abastecimento fica fora: é do QAP (Q26). Virou a R274.
+
+**O banco (migration U134).** Três tabelas: `locais_de_referencia` (a sede,
+semeada com o centro da rua no OSM — `-23.7087991, -46.7035152` — e `ON CONFLICT
+DO NOTHING`, para o ajuste fino na aba nunca ser desfeito por rodar de novo),
+`viaturas` (placa, apelido, o CÓDIGO da etiqueta, `ativa`) e `viagens_viatura`
+(um TRECHO por linha). As duas invariantes da R269 são **índices únicos
+parciais** (`WHERE chegada_em IS NULL`), não regra de tela: um carro tem no
+máximo uma viagem aberta, um técnico também. Km rodado e duração NÃO são
+colunas — são calculados na leitura, e é o `CHECK ((chegada_em IS NULL) =
+(km_chegada IS NULL))` que impede uma viagem "meio fechada".
+
+**Por que três portas e nenhuma policy de escrita.** A viagem tem regra de
+TRANSIÇÃO: "assumir" fecha a do colega e abre a minha na MESMA transação; o
+aviso de km é calculado contra o último km da viatura; encerrar só pode quem
+iniciou. Deixar o cliente escrever a linha espalharia isso por três telas. As
+portas (`viatura_iniciar_viagem`, `viatura_encerrar_viagem`,
+`viatura_corrigir_viagem`) são SECURITY DEFINER com gate por cargo —
+`eh_tecnico` (da U132, que virou pré-requisito) para iniciar e encerrar,
+`is_gestor` para corrigir — e recusam com frases em português e `ERRCODE`
+próprio: a tela lê `P0005` ("o carro está com outra pessoa") e oferece assumir;
+o resto vai como frase para a pessoa. `viagens_viatura` tem policy de SELECT e
+**nenhuma** de escrita: pela tabela ninguém escreve, e o censo do verificador
+(agora 28 policies `USING (true)`, as três novas com motivo) prova que a
+leitura aberta é decisão, não descuido.
+
+**O portão da migration** roda numa transação própria que termina em
+ROLLBACK, como o da U131: insere uma viatura e uma viagem, prova que a segunda
+aberta na mesma viatura é recusada (unique_violation), que chegada sem km é
+recusada (check_violation), que `encerramento = 'aberta'` com chegada é
+recusada, e que a porta de corrigir recusa quem não está logado
+(`insufficient_privilege`). As portas de iniciar/encerrar não são exercitadas
+no portão porque exigem `auth.uid()` de um técnico, que o SQL Editor não tem — o
+gate delas está coberto pela conferência (`pg_get_functiondef` LIKE).
+
+**O modelo puro** (`features/viaturas/modelo.ts`) carrega tudo o que a tela
+decide: o estado (desconhecida · inativa · livre · minha · de outro), o km
+(ler "100.500" ou "100500", formatar, os dois avisos, o rodado), o tempo
+(duração, "1h04", a permanência derivada entre trechos), a folha (recorte por
+competência do dia LOCAL da saída, resumo e totais pela MESMA lista), o
+cadastro (código sugerido do apelido, o gêmeo puro do CHECK) e a **chegada**:
+haversine, os 150 m e os 2 minutos como constantes nomeadas, `destinosDoDia`
+(as atividades de hoje com coordenada mais a sede) e `avaliarChegada`, a
+máquina de estados que arma o relógio ao entrar no raio, zera ao sair e só diz
+"chegou" depois de dois minutos — como SUGESTÃO. Trinta e poucas asserções
+cobrem isso, inclusive o caso de 119 s (ainda não) contra 121 s (chegou).
+
+**A tela da etiqueta** (`/viatura/$codigo`, `TelaDaViatura.tsx`) é o mockup:
+o carro e o chip de estado, o último registro com quem devolveu, UM campo de km
+(teclado numérico, o último km como placeholder e como referência, "+N km nesta
+viagem" enquanto digita) e UM botão. Livre → iniciar, com as atividades de hoje
+como chips opcionais; minha → encerrar, com a faixa "Você chegou a X?" quando o
+GPS diz; de outro → assumir, com a frase que explica o que acontece com a
+viagem do colega. Quem não é técnico vê o estado e o caminho para a folha
+(D11). Sem a migration, a tela diz que precisa dela — não mostra "etiqueta
+desconhecida" para um carro que existe (`useViaturasProntas` faz a pergunta
+direta ao banco). `/viatura` sem código é a lista, para quando a etiqueta
+falha.
+
+**A faixa na Início** (`FaixaDaViatura.tsx`) só existe com viagem aberta: "Você
+está com a Fiorino branca · desde 08:12 · saiu com 100.500 km · Encerrar", e
+vira "Você chegou a Cond. Eneide?" quando a localização diz — com um aviso UMA
+vez por destino, não a cada leitura do GPS. Sem viagem, um atalho discreto para
+a lista. Para isso a `Atividade` passou a carregar `clienteId` (o cliente
+principal, por id): é o destino do trecho, e as duas consultas da Home passaram
+a pedir `cliente_id`.
+
+**O GPS é ouvido com regras** (`useChegada.ts`, D8): só com viagem aberta e a
+página VISÍVEL (`visibilitychange` liga e desliga o `watchPosition`), o relógio
+dos 2 minutos zera quando a página vai para trás (senão voltaria acusando
+chegada com dado velho), a posição não sai do gancho — vira `avaliarChegada` e
+morre —, e quem encerra é a pessoa. Em segundo plano, com o app fechado, só com
+plugin nativo no APK: etapa própria, registrada.
+
+**A aba Viaturas do Administrativo** (`PainelDeViaturas.tsx`): à esquerda o
+cadastro (apelido, placa, código sugerido — e o endereço completo que vai na
+etiqueta, para o Davi copiar), remover = desativar quando já rodou (o botão
+muda: reativar / apagar de verdade só sem viagens), e a sede com a coordenada
+ajustável colando do Google Maps; à direita a folha — competência, viatura,
+técnico; cinco números (viagens, km, tempo em deslocamento, em aberto, para
+conferir); a tabela com a viagem aberta em dourado, "assumida por", "encerrada
+pela gestão" e "conferir" etiquetados; o lápis que corrige o km na linha (a
+porta grava quem e quando); totais por técnico e por viatura; e a permanência
+média nos clientes.
+
+**O que NÃO fiz, e por quê.** Não dei ao gestor o botão de iniciar viagem
+("por enquanto somente o técnico"); a correção pela folha, que pode fechar uma
+viagem aberta, é o gesto dele. Não gravei posição nenhuma. Não pus a chegada em
+segundo plano (é plugin nativo). E não construí o App Link do APK — a etiqueta
+abre no Chrome logado hoje, e o APK é a decisão 5 do ESTADO §7, ainda com o
+Davi.
+
+**Números.** Verificador: 3.343 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Migrations **U131, U132 e U134 pendentes** — a U134 exige a U132 antes
+(`eh_tecnico`), e o pré-voo aborta se ela não rodou.

@@ -9711,7 +9711,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
    *   vivo é o mesmo teste de dois eixos de `pessoasDaGrade()` movido para a
    *   fronteira, e ele é medido pela conferência 106 da própria migration.
    */
-  eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 25, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
+  eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 28, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
      censoPermissivas(),
      ['agenda_campo|agenda_campo_select',
       'blocos_itens|blocos_itens read all auth',
@@ -9731,6 +9731,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       'duplas_escala|duplas_escala_select',
       'duplas|duplas_select',
       'equipamentos|equip read all auth',
+      'locais_de_referencia|locais_de_referencia_select',  // R274 (U134): a SEDE como ponto — endereço público da operação, e o técnico precisa dela para a chegada da volta
       'mensagens_chat|mensagens_chat_select',     // R223 (U119): recado para todo mundo é público por definição
       'permissoes_tela|permissoes_select',
       'profiles|profiles_select',
@@ -9740,6 +9741,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       'regras_cftv|authenticated read regras_cftv',
       'servicos|servicos read all auth',
       'tecnico_aliases|tecnico_aliases_select',
+      'viagens_viatura|viagens_viatura_select',     // R269 (U134): metadado operacional, não dinheiro — o técnico precisa ler a viagem do colega para a tela dizer "em uso por Nicholas"; a ESCRITA é só pelas portas
+      'viaturas|viaturas_select',                   // R266 (U134): os carros da empresa — todo logado lê; só a gestão escreve
       'visitas_tecnicas|visitas_select']);       // R221 (U119): a visita é atividade (R218); os VALORES ficam nas tabelas de blocos/itens
   // PAR NEGATIVO do censo, e ele é o achado desta rodada: `sobreaviso_select`
   // NÃO está na lista acima porque o predicado dela não é `true`. Se alguém
@@ -13519,7 +13522,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // teste de ativo/pendente — porque SECURITY DEFINER não passa pela RLS.
        // Copiar o gate é a regra desta casa; inventar um predicado novo seria a
        // quarta lista de papéis a ter de concordar com as outras três.
-       [true, false, 35, 144, 52]);
+       // U134 (+1 arquivo, +9 ocorrências, +2 policies): a escrita de `viaturas` e
+       // de `locais_de_referencia` é da gestão (duas policies FOR ALL), e a porta
+       // `viatura_corrigir_viagem` exige is_gestor — a correção da folha é dela.
+       [true, false, 36, 153, 54]);
   }
 }
 
@@ -16358,8 +16364,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── R131: o Administrativo TEM o conteúdo ───────────────────────────────
   const adm94 = ler94('src/routes/_authenticated/painel.administrativo.tsx');
-  eq('U94/R131: o painel tem as três abas e renderiza os três componentes — usuários e permissões moram AQUI, não numa rota',
-     [/const ABAS = \["usuarios", "permissoes", "apis"\] as const;/.test(adm94),
+  // R271 (U134): a QUARTA aba — Viaturas (cadastro, sede e folha)
+  eq('U94/R131/R271: o painel tem as quatro abas e renderiza os quatro componentes — usuários e permissões moram AQUI, não numa rota; Viaturas é a quarta',
+     [/const ABAS = \["usuarios", "permissoes", "apis", "viaturas"\] as const;/.test(adm94) && /<PainelDeViaturas \/>/.test(adm94),
       /<GestaoDeUsuarios \/>/.test(adm94), /<MatrizDePermissoes \/>/.test(adm94), /<Integracoes \/>/.test(adm94),
       /validateSearch: \(s: Record<string, unknown>\) => \(\{\s*\n\s*aba: ABAS\.includes/.test(adm94)],
      [true, true, true, true, true]);
@@ -21314,6 +21321,162 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /um carro tem no\s*\n?máximo uma viagem aberta\*\*/.test(ctx266) || /no máximo uma viagem aberta/.test(ctx266),
       /SUGERE, nunca encerra/.test(ctx266) || /\*\*sugere\*\* encerrar/.test(ctx266)],
      [true, true, true, true]);
+}
+
+
+// ── U134 — as viaturas: o modelo puro, a migration, a tela, a faixa, a aba (R266–R274) ──
+{
+  const fsV = require('fs');
+  const VM = carregar('src/features/viaturas/modelo.ts');
+  const mig134 = fsV.existsSync('supabase/migrations/20260930090000_u134_viaturas.sql')
+    ? fsV.readFileSync('supabase/migrations/20260930090000_u134_viaturas.sql', 'utf8') : '';
+  const dadosV = fsV.readFileSync('src/features/viaturas/data.ts', 'utf8');
+  const telaV = fsV.readFileSync('src/features/viaturas/TelaDaViatura.tsx', 'utf8');
+  const faixaV = fsV.readFileSync('src/features/viaturas/FaixaDaViatura.tsx', 'utf8');
+  const chegadaV = fsV.readFileSync('src/features/viaturas/useChegada.ts', 'utf8');
+  const painelV = fsV.readFileSync('src/features/viaturas/PainelDeViaturas.tsx', 'utf8');
+  const inicioV = fsV.readFileSync('src/features/home/InicioDoTecnico.tsx', 'utf8');
+  const admV = fsV.readFileSync('src/routes/_authenticated/painel.administrativo.tsx', 'utf8');
+  const modeloAtv = fsV.readFileSync('src/features/atividades/modelo.ts', 'utf8');
+  const homeV = fsV.readFileSync('src/features/home/data.ts', 'utf8');
+
+  const viatura = { id: 'x', codigo: 'fiorino-1', placa: 'ABC-1D23', apelido: 'Fiorino branca', ativa: true, desativada_em: null };
+  const viagem = (extra) => ({
+    id: 'v', viatura_id: 'x', tecnico_id: 'eu', chamado_id: null, saida_em: '2026-09-14T11:12:00Z', km_saida: 100500,
+    chegada_em: null, km_chegada: null, aviso_saida: false, aviso_chegada: false, encerramento: 'aberta',
+    encerrada_por: null, corrigida_por: null, corrigida_em: null, observacao: null, ...extra,
+  });
+
+  eq('R269 CRÍTICO: a tela decide o estado sozinha — desconhecida sem viatura, inativa quando removida, livre sem viagem aberta, MINHA quando a aberta é do técnico que bipou, DE OUTRO quando não é',
+     [VM.estadoDaViatura(null, null, 'eu', null).tipo,
+      VM.estadoDaViatura({ ...viatura, ativa: false }, null, 'eu', null).tipo,
+      VM.estadoDaViatura(viatura, null, 'eu', 100500).tipo,
+      VM.estadoDaViatura(viatura, viagem({}), 'eu', null).tipo,
+      VM.estadoDaViatura(viatura, viagem({ tecnico_id: 'outro' }), 'eu', null).tipo,
+      VM.estadoDaViatura(viatura, null, 'eu', 100500).ultimoKm],
+     ['desconhecida', 'inativa', 'livre', 'minha', 'de_outro', 100500]);
+
+  eq('R268: o km lido do que a pessoa digita — com ou sem ponto de milhar, nunca negativo, nunca lixo — e formatado como o painel mostra',
+     [VM.lerKm('100.500'), VM.lerKm('100 500'), VM.lerKm(' 100500 '), VM.lerKm('abc'), VM.lerKm('-5'), VM.lerKm(''), VM.lerKm('12345678'),
+      VM.formatarKm(100500), VM.formatarKm(0), VM.formatarKm(null)],
+     [100500, 100500, 100500, null, null, null, null, '100.500', '0', '—']);
+
+  eq('R268 CRÍTICO: km fora de ordem é AVISO (a função só diz que avisa; ninguém bloqueia) — saída abaixo do último, chegada abaixo da saída; e km rodado é chegada − saída, nunca negativo, nulo enquanto aberta',
+     [VM.avisoDeSaida(100480, 100500), VM.avisoDeSaida(100500, 100500), VM.avisoDeSaida(5, null),
+      VM.avisoDeChegada(100490, 100500), VM.avisoDeChegada(100523, 100500),
+      VM.kmRodados({ km_saida: 100500, km_chegada: 100523 }), VM.kmRodados({ km_saida: 100500, km_chegada: null }), VM.kmRodados({ km_saida: 100500, km_chegada: 100490 })],
+     [true, false, false, true, false, 23, null, 0]);
+
+  eq('R272: a duração é chegada − saída (ou até agora, se aberta), e se escreve como se fala — "1h04", "23 min"',
+     [VM.minutosDeViagem(viagem({ chegada_em: '2026-09-14T12:16:00Z' }), new Date('2026-09-14T20:00:00Z')),
+      VM.minutosDeViagem(viagem({}), new Date('2026-09-14T11:42:00Z')),
+      VM.formatarDuracao(64), VM.formatarDuracao(23), VM.formatarDuracao(120), VM.formatarDuracao(0)],
+     [64, 30, '1h04', '23 min', '2h00', '0 min']);
+
+  // a permanência (D7): entre a chegada de um trecho e a saída do seguinte, do MESMO técnico, no MESMO dia
+  {
+    const a = viagem({ id: 'a', chegada_em: '2026-09-14T12:16:00Z', km_chegada: 100523, encerramento: 'normal' });
+    const b = viagem({ id: 'b', saida_em: '2026-09-14T13:00:00Z', km_saida: 100523 });
+    const outro = viagem({ id: 'c', tecnico_id: 'outro', saida_em: '2026-09-14T12:30:00Z' });
+    const outroDia = viagem({ id: 'd', saida_em: '2026-09-15T13:00:00Z' });
+    eq('R267/D7: a permanência é DERIVADA — 44 minutos entre a chegada do trecho A e a saída do B; outro técnico e outro dia não formam par',
+       [VM.permanencias([a, b, outro]).map((p) => `${p.anterior.id}>${p.seguinte.id}:${p.minutos}`),
+        VM.permanencias([a, outroDia]).length],
+       [['a>b:44'], 0]);
+  }
+
+  // a folha: quem conta é quem filtra
+  {
+    const agoraF = new Date('2026-09-14T15:00:00Z');
+    const v1 = viagem({ id: '1', tecnico_id: 'a', viatura_id: 'x', saida_em: '2026-09-14T11:12:00Z', chegada_em: '2026-09-14T12:16:00Z', km_saida: 100500, km_chegada: 100523, encerramento: 'normal' });
+    const v2 = viagem({ id: '2', tecnico_id: 'b', viatura_id: 'x', saida_em: '2026-09-14T14:00:00Z', km_saida: 100523 });
+    const v3 = viagem({ id: '3', tecnico_id: 'a', viatura_id: 'y', saida_em: '2026-08-20T11:00:00Z', chegada_em: '2026-08-20T12:00:00Z', km_saida: 500, km_chegada: 560, encerramento: 'normal' });
+    const setembro = VM.filtrarFolha([v3, v1, v2], { competencia: '2026-09', viaturaId: null, tecnicoId: null });
+    eq('R272 CRÍTICO: a folha filtra pela competência da SAÍDA (dia local), a mais recente em cima, e o resumo sai da MESMA lista — 2 viagens, 1 aberta, 23 km, 64 + 60 minutos',
+       [setembro.map((v) => v.id), VM.resumoDaFolha(setembro, agoraF),
+        VM.filtrarFolha([v3, v1, v2], { competencia: '2026-09', viaturaId: 'x', tecnicoId: 'a' }).map((v) => v.id),
+        VM.totaisPor(setembro, 'tecnico_id', agoraF).map((t) => `${t.id}:${t.resumo.km}`)],
+       [['2', '1'], { viagens: 2, abertas: 1, km: 23, minutos: 124, avisos: 0 }, ['1'], ['a:23', 'b:0']]);
+    eq('R268: o último km da viatura é o da chegada MAIS RECENTE, com quem devolveu e quando',
+       VM.ultimoKmDaViatura([v1, viagem({ id: '0', viatura_id: 'x', chegada_em: '2026-09-13T20:00:00Z', km_chegada: 100500, tecnico_id: 'b', encerramento: 'normal' })], 'x'),
+       { km: 100523, quando: '2026-09-14T12:16:00Z', tecnicoId: 'a' });
+  }
+
+  eq('R271: o código da etiqueta é sugerido do apelido (só letras, números e hífen), e o gêmeo puro do CHECK recusa antes do banco',
+     [VM.codigoSugerido('Fiorino Branca'), VM.codigoSugerido('Kwid  Branco!'), VM.codigoSugerido('Saveiro — prata'),
+      VM.erroDaViatura({ placa: 'ABC-1D23', apelido: 'Fiorino branca', codigo: 'fiorino-1' }),
+      VM.erroDaViatura({ placa: 'ABC-1D23', apelido: 'Fiorino branca', codigo: 'Fiorino 1' }) !== null,
+      VM.erroDaViatura({ placa: 'AB', apelido: 'Fiorino branca', codigo: 'fiorino-1' }) !== null],
+     ['fiorino-branca', 'kwid-branco', 'saveiro-prata', null, true, true]);
+
+  // a chegada por localização (R273/R274)
+  {
+    const sede = { id: 's', codigo: 'sede', nome: 'Sede', endereco: null, latitude: -23.7087991, longitude: -46.7035152 };
+    const clientes = [
+      { id: 'c1', nome: 'Cond. Eneide', latitude: -23.70, longitude: -46.70 },
+      { id: 'c2', nome: 'Sem coordenada', latitude: null, longitude: null },
+      { id: 'c3', nome: 'Não é de hoje', latitude: -23.71, longitude: -46.71 },
+    ];
+    const hojeV = [{ clienteId: 'c1' }, { clienteId: null }, { clienteId: 'c2' }];
+    eq('R274 CRÍTICO (Q24/Q25): os destinos são os clientes de TODAS as atividades de hoje que têm coordenada, mais a SEDE — o sem coordenada e o que não é de hoje ficam fora',
+       VM.destinosDoDia(hojeV, clientes, sede).map((d) => d.id), ['c1', 'ref:sede']);
+    eq('R273: 150 m e 2 minutos — os números do Davi e da Q24 — e a distância é haversine (0,001° de longitude a −23,7° são ~102 m)',
+       [VM.RAIO_CHEGADA_M, VM.MINUTOS_PARA_CHEGAR,
+        Math.round(VM.distanciaMetros({ latitude: -23.7087991, longitude: -46.7035152 }, { latitude: -23.7087991, longitude: -46.7025152 }))],
+       [150, 2, 102]);
+    const d = { id: 'd', nome: 'D', tipo: 'cliente', latitude: -23.70, longitude: -46.70 };
+    const t0 = 1_000_000;
+    const p1 = VM.avaliarChegada(VM.CHEGADA_INICIAL, { latitude: -23.7001, longitude: -46.70 }, t0, [d]);
+    const p2 = VM.avaliarChegada(p1.estado, { latitude: -23.7002, longitude: -46.70 }, t0 + 119_000, [d]);
+    const p3 = VM.avaliarChegada(p2.estado, { latitude: -23.7001, longitude: -46.70 }, t0 + 121_000, [d]);
+    const fora = VM.avaliarChegada(p3.estado, { latitude: -23.71, longitude: -46.71 }, t0 + 130_000, [d]);
+    const volta = VM.avaliarChegada(fora.estado, { latitude: -23.7001, longitude: -46.70 }, t0 + 140_000, [d]);
+    eq('R273 CRÍTICO: a máquina de estados — entrar no raio arma o relógio; 119 s ainda não chegou; 121 s chegou (SUGESTÃO, ninguém encerra); sair de todos zera; voltar rearma do zero',
+       [p1.estado.destinoId, p1.estado.desdeMs, p1.chegou, p2.chegou, p3.chegou && p3.chegou.id, fora.estado.destinoId, fora.chegou, volta.estado.desdeMs, volta.chegou],
+       ['d', t0, null, null, 'd', null, null, t0 + 140_000, null]);
+  }
+
+  eq('R264/R270: a Atividade passou a carregar o id do cliente principal (o destino do trecho), e as duas consultas da Home o pedem',
+     [/clienteId: string \| null;/.test(modeloAtv), /clienteId: c\.cliente_id \?\? null,/.test(modeloAtv), /clienteId: v\.cliente_id \?\? null,/.test(modeloAtv),
+      /"cliente_id, cliente_origem_nome, cliente:clientes!cliente_id\(nome\)"/.test(homeV), /prioridade, cliente_id, clientes\(nome\)/.test(homeV)],
+     [true, true, true, true, true]);
+
+  eq('U134 CRÍTICO: a migration — as três tabelas, os DOIS índices únicos parciais (uma aberta por viatura e por técnico), as três portas com o gate certo (técnico inicia/encerra, gestão corrige), assumir encerra a do colega como "assumida", a sede semeada sem sobrescrever, e o portão que termina em ROLLBACK',
+     [/CREATE TABLE IF NOT EXISTS public\.viaturas/.test(mig134), /CREATE TABLE IF NOT EXISTS public\.viagens_viatura/.test(mig134), /CREATE TABLE IF NOT EXISTS public\.locais_de_referencia/.test(mig134),
+      /CREATE UNIQUE INDEX IF NOT EXISTS viagens_uma_aberta_por_viatura ON public\.viagens_viatura \(viatura_id\) WHERE chegada_em IS NULL;/.test(mig134),
+      /CREATE UNIQUE INDEX IF NOT EXISTS viagens_uma_aberta_por_tecnico ON public\.viagens_viatura \(tecnico_id\) WHERE chegada_em IS NULL;/.test(mig134),
+      (mig134.match(/IF NOT public\.eh_tecnico\(v_uid\) THEN/g) ?? []).length, /NOT public\.is_gestor\(v_uid\)/.test(mig134),
+      /encerramento = 'assumida', encerrada_por = v_uid/.test(mig134),
+      /ON CONFLICT \(codigo\) DO NOTHING/.test(mig134), /-23\.7087991, -46\.7035152/.test(mig134),
+      /U134 PRÉ-VOO/.test(mig134), /eh_tecnico\(uuid\)'\) IS NULL THEN/.test(mig134), /\nROLLBACK;/.test(mig134), />>> OLHAR <<</.test(mig134), /── DESFAZER/.test(mig134)],
+     [true, true, true, true, true, 2, true, true, true, true, true, true, true, true, true]);
+
+  eq('U134 CRÍTICO: pela tabela NINGUÉM escreve viagem — a camada de dados só chama as três portas (rpc), e a migration não cria policy de escrita em viagens_viatura',
+     [/\.from\("viagens_viatura"\)\.insert/.test(dadosV), /\.from\("viagens_viatura"\)\.update/.test(dadosV),
+      /rpc\("viatura_iniciar_viagem"/.test(dadosV), /rpc\("viatura_encerrar_viagem"/.test(dadosV), /rpc\("viatura_corrigir_viagem"/.test(dadosV),
+      /CREATE POLICY viagens_viatura_escrita/.test(mig134), /CREATE POLICY viagens_viatura_select/.test(mig134)],
+     [false, false, true, true, true, false, true]);
+
+  eq('R266/R269/R273: a tela da etiqueta decide pelo modelo puro, oferece assumir com o código P0005 da porta, só ouve o GPS na viagem que é DELA, e as rotas /viatura e /viatura/$codigo existem',
+     [/estadoDaViatura\(viatura, abertaDaViatura, s\.userId, ultimo\?\.km \?\? null\)/.test(telaV),
+      /useChegadaPorLocalizacao\(estado\.tipo === "minha", destinos\)/.test(telaV),
+      /Assumir e iniciar viagem/.test(telaV), /aoIniciar\(true\)/.test(telaV),
+      fsV.existsSync('src/routes/_authenticated/viatura.$codigo.tsx'), fsV.existsSync('src/routes/_authenticated/viatura.index.tsx'),
+      /createFileRoute\("\/_authenticated\/viatura\/\$codigo"\)/.test(fsV.readFileSync('src/routes/_authenticated/viatura.$codigo.tsx', 'utf8'))],
+     [true, true, true, true, true, true, true]);
+
+  eq('R273 CRÍTICO (D8): o GPS só é ouvido com a página VISÍVEL, o relógio zera quando ela vai para trás, a posição não é gravada (nenhum insert/rpc no gancho) e a sugestão avisa uma vez por destino',
+     [/visibilitychange/.test(chegadaV), /watchPosition\(/.test(chegadaV), /clearWatch\(/.test(chegadaV),
+      /estadoRef\.current = CHEGADA_INICIAL;\s*\}/.test(chegadaV), /supabase|\.rpc\(|\.insert\(/.test(chegadaV),
+      /avisado\.current === chegada\.chegou\.id/.test(faixaV)],
+     [true, true, true, true, false, true]);
+
+  eq('R266/R271: a Início do técnico tem a faixa da viatura, e o Administrativo tem a aba Viaturas com cadastro, sede e folha',
+     [/<FaixaDaViatura sessao=\{sessao\} atividadesDeHoje=\{hoje\} \/>/.test(inicioV),
+      /const ABAS = \["usuarios", "permissoes", "apis", "viaturas"\] as const;/.test(admV), /aba === "viaturas" \? \(\s*\n\s*<PainelDeViaturas \/>/.test(admV),
+      /<Cadastro /.test(painelV), /<Sede /.test(painelV), /filtrarFolha\(viagens, \{ competencia, viaturaId: viaturaFiltro, tecnicoId: tecnicoFiltro \}\)/.test(painelV),
+      /useCorrigirViagem\(\)/.test(painelV), /desativar\.mutate\(\{ id: v\.id, ativa: false \}/.test(painelV)],
+     [true, true, true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

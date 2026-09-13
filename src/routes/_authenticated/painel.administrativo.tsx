@@ -32,7 +32,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useMemo, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, CircleDollarSign, Package, Plug, ShieldCheck, Users } from "lucide-react";
+import { Car, ChevronLeft, CircleDollarSign, Package, Plug, ShieldCheck, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { guardaDeTela, destinoNegado, usePermissoes } from "@/features/gerencial/permissoes";
 import { useUserCargo } from "@/features/gerencial/data";
@@ -42,14 +42,17 @@ import { PRISMA, espectroTexto } from "@/lib/paleta";
 import { GestaoDeUsuarios } from "@/features/administrativo/Usuarios";
 import { MatrizDePermissoes } from "@/features/administrativo/Permissoes";
 import { Integracoes } from "@/features/administrativo/Integracoes";
+import { PainelDeViaturas } from "@/features/viaturas/PainelDeViaturas";
 
-const ABAS = ["usuarios", "permissoes", "apis"] as const;
+// R271 (U134): a aba Viaturas — cadastro dos carros, a sede e a folha
+const ABAS = ["usuarios", "permissoes", "apis", "viaturas"] as const;
 type Aba = (typeof ABAS)[number];
 
 const ABA_LABEL: Record<Aba, string> = {
   usuarios: "Usuários",
   permissoes: "Permissões",
   apis: "APIs",
+  viaturas: "Viaturas",
 };
 
 export const Route = createFileRoute("/_authenticated/painel/administrativo")({
@@ -221,14 +224,19 @@ function PainelAdministrativo() {
           (gerencial.usuarios → ?aba=usuarios) e que o botão das APIs troca a
           página; "usuarios" e "permissoes" mostram as duas colunas. */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {aba === "apis" ? (
+        {aba === "apis" || aba === "viaturas" ? (
           <button onClick={() => irParaAba("usuarios")} style={botaoAba(false)}>
             <ChevronLeft size={13} /> Usuários e permissões
           </button>
         ) : (
-          <button onClick={() => irParaAba("apis")} style={botaoAba(false)}>
-            <Plug size={13} /> {ABA_LABEL.apis}
-          </button>
+          <>
+            <button onClick={() => irParaAba("apis")} style={botaoAba(false)}>
+              <Plug size={13} /> {ABA_LABEL.apis}
+            </button>
+            <button onClick={() => irParaAba("viaturas")} style={botaoAba(false)}>
+              <Car size={13} /> {ABA_LABEL.viaturas}
+            </button>
+          </>
         )}
       </div>
 
@@ -236,6 +244,8 @@ function PainelAdministrativo() {
         <div style={{ ...card(isLight), borderRadius: 18, padding: 16 }}>
           <Integracoes />
         </div>
+      ) : aba === "viaturas" ? (
+        <PainelDeViaturas />
       ) : !isAdmin ? (
         // As duas seções mexem em cargo e em matriz — é regra de CARGO, não de
         // matriz (a rota antiga já trancava assim), senão uma linha errada na

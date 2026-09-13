@@ -57,12 +57,13 @@ const CAMPOS_DA_HOME =
   // `chamados` nasceu como `ordens_servico` e o rename não renomeia
   // constraints, então o nome real da FK é `ordens_servico_cliente_id_fkey` —
   // um detalhe histórico que ninguém adivinharia lendo o schema de hoje.
-  "cliente_origem_nome, cliente:clientes!cliente_id(nome)";
+  // U134: o id do cliente principal viaja junto — é o destino do trecho da viatura
+  "cliente_id, cliente_origem_nome, cliente:clientes!cliente_id(nome)";
 
 const CAMPOS_VISITA =
   "id, status, titulo, nome_predio, tecnico_id, data_hora_agendada, created_at, " +
   "foto_fachada_url, endereco, nome_sindico, proposta_enviada_em, proposta_resultado, " +
-  "proposta_resultado_em, prioridade, clientes(nome), " +
+  "proposta_resultado_em, prioridade, cliente_id, clientes(nome), " +
   // U29: o chamado-capa tem o MESMO id da visita. É de onde vêm o número CH- e
   // a prioridade — sem isto a proposta volta a entrar no quadro sem número.
   "chamado:chamados!visitas_e_chamado(numero, prioridade)";
