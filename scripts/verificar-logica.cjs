@@ -21539,6 +21539,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // instante. E a correção da gestão só carimba `gestor` quando é ELA que
   // está fechando: uma observação numa viagem já encerrada não reescreve
   // quem a encerrou.
+  // A Lovable publica a cada push; a migration o Davi roda à mão. Entre as
+  // duas coisas o app fala com um banco anterior, e a porta que ainda não
+  // existe volta em INGLÊS, do PostgREST. Quem lê isso é o técnico, na rua.
+  eq('R276/U136 CRÍTICO (MEDIDO ao vivo): a porta que o banco ainda não tem vira FRASE EM PORTUGUÊS — a recusa consulta `faltaMigrationDasViaturas` e não devolve a mensagem crua do PostgREST ("in the schema cache") para o técnico',
+     [dadosV.includes('const semPorta = faltaMigrationDasViaturas(e);'),
+      dadosV.includes('O app está à frente do banco: falta rodar a migration das viaturas. Avise a gestão — nada foi registrado.'),
+      dadosV.includes('this.faltaMigration = semPorta;'),
+      /super\(e\?\.message \?\? "Não foi possível registrar a viagem\."\);/.test(dadosV)],
+     [true, true, true, false]);
+
   eq('U136 (R276): assumir encerra a viagem do colega AGORA (sem km), e corrigir só vira encerramento "gestor" quando a viagem estava aberta',
      [/SET chegada_em = now\(\), encerramento = 'assumida', encerrada_por = v_uid/.test(mig136),
       /encerramento = CASE WHEN v\.chegada_em IS NULL AND n_chegada_em IS NOT NULL THEN 'gestor' ELSE v\.encerramento END/.test(mig136),

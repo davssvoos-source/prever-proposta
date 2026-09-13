@@ -140,10 +140,20 @@ export interface RespostaDeEncerramento { minutos: number }
  */
 export class RecusaDaViatura extends Error {
   codigo: string | null;
+  /** o banco ainda não tem a porta desta versão do app (migration pendente) */
+  faltaMigration: boolean;
   constructor(e: { code?: string; message?: string } | null) {
-    super(e?.message ?? "Não foi possível registrar a viagem.");
+    // A porta que não existe volta em INGLÊS, do PostgREST ("Could not find
+    // the function … in the schema cache"). Quem lê isso é o técnico, de pé,
+    // na rua. A frase da casa diz o que houve, o que fazer e que nada foi
+    // gravado — MEDIDO na janela entre o deploy e a U136.
+    const semPorta = faltaMigrationDasViaturas(e);
+    super(semPorta
+      ? "O app está à frente do banco: falta rodar a migration das viaturas. Avise a gestão — nada foi registrado."
+      : e?.message ?? "Não foi possível registrar a viagem.");
     this.name = "RecusaDaViatura";
     this.codigo = e?.code ?? null;
+    this.faltaMigration = semPorta;
   }
 }
 

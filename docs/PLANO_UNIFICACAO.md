@@ -12869,7 +12869,26 @@ hora de saída, hora de chegada e o vínculo com a atividade das Paineiras — q
 de contexto registra o que foi dito, não o que ficou valendo — o que ficou
 valendo está marcado em cada seção.
 
-**Números.** Verificador: 3.347 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+**O defeito que o teste ao vivo pegou.** Com a U136 escrita e o app já
+publicado sem km, fui ver o que o técnico veria antes de o Davi rodar a
+migration — e era isto, em vermelho, no celular: *"Could not find the function
+public.viatura_iniciar_viagem(_assumir, _chamado_id, _codigo) in the schema
+cache"*. A mensagem crua do PostgREST, em inglês, para quem está de pé na rua.
+`faltaMigrationDasViaturas` já reconhecia o `PGRST202`; ele só não era
+consultado no caminho das PORTAS, que passa por `RecusaDaViatura` — a leitura
+de tabela já estava coberta desde a U134, a escrita não. Agora a recusa traduz
+no funil das três portas: *"O app está à frente do banco: falta rodar a
+migration das viaturas. Avise a gestão — nada foi registrado."* A última oração
+é a que importa para quem está trabalhando: ele precisa saber se pode seguir
+viagem sem ter registrado a mesma coisa duas vezes.
+
+A janela existe por construção neste projeto — a Lovable publica a cada push e
+a migration é rodada à mão, então **todo** deploy que depende de banco tem um
+intervalo em que o app fala com o esquema anterior. Até hoje isso sempre caiu
+para o lado seguro (o app novo aguentava o banco velho); a U136 é a primeira
+vez que é o contrário, e foi por isso que a janela ficou visível.
+
+**Números.** Verificador: 3.349 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migration **U136 PENDENTE** — exige a U134 (que já rodou). Enquanto ela não
 rodar, o app novo chama portas que ainda têm km no banco: **o registro de
 viagem para de funcionar até a U136 rodar.** É a primeira vez neste projeto que
