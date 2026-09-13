@@ -12801,3 +12801,77 @@ preciso que ele faça o login. (2) Mesmo logado como `davi@`, o fluxo de
 iniciar/encerrar viagem **não roda** — as portas exigem `eh_tecnico`, e ele é
 gestão: ou um login de técnico, ou o cargo dele trocado por um minuto. (3) A
 lista de viaturas para cadastrar e o ajuste fino da coordenada da sede.
+
+## U136 — o km sai das viaturas: a viagem passa a mapear quem, quando e onde (R276)
+
+**O pedido, e o que ele desfaz.** O Davi rodou as três migrations, cadastrou a
+primeira viatura (Gol Preto, FPX3C86, etiqueta `gol-preto`) e a sede, e nós
+registramos a primeira viagem de verdade — iniciar com km, faixa na Início,
+encerrar com km. Vendo aquilo funcionando, ele mudou de ideia: "Remova a
+inserção do KM, mudei de ideia, não vamos controlar isso no nosso sistema. Já é
+controlado no ERP e não tem necessidade de passar isso pro nosso sistema. Quero
+apenas mapear local e data e com quem estava a viatura." Virou a **R276**, que
+**revoga a R268 inteira** (o km nas duas pontas e o "passa com aviso") e muda
+duas frases: o "assumir" da R269 e a folha da R272.
+
+**Não é uma remoção de campo — é uma remoção de assunto.** O km tinha seis
+funções puras (`lerKm`, `formatarKm`, `avisoDeSaida`, `avisoDeChegada`,
+`kmRodados`, `ultimoKmDaViatura`), um campo de 64px na tela da etiqueta, três
+colunas na folha, um KPI, quatro colunas no banco, um CHECK e dois avisos que
+existiam só por causa dele. Tudo saiu. O que sobrou responde exatamente as três
+perguntas dele: **com quem** (`tecnico_id`), **quando** (`saida_em`,
+`chegada_em`, e a duração calculada) e **onde** (a atividade opcional da R270 —
+o cliente dela é o destino — mais a chegada por localização da R273/R274).
+
+**O efeito na tela é o melhor argumento da decisão:** bipar virou **um toque**.
+Antes eram dois gestos por ponta (digitar o número, confirmar) com um teclado
+numérico no meio, na rua, às vezes na chuva. Agora a tela da etiqueta abre e
+tem um botão. A única pergunta que resta é a atividade, e ela já era opcional.
+
+**O banco: por que DROP e não REPLACE.** As três portas mudaram de assinatura.
+`CREATE OR REPLACE FUNCTION` não muda a lista de argumentos — criaria uma
+**sobrecarga**, e o PostgREST escolhe a sobrecarga pelo NOME dos argumentos que
+o cliente manda. Com as duas vivas, um app antigo em cache continuaria gravando
+pela porta velha, com km, sem ninguém ver. A U136 derruba as três pela
+assinatura exata antes de recriar — e a conferência tem um item só para provar
+que as antigas não existem mais.
+
+As quatro colunas saem com `DROP COLUMN IF EXISTS`, e o CHECK
+`viagens_chegada_completa` (que amarrava `chegada_em` a `km_chegada`) sai
+explícito antes, embora o DROP COLUMN fosse levá-lo junto: quem lê a migration
+merece ver que a amarra foi desfeita de propósito. O CHECK que **fica** é o que
+importa agora — `(encerramento = 'aberta') = (chegada_em IS NULL)`. O DESFAZER
+é honesto sobre o que não volta: as colunas voltam **vazias**, porque o km era
+dado, não estrutura.
+
+**A correção da gestão mudou de assunto.** Ela existia para consertar km
+digitado errado. Sem km, o que sobra de errado é a viagem que o técnico
+**deixou aberta** — e é para isso que a folha agora tem, na linha em aberto, um
+botão **Encerrar**. A porta continua exigindo `is_gestor`, carimba
+`encerramento = 'gestor'` e grava `corrigida_por/em`; e ela só carimba "gestor"
+quando é ELA que está fechando: uma observação numa viagem já encerrada não
+reescreve quem a encerrou. Isso virou asserção.
+
+**O que o verificador passou a travar.** A asserção mais importante é a de
+**ausência**: nenhuma das seis funções de km existe no modelo, e nem a tela,
+nem a faixa, nem a folha, nem a camada de dados mencionam km — é o pino que
+impede a volta silenciosa. Mais a da migration (os três DROP pela assinatura
+exata, as quatro colunas, as portas novas com o mesmo gate) e a do "assumir sem
+km". O censo da dívida P51 subiu de 36/153 para 37/157 arquivos/ocorrências:
+as quatro menções novas a `is_gestor` são a MESMA decisão de acesso reescrita,
+e nenhuma policy nova — está anotado na linha, como manda a regra 3.
+
+**O que NÃO fiz.** Não apaguei a viagem de teste que já estava gravada (a que
+registramos juntos): ela perdeu as colunas de km com o DROP e continua lá, com
+hora de saída, hora de chegada e o vínculo com a atividade das Paineiras — que
+é exatamente o que a R276 quer guardar. E não mexi na §1 do
+`CONTEXTO_VIATURAS.md`: é a transcrição do que ele ditou de manhã, e documento
+de contexto registra o que foi dito, não o que ficou valendo — o que ficou
+valendo está marcado em cada seção.
+
+**Números.** Verificador: 3.347 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Migration **U136 PENDENTE** — exige a U134 (que já rodou). Enquanto ela não
+rodar, o app novo chama portas que ainda têm km no banco: **o registro de
+viagem para de funcionar até a U136 rodar.** É a primeira vez neste projeto que
+a ordem importa nesse sentido (o normal é o contrário), e está dito assim no
+ESTADO §4.

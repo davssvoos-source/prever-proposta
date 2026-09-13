@@ -20,8 +20,8 @@ import {
 
 const CAMPOS_VIATURA = "id, codigo, placa, apelido, ativa, desativada_em";
 const CAMPOS_VIAGEM =
-  "id, viatura_id, tecnico_id, chamado_id, saida_em, km_saida, chegada_em, km_chegada, "
-  + "aviso_saida, aviso_chegada, encerramento, encerrada_por, corrigida_por, corrigida_em, observacao";
+  "id, viatura_id, tecnico_id, chamado_id, saida_em, chegada_em, "
+  + "encerramento, encerrada_por, corrigida_por, corrigida_em, observacao";
 const CAMPOS_REFERENCIA = "id, codigo, nome, endereco, latitude, longitude";
 
 /** Lista vazia quando a migration ainda não rodou; qualquer outro erro sobe. */
@@ -128,10 +128,10 @@ export function useLocaisDeReferencia() {
   });
 }
 
-// ── As portas (R266/R268/R269) ──────────────────────────────────────────────
+// ── As portas (R266/R269/R276) ──────────────────────────────────────────────
 
-export interface RespostaDeInicio { viagem_id: string; aviso_saida: boolean; assumida_de: string | null; ultimo_km: number | null }
-export interface RespostaDeEncerramento { km_rodados: number; aviso_chegada: boolean; minutos: number }
+export interface RespostaDeInicio { viagem_id: string; assumida_de: string | null }
+export interface RespostaDeEncerramento { minutos: number }
 
 /**
  * A porta recusa com frases em português (USING ERRCODE): P0005 é "o carro está
@@ -147,18 +147,18 @@ export class RecusaDaViatura extends Error {
   }
 }
 
-export async function iniciarViagem(entrada: { codigo: string; kmSaida: number; chamadoId: string | null; assumir: boolean }): Promise<RespostaDeInicio> {
+export async function iniciarViagem(entrada: { codigo: string; chamadoId: string | null; assumir: boolean }): Promise<RespostaDeInicio> {
   const { data, error } = await (supabase as any).rpc("viatura_iniciar_viagem", {
-    _codigo: entrada.codigo, _km_saida: entrada.kmSaida, _chamado_id: entrada.chamadoId, _assumir: entrada.assumir,
+    _codigo: entrada.codigo, _chamado_id: entrada.chamadoId, _assumir: entrada.assumir,
   });
   if (error) throw new RecusaDaViatura(error);
   const linha = Array.isArray(data) ? data[0] : data;
   return linha as RespostaDeInicio;
 }
 
-export async function encerrarViagem(entrada: { viagemId: string; kmChegada: number }): Promise<RespostaDeEncerramento> {
+export async function encerrarViagem(entrada: { viagemId: string }): Promise<RespostaDeEncerramento> {
   const { data, error } = await (supabase as any).rpc("viatura_encerrar_viagem", {
-    _viagem_id: entrada.viagemId, _km_chegada: entrada.kmChegada,
+    _viagem_id: entrada.viagemId,
   });
   if (error) throw new RecusaDaViatura(error);
   const linha = Array.isArray(data) ? data[0] : data;
@@ -166,12 +166,10 @@ export async function encerrarViagem(entrada: { viagemId: string; kmChegada: num
 }
 
 export async function corrigirViagem(entrada: {
-  viagemId: string; kmSaida?: number | null; kmChegada?: number | null; chegadaEm?: string | null; observacao?: string | null;
+  viagemId: string; chegadaEm?: string | null; observacao?: string | null;
 }): Promise<void> {
   const { error } = await (supabase as any).rpc("viatura_corrigir_viagem", {
     _viagem_id: entrada.viagemId,
-    _km_saida: entrada.kmSaida ?? null,
-    _km_chegada: entrada.kmChegada ?? null,
     _chegada_em: entrada.chegadaEm ?? null,
     _observacao: entrada.observacao ?? null,
   });

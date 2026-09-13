@@ -187,12 +187,15 @@ Ainda em decisão do Davi (12/09/2026): para onde o app Android aponta, se o
 aviso chega com o app fechado (push), e o que define a urgência fora do horário
 que vai para o plantonista.
 
-**A viatura (R266–R274, U134).** Cada carro tem uma etiqueta
-NFC no suporte; bipar abre a tela do carro, que decide sozinha: livre → digita
-o km e inicia; em viagem sua → digita o km e encerra; em uso por um colega que
-esqueceu → assume. Cada deslocamento é um **trecho** (sede → cliente x é um;
-x → y é outro). Km rodados e tempo de deslocamento são calculados; km fora de
-ordem passa com aviso e o gestor corrige na folha (Administrativo › Viaturas).
+**A viatura (R266–R274 e R276, U134/U136).** Cada carro tem uma etiqueta
+NFC no suporte; bipar abre a tela do carro, que decide sozinha: livre → inicia;
+em viagem sua → encerra; em uso por um colega que esqueceu → assume. É **um
+toque**: desde a R276 o sistema **não pede quilometragem** em ponta nenhuma —
+isso é controlado no QAP ERP. Cada deslocamento é um **trecho** (sede → cliente
+x é um; x → y é outro), e o tempo de deslocamento é calculado. O que a viagem
+registra é quem estava com o carro, quando, e para onde (a atividade é
+opcional). A viagem esquecida aberta a gestão encerra na folha
+(Administrativo › Viaturas), com rastro.
 Com viagem aberta e o app na frente, a Início avisa "Você chegou a X?" quando o
 técnico fica mais de 2 minutos a menos de 150 m de um cliente do dia ou da sede
 — é sugestão; quem encerra é ele. O contexto inteiro está em

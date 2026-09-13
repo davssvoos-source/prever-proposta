@@ -8,8 +8,8 @@
 //
 // A folha e os números dela saem da MESMA lista (`filtrarFolha` →
 // `resumoDaFolha`/`totaisPor`, puros): o total não tem como discordar das
-// linhas. Km rodados e duração são calculados; "assumida" e "km fora de ordem"
-// vêm etiquetados; o gestor corrige o km na própria linha (com rastro — a porta
+// linhas. A duração é calculada; "assumida" vem etiquetada; a viagem deixada
+// aberta o gestor encerra na própria linha (com rastro — a porta
 // grava quem e quando).
 
 import { useMemo, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
@@ -25,8 +25,8 @@ import {
   useSalvarViatura, useDesativarViatura, useExcluirViatura, useCorrigirViagem, useSalvarLocalDeReferencia, useViaturasProntas,
 } from "./data";
 import {
-  filtrarFolha, resumoDaFolha, totaisPor, kmRodados, minutosDeViagem, formatarKm, formatarDuracao,
-  codigoSugerido, erroDaViatura, lerKm, permanencias, type Viatura, type Viagem,
+  filtrarFolha, resumoDaFolha, totaisPor, minutosDeViagem, formatarDuracao,
+  codigoSugerido, erroDaViatura, permanencias, type Viatura, type Viagem,
 } from "./modelo";
 import { competenciaDe } from "@/features/home/tecnico";
 
@@ -110,7 +110,6 @@ export function PainelDeViaturas() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
           {[
             { n: String(resumo.viagens), l: "viagens" },
-            { n: `${formatarKm(resumo.km)} km`, l: "rodados" },
             { n: formatarDuracao(resumo.minutos), l: "em deslocamento" },
             { n: String(resumo.abertas), l: "em aberto agora" },
             { n: String(resumo.avisos), l: "para conferir" },
@@ -131,18 +130,17 @@ export function PainelDeViaturas() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 12.5 }}>
               <thead>
                 <tr>
-                  {/* Os dois km numa coluna só: "100.431 → 100.500" é como se
-                      lê o odômetro, e separados eles custavam 236px de largura
-                      numa tabela que já rolava dentro da coluna. */}
-                  {["Dia", "Viatura", "Técnico", "Saída → chegada", "Km", "Rodados", "Tempo", "Destino", ""].map((h, i) => (
-                    <th key={h + i} style={{ textAlign: i >= 4 && i <= 6 ? "right" : "left", fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", color: textSecondary, fontWeight: 700, padding: "8px 10px", borderBottom: `1px solid ${cz.divisoria}`, whiteSpace: "nowrap" }}>{h}</th>
+                  {/* R276: as duas colunas de km e a de rodados saíram — o que
+                      a folha responde agora é quem, quando e para onde. */}
+                  {["Dia", "Viatura", "Técnico", "Saída → chegada", "Tempo", "Destino", ""].map((h, i) => (
+                    <th key={h + i} style={{ textAlign: i === 4 ? "right" : "left", fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", color: textSecondary, fontWeight: 700, padding: "8px 10px", borderBottom: `1px solid ${cz.divisoria}`, whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {linhas.map((v) => (
                   <LinhaDaFolha key={v.id} v={v} viatura={viaturaDe(v.viatura_id)} nome={nomeDe(v.tecnico_id)} encerradaPor={v.encerrada_por && v.encerrada_por !== v.tecnico_id ? nomeDe(v.encerrada_por) : null}
-                    titulo={v.chamado_id ? titulos[v.chamado_id] ?? null : null} agora={agora} cores={{ gold, laranja, textSecondary, textPrimary, divisoria: cz.divisoria, campo: cz.campo }} chip={chip} INPUT={INPUT} />
+                    titulo={v.chamado_id ? titulos[v.chamado_id] ?? null : null} agora={agora} cores={{ gold, laranja, textSecondary, textPrimary, divisoria: cz.divisoria, campo: cz.campo }} chip={chip} />
                 ))}
               </tbody>
             </table>
@@ -156,7 +154,7 @@ export function PainelDeViaturas() {
               {porTecnico.map((t) => (
                 <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "6px 0", fontFamily: FONT, fontSize: 12.5, borderBottom: `1px solid ${cz.divisoria}` }}>
                   <span>{nomeDe(t.id)}</span>
-                  <span style={{ fontVariantNumeric: "tabular-nums", color: textSecondary }}>{t.resumo.viagens} viag. · <b style={{ color: textPrimary, fontWeight: 600 }}>{formatarKm(t.resumo.km)} km</b> · {formatarDuracao(t.resumo.minutos)}</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums", color: textSecondary }}>{t.resumo.viagens} viag. · <b style={{ color: textPrimary, fontWeight: 600 }}>{formatarDuracao(t.resumo.minutos)}</b> em deslocamento</span>
                 </div>
               ))}
             </div>
@@ -165,7 +163,7 @@ export function PainelDeViaturas() {
               {porViatura.map((t) => (
                 <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "6px 0", fontFamily: FONT, fontSize: 12.5, borderBottom: `1px solid ${cz.divisoria}` }}>
                   <span>{viaturaDe(t.id)?.apelido ?? "—"}</span>
-                  <span style={{ fontVariantNumeric: "tabular-nums", color: textSecondary }}>{t.resumo.viagens} viag. · <b style={{ color: textPrimary, fontWeight: 600 }}>{formatarKm(t.resumo.km)} km</b> · {formatarDuracao(t.resumo.minutos)}</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums", color: textSecondary }}>{t.resumo.viagens} viag. · <b style={{ color: textPrimary, fontWeight: 600 }}>{formatarDuracao(t.resumo.minutos)}</b> em deslocamento</span>
                 </div>
               ))}
             </div>
@@ -184,16 +182,13 @@ export function PainelDeViaturas() {
   );
 }
 
-// ── uma linha da folha, com a correção inline (R268) ────────────────────────
-function LinhaDaFolha({ v, viatura, nome, encerradaPor, titulo, agora, cores, chip, INPUT }: {
+// ── uma linha da folha, com o encerramento pela gestão (R276) ───────────────
+function LinhaDaFolha({ v, viatura, nome, encerradaPor, titulo, agora, cores, chip }: {
   v: Viagem; viatura: Viatura | undefined; nome: string; encerradaPor: string | null; titulo: string | null; agora: Date;
   cores: { gold: string; laranja: string; textSecondary: string; textPrimary: string; divisoria: string; campo: string };
-  chip: (cor: { dark: string; light: string }, texto: string) => ReactElement; INPUT: CSSProperties;
+  chip: (cor: { dark: string; light: string }, texto: string) => ReactElement;
 }) {
   const corrigir = useCorrigirViagem();
-  const [editando, setEditando] = useState(false);
-  const [saida, setSaida] = useState(String(v.km_saida));
-  const [chegada, setChegada] = useState(v.km_chegada === null ? "" : String(v.km_chegada));
   const aberta = !v.chegada_em;
   const hora = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   const td = (filho: ReactNode, alinhar: "left" | "right" = "left", quebra = false) => (
@@ -206,14 +201,11 @@ function LinhaDaFolha({ v, viatura, nome, encerradaPor, titulo, agora, cores, ch
     }}>{filho}</td>
   );
 
-  async function salvar() {
-    const ks = lerKm(saida);
-    const kc = chegada.trim() === "" ? null : lerKm(chegada);
-    if (ks === null || (chegada.trim() !== "" && kc === null)) { toast.error("Km só com números."); return; }
+  /** A viagem que o técnico esqueceu aberta: a gestão encerra agora, com rastro. */
+  async function encerrarPelaGestao() {
     try {
-      await corrigir.mutateAsync({ viagemId: v.id, kmSaida: ks, kmChegada: kc });
-      toast.success("Viagem corrigida — fica registrado quem corrigiu e quando.");
-      setEditando(false);
+      await corrigir.mutateAsync({ viagemId: v.id, chegadaEm: new Date().toISOString() });
+      toast.success("Viagem encerrada pela gestão — fica registrado quem encerrou e quando.");
     } catch (e) { toast.error((e as Error).message); }
   }
 
@@ -226,33 +218,15 @@ function LinhaDaFolha({ v, viatura, nome, encerradaPor, titulo, agora, cores, ch
         {v.encerramento === "assumida" && <span title={encerradaPor ? `assumida por ${encerradaPor}` : "assumida por outro técnico"} style={{ marginLeft: 8 }}>{chip(PRISMA.laranja, "assumida")}</span>}
         {v.encerramento === "gestor" && <span title="encerrada pela gestão, na folha" style={{ marginLeft: 8 }}>{chip(PRISMA.neutro, "pela gestão")}</span>}
       </>)}
-      {td(editando ? (
-        <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-          <input value={saida} onChange={(e) => setSaida(e.target.value)} inputMode="numeric" aria-label="Km de saída" style={{ ...INPUT, width: 88, height: 30, textAlign: "right" }} />
-          <span style={{ color: cores.textSecondary }}>→</span>
-          <input value={chegada} onChange={(e) => setChegada(e.target.value)} inputMode="numeric" placeholder="—" aria-label="Km de chegada" style={{ ...INPUT, width: 88, height: 30, textAlign: "right" }} />
-        </span>
-      ) : (
-        <>
-          {formatarKm(v.km_saida)}
-          <span style={{ color: cores.textSecondary }}> → </span>
-          {v.km_chegada === null ? "—" : formatarKm(v.km_chegada)}
-          {(v.aviso_saida || v.aviso_chegada) && (
-            <span title={v.aviso_saida ? "km de saída abaixo do último desta viatura — conferir" : "km de chegada abaixo do de saída — conferir"} style={{ marginLeft: 8 }}>{chip(PRISMA.laranja, "conferir")}</span>
-          )}
-        </>
-      ), "right")}
-      {td(kmRodados(v) === null ? "—" : formatarKm(kmRodados(v)), "right")}
       {td(formatarDuracao(minutosDeViagem(v, agora)), "right")}
       {td(titulo ?? <span style={{ color: cores.textSecondary }}>—</span>, "left", true)}
-      {td(editando ? (
-        <span style={{ display: "inline-flex", gap: 4 }}>
-          <button onClick={() => void salvar()} disabled={corrigir.isPending} title="Salvar" aria-label="Salvar correção" style={{ ...goldButton(), width: 30, height: 30, borderRadius: 8, display: "grid", placeItems: "center", cursor: "pointer" }}><Check size={14} /></button>
-          <button onClick={() => { setEditando(false); setSaida(String(v.km_saida)); setChegada(v.km_chegada === null ? "" : String(v.km_chegada)); }} title="Cancelar" aria-label="Cancelar" style={{ width: 30, height: 30, borderRadius: 8, background: cores.campo, border: `1px solid ${cores.divisoria}`, color: cores.textSecondary, display: "grid", placeItems: "center", cursor: "pointer" }}><X size={14} /></button>
-        </span>
-      ) : (
-        <button onClick={() => setEditando(true)} title="Corrigir km" aria-label="Corrigir o km desta viagem" style={{ width: 30, height: 30, borderRadius: 8, background: "transparent", border: `1px solid ${cores.divisoria}`, color: cores.textSecondary, display: "grid", placeItems: "center", cursor: "pointer" }}><Pencil size={13} /></button>
-      ), "right")}
+      {td(aberta ? (
+        <button onClick={() => void encerrarPelaGestao()} disabled={corrigir.isPending}
+          title="Encerrar esta viagem agora, pela gestão" aria-label={`Encerrar a viagem de ${nome} agora`}
+          style={{ ...goldButton(), height: 30, padding: "0 12px", borderRadius: 8, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", opacity: corrigir.isPending ? 0.7 : 1 }}>
+          <Check size={13} /> Encerrar
+        </button>
+      ) : null, "right")}
     </tr>
   );
 }

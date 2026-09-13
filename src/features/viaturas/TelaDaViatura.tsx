@@ -1,14 +1,14 @@
 // A TELA DA ETIQUETA — …/viatura/<codigo> (R266–R270). Nasceu para o celular.
 //
 // Davi, 13/09/2026: "a pessoa bipar para iniciar a viagem de ida a um cliente
-// e bipar para encerrar, e ao iniciar inserir a kilometragem inicial e ao
-// finalizar inserir a kilometragem final".
+// e bipar para encerrar" — e, no fim do mesmo dia (R276), "Remova a inserção
+// do KM […] Quero apenas mapear local e data e com quem estava a viatura".
 //
 // A tela NÃO pergunta o que a pessoa quer fazer: ela lê o carro e o estado
-// (`estadoDaViatura`, puro) e responde — livre pede o km e inicia; em viagem
-// sua pede o km e encerra; em uso por um colega oferece assumir. Um campo, um
-// botão. O mockup aprovado antes do código está citado em
-// docs/CONTEXTO_VIATURAS.md.
+// (`estadoDaViatura`, puro) e responde — livre inicia; em viagem sua encerra;
+// em uso por um colega oferece assumir. Sem o km, sobrou UM TOQUE: a única
+// pergunta que resta é a atividade, e ela é opcional (R270). O mockup
+// aprovado antes do código está citado em docs/CONTEXTO_VIATURAS.md.
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -26,8 +26,8 @@ import {
   useIniciarViagem, useEncerrarViagem, useViaturasProntas, RecusaDaViatura,
 } from "./data";
 import {
-  estadoDaViatura, formatarKm, lerKm, avisoDeSaida, avisoDeChegada, formatarDuracao, minutosDeViagem,
-  ultimoKmDaViatura, destinosDoDia, RAIO_CHEGADA_M,
+  estadoDaViatura, formatarDuracao, minutosDeViagem,
+  ultimaDevolucao, destinosDoDia, RAIO_CHEGADA_M,
 } from "./modelo";
 import { useChegadaPorLocalizacao } from "./useChegada";
 
@@ -36,7 +36,6 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
   const { isLight } = useTheme();
   const cz = cinzas(isLight);
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
-  const verde = isLight ? PRISMA.verde.light : PRISMA.verde.dark;
   const laranja = isLight ? PRISMA.laranja.light : PRISMA.laranja.dark;
   const textPrimary = isLight ? "#212121" : "#FFFFFF";
   const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
@@ -69,26 +68,17 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
   const destinos = useMemo(() => destinosDoDia(hoje, clientes as any, sede), [hoje, clientes, sede]);
 
   const abertaDaViatura = viatura ? abertas.find((v) => v.viatura_id === viatura.id) ?? null : null;
-  const ultimo = viatura ? ultimoKmDaViatura(ultimas, viatura.id) : null;
-  const estado = estadoDaViatura(viatura, abertaDaViatura, s.userId, ultimo?.km ?? null);
+  const ultima = viatura ? ultimaDevolucao(ultimas, viatura.id) : null;
+  const estado = estadoDaViatura(viatura, abertaDaViatura, s.userId, ultima);
 
   const chegada = useChegadaPorLocalizacao(estado.tipo === "minha", destinos);
 
-  const [kmTexto, setKmTexto] = useState("");
   const [chamadoId, setChamadoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const iniciar = useIniciarViagem();
   const encerrar = useEncerrarViagem();
   const salvando = iniciar.isPending || encerrar.isPending;
 
-  const km = lerKm(kmTexto);
-
-  const INPUT: CSSProperties = {
-    width: "100%", boxSizing: "border-box", height: 64, borderRadius: 14, padding: "0 18px",
-    background: cz.campo, border: `1px solid ${cz.divisoria}`, color: textPrimary,
-    fontFamily: FONT, fontWeight: 700, fontSize: 28, letterSpacing: "-0.01em", outline: "none",
-    fontVariantNumeric: "tabular-nums",
-  };
   const BOTAO: CSSProperties = {
     ...goldButton(), width: "100%", height: 48, borderRadius: 14, fontSize: 13,
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -111,7 +101,7 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
   );
   const linha = (rotulo: string, valor: string) => (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "8px 0", borderTop: `1px solid ${cz.divisoria}`, fontFamily: FONT, fontSize: 12.5 }}>
-      <span style={{ color: textSecondary }}>{rotulo}</span>
+      <span style={{ color: textSecondary, whiteSpace: "nowrap" }}>{rotulo}</span>
       <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{valor}</span>
     </div>
   );
@@ -126,12 +116,10 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
 
   async function aoIniciar(assumir: boolean) {
     if (!viatura) return;
-    if (km === null) { setErro("Digite o km que o painel mostra — só números."); return; }
     setErro(null);
     try {
-      const r = await iniciar.mutateAsync({ codigo: viatura.codigo, kmSaida: km, chamadoId, assumir });
-      if (r.aviso_saida) toast.warning(`Registrado — mas o km ficou abaixo do último desta viatura (${formatarKm(r.ultimo_km)}). Confira o painel; a gestão pode corrigir.`);
-      if (r.assumida_de) toast.message(`A viagem de ${nomeDe(r.assumida_de)} foi encerrada com ${formatarKm(km)} km.`);
+      const r = await iniciar.mutateAsync({ codigo: viatura.codigo, chamadoId, assumir });
+      if (r.assumida_de) toast.message(`A viagem de ${nomeDe(r.assumida_de)} foi encerrada agora.`);
       toast.success("Viagem iniciada. Boa viagem.");
       navigate({ to: "/dashboard" });
     } catch (e) { recusa(e); }
@@ -139,12 +127,10 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
 
   async function aoEncerrar() {
     if (estado.tipo !== "minha") return;
-    if (km === null) { setErro("Digite o km que o painel mostra — só números."); return; }
     setErro(null);
     try {
-      const r = await encerrar.mutateAsync({ viagemId: estado.viagem.id, kmChegada: km });
-      if (r.aviso_chegada) toast.warning("Registrado — mas o km de chegada ficou abaixo do de saída. Confira o painel; a gestão pode corrigir.");
-      toast.success(`Viagem encerrada — ${formatarKm(r.km_rodados)} km em ${formatarDuracao(r.minutos)}.`);
+      const r = await encerrar.mutateAsync({ viagemId: estado.viagem.id });
+      toast.success(`Viagem encerrada — ${formatarDuracao(r.minutos)} de deslocamento.`);
       navigate({ to: "/dashboard" });
     } catch (e) { recusa(e); }
   }
@@ -152,7 +138,9 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
   // ── as cascas: carregando · migration · desconhecida ──────────────────────
   const casca = (filho: React.ReactNode) => (
     <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16, paddingTop: 8, paddingBottom: 96, color: textPrimary }}>
-      <button onClick={() => navigate({ to: "/dashboard" })} aria-label="Voltar para a Início" style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: textSecondary, fontFamily: FONT, fontSize: 12.5, cursor: "pointer", padding: 0 }}>
+      {/* padding + margem negativa de mesmo valor: 56×19 vira 76×41 de área
+          de toque sem tirar o texto do lugar (R275 — medido a 375px) */}
+      <button onClick={() => navigate({ to: "/dashboard" })} aria-label="Voltar para a Início" style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: textSecondary, fontFamily: FONT, fontSize: 12.5, cursor: "pointer", padding: "11px 10px", margin: "-11px -10px" }}>
         <ArrowLeft size={16} /> Início
       </button>
       {filho}
@@ -184,25 +172,20 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
         {estado.tipo === "inativa" && chip(PRISMA.neutro, "Removida")}
       </div>
       <div style={{ marginTop: 12 }}>
-        {estado.tipo === "livre" && (
-          <>
-            {linha("Último registro", ultimo ? `${formatarKm(ultimo.km)} km` : "nenhum ainda")}
-            {ultimo && linha("Quem devolveu", `${nomeDe(ultimo.tecnicoId)} · ${new Date(ultimo.quando).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${hora(ultimo.quando)}`)}
-          </>
+        {/* R276: sem o km, o que o cabeçalho tem a dizer é QUEM e QUANDO. */}
+        {estado.tipo === "livre" && linha(
+          "Última saída",
+          ultima
+            ? `${nomeDe(ultima.tecnicoId)} · ${new Date(ultima.quando).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${hora(ultima.quando)}`
+            : "nenhuma ainda",
         )}
         {estado.tipo === "minha" && (
           <>
             {linha("Você saiu", `${hora(estado.viagem.saida_em)} · há ${formatarDuracao(minutosDeViagem(estado.viagem, agora))}`)}
-            {linha("Km na saída", `${formatarKm(estado.viagem.km_saida)} km`)}
             {estado.viagem.chamado_id && linha("Atividade", hoje.find((a) => a.registroId === estado.viagem.chamado_id)?.titulo ?? "vinculada")}
           </>
         )}
-        {estado.tipo === "de_outro" && (
-          <>
-            {linha("Com", `${nomeDe(estado.viagem.tecnico_id)} · desde ${hora(estado.viagem.saida_em)}`)}
-            {linha("Km na saída", `${formatarKm(estado.viagem.km_saida)} km`)}
-          </>
-        )}
+        {estado.tipo === "de_outro" && linha("Com", `${nomeDe(estado.viagem.tecnico_id)} · desde ${hora(estado.viagem.saida_em)}`)}
       </div>
     </div>
   );
@@ -226,27 +209,6 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
     );
   }
 
-  const campoKm = (dica: React.ReactNode) => (
-    <div>
-      <span style={rotuloDeSecao(isLight)}>Km no painel</span>
-      <div style={{ position: "relative", marginTop: 8 }}>
-        <input
-          inputMode="numeric"
-          pattern="[0-9.]*"
-          autoFocus
-          placeholder={estado.tipo === "livre" ? (ultimo ? formatarKm(ultimo.km) : "0") : formatarKm(estado.viagem.km_saida)}
-          value={kmTexto}
-          onChange={(e) => { setKmTexto(e.target.value); setErro(null); }}
-          onKeyDown={(e) => { if (e.key === "Enter") { if (estado.tipo === "minha") void aoEncerrar(); else void aoIniciar(estado.tipo === "de_outro"); } }}
-          aria-label="Km no painel"
-          style={INPUT}
-        />
-        <span style={{ position: "absolute", right: 18, top: 0, bottom: 0, display: "flex", alignItems: "center", fontFamily: FONT, fontSize: 12, color: textSecondary }}>km</span>
-      </div>
-      <div style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary, marginTop: 8, lineHeight: 1.5 }}>{dica}</div>
-    </div>
-  );
-
   const erroCaixa = erro && (
     <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "10px 12px", borderRadius: 12, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, color: isLight ? "#B1242E" : "#F17881", background: isLight ? "rgba(177,36,46,0.06)" : "rgba(241,120,129,0.08)", border: isLight ? "1px solid rgba(177,36,46,0.22)" : "1px solid rgba(241,120,129,0.24)" }}>
       <WifiOff size={14} style={{ flexShrink: 0, marginTop: 2 }} /> {erro}
@@ -255,15 +217,9 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
 
   // ── LIVRE: iniciar ────────────────────────────────────────────────────────
   if (estado.tipo === "livre") {
-    const avisa = km !== null && avisoDeSaida(km, ultimo?.km ?? null);
     return casca(
       <>
         {cabecalho}
-        {campoKm(ultimo
-          ? (avisa
-            ? <span style={{ color: laranja, fontWeight: 600 }}>Menor que o último registro ({formatarKm(ultimo.km)} km). Pode registrar — fica marcado para a gestão conferir.</span>
-            : <>Digite o que o painel mostra agora. O último registro foi {formatarKm(ultimo.km)} km.</>)
-          : "Digite o que o painel mostra agora.")}
         <div>
           <span style={rotuloDeSecao(isLight)}>Para qual atividade <span style={{ opacity: 0.55, fontWeight: 600 }}>(opcional)</span></span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
@@ -293,8 +249,6 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
 
   // ── MINHA: encerrar ───────────────────────────────────────────────────────
   if (estado.tipo === "minha") {
-    const rodados = km !== null ? km - estado.viagem.km_saida : null;
-    const avisa = km !== null && avisoDeChegada(km, estado.viagem.km_saida);
     return casca(
       <>
         {cabecalho}
@@ -303,15 +257,10 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
             <ShieldAlert size={18} color={gold} style={{ flexShrink: 0 }} />
             <div style={{ fontFamily: FONT, fontSize: 13, lineHeight: 1.4 }}>
               <b style={{ fontWeight: 600 }}>Você chegou a {chegada.chegou.nome}?</b>
-              <div style={{ fontSize: 12, color: textSecondary }}>Há mais de 2 minutos a menos de {RAIO_CHEGADA_M} m. Digite o km e encerre.</div>
+              <div style={{ fontSize: 12, color: textSecondary }}>Há mais de 2 minutos a menos de {RAIO_CHEGADA_M} m daqui.</div>
             </div>
           </div>
         )}
-        {campoKm(avisa
-          ? <span style={{ color: laranja, fontWeight: 600 }}>Menor que o km de saída ({formatarKm(estado.viagem.km_saida)} km). Pode registrar — fica marcado para a gestão conferir.</span>
-          : rodados !== null
-            ? <span style={{ color: verde, fontWeight: 600 }}>+{formatarKm(rodados)} km nesta viagem</span>
-            : "Digite o que o painel mostra agora.")}
         {erroCaixa}
         <button onClick={() => void aoEncerrar()} disabled={salvando} style={BOTAO}>
           {salvando ? "Registrando…" : "Encerrar viagem ✓"}
@@ -327,9 +276,8 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
       {cabecalho}
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 14px", borderRadius: 12, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, background: misturar(laranja, cz.superficie, 0.88), border: `1px solid ${misturar(laranja, cz.superficie, 0.6)}` }}>
         <ShieldAlert size={16} color={laranja} style={{ flexShrink: 0, marginTop: 2 }} />
-        <span>{nomeDe(estado.viagem.tecnico_id)} não encerrou a viagem. Se o carro está com você, <b style={{ fontWeight: 600 }}>assuma</b>: a viagem dele encerra com o km que você digitar, e a sua começa dali.</span>
+        <span>{nomeDe(estado.viagem.tecnico_id)} não encerrou a viagem. Se o carro está com você, <b style={{ fontWeight: 600 }}>assuma</b>: a viagem dele encerra agora, e a sua começa daqui.</span>
       </div>
-      {campoKm("Digite o que o painel mostra agora.")}
       {erroCaixa}
       <button onClick={() => void aoIniciar(true)} disabled={salvando} style={BOTAO}>
         {salvando ? "Registrando…" : "Assumir e iniciar viagem →"}

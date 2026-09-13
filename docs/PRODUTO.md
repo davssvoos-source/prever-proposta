@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R275 (46)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R276 (47)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5047,8 +5047,10 @@ adaptado."
   x, do cliente x ao cliente y, do cliente y ao cliente z, do cliente z a
   sede...")*
 
-- **R268** — **O km é digitado nas duas pontas; o rodado é calculado; km fora
-  de ordem passa com aviso, não bloqueia.** Km rodados = chegada − saída,
+- **R268** — ~~**O km é digitado nas duas pontas; o rodado é calculado; km
+  fora de ordem passa com aviso, não bloqueia.**~~ **REVOGADA no mesmo dia
+  pela [R276](#r276): o km saiu do sistema.** Fica registrada porque a U134
+  rodou com ela de pé, e a U136 é o que a desfaz no banco. O texto original: Km rodados = chegada − saída,
   sempre calculado. O km de saída deveria ser ≥ ao último de chegada da mesma
   viatura; quando não é, a tela avisa ("o último registro desta viatura foi
   100.500 km — confira o painel"), a viagem é gravada, e a folha a marca com
@@ -5061,7 +5063,8 @@ adaptado."
   esqueceu.** Ao abrir `…/viatura/<código>`: **livre** → pede o km e inicia;
   **em viagem sua** → pede o km (mostrando "+N km nesta viagem") e encerra;
   **em uso por um colega** → oferece **assumir**: a viagem dele é encerrada
-  com o km que eu digito, marcada "assumida por Fulano às HH:MM", e a minha
+  no instante do meu bipe (R276; era "com o km que eu digito"), marcada
+  "assumida por Fulano às HH:MM", e a minha
   começa dali. Duas invariantes no banco: **um carro tem no máximo uma viagem
   aberta**, e **um técnico tem no máximo uma viagem aberta**. Quem não é
   técnico e bipa vê o estado do carro e um atalho para a folha.
@@ -5136,3 +5139,24 @@ adaptado."
   13/09/2026: "Além de realizar testes de verificação da funcionalidade do
   sistema, eu quero que você verifique e corrija margens, espaçamentos,
   alinhamentos...")*
+
+- **R276** — **O km saiu: a viatura mapeia QUEM, QUANDO e ONDE — nada de
+  odômetro.** O técnico bipa a etiqueta e a viagem começa; bipa de novo e ela
+  encerra. **Não há campo de quilometragem em lugar nenhum** — nem ao iniciar,
+  nem ao encerrar, nem na folha do gestor. Com o km foram embora o "rodado", os
+  dois avisos de km fora de ordem da R268 (que só existiam por causa dele) e a
+  correção de km na folha; o que a gestão ainda corrige é a viagem que o técnico
+  **deixou aberta**, e encerrá-la fica registrado como "pela gestão", com quem e
+  quando. O que a viagem responde passou a ser exatamente três coisas: **com quem
+  estava o carro** (o técnico), **quando** (saída, chegada e o tempo de
+  deslocamento, calculado) e **onde** (a atividade opcional da R270 — o cliente
+  dela é o destino do trecho — mais a chegada por localização da R273/R274).
+  É a mesma decisão da R274 sobre abastecimento: **o que já é controlado no QAP
+  ERP não se duplica aqui**. Revoga a R268, e muda o "assumir" da R269 (a viagem
+  do colega encerra no instante do bipe, não com um km digitado) e a folha da
+  R272 (sem as duas colunas de km e sem a de rodados). No banco é a U136: as
+  quatro colunas de km saem de `viagens_viatura` e as três portas são recriadas
+  sem elas. *(Davi, 13/09/2026, depois de ver a primeira viagem registrada:
+  "Remova a inserção do KM, mudei de ideia, não vamos controlar isso no nosso
+  sistema. Já é controlado no ERP e não tem necessidade de passar isso pro nosso
+  sistema. Quero apenas mapear local e data e com quem estava a viatura.")*

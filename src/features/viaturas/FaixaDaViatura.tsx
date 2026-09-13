@@ -18,7 +18,7 @@ import type { Atividade } from "@/features/atividades/modelo";
 import type { Sessao } from "@/features/home/data";
 import { useClientes } from "@/features/clientes/data";
 import { useLocaisDeReferencia, useViagensAbertas, useViaturas } from "./data";
-import { destinosDoDia, formatarKm } from "./modelo";
+import { destinosDoDia } from "./modelo";
 import { useChegadaPorLocalizacao } from "./useChegada";
 
 export function FaixaDaViatura({ sessao, atividadesDeHoje }: { sessao: Sessao; atividadesDeHoje: readonly Atividade[] }) {
@@ -83,8 +83,8 @@ export function FaixaDaViatura({ sessao, atividadesDeHoje }: { sessao: Sessao; a
         </div>
         <div style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, marginTop: 2 }}>
           {chegou
-            ? `Há mais de 2 minutos no local · saiu às ${hora} com ${formatarKm(minha.km_saida)} km`
-            : `desde ${hora} · saiu com ${formatarKm(minha.km_saida)} km`}
+            ? `Há mais de 2 minutos no local · você saiu às ${hora}`
+            : `desde ${hora}`}
         </div>
       </div>
       <span style={{ flexShrink: 0, height: 36, padding: "0 14px", borderRadius: 12, background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#0E0E0E", fontFamily: FONT, fontWeight: 700, fontSize: 12, display: "flex", alignItems: "center" }}>

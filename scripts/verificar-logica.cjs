@@ -13525,7 +13525,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // U134 (+1 arquivo, +9 ocorrências, +2 policies): a escrita de `viaturas` e
        // de `locais_de_referencia` é da gestão (duas policies FOR ALL), e a porta
        // `viatura_corrigir_viagem` exige is_gestor — a correção da folha é dela.
-       [true, false, 36, 153, 54]);
+       // U136 (+1 arquivo, +4 ocorrências, +0 policy): a R276 tirou o km e
+       // REESCREVEU as três portas, então `viatura_corrigir_viagem` volta a citar
+       // is_gestor no arquivo novo (mais o pré-voo que exige a função e a
+       // conferência que prova o gate). Nenhuma policy nova: a escrita de viagem
+       // continua não existindo pela tabela. O alcance da P51 não cresceu — é a
+       // MESMA decisão de acesso, reescrita.
+       [true, false, 37, 157, 54]);
   }
 }
 
@@ -21307,7 +21313,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R266–R273: as oito regras das viaturas existem, cada uma com a frase do Davi — o trecho como unidade, o km que passa com aviso, o cadastro no Painel Administrativo e os 2 minutos da chegada por localização',
      [['R266', 'R267', 'R268', 'R269', 'R270', 'R271', 'R272', 'R273'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod266)),
       /Cada trecho é um trecho, da sede ao cliente/.test(prod266),
-      /Deixa passar com aviso/.test(prod266),
+      /Deixa passar com aviso/.test(prod266),   // a R268 fica no documento, marcada como revogada pela R276
       /Painel Administrativo para cadastrar viaturas e remover viaturas/.test(prod266.replace(/\s+/g, ' ')),
       /mais de 2 minutos num raio próximo do cliente/.test(prod266.replace(/\s+/g, ' ')),
       /Por enquanto[\s\S]{0,40}somente o técnico/.test(prod266)],
@@ -21315,9 +21321,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // O que o contexto FIXA e que o código da U134 tem de honrar — escrito aqui
   // para a implementação nascer contra estas frases, não contra a memória.
-  eq('R267/R268/R269: o contexto diz que km rodado e duração são CALCULADOS, que o km fora de ordem NÃO bloqueia, que um carro e um técnico têm no máximo UMA viagem aberta, e que a chegada por localização SUGERE e nunca encerra',
-     [/km rodado e tempo\s*\n?\s*de deslocamento são \*\*calculados\*\*, nunca digitados/.test(ctx266.replace(/\n> /g, ' ').replace(/\n/g, ' ')) || /calculados\*\*, nunca digitados/.test(ctx266),
-      /não bloqueia\*\*/.test(ctx266),
+  eq('R267/R269/R276: o contexto diz que o TEMPO é calculado e nunca digitado, que o km NÃO é assunto deste sistema (§2.6 revogada), que um carro e um técnico têm no máximo UMA viagem aberta, e que a chegada por localização SUGERE e nunca encerra',
+     [/deslocamento é \*\*calculado\*\*, nunca digitado/.test(ctx266.replace(/\n> /g, ' ').replace(/\n/g, ' ')),
+      /### 2\.6 O km — REVOGADO no mesmo dia \(R276\)/.test(ctx266) && /\*\*Nada disso existe\.\*\*/.test(ctx266),
       /um carro tem no\s*\n?máximo uma viagem aberta\*\*/.test(ctx266) || /no máximo uma viagem aberta/.test(ctx266),
       /SUGERE, nunca encerra/.test(ctx266) || /\*\*sugere\*\* encerrar/.test(ctx266)],
      [true, true, true, true]);
@@ -21342,30 +21348,32 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const viatura = { id: 'x', codigo: 'fiorino-1', placa: 'ABC-1D23', apelido: 'Fiorino branca', ativa: true, desativada_em: null };
   const viagem = (extra) => ({
-    id: 'v', viatura_id: 'x', tecnico_id: 'eu', chamado_id: null, saida_em: '2026-09-14T11:12:00Z', km_saida: 100500,
-    chegada_em: null, km_chegada: null, aviso_saida: false, aviso_chegada: false, encerramento: 'aberta',
+    id: 'v', viatura_id: 'x', tecnico_id: 'eu', chamado_id: null, saida_em: '2026-09-14T11:12:00Z',
+    chegada_em: null, encerramento: 'aberta',
     encerrada_por: null, corrigida_por: null, corrigida_em: null, observacao: null, ...extra,
   });
 
+  const devolucao = { quando: '2026-09-13T20:00:00Z', tecnicoId: 'b' };
   eq('R269 CRÍTICO: a tela decide o estado sozinha — desconhecida sem viatura, inativa quando removida, livre sem viagem aberta, MINHA quando a aberta é do técnico que bipou, DE OUTRO quando não é',
      [VM.estadoDaViatura(null, null, 'eu', null).tipo,
       VM.estadoDaViatura({ ...viatura, ativa: false }, null, 'eu', null).tipo,
-      VM.estadoDaViatura(viatura, null, 'eu', 100500).tipo,
+      VM.estadoDaViatura(viatura, null, 'eu', devolucao).tipo,
       VM.estadoDaViatura(viatura, viagem({}), 'eu', null).tipo,
       VM.estadoDaViatura(viatura, viagem({ tecnico_id: 'outro' }), 'eu', null).tipo,
-      VM.estadoDaViatura(viatura, null, 'eu', 100500).ultimoKm],
-     ['desconhecida', 'inativa', 'livre', 'minha', 'de_outro', 100500]);
+      VM.estadoDaViatura(viatura, null, 'eu', devolucao).ultima],
+     ['desconhecida', 'inativa', 'livre', 'minha', 'de_outro', devolucao]);
 
-  eq('R268: o km lido do que a pessoa digita — com ou sem ponto de milhar, nunca negativo, nunca lixo — e formatado como o painel mostra',
-     [VM.lerKm('100.500'), VM.lerKm('100 500'), VM.lerKm(' 100500 '), VM.lerKm('abc'), VM.lerKm('-5'), VM.lerKm(''), VM.lerKm('12345678'),
-      VM.formatarKm(100500), VM.formatarKm(0), VM.formatarKm(null)],
-     [100500, 100500, 100500, null, null, null, null, '100.500', '0', '—']);
-
-  eq('R268 CRÍTICO: km fora de ordem é AVISO (a função só diz que avisa; ninguém bloqueia) — saída abaixo do último, chegada abaixo da saída; e km rodado é chegada − saída, nunca negativo, nulo enquanto aberta',
-     [VM.avisoDeSaida(100480, 100500), VM.avisoDeSaida(100500, 100500), VM.avisoDeSaida(5, null),
-      VM.avisoDeChegada(100490, 100500), VM.avisoDeChegada(100523, 100500),
-      VM.kmRodados({ km_saida: 100500, km_chegada: 100523 }), VM.kmRodados({ km_saida: 100500, km_chegada: null }), VM.kmRodados({ km_saida: 100500, km_chegada: 100490 })],
-     [true, false, false, true, false, 23, null, 0]);
+  // R276 (Davi, 13/09/2026): "Remova a inserção do KM […] Quero apenas mapear
+  // local e data e com quem estava a viatura." O km tinha SEIS funções puras, um
+  // campo na tela, três colunas na folha e quatro colunas no banco. A asserção
+  // que sobra é a que impede a volta silenciosa: nada de km no domínio.
+  eq('R276 CRÍTICO: o km SAIU do sistema — nenhuma das seis funções do km existe no modelo, e nem a tela, nem a faixa, nem a folha o mencionam (é controlado no QAP ERP)',
+     [typeof VM.lerKm, typeof VM.formatarKm, typeof VM.avisoDeSaida, typeof VM.avisoDeChegada,
+      typeof VM.kmRodados, typeof VM.ultimoKmDaViatura, typeof VM.ultimaDevolucao,
+      /km_saida|km_chegada|formatarKm|lerKm/.test(telaV), /km_saida|formatarKm/.test(faixaV),
+      /km_saida|km_chegada|kmRodados|formatarKm|lerKm/.test(painelV), /km_saida|km_chegada/.test(dadosV)],
+     ['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'function',
+      false, false, false, false]);
 
   eq('R272: a duração é chegada − saída (ou até agora, se aberta), e se escreve como se fala — "1h04", "23 min"',
      [VM.minutosDeViagem(viagem({ chegada_em: '2026-09-14T12:16:00Z' }), new Date('2026-09-14T20:00:00Z')),
@@ -21375,8 +21383,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // a permanência (D7): entre a chegada de um trecho e a saída do seguinte, do MESMO técnico, no MESMO dia
   {
-    const a = viagem({ id: 'a', chegada_em: '2026-09-14T12:16:00Z', km_chegada: 100523, encerramento: 'normal' });
-    const b = viagem({ id: 'b', saida_em: '2026-09-14T13:00:00Z', km_saida: 100523 });
+    const a = viagem({ id: 'a', chegada_em: '2026-09-14T12:16:00Z', encerramento: 'normal' });
+    const b = viagem({ id: 'b', saida_em: '2026-09-14T13:00:00Z' });
     const outro = viagem({ id: 'c', tecnico_id: 'outro', saida_em: '2026-09-14T12:30:00Z' });
     const outroDia = viagem({ id: 'd', saida_em: '2026-09-15T13:00:00Z' });
     eq('R267/D7: a permanência é DERIVADA — 44 minutos entre a chegada do trecho A e a saída do B; outro técnico e outro dia não formam par',
@@ -21388,18 +21396,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // a folha: quem conta é quem filtra
   {
     const agoraF = new Date('2026-09-14T15:00:00Z');
-    const v1 = viagem({ id: '1', tecnico_id: 'a', viatura_id: 'x', saida_em: '2026-09-14T11:12:00Z', chegada_em: '2026-09-14T12:16:00Z', km_saida: 100500, km_chegada: 100523, encerramento: 'normal' });
-    const v2 = viagem({ id: '2', tecnico_id: 'b', viatura_id: 'x', saida_em: '2026-09-14T14:00:00Z', km_saida: 100523 });
-    const v3 = viagem({ id: '3', tecnico_id: 'a', viatura_id: 'y', saida_em: '2026-08-20T11:00:00Z', chegada_em: '2026-08-20T12:00:00Z', km_saida: 500, km_chegada: 560, encerramento: 'normal' });
+    const v1 = viagem({ id: '1', tecnico_id: 'a', viatura_id: 'x', saida_em: '2026-09-14T11:12:00Z', chegada_em: '2026-09-14T12:16:00Z', encerramento: 'normal' });
+    const v2 = viagem({ id: '2', tecnico_id: 'b', viatura_id: 'x', saida_em: '2026-09-14T14:00:00Z' });
+    const v3 = viagem({ id: '3', tecnico_id: 'a', viatura_id: 'y', saida_em: '2026-08-20T11:00:00Z', chegada_em: '2026-08-20T12:00:00Z', encerramento: 'normal' });
     const setembro = VM.filtrarFolha([v3, v1, v2], { competencia: '2026-09', viaturaId: null, tecnicoId: null });
-    eq('R272 CRÍTICO: a folha filtra pela competência da SAÍDA (dia local), a mais recente em cima, e o resumo sai da MESMA lista — 2 viagens, 1 aberta, 23 km, 64 + 60 minutos',
+    eq('R272/R276 CRÍTICO: a folha filtra pela competência da SAÍDA (dia local), a mais recente em cima, e o resumo sai da MESMA lista — 2 viagens, 1 aberta, 64 + 60 minutos (sem km desde a R276), e os totais ordenam por TEMPO',
        [setembro.map((v) => v.id), VM.resumoDaFolha(setembro, agoraF),
         VM.filtrarFolha([v3, v1, v2], { competencia: '2026-09', viaturaId: 'x', tecnicoId: 'a' }).map((v) => v.id),
-        VM.totaisPor(setembro, 'tecnico_id', agoraF).map((t) => `${t.id}:${t.resumo.km}`)],
-       [['2', '1'], { viagens: 2, abertas: 1, km: 23, minutos: 124, avisos: 0 }, ['1'], ['a:23', 'b:0']]);
-    eq('R268: o último km da viatura é o da chegada MAIS RECENTE, com quem devolveu e quando',
-       VM.ultimoKmDaViatura([v1, viagem({ id: '0', viatura_id: 'x', chegada_em: '2026-09-13T20:00:00Z', km_chegada: 100500, tecnico_id: 'b', encerramento: 'normal' })], 'x'),
-       { km: 100523, quando: '2026-09-14T12:16:00Z', tecnicoId: 'a' });
+        VM.totaisPor(setembro, 'tecnico_id', agoraF).map((t) => `${t.id}:${t.resumo.minutos}`)],
+       [['2', '1'], { viagens: 2, abertas: 1, minutos: 124, avisos: 0 }, ['1'], ['a:64', 'b:60']]);
+    eq('R276: a última DEVOLUÇÃO da viatura é a da chegada mais recente — quem estava com o carro e até quando (o km que morava aqui saiu)',
+       VM.ultimaDevolucao([v1, viagem({ id: '0', viatura_id: 'x', chegada_em: '2026-09-13T20:00:00Z', tecnico_id: 'b', encerramento: 'normal' })], 'x'),
+       { quando: '2026-09-14T12:16:00Z', tecnicoId: 'a' });
   }
 
   eq('R271: o código da etiqueta é sugerido do apelido (só letras, números e hífen), e o gêmeo puro do CHECK recusa antes do banco',
@@ -21458,7 +21466,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [false, false, true, true, true, false, true]);
 
   eq('R266/R269/R273: a tela da etiqueta decide pelo modelo puro, oferece assumir com o código P0005 da porta, só ouve o GPS na viagem que é DELA, e as rotas /viatura e /viatura/$codigo existem',
-     [/estadoDaViatura\(viatura, abertaDaViatura, s\.userId, ultimo\?\.km \?\? null\)/.test(telaV),
+     [/estadoDaViatura\(viatura, abertaDaViatura, s\.userId, ultima\)/.test(telaV),
       /useChegadaPorLocalizacao\(estado\.tipo === "minha", destinos\)/.test(telaV),
       /Assumir e iniciar viagem/.test(telaV), /aoIniciar\(true\)/.test(telaV),
       fsV.existsSync('src/routes/_authenticated/viatura.$codigo.tsx'), fsV.existsSync('src/routes/_authenticated/viatura.index.tsx'),
@@ -21486,15 +21494,56 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       painelV.includes('chip(PRISMA.laranja,'), painelV.includes('chip(PRISMA.verde, "ativa")')],
      [true, true, false, false, true, true, true, true]);
 
-  eq('R275: a aba Viaturas tem grade PRÓPRIA (`.viaturas-colunas`, formulário de 360px | resto) e não a do painel de usuários — e os dois km da folha são UMA coluna só',
+  eq('R275/R276: a aba Viaturas tem grade PRÓPRIA (`.viaturas-colunas`, formulário de 360px | resto) e não a do painel de usuários — e a folha tem SETE colunas, sem as duas de km e sem a de rodados',
      [cssV.includes('.viaturas-colunas {'), cssV.includes('.viaturas-colunas { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); }'),
       painelV.includes('className="viaturas-colunas"'), painelV.includes('className="admin-colunas"'),
-      painelV.includes('["Dia", "Viatura", "Técnico", "Saída → chegada", "Km", "Rodados", "Tempo", "Destino", ""]')],
+      painelV.includes('["Dia", "Viatura", "Técnico", "Saída → chegada", "Tempo", "Destino", ""]')],
      [true, true, true, false, true]);
+
+  // A tela da etiqueta é usada DE PÉ, na rua, com uma mão. O "voltar" tinha
+  // 19px de altura de toque; o piso da casa é 40. A correção é padding mais
+  // margem negativa de mesmo valor — cresce a área sem mover o texto.
+  eq('R275: o voltar da tela da etiqueta tem área de toque de verdade (padding com margem negativa de mesmo valor), e não o `padding: 0` que dava 19px de altura',
+     [telaV.includes('padding: "11px 10px", margin: "-11px -10px"'),
+      /aria-label="Voltar para a Início"[^>]*padding: 0 \}/.test(telaV)],
+     [true, false]);
 
   eq('R239/R275: as quatro telas do técnico espaçam pela régua da casa — 10 e 14 não são números desta casa (8 · 12 · 16 · 24)',
      [telaV, faixaV, painelV, inicioV].map((a) => /gap: 10\b|gap: 14\b|marginTop: 14\b|marginTop: 10\b/.test(a)),
      [false, false, false, false]);
+
+  const mig136 = fsV.existsSync('supabase/migrations/20261001090000_u136_viaturas_sem_km.sql')
+    ? fsV.readFileSync('supabase/migrations/20261001090000_u136_viaturas_sem_km.sql', 'utf8') : '';
+
+  // As portas mudaram de ASSINATURA. Se a antiga sobrevivesse, o PostgREST
+  // escolheria a sobrecarga pelo nome dos argumentos que o app mandasse — e a
+  // viagem nasceria pela função errada, sem ninguém ver. Por isso o DROP
+  // explícito das três antigas é item de asserção, não detalhe de estilo.
+  eq('U136 CRÍTICO (R276): a migration DERRUBA as três portas antigas pela assinatura exata, apaga as quatro colunas de km e o CHECK que as amarrava, recria as três portas sem km com o mesmo gate (técnico inicia/encerra, gestão corrige), exige a U134 e a U132 no pré-voo e termina o portão em ROLLBACK',
+     [/DROP FUNCTION IF EXISTS public\.viatura_iniciar_viagem\(text, integer, uuid, boolean\);/.test(mig136),
+      /DROP FUNCTION IF EXISTS public\.viatura_encerrar_viagem\(uuid, integer\);/.test(mig136),
+      /DROP FUNCTION IF EXISTS public\.viatura_corrigir_viagem\(uuid, integer, integer, timestamptz, text\);/.test(mig136),
+      (mig136.match(/DROP COLUMN IF EXISTS (km_saida|km_chegada|aviso_saida|aviso_chegada);/g) ?? []).length,
+      /DROP CONSTRAINT IF EXISTS viagens_chegada_completa;/.test(mig136),
+      /CREATE OR REPLACE FUNCTION public\.viatura_iniciar_viagem\(\s*\n\s*_codigo text,\s*\n\s*_chamado_id uuid DEFAULT NULL,/.test(mig136),
+      /CREATE OR REPLACE FUNCTION public\.viatura_encerrar_viagem\(_viagem_id uuid\)/.test(mig136),
+      /CREATE OR REPLACE FUNCTION public\.viatura_corrigir_viagem\(\s*\n\s*_viagem_id uuid,\s*\n\s*_chegada_em timestamptz DEFAULT NULL,/.test(mig136),
+      (mig136.match(/IF NOT public\.eh_tecnico\(v_uid\) THEN/g) ?? []).length,
+      /NOT public\.is_gestor\(v_uid\)/.test(mig136),
+      /U136 PRÉ-VOO/.test(mig136), /viagens_viatura.\) IS NULL THEN/.test(mig136), /eh_tecnico\(uuid\)'\) IS NULL THEN/.test(mig136),
+      /\nROLLBACK;/.test(mig136), />>> OLHAR <<</.test(mig136), /DESFAZER/.test(mig136),
+      /CREATE POLICY/.test(mig136)],
+     [true, true, true, 4, true, true, true, true, 2, true, true, true, true, true, true, true, false]);
+
+  // R276: "assumir" perdeu o km com que o colega era encerrado — agora é o
+  // instante. E a correção da gestão só carimba `gestor` quando é ELA que
+  // está fechando: uma observação numa viagem já encerrada não reescreve
+  // quem a encerrou.
+  eq('U136 (R276): assumir encerra a viagem do colega AGORA (sem km), e corrigir só vira encerramento "gestor" quando a viagem estava aberta',
+     [/SET chegada_em = now\(\), encerramento = 'assumida', encerrada_por = v_uid/.test(mig136),
+      /encerramento = CASE WHEN v\.chegada_em IS NULL AND n_chegada_em IS NOT NULL THEN 'gestor' ELSE v\.encerramento END/.test(mig136),
+      /corrigida_por = v_uid/.test(mig136), /corrigida_em  = now\(\)/.test(mig136)],
+     [true, true, true, true]);
 
   eq('R266/R271: a Início do técnico tem a faixa da viatura, e o Administrativo tem a aba Viaturas com cadastro, sede e folha',
      [/<FaixaDaViatura sessao=\{sessao\} atividadesDeHoje=\{hoje\} \/>/.test(inicioV),

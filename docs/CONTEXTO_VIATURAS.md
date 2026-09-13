@@ -20,18 +20,26 @@ atividades). O texto dele está transcrito na íntegra na seção 1; o resto é 
 leitura estruturada que o sistema segue, as decisões que o assistente tomou
 onde o texto admitia duas leituras, e o que ainda está em aberto.
 
-As regras de produto que saíram daqui são a **R266 a R274** em
-`docs/PRODUTO.md`. Este documento e as regras são a **U133** em
+As regras de produto que saíram daqui são a **R266 a R274**, mais a **R276**,
+em `docs/PRODUTO.md`. Este documento e as regras são a **U133** em
 `docs/PLANO_UNIFICACAO.md`; a implementação (banco, tela do técnico, aba do
 Administrativo, a chegada por localização) é a **U134** — construída em
 13/09/2026, depois de o Davi responder as Q24–Q27 (§6). O mockup aprovado antes do código está em
 `https://claude.ai/code/artifact/7a301e0f-95f1-4d88-a9fa-fcd2daed1ec4`.
 
+> **A mudança do mesmo dia (R276, U136).** Depois de ver a primeira viagem
+> registrada, o Davi tirou o **km** do sistema: "Remova a inserção do KM […]
+> Quero apenas mapear local e data e com quem estava a viatura." Tudo o que
+> este documento diz sobre quilometragem — e a §2.6 inteira — está **revogado**;
+> o que valeu ficou marcado onde estava, porque a U134 rodou com aquelas regras
+> de pé e a U136 é o que as desfaz no banco.
+
 > **Uma frase para guardar:** a etiqueta NFC no carro guarda um **endereço**;
 > bipar abre a tela já sabendo de que carro se trata, e a tela decide sozinha
-> se é hora de **iniciar** ou de **encerrar** um trecho — só pede o que falta,
-> que é o km do painel. Cada deslocamento é **um trecho**; km rodado e tempo
-> de deslocamento são **calculados**, nunca digitados.
+> se é hora de **iniciar** ou de **encerrar** um trecho — e, desde a R276, não
+> pede mais nada: é **um toque**. Cada deslocamento é **um trecho**; o tempo de
+> deslocamento é **calculado**, nunca digitado; e a viagem responde três
+> perguntas — **com quem** estava o carro, **quando**, e **para onde**.
 
 ---
 
@@ -83,11 +91,11 @@ km digitado é menor que o último registrado; (4) quem dirige além do técnico
 
 ### 2.1 O objetivo, em uma linha
 
-**Quem usou qual carro, em que dia — e quanto rodou, e quanto tempo levou em
-cada deslocamento.** O dado nasce no gesto do técnico (bipar, digitar o km)
-e é lido pelo gestor numa folha. Nada é digitado duas vezes: km rodado e
-tempo de deslocamento são calculados a partir do que foi registrado na saída
-e na chegada.
+**Quem usou qual carro, em que dia, para onde — e quanto tempo levou em cada
+deslocamento.** O dado nasce no gesto do técnico (bipar) e é lido pelo gestor
+numa folha. Nada é digitado: o tempo de deslocamento é calculado entre a saída
+e a chegada, e a quilometragem **não é assunto deste sistema** (R276 — é do
+QAP ERP).
 
 ### 2.2 Quem usa
 
@@ -108,9 +116,9 @@ o endereço — no app Prever, quando o APK registrar o link (etapa 2), ou no
 Chrome, já logado, hoje.
 
 O gesto é o mesmo nas duas pontas: **bipar**. A tela que abre já sabe de que
-carro se trata e **decide sozinha o estado** (§2.5): livre → pede o km e
-inicia; em viagem sua → pede o km e encerra. O técnico digita **uma coisa**:
-o km que o painel mostra.
+carro se trata e **decide sozinha o estado** (§2.5): livre → inicia; em viagem
+sua → encerra. Desde a R276 o técnico não digita nada: é **um toque**. A única
+pergunta que sobrou é a atividade, e ela é **opcional** (§2.7).
 
 A etiqueta é um **atalho, não uma exigência**: a mesma tela abre pela Início
 do técnico (a faixa "Você está com a Fiorino…" enquanto há viagem aberta; um
@@ -122,8 +130,8 @@ sem NFC, ou quando a pessoa esqueceu de bipar ao sair.
 > "Cada trecho é um trecho, da sede ao cliente x, do cliente x ao cliente y,
 > do cliente y ao cliente z, do cliente z a sede..."
 
-Cada deslocamento é **uma viagem** com saída (instante, km, quem, qual carro)
-e chegada (instante, km). A ida e a volta são trechos diferentes; três
+Cada deslocamento é **uma viagem** com saída (instante, quem, qual carro) e
+chegada (instante). A ida e a volta são trechos diferentes; três
 clientes num dia são quatro trechos. A cadeia dos trechos do dia reconstrói
 a rota, e o intervalo **entre** a chegada de um trecho e a saída do seguinte
 é o tempo em que o técnico esteve no cliente (a **permanência**, derivada —
@@ -135,53 +143,64 @@ O que a viagem registra:
 |---|---|---|
 | viatura | a etiqueta (ou a escolha na lista) | na saída |
 | técnico | a sessão | na saída |
-| km de saída | o técnico digita | na saída |
 | saída em | o relógio do servidor | na saída |
 | atividade (opcional) | o técnico escolhe entre as dele de hoje | na saída |
-| km de chegada | o técnico digita | na chegada |
 | chegada em | o relógio do servidor | na chegada |
-| **km rodados** | **calculado**: chegada − saída | — |
 | **duração** | **calculado**: chegada − saída | — |
-| aviso de km | o sistema marca (§2.6) | na saída |
-| encerramento | normal · assumida por outro · corrigida pelo gestor | — |
+| encerramento | normal · assumida por outro · encerrada pela gestão | — |
 
 ### 2.5 A tela decide o estado
 
 Ao abrir `…/viatura/<código>`, uma de três coisas:
 
-1. **Livre** — nenhuma viagem aberta nesse carro. A tela mostra o carro, o
-   último km registrado (e quem devolveu, quando), pede o **km no painel**,
-   oferece a **atividade** (opcional) e tem um botão: **Iniciar viagem**.
+1. **Livre** — nenhuma viagem aberta nesse carro. A tela mostra o carro, a
+   **última saída** (quem estava com ele e quando devolveu), oferece a
+   **atividade** (opcional) e tem um botão: **Iniciar viagem**.
 2. **Em viagem — sua** — há uma viagem aberta nesse carro e é do técnico que
-   bipou. A tela mostra a saída (hora, km, atividade), pede o **km no
-   painel** — e enquanto ele digita mostra **"+N km nesta viagem"** — e tem um
+   bipou. A tela mostra a saída (hora, há quanto tempo, atividade) e tem um
    botão: **Encerrar viagem**.
 3. **Em uso por um colega** — há uma viagem aberta nesse carro e é de outra
    pessoa. É o caso real de quem esqueceu de encerrar. A tela diz com quem e
    desde quando, e oferece **Assumir e iniciar viagem**: a viagem do colega é
-   encerrada com o km que o técnico digitar, marcada **"assumida por Fulano
-   às HH:MM"**, e a dele começa dali. Ninguém fica com o dia travado por
-   causa do esquecimento de outro; a folha mostra quem assumiu de quem.
+   encerrada **no instante do bipe**, marcada **"assumida por Fulano às
+   HH:MM"**, e a dele começa daqui. Ninguém fica com o dia travado por causa
+   do esquecimento de outro; a folha mostra quem assumiu de quem.
+
+Desde a R276 os três casos são **um toque** — nenhum deles pede um número.
 
 Duas invariantes sustentam isso, e o banco as garante: **um carro tem no
 máximo uma viagem aberta**, e **um técnico tem no máximo uma viagem aberta**
 (não se dirige dois carros ao mesmo tempo).
 
-### 2.6 O km — e o aviso, não o bloqueio
+### 2.6 O km — REVOGADO no mesmo dia (R276)
 
-> "Deixa passar com aviso"
+> "Remova a inserção do KM, mudei de ideia, não vamos controlar isso no nosso
+> sistema. Já é controlado no ERP e não tem necessidade de passar isso pro
+> nosso sistema. Quero apenas mapear local e data e com quem estava a viatura."
 
-O km de saída deveria ser maior ou igual ao último km de chegada registrado
-para aquele carro — o odômetro só anda para a frente. Quando não é, o
-sistema **não bloqueia**: a tela avisa ("O último registro desta viatura foi
-100.500 km — confira o painel"), a viagem é gravada, e a folha do gestor a
-marca com **"km abaixo do anterior — conferir"**. O km de chegada menor que
-o de saída da mesma viagem também passa com o mesmo aviso e a mesma marca.
+Esta seção descrevia o km digitado nas duas pontas e a regra do "passa com
+aviso" (R268). **Nada disso existe.** O Davi tirou o km horas depois de a U134
+entrar no ar, pela mesma razão que tirou o abastecimento na R274: **é do QAP
+ERP, e o que já é controlado lá não se duplica aqui**.
 
-O **gestor corrige na folha**: quem corrigiu e quando ficam registrados na
-própria viagem. É a mesma decisão da R262 (a data de conclusão corrigível,
-com rastro): o dado errado é corrigido por quem tem a caneta, e a correção
-não apaga o que foi digitado antes.
+O que ficou no lugar, e é o que a viagem responde:
+
+| Pergunta | De onde sai |
+|---|---|
+| Com quem estava o carro | `tecnico_id` — quem bipou |
+| Quando | `saida_em`, `chegada_em`, e o tempo entre eles (calculado) |
+| Para onde | a atividade opcional (§2.7): o cliente dela é o destino. E a chegada por localização (§2.10) |
+
+A correção da gestão continua existindo, com outro assunto: a viagem que o
+técnico **deixou aberta**. A gestão encerra pela folha, e fica registrado
+"encerrada pela gestão", com quem e quando — a mesma decisão da R262 (dado
+errado se corrige com rastro, não se impede).
+
+No banco é a **U136**: as quatro colunas (`km_saida`, `km_chegada`,
+`aviso_saida`, `aviso_chegada`) saem de `viagens_viatura`, o CHECK que
+amarrava chegada a km de chegada sai junto, e as três portas são **derrubadas
+e recriadas** — mudaram de assinatura, e duas versões vivas da mesma porta
+seriam uma sobrecarga que o PostgREST escolheria sozinho.
 
 ### 2.7 A atividade e o destino
 
@@ -206,13 +225,14 @@ etiqueta, e as viagens dela continuam na folha — histórico não se apaga
 ### 2.9 A folha do gestor
 
 Na mesma aba, a folha responde a pergunta do objetivo: **quem usou qual
-carro em que dia**. Uma linha por trecho — dia, viatura, técnico, saída →
-chegada, km de saída, km de chegada, **km rodados**, **duração**, atividade
-(destino) —, com recorte por mês, por viatura e por técnico, os totais do
-recorte (viagens, km rodados, tempo de deslocamento) e os totais **por
-técnico** e **por viatura**. A viagem em aberto aparece destacada; a
-"assumida" e a "km abaixo do anterior" vêm com a etiqueta delas. O gestor
-corrige km ali (§2.6).
+carro em que dia, e para onde**. Uma linha por trecho — dia, viatura,
+técnico, saída → chegada, **duração**, atividade (destino) —, com recorte por
+mês, por viatura e por técnico, os totais do recorte (viagens, tempo de
+deslocamento, quantas em aberto, quantas a conferir) e os totais **por
+técnico** e **por viatura**, do que mais rodou tempo para o que menos. A
+viagem em aberto aparece destacada e traz o botão **Encerrar**, que é a
+correção que sobrou para a gestão (R276); a "assumida" vem com a etiqueta
+dela.
 
 ### 2.10 O tempo de deslocamento — e a chegada por localização
 
@@ -231,8 +251,8 @@ aberta e o app está na frente, o celular informa a posição; se ele fica
 **mais de 2 minutos** dentro de um **raio** do endereço do cliente da
 atividade (ou de qualquer cliente com coordenada, quando não há atividade),
 o sistema entende que ele **chegou** e **sugere** encerrar — "Você chegou ao
-Cond. Eneide? Encerrar a viagem" —, nunca encerra sozinho, e o km continua
-sendo digitado. A posição **não é gravada**: o que fica é a viagem, com a
+Cond. Eneide? Encerrar a viagem" —, nunca encerra sozinho: quem encerra é a
+pessoa, num toque. A posição **não é gravada**: o que fica é a viagem, com a
 chegada no instante em que a pessoa confirmou. Os clientes já têm
 coordenada (`clientes.lat/lng`, geocodificadas pelo endereço); o que falta é
 a sede como ponto (Q25) e o raio (Q24).
@@ -246,11 +266,9 @@ a sede como ponto (Q25) e o raio (Q24).
 | **viatura** | o carro da empresa, cadastrado no Administrativo | a "dupla" (as pessoas), a "agenda" (o compromisso) |
 | **etiqueta** | a etiqueta NFC no suporte do carro, com o endereço da viatura | o "código" da etiqueta (`fiorino-1`), que é o que identifica a viatura no cadastro |
 | **viagem** / **trecho** | UM deslocamento, com saída e chegada — sede → cliente x é uma; x → y é outra | o dia de trabalho; a atividade |
-| **km de saída / de chegada** | o que o painel mostra, digitado pelo técnico nas duas pontas | "km rodados", que é calculado |
-| **km rodados** | chegada − saída, calculado | qualquer coisa digitada |
 | **duração** / **tempo de deslocamento** | chegada − saída do trecho, calculado | a **permanência** (o tempo no cliente, entre trechos) |
-| **assumir** | encerrar a viagem aberta de um colega com o km que eu digito, e começar a minha | "encerrar por ele" sem começar a minha (não existe) |
-| **aviso de km** | a marca de "km abaixo do anterior — conferir" | um bloqueio (não bloqueia) |
+| **assumir** | encerrar a viagem aberta de um colega no instante do meu bipe, e começar a minha | "encerrar por ele" sem começar a minha (não existe) |
+| **km** | nada: **não existe neste sistema** (R276) | o controle de quilometragem, que é do QAP ERP |
 | **folha** | o relatório do gestor na aba Viaturas | a "folha de plantão" do sobreaviso (outra coisa) |
 
 ---
@@ -272,10 +290,11 @@ a sede como ponto (Q25) e o raio (Q24).
   restrições no banco, não só na tela. "Assumir" é a única forma de abrir a
   minha quando a do colega está aberta no mesmo carro — e ela fecha a dele
   com marca e autoria.
-- **D4 — Km fora de ordem passa e marca.** Pedido literal do Davi ("deixa
-  passar com aviso"). A marca fica na viagem (`aviso_km`) e aparece na folha;
-  o gestor corrige, e a correção registra quem e quando. A tela avisa antes
-  de gravar, mas não impede.
+- **D4 — ~~Km fora de ordem passa e marca.~~ SEM EFEITO (R276).** Era o pedido
+  literal do Davi em 13/09 de manhã ("deixa passar com aviso"); no fim do
+  mesmo dia ele tirou o km do sistema. O que sobrou da ideia é a correção com
+  rastro: a gestão encerra a viagem esquecida aberta, e fica registrado quem e
+  quando.
 - **D5 — "Remover viatura" é desativar quando ela já rodou.** A viagem
   aponta para a viatura; apagar a viatura apagaria a folha. Desativada, ela
   some das listas do técnico e da tela da etiqueta (bipar uma etiqueta de
@@ -351,7 +370,7 @@ a sede como ponto (Q25) e o raio (Q24).
 |---|---|
 | as viaturas, as viagens e a sede | `viaturas`, `viagens_viatura`, `locais_de_referencia` (`supabase/migrations/20260930090000_u134_viaturas.sql`); os índices únicos parciais `viagens_uma_aberta_por_viatura` e `viagens_uma_aberta_por_tecnico` |
 | iniciar / encerrar / assumir / corrigir | funções `viatura_iniciar_viagem`, `viatura_encerrar_viagem`, `viatura_corrigir_viagem` (SECURITY DEFINER, gate por cargo) |
-| a lógica pura (estado da tela, km rodados, duração, permanência, aviso) | `src/features/viaturas/modelo.ts`, com asserção no verificador |
+| a lógica pura (estado da tela, duração, permanência, folha, chegada) | `src/features/viaturas/modelo.ts`, com asserção no verificador |
 | a tela da etiqueta | rota `/viatura/$codigo` (`routes/_authenticated/viatura.$codigo.tsx`) → `src/features/viaturas/TelaDaViatura.tsx` (celular); `/viatura` é a lista para quando a etiqueta falha |
 | a faixa e o atalho na Início do técnico | `src/features/viaturas/FaixaDaViatura.tsx`, dentro de `InicioDoTecnico.tsx` |
 | o cadastro, a sede e a folha | Painel Administrativo › aba **Viaturas** — `src/features/viaturas/PainelDeViaturas.tsx` (a chave `painel.administrativo` já existia na matriz) |

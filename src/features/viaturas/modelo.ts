@@ -1,17 +1,20 @@
 // As VIATURAS (R266–R274) — a lógica PURA. A tela só desenha.
 //
 // Davi, 13/09/2026: "O objetivo é controlar quem usou qual carro em que dia";
-// "Cada trecho é um trecho"; "Deixa passar com aviso"; "quando o técnico fica
-// mais de 2 minutos num raio próximo do cliente, o sistema entende que ele
-// chegou no cliente, e sugere término da viagem". O contexto inteiro está em
-// docs/CONTEXTO_VIATURAS.md.
+// "Cada trecho é um trecho"; "quando o técnico fica mais de 2 minutos num raio
+// próximo do cliente, o sistema entende que ele chegou no cliente, e sugere
+// término da viagem". O contexto inteiro está em docs/CONTEXTO_VIATURAS.md.
+//
+// R276 (Davi, 13/09/2026): "Remova a inserção do KM […] Quero apenas mapear
+// local e data e com quem estava a viatura." O km saiu do sistema inteiro — é
+// do QAP ERP, como o abastecimento (R274). Com ele foram embora as duas
+// perguntas que o técnico respondia por viagem: bipar passou a ser UM toque.
 //
 // O que mora aqui: o ESTADO que a tela da etiqueta decide sozinha (livre ·
-// minha · de outro · inativa), o km (ler, formatar, avisar), a duração e a
-// permanência, a folha do gestor (recorte e totais) e a CHEGADA POR
-// LOCALIZAÇÃO — a distância, o raio, os dois minutos e a máquina de estados
-// que diz "chegou". Nada aqui sabe o que é um pixel nem toca o banco: é isso
-// que deixa cada função virar asserção.
+// minha · de outro · inativa), a duração e a permanência, a folha do gestor
+// (recorte e totais) e a CHEGADA POR LOCALIZAÇÃO — a distância, o raio, os
+// dois minutos e a máquina de estados que diz "chegou". Nada aqui sabe o que
+// é um pixel nem toca o banco: é isso que deixa cada função virar asserção.
 
 // ── As linhas como vêm do banco ─────────────────────────────────────────────
 
@@ -33,11 +36,7 @@ export interface Viagem {
   tecnico_id: string;
   chamado_id: string | null;
   saida_em: string;
-  km_saida: number;
   chegada_em: string | null;
-  km_chegada: number | null;
-  aviso_saida: boolean;
-  aviso_chegada: boolean;
   encerramento: Encerramento;
   encerrada_por: string | null;
   corrigida_por: string | null;
@@ -59,7 +58,7 @@ export interface LocalDeReferencia {
 export type EstadoDaTela =
   | { tipo: "desconhecida" }
   | { tipo: "inativa"; viatura: Viatura }
-  | { tipo: "livre"; viatura: Viatura; ultimoKm: number | null }
+  | { tipo: "livre"; viatura: Viatura; ultima: Devolucao | null }
   | { tipo: "minha"; viatura: Viatura; viagem: Viagem }
   | { tipo: "de_outro"; viatura: Viatura; viagem: Viagem };
 
@@ -71,49 +70,19 @@ export function estadoDaViatura(
   viatura: Viatura | null | undefined,
   aberta: Viagem | null | undefined,
   meuId: string | null,
-  ultimoKm: number | null,
+  ultima: Devolucao | null,
 ): EstadoDaTela {
   if (!viatura) return { tipo: "desconhecida" };
   if (!viatura.ativa) return { tipo: "inativa", viatura };
-  if (!aberta) return { tipo: "livre", viatura, ultimoKm };
+  if (!aberta) return { tipo: "livre", viatura, ultima };
   if (meuId && aberta.tecnico_id === meuId) return { tipo: "minha", viatura, viagem: aberta };
   return { tipo: "de_outro", viatura, viagem: aberta };
 }
 
-// ── O km ────────────────────────────────────────────────────────────────────
+// ── A última devolução (R276) ───────────────────────────────────────────────
 
-/** 100500 → "100.500" — o ponto de milhar do painel, sem casa decimal. */
-export function formatarKm(km: number | null | undefined): string {
-  if (km === null || km === undefined || !Number.isFinite(km)) return "—";
-  return Math.round(km).toLocaleString("pt-BR", { maximumFractionDigits: 0 });
-}
-
-/**
- * "100.500", "100500", " 100 500 " → 100500. Qualquer coisa que não seja um
- * inteiro não negativo devolve null — e é null, não NaN, para o erro morrer
- * onde nasce.
- */
-export function lerKm(texto: string): number | null {
-  const s = texto.replace(/[.\s]/g, "").trim();
-  if (!/^\d{1,7}$/.test(s)) return null;
-  return Number(s);
-}
-
-/** R268: km de saída menor que o último de chegada da viatura — passa, e avisa. */
-export function avisoDeSaida(kmSaida: number, ultimoKm: number | null): boolean {
-  return ultimoKm !== null && kmSaida < ultimoKm;
-}
-
-/** R268: km de chegada menor que o de saída — passa, e avisa. */
-export function avisoDeChegada(kmChegada: number, kmSaida: number): boolean {
-  return kmChegada < kmSaida;
-}
-
-/** Chegada − saída; null enquanto a viagem está aberta. Nunca negativo na folha. */
-export function kmRodados(v: Pick<Viagem, "km_saida" | "km_chegada">): number | null {
-  if (v.km_chegada === null || v.km_chegada === undefined) return null;
-  return Math.max(0, v.km_chegada - v.km_saida);
-}
+/** Quem devolveu o carro e quando — o que sobrou de "último registro" sem o km. */
+export interface Devolucao { quando: string; tecnicoId: string }
 
 // ── O tempo ─────────────────────────────────────────────────────────────────
 
@@ -190,25 +159,23 @@ export function filtrarFolha(viagens: readonly Viagem[], r: RecorteDaFolha): Via
 export interface ResumoDaFolha {
   viagens: number;
   abertas: number;
-  km: number;
   minutos: number;
-  /** o que ainda merece olhar: km fora de ordem e viagens assumidas */
+  /** R276: sem o km, o que ainda merece olhar é a viagem ASSUMIDA de outro */
   avisos: number;
 }
 
 /** Os totais do recorte — a folha e o número que ela mostra saem da MESMA lista. */
 export function resumoDaFolha(viagens: readonly Viagem[], agora: Date): ResumoDaFolha {
-  let km = 0, minutos = 0, abertas = 0, avisos = 0;
+  let minutos = 0, abertas = 0, avisos = 0;
   for (const v of viagens) {
-    km += kmRodados(v) ?? 0;
     minutos += minutosDeViagem(v, agora);
     if (!v.chegada_em) abertas++;
-    if (v.aviso_saida || v.aviso_chegada || v.encerramento === "assumida") avisos++;
+    if (v.encerramento === "assumida") avisos++;
   }
-  return { viagens: viagens.length, abertas, km, minutos, avisos };
+  return { viagens: viagens.length, abertas, minutos, avisos };
 }
 
-/** Totais por chave (técnico ou viatura), em ordem de km decrescente. */
+/** Totais por chave (técnico ou viatura), do que mais rodou TEMPO para o que menos. */
 export function totaisPor(
   viagens: readonly Viagem[],
   chave: "tecnico_id" | "viatura_id",
@@ -222,17 +189,17 @@ export function totaisPor(
   }
   return [...grupos.entries()]
     .map(([id, lista]) => ({ id, resumo: resumoDaFolha(lista, agora) }))
-    .sort((a, b) => b.resumo.km - a.resumo.km);
+    .sort((a, b) => b.resumo.minutos - a.resumo.minutos);
 }
 
-/** O último km de chegada registrado da viatura — a referência (e o piso do aviso). */
-export function ultimoKmDaViatura(viagens: readonly Viagem[], viaturaId: string): { km: number; quando: string; tecnicoId: string } | null {
+/** A devolução mais recente da viatura: quem estava com ela e até quando (R276). */
+export function ultimaDevolucao(viagens: readonly Viagem[], viaturaId: string): Devolucao | null {
   let melhor: Viagem | null = null;
   for (const v of viagens) {
-    if (v.viatura_id !== viaturaId || !v.chegada_em || v.km_chegada === null) continue;
+    if (v.viatura_id !== viaturaId || !v.chegada_em) continue;
     if (!melhor || new Date(v.chegada_em) > new Date(melhor.chegada_em as string)) melhor = v;
   }
-  return melhor ? { km: melhor.km_chegada as number, quando: melhor.chegada_em as string, tecnicoId: melhor.tecnico_id } : null;
+  return melhor ? { quando: melhor.chegada_em as string, tecnicoId: melhor.tecnico_id } : null;
 }
 
 // ── O cadastro (R271) ───────────────────────────────────────────────────────

@@ -8,10 +8,11 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-13** · última regra: **R275** · último diário:
-**U135** · verificador: **3.346 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-13** · última regra: **R276** · último diário:
+**U136** · verificador: **3.348 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U134** (U131, U132 e U134 em 13/09/2026,
-nesta ordem) · **nenhuma migration pendente** ·
+nesta ordem) · **Pendente: U136** (o km sai das viaturas — o registro de viagem
+fica parado até ela rodar) ·
 **versão no servidor: v0.0.7**
 (192.168.10.182); **esta entrega é a v0.0.11**, e ela sobe de uma vez o que a
 v0.0.8, a v0.0.9 e a v0.0.10 já tinham entregue — o que entrou em cada versão
@@ -121,12 +122,27 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U133 | **as viaturas — o documento mestre e as regras (R266–R273).** O Davi abriu o controle da viatura usada pelo técnico (etiqueta NFC num suporte em cada carro; bipar para iniciar e para encerrar, km nas duas pontas; só o cargo técnico registra). Mockup publicado ANTES do código e cinco respostas dele viraram regra: cada **trecho** é uma viagem, km fora de ordem **passa com aviso**, atividade **opcional** (o cliente dela é o destino), cadastro e **folha** na aba Viaturas do Administrativo, tempo de deslocamento por trecho, e a **chegada por localização** (2 minutos no raio → SUGERE encerrar) como etapa 3. A decisão técnica: a etiqueta guarda um **endereço** — funciona hoje pelo Chrome, e o APK abre direto quando registrar o App Link. Contexto em `docs/CONTEXTO_VIATURAS.md` (D1–D11, Q24–Q27). **Sem migration** — a implementação é a U134 |
 | U134 | **as viaturas, construídas** (R266–R274). Migration com as três tabelas, os índices únicos parciais e as três portas; o modelo puro (`features/viaturas/modelo.ts`: estado da tela, km, duração, permanência, folha, chegada — 150 m, 2 minutos, máquina de estados); a **tela da etiqueta** `/viatura/$codigo` (livre → iniciar · minha → encerrar · de outro → assumir) e a lista `/viatura`; a **faixa** na Início do técnico, que vira "Você chegou a X?" quando o GPS diz (só com viagem aberta e a página visível; a posição não é gravada); a **aba Viaturas** do Administrativo (cadastro, sede ajustável, folha com correção de km na linha). A `Atividade` ganhou `clienteId`. **R274**: os destinos são TODAS as atividades do dia mais a sede; abastecimento fica no QAP. Migration **U134 (pendente, depois da U132)** |
 | U135 | **a revisão de margem das telas novas** (R275), com o Davi já tendo rodado as três migrations. O **chip de estado das viaturas** passou a ser a `etiqueta()` do design system — o que eu tinha inventado media **4,45:1** no tema claro, abaixo do piso de 4,5 (agora 4,99 a 5,71); a **aba Viaturas** ganhou grade própria (`.viaturas-colunas`, 360px de formulário \| o resto) porque a do painel de usuários deixava o cadastro com 669px de sobra e a folha rolando dentro de 427px; os **dois km viraram uma coluna** ("100.431 → 100.500") e os cabeçalhos encurtaram; os espaçamentos voltaram para a **régua da R239** (10 e 14 não existem). De quebra, o placeholder do km na tela do carro que está com outro técnico mostrava "0". **Teste funcional pendente** — exige o login do Davi, e o fluxo do técnico exige conta de técnico. Sem migration nova |
+| U136 | **o km sai das viaturas** (R276). Horas depois de a U134 entrar no ar e de registrarmos a primeira viagem de verdade, o Davi tirou a quilometragem do sistema — "já é controlado no ERP" —, e o que a viagem responde passou a ser **com quem estava o carro, quando e para onde**. Saíram seis funções puras, o campo da tela, três colunas da folha, um KPI, quatro colunas do banco e um CHECK; **bipar virou um toque**. As três portas mudaram de assinatura, então a migration as DERRUBA pela assinatura exata antes de recriar (duas vivas seriam uma sobrecarga que o PostgREST escolheria sozinho). A correção da gestão mudou de assunto: agora ela **encerra a viagem deixada aberta**, com rastro. Revoga a R268; muda o "assumir" da R269 e a folha da R272. Migration **U136 (pendente — o registro de viagem só volta a funcionar depois dela)** |
 
 ## 4. Banco: migrations
 
 O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
+
+- **U136** (`20261001090000_u136_viaturas_sem_km.sql`, **PENDENTE**) — o KM sai
+  das viaturas (R276). Derruba as três portas pela assinatura EXATA (elas
+  mudaram de argumentos; `CREATE OR REPLACE` criaria uma sobrecarga, e o
+  PostgREST escolhe sobrecarga pelo nome dos argumentos que o cliente manda),
+  apaga `km_saida`, `km_chegada`, `aviso_saida` e `aviso_chegada` de
+  `viagens_viatura` com o CHECK que as amarrava, e recria as três portas sem
+  km — mesmo gate (técnico inicia/encerra, gestão corrige), "assumir" encerra
+  a do colega no INSTANTE do bipe, e corrigir só carimba "gestor" quando é ela
+  que está fechando a viagem. Dez itens de conferência; portão em transação
+  própria que termina em ROLLBACK. **Atenção à ordem, que aqui é invertida:**
+  o app já foi publicado sem km, então **o registro de viagem fica parado até
+  esta migration rodar** — a tela chama portas com argumentos que o banco
+  ainda não conhece. Rode assim que puder.
 
 - **U134** (`20260930090000_u134_viaturas.sql`, rodada em 13/09/2026) — as
   VIATURAS (R266–R274): `locais_de_referencia` (a sede, semeada com o centro da
