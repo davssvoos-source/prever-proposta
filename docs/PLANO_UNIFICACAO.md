@@ -12888,9 +12888,55 @@ intervalo em que o app fala com o esquema anterior. Até hoje isso sempre caiu
 para o lado seguro (o app novo aguentava o banco velho); a U136 é a primeira
 vez que é o contrário, e foi por isso que a janela ficou visível.
 
-**Números.** Verificador: 3.349 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
-Migration **U136 PENDENTE** — exige a U134 (que já rodou). Enquanto ela não
-rodar, o app novo chama portas que ainda têm km no banco: **o registro de
-viagem para de funcionar até a U136 rodar.** É a primeira vez neste projeto que
-a ordem importa nesse sentido (o normal é o contrário), e está dito assim no
-ESTADO §4.
+**A migration que rodava e não aplicava nada.** O Davi rodou a U136, conferiu
+e disse: "continua dando false". Rodou de novo, o mesmo. O defeito era meu, e
+é estrutural: o SQL Editor do Supabase roda o **script inteiro dentro de uma
+transação**. A U131 e a U134 abrem o trabalho num `BEGIN;` e o fecham num
+`COMMIT;` antes do portão — por isso o `ROLLBACK;` do portão descarta só o
+portão. Eu copiei o portão sem esse par: meu `BEGIN;` virou um aviso
+("there is already a transaction in progress") e o `ROLLBACK;` do fim desfez o
+script todo, DDL incluído. O sintoma é o pior que existe — **roda, não dá erro,
+imprime a conferência, e o banco continua igual**.
+
+O que desmascarou não foi o editor, foi o banco: a porta VELHA
+`viatura_corrigir_viagem` ainda **executava** e respondia *"Só a gestão corrige
+uma viagem (R268)"* — frase de dentro do corpo dela, e com o texto da U134.
+Função derrubada não executa, por mais velho que esteja o cache do PostgREST;
+só podia ser rollback. (No caminho, uma leitura minha estava errada: a porta
+NOVA `corrigir` parecia existir, mas a chamada casava com a VELHA — os
+parâmetros de km dela têm `DEFAULT` e o PostgREST resolve sobrecarga pelo NOME
+dos argumentos. Quem discrimina é `iniciar` e `encerrar`.)
+
+Corrigida NO LUGAR (regra 7 da skill do banco: nada tinha sido aplicado).
+Ficaram três travas: a **asserção varrendo todas as migrations** (`ROLLBACK;`
+de primeira coluna sem `COMMIT;` antes é falha), a cicatriz em
+`docs/manual/banco-e-migrations.md` e na skill do banco com a estrutura
+obrigatória, e a lição de método — **conferir pelo BANCO que um objeto novo
+existe, nunca pelo "rodou sem erro"**.
+
+**O teste ao vivo, depois da U136 rodar.** Sonda de esquema: 8/8 (as quatro
+colunas sumiram, as duas portas novas existem, as duas velhas foram
+derrubadas). Ciclo pelo celular, a 375px: bipar → **Iniciar viagem** num toque
+→ faixa na Início ("Você está com a Gol Preto · desde 18:46") → tocar na faixa
+→ **Encerrar viagem** num toque. A linha no banco nasceu com doze colunas e
+nenhuma de km, `encerramento` foi de `aberta` a `normal`, e `encerrada_por` é o
+próprio técnico. As guardas da porta respondem em português: bipar de novo na
+mesma viatura dá *"Você já está em viagem com esta viatura — bipe para
+ENCERRAR"*; encerrar duas vezes, *"Esta viagem já foi encerrada"*; etiqueta
+que não existe, *"Esta etiqueta (nao-existe) não corresponde a nenhuma viatura
+cadastrada"*; e corrigir sem gestão já cita a **R276** — prova de que é a
+função nova rodando.
+
+**Um texto que só o uso revela.** Logo depois de bipar, a tela dizia *"Você
+saiu 18:46 · **há 0 min**"* — e esse é o momento mais comum de olhar esta tela.
+Lido assim parece defeito. Nasceu `haQuantoTempo`, separada de
+`formatarDuracao`: um TOTAL de zero minutos é "0 min" (e a folha quer isso), um
+instante que acabou de passar é **"agora mesmo"**. São duas perguntas
+diferentes; agora são duas funções, cada uma com asserção.
+
+**Números.** Verificador: 3.351 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Migration **U136 RODADA em 13/09/2026** (na segunda tentativa). Vale guardar a
+inversão que ela criou: o app foi publicado ANTES, então por algumas horas o
+registro de viagem ficou parado — é a primeira vez neste projeto que a ordem
+pesa nesse sentido (o normal é o app novo aguentar o banco velho). Foi nessa
+janela que apareceu o erro em inglês do PostgREST, consertado no mesmo dia.

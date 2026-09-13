@@ -21375,6 +21375,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      ['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'function',
       false, false, false, false]);
 
+  // MEDIDO em uso: logo depois de bipar, a tela dizia "há 0 min". Um TOTAL de
+  // zero é "0 min" e a folha quer isso; um instante que acabou de passar é
+  // "agora mesmo". São duas perguntas, e agora são duas funções.
+  eq('R276: "faz quanto tempo" tem resposta própria no zero — logo depois de bipar a tela diz "agora mesmo", não "há 0 min"; o TOTAL da folha continua sendo "0 min"',
+     [VM.haQuantoTempo(0), VM.haQuantoTempo(-3), VM.haQuantoTempo(1), VM.haQuantoTempo(64), VM.formatarDuracao(0)],
+     ['agora mesmo', 'agora mesmo', 'há 1 min', 'há 1h04', '0 min']);
+
   eq('R272: a duração é chegada − saída (ou até agora, se aberta), e se escreve como se fala — "1h04", "23 min"',
      [VM.minutosDeViagem(viagem({ chegada_em: '2026-09-14T12:16:00Z' }), new Date('2026-09-14T20:00:00Z')),
       VM.minutosDeViagem(viagem({}), new Date('2026-09-14T11:42:00Z')),

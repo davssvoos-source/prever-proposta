@@ -26,7 +26,7 @@ import {
   useIniciarViagem, useEncerrarViagem, useViaturasProntas, RecusaDaViatura,
 } from "./data";
 import {
-  estadoDaViatura, formatarDuracao, minutosDeViagem,
+  estadoDaViatura, formatarDuracao, haQuantoTempo, minutosDeViagem,
   ultimaDevolucao, destinosDoDia, RAIO_CHEGADA_M,
 } from "./modelo";
 import { useChegadaPorLocalizacao } from "./useChegada";
@@ -130,7 +130,7 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
     setErro(null);
     try {
       const r = await encerrar.mutateAsync({ viagemId: estado.viagem.id });
-      toast.success(`Viagem encerrada — ${formatarDuracao(r.minutos)} de deslocamento.`);
+      toast.success(r.minutos > 0 ? `Viagem encerrada — ${formatarDuracao(r.minutos)} de deslocamento.` : "Viagem encerrada.");
       navigate({ to: "/dashboard" });
     } catch (e) { recusa(e); }
   }
@@ -181,7 +181,7 @@ export function TelaDaViatura({ codigo }: { codigo: string }) {
         )}
         {estado.tipo === "minha" && (
           <>
-            {linha("Você saiu", `${hora(estado.viagem.saida_em)} · há ${formatarDuracao(minutosDeViagem(estado.viagem, agora))}`)}
+            {linha("Você saiu", `${hora(estado.viagem.saida_em)} · ${haQuantoTempo(minutosDeViagem(estado.viagem, agora))}`)}
             {estado.viagem.chamado_id && linha("Atividade", hoje.find((a) => a.registroId === estado.viagem.chamado_id)?.titulo ?? "vinculada")}
           </>
         )}

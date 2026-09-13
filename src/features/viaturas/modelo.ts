@@ -93,6 +93,16 @@ export function minutosDeViagem(v: Pick<Viagem, "saida_em" | "chegada_em">, agor
 }
 
 /** 64 → "1h04"; 23 → "23 min"; 0 → "0 min". */
+/**
+ * "faz quanto tempo" — MEDIDO em uso: logo depois de bipar, `formatarDuracao`
+ * devolvia 0 e a tela dizia "há 0 min", que se lê como defeito. Um TOTAL de
+ * zero minutos é "0 min" (e a folha quer isso); um INSTANTE que acabou de
+ * passar é "agora mesmo".
+ */
+export function haQuantoTempo(minutos: number): string {
+  return minutos <= 0 ? "agora mesmo" : `há ${formatarDuracao(minutos)}`;
+}
+
 export function formatarDuracao(minutos: number): string {
   const m = Math.max(0, Math.round(minutos));
   if (m < 60) return `${m} min`;

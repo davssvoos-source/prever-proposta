@@ -9,10 +9,10 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-13** · última regra: **R276** · último diário:
-**U136** · verificador: **3.350 asserções, 0 falharam** · `tsc`: baseline
+**U136** · verificador: **3.351 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U134** (U131, U132 e U134 em 13/09/2026,
-nesta ordem) · **Pendente: U136** (o km sai das viaturas — o registro de viagem
-fica parado até ela rodar) ·
+nesta ordem) · migrations rodadas até a **U136** (13/09/2026) ·
+**nenhuma migration pendente** ·
 **versão no servidor: v0.0.7**
 (192.168.10.182); **esta entrega é a v0.0.11**, e ela sobe de uma vez o que a
 v0.0.8, a v0.0.9 e a v0.0.10 já tinham entregue — o que entrou em cada versão
@@ -130,7 +130,8 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **U136** (`20261001090000_u136_viaturas_sem_km.sql`, **PENDENTE**) — o KM sai
+- **U136** (`20261001090000_u136_viaturas_sem_km.sql`, rodada em 13/09/2026 —
+  na SEGUNDA tentativa; ver a cicatriz abaixo) — o KM sai
   das viaturas (R276). Derruba as três portas pela assinatura EXATA (elas
   mudaram de argumentos; `CREATE OR REPLACE` criaria uma sobrecarga, e o
   PostgREST escolhe sobrecarga pelo nome dos argumentos que o cliente manda),
@@ -139,10 +140,17 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   km — mesmo gate (técnico inicia/encerra, gestão corrige), "assumir" encerra
   a do colega no INSTANTE do bipe, e corrigir só carimba "gestor" quando é ela
   que está fechando a viagem. Dez itens de conferência; portão em transação
-  própria que termina em ROLLBACK. **Atenção à ordem, que aqui é invertida:**
-  o app já foi publicado sem km, então **o registro de viagem fica parado até
-  esta migration rodar** — a tela chama portas com argumentos que o banco
-  ainda não conhece. Rode assim que puder.
+  própria que termina em ROLLBACK.
+  **A cicatriz:** a primeira versão deste arquivo não tinha `BEGIN;`/`COMMIT;`
+  em volta do trabalho. Como o SQL Editor roda o script inteiro numa
+  transação, o `ROLLBACK;` do portão desfazia **tudo** — ela rodava, não dava
+  erro, imprimia a conferência, e o banco continuava igual. O Davi rodou duas
+  vezes antes de o defeito aparecer. Hoje há asserção varrendo todas as
+  migrations (`ROLLBACK;` sem `COMMIT;` antes = falha) e a cicatriz está em
+  `docs/manual/banco-e-migrations.md` e na skill do banco. Lição de método:
+  **conferir pelo BANCO que um objeto novo existe, nunca pelo "rodou sem
+  erro"** — quem desmascarou foi a porta velha ainda respondendo com a frase
+  do corpo dela.
 
 - **U134** (`20260930090000_u134_viaturas.sql`, rodada em 13/09/2026) — as
   VIATURAS (R266–R274): `locais_de_referencia` (a sede, semeada com o centro da
