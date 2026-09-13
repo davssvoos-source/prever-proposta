@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-13** · última regra: **R265** · último diário:
-**U132** · verificador: **3.323 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-13** · última regra: **R273** · último diário:
+**U133** · verificador: **3.326 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U129** (U127 e U129 em 11/09/2026) ·
 **Pendentes: U131** (a linha do tempo da correção da data de conclusão) **e
 U132** (o técnico lê só campo; a grade do sobreaviso fecha para ele) ·
@@ -48,6 +48,9 @@ técnica de campo é o **Vinicius**.
 4. `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md` — a estrutura das atividades
    ditada pelo Davi: os tipos de demanda, a matriz de campos, as decisões
    D1–D9 (várias já revistas — ler as notas).
+   - e `docs/CONTEXTO_VIATURAS.md` — o controle das viaturas por etiqueta
+     NFC ditado pelo Davi (13/09/2026): o trecho como unidade, o km nas duas
+     pontas, a folha do gestor, a chegada por localização (etapa 3).
 5. `docs/PLANO_V0.1.md` — o plano por fases e as perguntas Q1–Q23 com as
    respostas anotadas.
 6. `docs/PRODUTO.md` — TODAS as regras (R1–R173). Não se lê de ponta a ponta:
@@ -116,6 +119,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U130 | **as correções pedidas antes do executável** (sem versão nova: o Davi disse que pediria o executável no fim). **R255** — quem não edita a atividade vê o botão **"Entrar como apoio"**, e o apoio que a pessoa se dá NÃO vira permissão (o gêmeo `podeEditar` do cliente voltou a falar a língua do `pode_editar_chamado` do banco); **R256** — as setinhas do campo de horas só no dia clicado (MEDIDO: `appearance: none` não volta no foco; a alavanca é a opacidade, e o `padding-left: 13px` paga a largura reservada); **R257** — no card da Início, o prazo é o ícone e o número, sem "faltam"/"em atraso" (fora do card a palavra fica); **R258** — o convite do chat na linha do texto (os 3px eram do `[data-bloco]`) e o foco na caixa ao abrir; **R259** — a Proposta Comercial fala menos (cinco textos fora, "Cliente" virou **LOCAL**, nome do campo em tinta primária e a nota em opacidade menor, barra de rolagem nossa) e a **revisão de margem** que o Davi mandou fazer depois achou 9px de desalinho entre as colunas e 11px que vinham do `<p>` do navegador; **R260** — Proposta Comercial nasce com responsável da **equipe** Comercial. De quebra: o comentário da R256 fechava duas vezes e derrubava a folha inteira no `vite dev` (anti-padrões nº 11 e 12). Sem migration nova |
 | U131 | **R261** — a **Demanda no tempo** conta a semana INTEIRA: concluída entra na semana em que foi concluída, aberta entra na do prazo. A assimetria da R65 (passado = entregas, futuro = prazos) abria um buraco na semana CORRENTE, que é desenhada pelo lado do futuro: concluir uma atividade hoje a tirava do gráfico e não a punha em barra nenhuma até a virada da semana. Uma conta só (`demandaPorSemana`), a faixa anuncia "Atividades da semana de DD/MM" e a dica decompõe o número. **R262** — a **data de conclusão** vira campo corrigível na ficha das duas telas de atividade (na de campo, só a gestão), e a correção entra na **linha do tempo** por GATILHO — "de → para", com quem fez. Escreve em `concluida_em` e não em `finalizada_em`/`fechada_em`, que é de onde sai a competência da cobrança. O par relógio↔instante mudou de `features/plantao` para `lib/periodos`. Migration **U131 (pendente)** |
 | U132 | **o app do técnico de campo, primeira etapa.** **R263** — o cargo TÉCNICO é quem trabalha na rua, pelo celular, e tem TRÊS telas: uma **Início própria** (`InicioDoTecnico`: "Bom dia, Breno. Você tem 3 atividades hoje" com o número SEMPRE dele, a faixa de sobreaviso quando é o plantonista, o interruptor **Minhas \| Equipe** e os cards em Hoje · A seguir da mais próxima para a mais distante; o "+" é só o plantão), a **Agenda** com o mesmo interruptor (fecha o vazamento dos chamados de toda a empresa no calendário dele) e o **Perfil** com "Meu sobreaviso". **R264** — no banco, o técnico lê só o que não é interno (campo + capa da proposta) e TODAS as da equipe; `pode_acessar_chamado` com o mesmo recorte. **R265** — o Sobreaviso é do **cargo** técnico (revisa a R254; o operacional não entra; Gilleno vira SAC). Ficam para o Davi: para onde o APK aponta, o push, e a urgência fora do horário → plantonista. Migration **U132 (pendente)** |
+| U133 | **as viaturas — o documento mestre e as regras (R266–R273).** O Davi abriu o controle da viatura usada pelo técnico (etiqueta NFC num suporte em cada carro; bipar para iniciar e para encerrar, km nas duas pontas; só o cargo técnico registra). Mockup publicado ANTES do código e cinco respostas dele viraram regra: cada **trecho** é uma viagem, km fora de ordem **passa com aviso**, atividade **opcional** (o cliente dela é o destino), cadastro e **folha** na aba Viaturas do Administrativo, tempo de deslocamento por trecho, e a **chegada por localização** (2 minutos no raio → SUGERE encerrar) como etapa 3. A decisão técnica: a etiqueta guarda um **endereço** — funciona hoje pelo Chrome, e o APK abre direto quando registrar o App Link. Contexto em `docs/CONTEXTO_VIATURAS.md` (D1–D11, Q24–Q27). **Sem migration** — a implementação é a U134 |
 
 ## 4. Banco: migrations
 
@@ -408,6 +412,11 @@ Das 23 perguntas do plano, ficam duas:
    semana e o avisa. Quem abre à noite é a Rubia?
 8. **Trocar o cargo do Gilleno para SAC** em Administrativo › Usuários — ANTES
    de rodar a U132 (ele opera o Controle Patrimonial em atividade interna).
+9. **A lista das viaturas** — placa e apelido de cada carro (13/09/2026: "Ok
+   eu passo"). Entram pelo cadastro da aba Viaturas do Administrativo (U134),
+   e ele grava as etiquetas NFC com o código que o cadastro mostrar. Ver
+   `docs/CONTEXTO_VIATURAS.md` §5 e as perguntas Q24–Q27 de lá (raio da
+   chegada, a sede como ponto, abastecimento, localização nos aparelhos).
 
 ## 8. Quem é quem (resumo — o completo está em `CONTEXTO_OPERACAO_TECNICA.md` §1)
 

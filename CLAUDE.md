@@ -157,6 +157,7 @@ ordem ler o resto.
 | `docs/VERSOES.md` | o que entrou em cada VERSÃO instalada no servidor (R229) e a migration que ela exige; a versão mora em `package.json` = `src/lib/versao.ts` (o verificador compara) e vai em `VERSAO.txt` no pacote |
 | `docs/CONTEXTO_OPERACAO_TECNICA.md` | o contexto da operação técnica DITADO PELO DAVI (quem é quem, as três atividades, cliente como centro, QAP só lido, validação do gestor) — leia antes de mexer em campo/técnica |
 | `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md` | a estrutura das atividades DITADA PELO DAVI (os seis tipos e a matriz de campos, as duas perguntas da criação, equipe das pessoas, impacto operacional, grupos de clientes, o que saiu: pedido de compra e sprint) — leia antes de mexer em atividade/chamado interno, no pop-up de criação ou na ficha do cliente |
+| `docs/CONTEXTO_VIATURAS.md` | o controle das viaturas DITADO PELO DAVI (etiqueta NFC com endereço, o trecho como unidade, km nas duas pontas com aviso e não bloqueio, assumir a viatura do colega, cadastro e folha na aba Viaturas do Administrativo, chegada por localização como etapa 3) — leia antes de mexer em viatura, viagem ou na tela `/viatura` |
 | `docs/PLANO_V0.1.md` | o plano de ação rumo à v0.1: fases A–G, inventário do que já existe, perguntas em aberto |
 | `docs/REVISAO_2026-09-03.md` | a revisão tela a tela (veredito por rota, achados transversais, perguntas Q11–Q17) |
 | `docs/PRODUTO.md` | TODAS as regras de produto (R-série) |

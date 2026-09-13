@@ -21277,5 +21277,44 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/<div className="so-desktop" style=\{\{ flexDirection: "column", gap: 2 \}\}>/.test(iniRv), /lista-atividades/.test(iniRv)],
      [true, false]);
 }
+
+// ── R266–R273 — as viaturas: o contexto ditado e as regras (U133; a implementação é a U134) ──
+{
+  const fs266 = require('fs');
+  const existe266 = fs266.existsSync('docs/CONTEXTO_VIATURAS.md');
+  const ctx266 = existe266 ? fs266.readFileSync('docs/CONTEXTO_VIATURAS.md', 'utf8') : '';
+  const prod266 = fs266.readFileSync('docs/PRODUTO.md', 'utf8');
+  const claude266 = fs266.readFileSync('CLAUDE.md', 'utf8');
+  const estado266 = fs266.readFileSync('docs/ESTADO_ATUAL.md', 'utf8');
+  const sum266 = fs266.readFileSync('scripts/sumario.cjs', 'utf8');
+  const manual266 = fs266.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+
+  eq('U133 (regra 7): o terceiro contexto ditado pelo Davi existe, com o texto dele na íntegra, as decisões D1–D11 e as perguntas Q24–Q27 — e está no mapa do CLAUDE, na ordem de leitura do ESTADO e na lista do sumário',
+     [existe266,
+      /## 1\. O documento do Davi, na íntegra/.test(ctx266),
+      /D11 —/.test(ctx266), /Q27 —/.test(ctx266),
+      /CONTEXTO_VIATURAS\.md/.test(claude266), /CONTEXTO_VIATURAS\.md/.test(estado266),
+      /'docs\/CONTEXTO_VIATURAS\.md'/.test(sum266), /CONTEXTO_VIATURAS\.md/.test(manual266)],
+     [true, true, true, true, true, true, true, true]);
+
+  eq('R266–R273: as oito regras das viaturas existem, cada uma com a frase do Davi — o trecho como unidade, o km que passa com aviso, o cadastro no Painel Administrativo e os 2 minutos da chegada por localização',
+     [['R266', 'R267', 'R268', 'R269', 'R270', 'R271', 'R272', 'R273'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod266)),
+      /Cada trecho é um trecho, da sede ao cliente/.test(prod266),
+      /Deixa passar com aviso/.test(prod266),
+      /Painel Administrativo para cadastrar viaturas e remover viaturas/.test(prod266.replace(/\s+/g, ' ')),
+      /mais de 2 minutos num raio próximo do cliente/.test(prod266.replace(/\s+/g, ' ')),
+      /Por enquanto[\s\S]{0,40}somente o técnico/.test(prod266)],
+     [true, true, true, true, true, true]);
+
+  // O que o contexto FIXA e que o código da U134 tem de honrar — escrito aqui
+  // para a implementação nascer contra estas frases, não contra a memória.
+  eq('R267/R268/R269: o contexto diz que km rodado e duração são CALCULADOS, que o km fora de ordem NÃO bloqueia, que um carro e um técnico têm no máximo UMA viagem aberta, e que a chegada por localização SUGERE e nunca encerra',
+     [/km rodado e tempo\s*\n?\s*de deslocamento são \*\*calculados\*\*, nunca digitados/.test(ctx266.replace(/\n> /g, ' ').replace(/\n/g, ' ')) || /calculados\*\*, nunca digitados/.test(ctx266),
+      /não bloqueia\*\*/.test(ctx266),
+      /um carro tem no\s*\n?máximo uma viagem aberta\*\*/.test(ctx266) || /no máximo uma viagem aberta/.test(ctx266),
+      /SUGERE, nunca encerra/.test(ctx266) || /\*\*sugere\*\* encerrar/.test(ctx266)],
+     [true, true, true, true]);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

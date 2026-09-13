@@ -35,6 +35,7 @@ const ALVOS = [
   { arquivo: 'DESIGN_SYSTEM.md', niveis: [2, 3] },
   { arquivo: 'docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md', niveis: [2] },
   { arquivo: 'docs/CONTEXTO_OPERACAO_TECNICA.md', niveis: [2] },
+  { arquivo: 'docs/CONTEXTO_VIATURAS.md', niveis: [2] },
   { arquivo: 'docs/manual/operacao-campo.md', niveis: [2] },
 ];
 

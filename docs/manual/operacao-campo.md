@@ -187,6 +187,14 @@ Ainda em decisão do Davi (12/09/2026): para onde o app Android aponta, se o
 aviso chega com o app fechado (push), e o que define a urgência fora do horário
 que vai para o plantonista.
 
+**A viatura (R266–R273, em construção — U134).** Cada carro tem uma etiqueta
+NFC no suporte; bipar abre a tela do carro, que decide sozinha: livre → digita
+o km e inicia; em viagem sua → digita o km e encerra; em uso por um colega que
+esqueceu → assume. Cada deslocamento é um **trecho** (sede → cliente x é um;
+x → y é outro). Km rodados e tempo de deslocamento são calculados; km fora de
+ordem passa com aviso e o gestor corrige na folha (Administrativo › Viaturas).
+O contexto inteiro está em `docs/CONTEXTO_VIATURAS.md`.
+
 ## Sobreaviso: a escala por semana (R116/R253, U86/U129)
 
 A tela é do **líder da técnica** (hoje o Vinicius). Ele monta a escala, e as

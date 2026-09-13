@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R265 (36)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R273 (44)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5020,3 +5020,84 @@ adaptado."
   continua possível. *(Davi, 12/09/2026: "Sobreaviso é só para
   quem for do cargo TÉCNICO, Galera do Operacional não vai entrar nisso por
   exemplo"; e sobre o Gilleno: "Não, Gilleno terá cargo de SAC".)*
+
+- **R266** — **O controle das viaturas: quem usou qual carro, em que dia.**
+  Cada carro da empresa tem uma **etiqueta NFC** num suporte; a etiqueta
+  guarda um **endereço** (`…/viatura/<código>`), e bipar com o celular abre a
+  tela daquele carro já sabendo de que carro se trata. O técnico **bipa para
+  iniciar** o deslocamento e digita o **km de saída**; **bipa para encerrar** e
+  digita o **km de chegada**. Quem registra é **só o cargo TÉCNICO** ("por
+  enquanto somente o técnico"); quem lê é o admin, no Painel Administrativo.
+  A etiqueta é atalho, não exigência: a mesma tela abre pela Início do
+  técnico. O contexto inteiro está em `docs/CONTEXTO_VIATURAS.md`. *(Davi,
+  13/09/2026: "Vamos criar um sistema onde faremos o controle da viatura
+  utilizada pelo técnico. O objetivo é controlar quem usou qual carro em que
+  dia. Vou comprar NFC para colocar em um suporte que vou colocar em cada
+  carro. A minha ideia é a pessoa bipar para iniciar a viagem de ida a um
+  cliente e bipar para encerrar, e ao iniciar inserir a kilometragem inicial e
+  ao finalizar inserir a kilometragem final. Quem utiliza isso são os técnicos
+  de campo, que são os usuários que tem o cargo Técnico."; e "Por enquanto
+  somente o técnico".)*
+
+- **R267** — **A viagem é um TRECHO.** Cada deslocamento é uma viagem com
+  saída e chegada: sede → cliente x é uma; x → y é outra; z → sede é outra. A
+  cadeia dos trechos do dia reconstrói a rota, e o intervalo entre a chegada
+  de um trecho e a saída do seguinte é o tempo no cliente (a permanência,
+  derivada). *(Davi, 13/09/2026: "Cada trecho é um trecho, da sede ao cliente
+  x, do cliente x ao cliente y, do cliente y ao cliente z, do cliente z a
+  sede...")*
+
+- **R268** — **O km é digitado nas duas pontas; o rodado é calculado; km fora
+  de ordem passa com aviso, não bloqueia.** Km rodados = chegada − saída,
+  sempre calculado. O km de saída deveria ser ≥ ao último de chegada da mesma
+  viatura; quando não é, a tela avisa ("o último registro desta viatura foi
+  100.500 km — confira o painel"), a viagem é gravada, e a folha a marca com
+  **"km abaixo do anterior — conferir"**. O **gestor corrige na folha**, e a
+  correção registra quem e quando (a mesma decisão da R262: dado errado se
+  corrige com rastro, não se impede). *(Davi, 13/09/2026, perguntado se
+  bloquear ou deixar passar: "Deixa passar com aviso".)*
+
+- **R269** — **A tela decide o estado — e "assumir" resolve o colega que
+  esqueceu.** Ao abrir `…/viatura/<código>`: **livre** → pede o km e inicia;
+  **em viagem sua** → pede o km (mostrando "+N km nesta viagem") e encerra;
+  **em uso por um colega** → oferece **assumir**: a viagem dele é encerrada
+  com o km que eu digito, marcada "assumida por Fulano às HH:MM", e a minha
+  começa dali. Duas invariantes no banco: **um carro tem no máximo uma viagem
+  aberta**, e **um técnico tem no máximo uma viagem aberta**. Quem não é
+  técnico e bipa vê o estado do carro e um atalho para a folha.
+
+- **R270** — **A atividade é opcional na saída, e ela dá o destino.** A tela
+  oferece as atividades do técnico para hoje e "Sem atividade". Quando ele
+  escolhe, o cliente da atividade é o **destino do trecho** — é o que faz a
+  folha dizer "para onde foi", e é o que a chegada por localização (R273)
+  usa. *(Davi, 13/09/2026: "Opcional".)*
+
+- **R271** — **As viaturas se cadastram e se removem no Painel Administrativo,
+  na aba Viaturas.** Cadastrar é placa, apelido e o **código da etiqueta**
+  (um nome estável, separado da placa — a etiqueta está colada no carro).
+  **Remover** uma viatura que já rodou **desativa**: ela sai das listas do
+  técnico e da tela da etiqueta, e as viagens dela continuam na folha —
+  histórico não se apaga. Apagar de verdade só quem nunca teve viagem. *(Davi,
+  13/09/2026: "quero um espaço dentro do sistema, na tela do Painel
+  Administrativo para cadastrar viaturas e remover viaturas do sistema.")*
+
+- **R272** — **A folha do gestor mora na mesma aba, e conta o tempo de
+  deslocamento.** Uma linha por trecho — dia, viatura, técnico, saída →
+  chegada, km de saída, km de chegada, **km rodados**, **duração**, destino —
+  com recorte por mês, viatura e técnico, e totais por técnico e por viatura
+  (viagens, km, **tempo de deslocamento**). A viagem em aberto aparece
+  destacada; "assumida" e "km abaixo do anterior" vêm etiquetadas; o gestor
+  corrige km ali. *(Davi, 13/09/2026: "A ideia também é contar o tempo de ida
+  entre clientes, o tempo de transporte em cada trecho.")*
+
+- **R273** — **A chegada por localização SUGERE encerrar — nunca encerra
+  sozinha (etapa 3).** Com uma viagem aberta e o app na frente, se o técnico
+  fica **mais de 2 minutos** dentro de um raio do endereço do cliente da
+  atividade (ou de qualquer cliente com coordenada, quando não há atividade),
+  o sistema entende que ele chegou e **sugere** encerrar a viagem; o km
+  continua sendo digitado, e a posição não é gravada. Raio, sede como ponto e
+  localização ligada nos aparelhos são as perguntas Q24, Q25 e Q27 do
+  contexto. *(Davi, 13/09/2026: "vamos até criar um sistema onde a partir do
+  endereço de cada cliente, quando o técnico fica mais de 2 minutos num raio
+  próximo do cliente, o sistema entende que ele chegou no cliente, e sugere
+  término da viagem.")*

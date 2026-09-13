@@ -71,9 +71,11 @@ O técnico tem três telas: **Início**, **Agenda** e **Perfil**. A Início é
 própria (R263): "Bom dia, Breno. Você tem 3 atividades hoje", a faixa de
 sobreaviso quando ele é o plantonista, o interruptor **Minhas | Equipe** e os
 cards da mais próxima para a mais distante. Ele lê **só atividade de campo**,
-mas **todas as da equipe** (R264). Toda tela tem de saber para qual dos dois
-aparelhos nasceu — a tela da atividade interna (R135), por exemplo, é do
-computador.
+mas **todas as da equipe** (R264). E é pelo celular que ele registra a
+**viatura**: bipa a etiqueta NFC do carro para iniciar e para encerrar cada
+trecho, digitando o km (R266–R273, `CONTEXTO_VIATURAS.md`). Toda tela tem de
+saber para qual dos dois aparelhos nasceu — a tela da atividade interna
+(R135), por exemplo, é do computador.
 
 > Davi, 12/09/2026: *"Os técnicos de campo são os com cargo TÉCNICO, eles
 > utilizarão pelo celular. Eles devem ter em seu app somente 3 páginas: INICIO,

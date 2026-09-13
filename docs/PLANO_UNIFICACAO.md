@@ -12573,3 +12573,56 @@ estão na lista acima.
 
 **Números.** Verificador: 3.323 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
 Migrations **U131 e U132 pendentes**.
+
+## U133 — as viaturas: o documento mestre e as regras (R266–R273); a implementação é a U134
+
+**O pedido.** O Davi abriu um sistema novo em 13/09/2026: controlar a viatura
+usada pelo técnico — "quem usou qual carro em que dia" —, com uma etiqueta NFC
+num suporte em cada carro; bipar para iniciar e para encerrar, digitando o km
+nas duas pontas. Quem registra é o cargo TÉCNICO. Antes de código, ele pediu:
+"Gere o documento mestre com todas as regras, altere os atuais documentos que
+for necessário."
+
+**O método foi o da tela da atividade (U121): mockup antes de código.** Publiquei
+um mockup com a tela do técnico nos três estados que ela decide sozinha (livre ·
+em viagem · em uso por um colega), a faixa na Início e a folha do gestor, e
+cinco perguntas. As respostas viraram regra: cada **trecho** é uma viagem (sede
+→ x, x → y, y → z, z → sede); km fora de ordem **passa com aviso**; só o técnico
+registra; a atividade é **opcional** — e, no mesmo fôlego, ele antecipou a etapa
+3: a **chegada por localização** ("mais de 2 minutos num raio próximo do
+cliente, o sistema entende que ele chegou e sugere término da viagem") e o
+**tempo de transporte** por trecho.
+
+**A decisão técnica que define o que ele compra.** A etiqueta guarda um
+**endereço** (`…/viatura/fiorino-1`), não um número que o app leia. Razões:
+(1) o Android abre etiqueta NFC com URL sem aplicativo nenhum — funciona hoje,
+pelo Chrome logado; (2) ler NFC de dentro da página (Web NFC) só existe no
+Chrome, não na casca WebView do APK — seria construir sobre o que não funciona
+onde ele vai usar; (3) quando o APK for gerado, um App Link no manifesto faz a
+mesma etiqueta abrir direto no app. NTAG213 comum, gravada com um app gratuito.
+E a etiqueta é atalho: a mesma tela abre pela Início.
+
+**O que o documento fixa que o Davi não disse — e por quê (as D1–D11).**
+"Assumir" a viatura de quem esqueceu de encerrar (o caso real; ninguém fica com
+o dia travado, e a folha diz quem assumiu de quem). "Remover viatura" é
+desativar quando ela já rodou — a viagem aponta para a viatura, e apagar a
+viatura apagaria a folha. O destino do trecho é o cliente da atividade. A
+permanência no cliente é derivada do intervalo entre trechos, nunca digitada. A
+chegada por localização **sugere** e nunca encerra, e a posição não é gravada.
+Todo logado lê viaturas e viagens (metadado operacional; o técnico precisa ver
+"em uso por Nicholas"), e só as portas do banco escrevem.
+
+**O que fica em aberto (Q24–Q27).** O raio da chegada (proponho 150 m), a sede
+como ponto cadastrado (o trecho de volta), abastecimento (fora, salvo pedido) e
+a política de localização ligada nos celulares da empresa.
+
+**O que mudou nos outros documentos.** `CLAUDE.md` e o ESTADO §2 ganharam o
+terceiro contexto ditado; o ESTADO §7 registra a lista de carros que ele vai
+mandar; o manual de operação de campo aponta para o contexto; o
+`CONTEXTO_OPERACAO_TECNICA.md` §1b cita a viatura como parte do que o técnico
+faz pelo celular; o `sumario.cjs` gera o sumário do documento novo; e o
+verificador ganhou os pinos do documento (existe, tem as seções, as D1–D11 e as
+Q24–Q27, está no mapa do CLAUDE e na lista do sumário) e das regras R266–R273.
+
+**Números.** Verificador: 3.326 asserções, 0 falharam. `tsc`: 57 (baseline). Build completa.
+Sem migration nesta entrega (a U134 traz `viaturas` e `viagens_viatura`).
