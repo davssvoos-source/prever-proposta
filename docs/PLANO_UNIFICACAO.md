@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 167 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 168 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -170,6 +170,7 @@
 - [As nove decisões (R286–R294)](#as-nove-decisões-r286r294)
 - [U144 — criar atividade deixa de ser a mesma chave de abrir chamado (R294)](#u144-criar-atividade-deixa-de-ser-a-mesma-chave-de-abrir-chamado-r294)
 - [U145 — a tela das equipes perde o eixo da semana (R285)](#u145-a-tela-das-equipes-perde-o-eixo-da-semana-r285)
+- [U146 — o técnico de campo fica com três tipos, e a vistoria muda de lado (R283)](#u146-o-técnico-de-campo-fica-com-três-tipos-e-a-vistoria-muda-de-lado-r283)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -13747,3 +13748,52 @@ régua de 32 do próprio diálogo, e tamanho novo sem motivo é inconsistência.
 
 **Números.** Verificador: **3.458 asserções, 0 falharam**. `tsc`: 0. Sem migration nova — a
 tela lê a U142, que já rodou.
+
+## U146 — o técnico de campo fica com três tipos, e a vistoria muda de lado (R283)
+
+**O pedido.** Davi, 14/09/2026: *"Os técnicos de campo têm os 3 tipos de
+demanda: Manutenção Corretiva, Manutenção Preventiva, Implantação. Eles não tem
+mais nenhum tipo de demanda para fazer."*
+
+**Saíram dois de `campo`, e por motivos diferentes.**
+
+`operacional` era a rotina que não é conserto nem instalação — levar
+equipamento, buscar peça. A R57 já a excluía da PROGRAMAÇÃO, então ela era
+oferecida na abertura de um chamado de campo e **nunca virava demanda de
+dupla**: uma porta que levava a lugar nenhum. A R283 fechou a porta em vez de
+manter o filtro que a compensava. Com isso as duas listas — "tipos de campo" e
+"tipos que se programam" — viraram a mesma, e a derivação ficou de pé
+justamente para que não voltem a divergir caladas.
+
+`vistoria` mudou de **natureza**, e isso é o oposto de morrer. É nela que a
+validação do gestor é registrada — a R156 disse com todas as letras que *"a
+vistoria É a validação"* —, e tirá-la do sistema deixaria o Vinicius sem onde
+registrar a conferência dele. O que mudou é o lado: ela deixa de ocupar a
+agenda da equipe de campo e passa a aparecer na Início dele, junto com o resto.
+
+**Sem migration, e isso foi medido antes de decidir.** O CHECK do banco é sobre
+os VALORES de `tipo` e não amarra natureza a tipo; e a base tem **zero**
+chamados de campo com tipo `vistoria` ou `operacional`. Não havia dado para
+mover — o que muda é o que a tela OFERECE.
+
+**Doze asserções pinavam o desenho anterior**, e nenhuma foi apagada: cada uma
+passou a dizer a regra nova, com o motivo ao lado. Uma delas existia
+literalmente para afirmar que *isto ainda não mudou* ("a R156 espera os fluxos
+da técnica") — os fluxos chegaram, e ela passou a guardar o desfecho em vez da
+espera.
+
+**Duas eram erro meu, e do mesmo tipo de sempre.** Uma media PROXIMIDADE: ela
+procurava a palavra `"vistoria"` nos 400 caracteres seguintes a
+`NAO_OFERECIDOS` para concluir que a vistoria estava na lista. Com a vistoria
+entrando em `TIPOS_DE_DEMANDA`, que mora logo abaixo, a medida passou a acusar
+um array **vazio** de conter a palavra. Proximidade não é pertencimento: a
+asserção passou a extrair o literal da lista. A outra não tolerava a quebra de
+linha da prosa do prompt da I.A. — a terceira vez nesta sessão.
+
+**O que a descrição da I.A. ganhou** foi um terceiro corte, e ele é o que a
+mudança de natureza exige: **de quem** é a vistoria. Os dois cortes antigos
+separavam vistoria de corretiva e de preventiva pelo que a pessoa vai FAZER lá.
+Sem o terceiro, o modelo continuaria mandando para a equipe de campo uma
+atividade que agora é do gestor.
+
+**Números.** Verificador: **3.463 asserções, 0 falharam**. `tsc`: 0. Sem migration.

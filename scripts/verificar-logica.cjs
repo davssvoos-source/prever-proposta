@@ -2744,9 +2744,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // na oferta no commit B (depois de a U83 rodar). O corte de 'pedido_compra'
   // (R48) continua provado por VALOR, e agora prova junto que um tipo novo
   // chega à IA sozinho — que é o defeito que a U83 foi consertar.
-  eq('…e a lista que ela produz hoje é a de antes da U83 mais `vistoria` — o corte do R48 continua provado por valor, e o tipo novo chegou à IA sem ninguém editar o enum',
-     Array.from(new Set([...CS3.tiposDaNatureza('campo'), ...CS3.tiposDaNatureza('interno')])),
-     ['corretiva', 'preventiva', 'operacional', 'implantacao', 'vistoria', 'melhoria']);
+  // R283 (14/09/2026) mudou o REPARTO, não o vocabulário: os seis tipos
+  // continuam existindo, e o que mudou foi de quem é cada um. `operacional` e
+  // `vistoria` saíram de CAMPO; `vistoria` entrou em INTERNO.
+  eq('…e a lista que ela produz hoje continua sendo o vocabulário inteiro — o corte do R48 provado por VALOR, e um tipo novo chegando à IA sem ninguém editar o enum. A R283 mudou de quem é cada tipo, não quais existem',
+     Array.from(new Set([...CS3.tiposDaNatureza('campo'), ...CS3.tiposDaNatureza('interno')])).sort(),
+     ['corretiva', 'implantacao', 'melhoria', 'operacional', 'preventiva', 'vistoria']);
 
   // a migration U41 — CHECK aberto, trigger reescrito, backfill
   const u41 = fs24.readFileSync('supabase/migrations/20260822020000_u41_tipos_de_chamado.sql', 'utf8');
@@ -3177,10 +3180,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      ['corretiva', 'preventiva', 'implantacao'].filter((t) => !CS2.TIPOS_DEMANDA_CAMPO.includes(t)), []);
   eq('e todos têm rótulo — são o que aparece no filtro',
      CS2.TIPOS_DEMANDA_CAMPO.filter((t) => !CS2.TIPO_LABEL[t]), []);
-  // é mais estrito que os tipos de campo, que ainda incluem operacional
-  // no formulário de abertura — a diferença é proposital
-  eq('R57: TIPOS_DEMANDA_CAMPO é mais estrito que os tipos de campo, e a diferença é EXATAMENTE operacional',
-     CS2.TIPOS_DA_NATUREZA.campo.filter((t) => !CS2.TIPOS_DEMANDA_CAMPO.includes(t)), ['operacional']);
+  // R283 (14/09/2026): as duas listas viraram a MESMA, e isso é o fim de uma
+  // diferença, não o apagamento dela. A R57 já dizia que o técnico de campo só
+  // faz corretiva, preventiva e implantação; `operacional` continuava sendo
+  // OFERECIDA na abertura e nunca virava demanda de dupla — porta que levava a
+  // lugar nenhum. A R283 fechou a porta em vez de manter o filtro que a
+  // compensava.
+  eq('R57/R283: os tipos de CAMPO e os que se PROGRAMAM são a mesma lista — a exclusão de `operacional` deixou de ser necessária porque ela saiu da natureza campo',
+     [CS2.TIPOS_DA_NATUREZA.campo.filter((t) => !CS2.TIPOS_DEMANDA_CAMPO.includes(t)),
+      CS2.TIPOS_DA_NATUREZA.campo.includes('operacional')],
+     [[], false]);
 
   // ── a tela de programação (R57) ─────────────────────────────────────────
   eq('o título é o que o Davi pediu',
@@ -11441,14 +11450,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // O COMMIT B SUBIU (a U83 rodou em 02/09) e esta asserção VIROU, que é o que
   // ela foi construída para fazer: os `false` de campo viraram `true`. Ela
   // continua aqui medindo a forma FINAL — vistoria é oferecida em CAMPO e em
-  // lugar nenhum além disso. Interno não a oferece porque vistoria é ir ao
-  // cliente olhar; comercial tem um tipo só.
-  eq('CRÍTICO: vistoria é oferecida em CAMPO e só lá — é atividade de ir ao cliente olhar, não cabe em demanda interna nem no funil comercial',
+  // R283 INVERTEU esta: a vistoria saiu de CAMPO e entrou em INTERNO. Ela não
+  // morreu — é nela que a validação do gestor é registrada (R155/R156) —, e o
+  // que mudou é a natureza: ela deixa de ocupar a agenda da equipe de campo e
+  // passa a aparecer na Início do Vinicius. O comercial continua com um tipo só.
+  eq('R283 CRÍTICO: a vistoria é oferecida em INTERNO e só lá — ela virou atividade do GESTOR (é onde a validação dele fica registrada) e saiu da agenda da equipe de campo',
      [CS83.TIPOS.includes('vistoria'),
       CS83.tiposDaNatureza('campo').includes('vistoria'),
       CS83.tiposDaNatureza('interno').includes('vistoria'),
       CS83.tiposDaNatureza('comercial').includes('vistoria')],
-     [true, true, false, false]);
+     [true, false, true, false]);
+
+  // E o técnico de campo ficou com TRÊS, que é a frase do Davi.
+  eq('R283 CRÍTICO: o técnico de campo tem exatamente TRÊS tipos — "Eles não tem mais nenhum tipo de demanda para fazer"',
+     CS83.tiposDaNatureza('campo'), ['corretiva', 'preventiva', 'implantacao']);
   // …e o gate é UMA LINHA, não uma condição espalhada: a prova é que ele mora
   // numa lista só, e que essa lista é o único lugar do arquivo onde 'vistoria'
   // aparece como valor a ser retirado.
@@ -11460,8 +11475,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // sem nenhum outro sinal. A lista continua existindo, VAZIA desde a U96
     // ('pedido_compra' saiu do vocabulário inteiro, R140) — é o MECANISMO do
     // próximo tipo, e continua com UM consumidor só.
-    eq('U83: o gate continua sendo UMA lista com UM consumidor, `vistoria` NÃO está nela (commit B) e `pedido_compra` também não (R140 — saiu do vocabulário)',
-       [/const NAO_OFERECIDOS: ChamadoTipo\[\] = \[[\s\S]{0,400}?"vistoria",/.test(vivo83),
+    // R283: a `vistoria` continua FORA de NAO_OFERECIDOS, e agora por um motivo
+    // diferente — ela não é escondida do vocabulário, ela mudou de natureza.
+    // Escondê-la aqui a tiraria também da Início do gestor, que é justamente
+    // onde ela passou a morar.
+    eq('U83/R283: o gate continua sendo UMA lista com UM consumidor; `vistoria` NÃO está nela — ela mudou de NATUREZA, não foi escondida (escondê-la aqui a tiraria da Início do gestor, que é onde ela agora vive)',
+       // o recorte é o LITERAL da lista, e não "a palavra aparece nos próximos
+       // 400 caracteres": com a vistoria entrando em TIPOS_DE_DEMANDA, que mora
+       // logo abaixo, a medida por proximidade passou a acusar o array vazio de
+       // conter a palavra. Proximidade não é pertencimento.
+       [/"vistoria"/.test(
+          (vivo83.match(/const NAO_OFERECIDOS: ChamadoTipo\[\] = \[([\s\S]*?)\];/) ?? ["", ""])[1]),
         /"pedido_compra"/.test(vivo83),
         (vivo83.match(/NAO_OFERECIDOS/g) || []).length],
        [false, false, 2]);
@@ -11474,16 +11498,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── 3) TIPOS_DEMANDA_CAMPO — a pergunta de produto nº 1, respondida ──────
   // O critério do R57 nunca foi "é manutenção?", foi "é demanda que se AGENDA
-  // numa equipe?". A vistoria ocupa uma janela de uma dupla num dia, logo
-  // entra. 'operacional' continua fora pelo mesmo critério de sempre.
-  eq('R112: TIPOS_DEMANDA_CAMPO passou a ter QUATRO — a vistoria se programa para uma dupla, e é isso que a lista mede',
-     CS83.TIPOS_DEMANDA_CAMPO, ['corretiva', 'preventiva', 'implantacao', 'vistoria']);
-  eq('…e os quatro têm rótulo — são o que aparece no filtro da programação',
+  // R112 pôs a vistoria aqui porque ela ocupava uma janela de uma dupla num
+  // dia. A R283 tirou: ela deixou de ser demanda de campo, então deixou de
+  // ocupar janela de equipe. Voltaram a ser TRÊS — os mesmos três do Davi.
+  eq('R112/R283: TIPOS_DEMANDA_CAMPO voltou a TRÊS — a vistoria saiu porque deixou de ocupar janela de equipe de campo, e `operacional` saiu da natureza inteira',
+     CS83.TIPOS_DEMANDA_CAMPO, ['corretiva', 'preventiva', 'implantacao']);
+  eq('…e os três têm rótulo — são o que aparece no filtro da programação',
      CS83.TIPOS_DEMANDA_CAMPO.map((t) => CS83.TIPO_LABEL[t]),
-     ['Manutenção Corretiva', 'Manutenção Preventiva', 'Implantação', 'Vistoria']);
-  eq('…e a diferença para os tipos de campo continua sendo EXATAMENTE "operacional" — a exclusão é uma só, e é a do R57',
-     CS83.TIPOS_DA_NATUREZA.campo.filter((t) => !CS83.TIPOS_DEMANDA_CAMPO.includes(t)),
-     ['operacional']);
+     ['Manutenção Corretiva', 'Manutenção Preventiva', 'Implantação']);
+  eq('…e não há mais diferença entre os tipos de campo e os que se programam — a lista é DERIVADA, e é isso que impede as duas de voltarem a divergir caladas',
+     [CS83.TIPOS_DA_NATUREZA.campo.filter((t) => !CS83.TIPOS_DEMANDA_CAMPO.includes(t)),
+      CS83.TIPOS_DEMANDA_CAMPO.filter((t) => !CS83.TIPOS_DA_NATUREZA.campo.includes(t))],
+     [[], []]);
   // TIPOS_DEMANDA_CAMPO alimenta um FILTRO, não um seletor de escrita — é por
   // isso que ela pode conter 'vistoria' já no commit A. A prova é sobre a
   // TELA: o "+" da programação navega SEM levar `tipo` na busca.
@@ -11515,9 +11541,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        && /TIPO:\n\$\{LINHAS_DE_TIPO\}/.test(rapido83), true);
     // …e a descrição de vistoria DIZ O QUE A DISTINGUE. Sem isso a IA chuta
     // entre as três que mandam alguém ao prédio (pergunta de produto nº 3).
-    eq('R112: a descrição de vistoria para a IA corta contra corretiva E contra preventiva, por NOME — senão o modelo chuta entre as três que mandam alguém ao prédio',
-       /Se há defeito relatado esperando conserto, é corretiva, não vistoria\./.test(rapido83)
-       && /roteiro de manutenção programada de um sistema que já é nosso, é preventiva/.test(rapido83), true);
+    // R283 acrescentou um terceiro corte, e ele é o que a mudança de natureza
+    // exige: DE QUEM é a vistoria. Sem ele, a IA continuaria mandando para a
+    // equipe de campo uma atividade que agora é do gestor.
+    eq('R112/R283: a descrição de vistoria para a IA corta contra corretiva, contra preventiva E diz de QUEM ela é — sem o terceiro corte o modelo manda para a equipe de campo uma atividade que virou do gestor',
+       // `\s+` no lugar dos espaços: a prosa do prompt é quebrada em linhas, e
+       // reescrevê-la move as quebras. O regex cru acusaria um texto correto.
+       [/Se há defeito relatado esperando\s+conserto, é corretiva, não vistoria\./.test(rapido83),
+        /roteiro de manutenção programada de\s+um sistema que já é nosso, é preventiva/.test(rapido83),
+        /NÃO é demanda da equipe\s+de campo/.test(rapido83)],
+       [true, true, true]);
   }
 
   // ── 5) TIPOS DEIXOU DE SER UMA OITAVA LISTA ──────────────────────────────
@@ -16906,10 +16939,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const G96 = carregar('src/features/chamados/grupos.ts');
 
   // ── R137/R138: os seis tipos, no único endereço autorizado ───────────────
-  eq('R137: os SEIS tipos de demanda, na ordem do Davi, moram em chamado-status.ts (TIPOS_DE_DEMANDA)',
-     CS96.TIPOS_DE_DEMANDA, ['corretiva', 'preventiva', 'operacional', 'prospeccao', 'implantacao', 'melhoria']);
-  eq('R137: todos os seis existem no vocabulário — e a vistoria (R112) fica de fora da pergunta de propósito',
-     [CS96.TIPOS_DE_DEMANDA.every((t) => CS96.TIPOS.includes(t)), CS96.TIPOS_DE_DEMANDA.includes('vistoria')], [true, false]);
+  // R283: a VISTORIA entrou na pergunta. Ela ficava de fora porque era "uma
+  // demanda da programação de campo" — e deixou de ser: virou atividade interna
+  // do gestor, e quem a cria a cria pela Início, como qualquer outra.
+  eq('R137/R283: os tipos de demanda da PRIMEIRA PERGUNTA, na ordem do Davi, moram em chamado-status.ts — e a vistoria entrou no fim, quando virou atividade interna',
+     CS96.TIPOS_DE_DEMANDA, ['corretiva', 'preventiva', 'operacional', 'prospeccao', 'implantacao', 'melhoria', 'vistoria']);
+  eq('R137/R283: todos existem no vocabulário, e a vistoria agora ESTÁ na pergunta — ela saiu do campo e virou a atividade em que a validação do gestor é registrada',
+     [CS96.TIPOS_DE_DEMANDA.every((t) => CS96.TIPOS.includes(t)), CS96.TIPOS_DE_DEMANDA.includes('vistoria')], [true, true]);
 
   // ── R142: o impacto operacional, a lógica pura ───────────────────────────
   eq('R142: a régua é Sem impacto · Baixo · Moderado · Crítico, nesta ordem, com rótulo e cor do PRISMA',
@@ -17366,9 +17402,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /reconciliado em 04\/09\/2026 — R156/.test(ler97b('docs/CONTEXTO_OPERACAO_TECNICA.md')),
       /^## U97b /m.test(ler97b('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true]);
-  // R156 ainda NÃO mexe no código: a lista do campo continua a de antes até os fluxos chegarem
-  eq('U97b/R156: a lista de tipos do chamado de campo ainda é a anterior (a revisão espera os fluxos da técnica)',
-     /campo: \["corretiva", "preventiva", "operacional", "implantacao", "vistoria"\],/.test(ler97b('src/lib/chamado-status.ts')), true);
+  // Esta asserção existia para dizer "isto ainda NÃO mudou — a R156 espera os
+  // fluxos da técnica". Os fluxos chegaram em 14/09/2026, e a R283 mexeu: a
+  // vistoria saiu do campo e virou atividade interna do gestor, que é
+  // exatamente o que a R156 antecipava ("a vistoria É a validação"). A
+  // asserção passa a guardar o DESFECHO em vez da espera.
+  eq('U97b/R156 → R283: a espera acabou — a vistoria saiu do chamado de campo e virou atividade INTERNA do gestor, que é onde a R156 dizia que ela pertencia',
+     [/campo: \["corretiva", "preventiva", "implantacao"\],/.test(ler97b('src/lib/chamado-status.ts')),
+      /"vistoria"\],/.test(ler97b('src/lib/chamado-status.ts'))],
+     [true, true]);
 }
 
 // ── U98 — R158–R164: as respostas do Davi às Q5–Q12 (2026-09-04) ─────────────
@@ -20683,14 +20725,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      ['todos', 3, ['cor'], ['vis'], ['cor']]);
   {
     const d8 = ler128('src/routes/_authenticated/dashboard.tsx');
-    eq('R251: o botão "Tipo de demanda" está na barra, com o vocabulário dos SEIS tipos; o filtro entra no aviso de "nada nesta combinação", no "limpar filtros" e zera a seleção do painel como os outros de quem/o quê',
+    // R283 (14/09/2026): são SETE — a vistoria entrou quando virou atividade
+    // interna do gestor. A contagem está aqui para provar que o filtro LÊ o
+    // vocabulário em vez de carregar uma lista copiada, e foi exatamente isso
+    // que ela provou: a lista subiu sozinha, sem ninguém mexer na barra.
+    eq('R251/R283: o botão "Tipo de demanda" está na barra e lê o VOCABULÁRIO (sete tipos desde que a vistoria virou interna); o filtro entra no aviso de "nada nesta combinação", no "limpar filtros" e zera a seleção do painel como os outros de quem/o quê',
        [/rotulo="Tipo"\s*\n\s*vazio="Tipo de demanda"/.test(d8),
         /opcoes=\{TIPOS_DE_DEMANDA\.map\(\(t\) => \(\{ valor: t, label: TIPO_LABEL\[t\] \}\)\)\}/.test(d8),
         (d8.match(/filtros\.tipo !== "todos" \? TIPO_LABEL/g) ?? []).length,
         /\|\| filtros\.tipo !== "todos" \|\| filtros\.busca\.trim\(\)\) && \(/.test(d8),
         /\[filtros\.pessoa, filtros\.vinculos, filtros\.equipe, filtros\.tipo\]/.test(d8),
         carregar('src/lib/chamado-status.ts').TIPOS_DE_DEMANDA.length],
-       [true, true, 2, true, true, 6]);
+       [true, true, 2, true, true, 7]);
   }
 
   // ── R252: o Painel Comercial em duas visões ──────────────────────────────
@@ -22400,6 +22446,68 @@ assincronas.push(async () => {
        return [comVelho, comZero];
      })(),
      [[], 4]);
+}
+
+// ── R283 — O TÉCNICO DE CAMPO TEM TRÊS TIPOS (14/09/2026) ─────────────────
+//
+// Davi: "Os técnicos de campo têm os 3 tipos de demanda: Manutenção
+// Corretiva, Manutenção Preventiva, Implantação. Eles não tem mais nenhum tipo
+// de demanda para fazer."
+//
+// Saíram DOIS de `campo`, e por motivos diferentes:
+//
+//   · `operacional` era a rotina que não é conserto nem instalação (levar
+//     equipamento, buscar peça). A R57 já a excluía da PROGRAMAÇÃO, então ela
+//     era oferecida na abertura e nunca virava demanda de dupla — uma porta
+//     que levava a lugar nenhum. A R283 fechou a porta em vez de manter o
+//     filtro que a compensava.
+//
+//   · `vistoria` mudou de NATUREZA, e isso é o oposto de morrer: é nela que a
+//     validação do gestor é registrada (R155/R156 — "a vistoria É a
+//     validação"). Ela deixa de ocupar a agenda da equipe de campo e passa a
+//     aparecer na Início do Vinicius, junto com o resto do que ele faz.
+//
+// SEM MIGRATION, e isso foi MEDIDO antes de decidir: o CHECK do banco é sobre
+// os VALORES de `tipo` e não amarra natureza a tipo, e a base tem ZERO chamados
+// de campo com tipo `vistoria` ou `operacional`. Não há dado para mover.
+{
+  const CS283 = carregar('src/lib/chamado-status.ts');
+
+  eq('R283 CRÍTICO: o técnico de campo tem exatamente os TRÊS tipos que o Davi nomeou, e a natureza interna ganhou a vistoria — o vocabulário não encolheu, o reparto mudou',
+     [CS283.TIPOS_DA_NATUREZA.campo,
+      CS283.TIPOS_DA_NATUREZA.interno.includes("vistoria"),
+      CS283.TIPOS_DA_NATUREZA.interno.includes("operacional"),
+      CS283.TIPOS.includes("vistoria"),
+      CS283.TIPOS.includes("operacional")],
+     [["corretiva", "preventiva", "implantacao"], true, true, true, true]);
+
+  // A lista da PROGRAMAÇÃO é derivada da lista de campo, e é isso que impede
+  // as duas de voltarem a divergir caladas — foi a divergência que fez
+  // `operacional` ser oferecida por semanas sem nunca virar demanda de dupla.
+  eq('R283: a lista que se PROGRAMA é derivada da lista de CAMPO — igual por construção, e não por coincidência mantida à mão',
+     [CS283.TIPOS_DEMANDA_CAMPO, CS283.TIPOS_DEMANDA_CAMPO === CS283.TIPOS_DA_NATUREZA.campo],
+     [["corretiva", "preventiva", "implantacao"], false]);
+
+  // A vistoria continua CRIÁVEL — pela primeira pergunta do "+" da Início.
+  // Tirá-la de lá a mataria: não haveria como o Vinicius registrar a
+  // validação dele.
+  eq('R283 CRÍTICO: a vistoria continua criável, agora pela Início — tirá-la da primeira pergunta a mataria, e é nela que a validação do gestor fica registrada (R155/R156)',
+     [CS283.TIPOS_DE_DEMANDA.includes("vistoria"),
+      CS283.TIPOS_DE_DEMANDA[CS283.TIPOS_DE_DEMANDA.length - 1],
+      CS283.TIPO_LABEL.vistoria],
+     [true, "vistoria", "Vistoria"]);
+
+  // E a regra está escrita, com a frase dele e com o que ela derruba.
+  eq('R283 (regra 1): a regra está no PRODUTO com a frase do Davi, diz que revisa a R112 e MANTÉM a R156 — sem essa última linha alguém leria "a vistoria saiu" como "a validação do gestor sumiu"',
+     (() => {
+       const prod = require('fs').readFileSync('docs/PRODUTO.md', 'utf8');
+       const i = prod.indexOf("- **R283**");
+       const t = i < 0 ? "" : prod.slice(i, i + 1400);
+       return [/Eles não tem mais nenhum tipo de\s+demanda para fazer/.test(t),
+               /Revisa a R112/.test(t),
+               /mantém a\s+R156/i.test(t)];
+     })(),
+     [true, true, true]);
 }
 
 // ── A COMPOSIÇÃO É HISTÓRICO, E HISTÓRICO TEM GENTE DESLIGADA (14/09/2026) ─

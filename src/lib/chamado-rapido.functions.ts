@@ -63,14 +63,19 @@ const TIPO_IA_DESCRICAO: Record<ChamadoTipo, string> = {
   conferência, cadastro, comprar/cotar material ou equipamento).`,
   implantacao: "instalação de sistema novo ou ampliação.",
   melhoria: "melhorar algo que já funciona (processo, material, software).",
-  // R112 — a descrição existe para a IA não CHUTAR entre vistoria, corretiva e
-  // preventiva, que é o risco real: as três mandam alguém ao prédio. O corte é
-  // pelo que a pessoa VAI FAZER lá, não pelo motivo de ir.
-  vistoria: `ir ao cliente só para OLHAR e levantar — medir, conferir uma
-  instalação de terceiro, avaliar o que vai ser preciso, laudo. Ninguém
-  conserta nem instala nada nessa ida; se sair serviço, ele vira outro chamado.
-  Se há defeito relatado esperando conserto, é corretiva, não vistoria. Se é
-  roteiro de manutenção programada de um sistema que já é nosso, é preventiva.`,
+  // R112 → R283: a vistoria deixou de ser chamado de CAMPO e virou atividade
+  // INTERNA do gestor — é nela que a validação dele é registrada (R155/R156).
+  // A descrição continua existindo pelo mesmo motivo de sempre (a IA não
+  // CHUTAR entre vistoria, corretiva e preventiva, que é o risco real), mas
+  // agora ela precisa dizer também DE QUEM é: o conserto e a preventiva vão
+  // para a equipe de campo, a vistoria fica com o gestor.
+  vistoria: `o GESTOR indo conferir o trabalho já feito, ou ir a um cliente só
+  para OLHAR e levantar — medir, conferir uma instalação de terceiro, avaliar o
+  que vai ser preciso, laudo. Ninguém conserta nem instala nada nessa ida; se
+  sair serviço, ele vira outro chamado. Se há defeito relatado esperando
+  conserto, é corretiva, não vistoria. Se é roteiro de manutenção programada de
+  um sistema que já é nosso, é preventiva. A vistoria NÃO é demanda da equipe
+  de campo: ela é atividade interna de quem coordena.`,
   // Nunca chega ao modelo (não está em TIPOS_IA); a linha existe porque o
   // Record é exaustivo, e diz por que não está lá. ("pedido_compra" tinha uma
   // linha destas até a R140/U96, quando saiu do vocabulário.)

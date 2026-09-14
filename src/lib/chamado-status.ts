@@ -244,9 +244,20 @@ export const TIPO_LABEL: Record<ChamadoTipo, string> = {
 // `tiposDaNatureza()`, que é esta mesma lista menos `NAO_OFERECIDOS`. Os dois
 // conceitos eram um só até a U83, e a diferença entre eles é o que torna
 // possível soltar um tipo novo em dois passos sem janela de 23514.
+// R283 (Davi, 14/09/2026): "Os técnicos de campo têm os 3 tipos de demanda:
+// Manutenção Corretiva, Manutenção Preventiva, Implantação. Eles não tem mais
+// nenhum tipo de demanda para fazer."
+//
+// Saíram DOIS de `campo`. `operacional` era a rotina que não é conserto nem
+// instalação (levar equipamento, buscar peça) — e a R57 já a excluía da
+// programação, então ela era oferecida na abertura e nunca virava demanda de
+// dupla. `vistoria` saiu para a natureza INTERNA, e isso é o oposto de morrer:
+// é nela que a validação do gestor é registrada (R155/R156), e o que muda é a
+// natureza — ela deixa de ocupar a agenda da equipe de campo e passa a
+// aparecer na Início do Vinicius, junto com o resto do que ele faz.
 export const TIPOS_DA_NATUREZA: Record<Natureza, ChamadoTipo[]> = {
-  campo: ["corretiva", "preventiva", "operacional", "implantacao", "vistoria"],
-  interno: ["melhoria", "corretiva", "preventiva", "operacional", "implantacao"],
+  campo: ["corretiva", "preventiva", "implantacao"],
+  interno: ["melhoria", "corretiva", "preventiva", "operacional", "implantacao", "vistoria"],
   // a prospecção tem um tipo só, e ele não aparece nas outras naturezas: quem
   // abre chamado de campo não escolhe "prospecção" num seletor
   comercial: ["prospeccao"],
@@ -290,19 +301,22 @@ export function tiposDaNatureza(natureza: Natureza): ChamadoTipo[] {
 }
 
 /**
- * OS SEIS TIPOS DE DEMANDA (R137/R138, U96), na ordem em que o Davi os ditou
+ * OS TIPOS DE DEMANDA (R137/R138, U96), na ordem em que o Davi os ditou
  * (2026-09-03): Manutenção Corretiva, Manutenção Preventiva, Operacional,
  * Proposta Comercial, Implantação, Melhoria. É a lista da PRIMEIRA PERGUNTA do
  * pop-up de nova atividade — antes de a natureza existir (ela sai desta
- * resposta mais o responsável), por isso não é `tiposDaNatureza`. A vistoria
- * (R112) fica de fora de propósito: é uma demanda da programação de campo, e a
- * estrutura da área técnica ainda vai ser ditada.
+ * resposta mais o responsável), por isso não é `tiposDaNatureza`.
+ *
+ * A VISTORIA ENTROU na R283 (14/09/2026). Ela ficava de fora porque era "uma
+ * demanda da programação de campo" — e deixou de ser: virou atividade INTERNA
+ * do gestor, que é onde a validação dele é registrada (R155/R156). Quem cria
+ * vistoria é o Vinicius, pela Início, como cria qualquer outra atividade.
  *
  * Mora aqui e não na tela pela regra da U83: este arquivo é o ÚNICO endereço
  * autorizado para uma lista literal de tipos.
  */
 export const TIPOS_DE_DEMANDA: ChamadoTipo[] = [
-  "corretiva", "preventiva", "operacional", "prospeccao", "implantacao", "melhoria",
+  "corretiva", "preventiva", "operacional", "prospeccao", "implantacao", "melhoria", "vistoria",
 ];
 
 /**
@@ -310,12 +324,16 @@ export const TIPOS_DE_DEMANDA: ChamadoTipo[] = [
  * 2026-08-22: "são as únicas possibilidades que um técnico de campo pode ter
  * com tipo de demanda").
  *
- * É mais estrito que os tipos de campo porque exclui 'operacional', e a
- * diferença é proposital: 'operacional' existe na natureza campo para o
- * trabalho que não é manutenção nem instalação (levar equipamento, buscar
- * peça), mas não é uma demanda que se PROGRAMA para uma dupla. O filtro da
- * programação usa esta lista; o seletor de "novo chamado de campo" continua
- * usando `tiposDaNatureza`.
+ * DESDE A R283 as duas listas são a MESMA, e isso é o fim de uma diferença,
+ * não o apagamento dela. A R57 já dizia que o técnico de campo só faz
+ * corretiva, preventiva e implantação; `operacional` continuava sendo
+ * OFERECIDA na abertura de um chamado de campo e nunca virava demanda de
+ * dupla — uma porta que levava a lugar nenhum. A R283 fechou a porta em vez de
+ * manter o filtro que a compensava.
+ *
+ * A derivação FICA (em vez de repetir os três nomes) porque é ela que garante
+ * que as duas listas não voltem a divergir: acrescentar um tipo em `campo` sem
+ * decidir se ele se programa passaria a ser impossível de fazer calado.
  *
  * DERIVADA POR EXCLUSÃO desde a U83, e a escolha tem consequência: o padrão
  * para um tipo de campo NOVO passa a ser "sim, é programável", e quem
@@ -331,8 +349,7 @@ export const TIPOS_DE_DEMANDA: ChamadoTipo[] = [
  * Esta lista alimenta um FILTRO (`<option>` da programação), não um seletor de
  * escrita — por isso 'vistoria' pode entrar já no commit A.
  */
-export const TIPOS_DEMANDA_CAMPO: ChamadoTipo[] =
-  TIPOS_DA_NATUREZA.campo.filter((t) => t !== "operacional");
+export const TIPOS_DEMANDA_CAMPO: ChamadoTipo[] = [...TIPOS_DA_NATUREZA.campo];
 
 /**
  * TODO o vocabulário, na ordem de leitura. Derivado das chaves de TIPO_LABEL
