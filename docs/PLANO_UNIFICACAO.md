@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 125 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 160 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -128,6 +128,41 @@
 - [U100b — a U100 rodou: grupos liberados, o fallback da U96 fora, e a revisão do dia (2026-09-04)](#u100b-a-u100-rodou-grupos-liberados-o-fallback-da-u96-fora-e-a-revisão-do-dia-2026-09-04)
 - [U101 — o sistema como ferramenta de trabalho (R174–R177), e a skill de designer (2026-09-04)](#u101-o-sistema-como-ferramenta-de-trabalho-r174r177-e-a-skill-de-designer-2026-09-04)
 - [U102 — as skills organizador e banco, e os sumários dos documentos mestre (2026-09-04)](#u102-as-skills-organizador-e-banco-e-os-sumários-dos-documentos-mestre-2026-09-04)
+- [U103 — a Início revista pelo Davi: margem, colunas, concluídas, ordem, ordenação (R178–R182)](#u103-a-início-revista-pelo-davi-margem-colunas-concluídas-ordem-ordenação-r178r182)
+- [U104 — o Configurador rápido revisto pelo Davi: cabeçalho, registro 1→2, linha do tempo (R183–R186)](#u104-o-configurador-rápido-revisto-pelo-davi-cabeçalho-registro-12-linha-do-tempo-r183r186)
+- [U105 — o Calendário revisto pelo Davi: card tingido, sem anel, meses ao rolar, dica, sem "Hoje" (R187–R191)](#u105-o-calendário-revisto-pelo-davi-card-tingido-sem-anel-meses-ao-rolar-dica-sem-hoje-r187r191)
+- [U106 — o Mapa sai e o Administrativo vira duas colunas (R192–R193)](#u106-o-mapa-sai-e-o-administrativo-vira-duas-colunas-r192r193)
+- [U107 — a Nova Visita Técnica numa tela só, em colunas, no design system (R194)](#u107-a-nova-visita-técnica-numa-tela-só-em-colunas-no-design-system-r194)
+- [U108 — o cinza neutro no sistema inteiro e a tipografia estratégica (R186 aplicada, R195)](#u108-o-cinza-neutro-no-sistema-inteiro-e-a-tipografia-estratégica-r186-aplicada-r195)
+- [U109 — o patrimônio do QAP ganha lugar: catálogo, itens e a tela nova (R196–R199)](#u109-o-patrimônio-do-qap-ganha-lugar-catálogo-itens-e-a-tela-nova-r196r199)
+- [U110 — os 4.241 equipamentos do QAP importados (R196–R199)](#u110-os-4241-equipamentos-do-qap-importados-r196r199)
+- [U111 — sistemas instalados = blocos + equipamentos do QAP vinculados; a ficha do cliente v2 (R200–R201)](#u111-sistemas-instalados-blocos-equipamentos-do-qap-vinculados-a-ficha-do-cliente-v2-r200r201)
+- [U112 — blocos nomeados direto na ficha; a ficha do cliente numa página só (R202–R203)](#u112-blocos-nomeados-direto-na-ficha-a-ficha-do-cliente-numa-página-só-r202r203)
+- [U113 — cancelar convite pendente na tela Administrativo (R204)](#u113-cancelar-convite-pendente-na-tela-administrativo-r204)
+- [U114 — a ficha preenche a largura, o vínculo por arrasto e os botões de ação (R205–R207)](#u114-a-ficha-preenche-a-largura-o-vínculo-por-arrasto-e-os-botões-de-ação-r205r207)
+- [U115 — os painéis do vínculo rolam por dentro (R208)](#u115-os-painéis-do-vínculo-rolam-por-dentro-r208)
+- [U116 — a ficha em três colunas de desktop; o serviço prestado no card O local (R209–R210)](#u116-a-ficha-em-três-colunas-de-desktop-o-serviço-prestado-no-card-o-local-r209r210)
+- [U117 — a ficha fecha (estrutura em O local, o card da Início), o registro só na corretiva, a proposta no "+", e o chat de menções (R211–R217)](#u117-a-ficha-fecha-estrutura-em-o-local-o-card-da-início-o-registro-só-na-corretiva-a-proposta-no-e-o-chat-de-menções-r211r217)
+- [U118 — visitas na lista de atividades, colunas alinhadas embaixo, e o pacote para Windows Server (R218–R220)](#u118-visitas-na-lista-de-atividades-colunas-alinhadas-embaixo-e-o-pacote-para-windows-server-r218r220)
+- [U119 — a v0.0.2: todos veem tudo, o chat como conversa, o editor de uma área, a coluna Agendado, equipamentos pela atividade, o sistema versionado (R221–R229)](#u119-a-v002-todos-veem-tudo-o-chat-como-conversa-o-editor-de-uma-área-a-coluna-agendado-equipamentos-pela-atividade-o-sistema-versionado-r221r229)
+- [U120 — a v0.0.3: Prever OS, a tela da atividade para desktop, a rosca do progresso, a pista do Kanban, o arrasto dos equipamentos (R230–R236)](#u120-a-v003-prever-os-a-tela-da-atividade-para-desktop-a-rosca-do-progresso-a-pista-do-kanban-o-arrasto-dos-equipamentos-r230r236)
+- [U121 — a v0.0.4: a estrutura aprovada (documento | ficha), a mesma tela no pop-up, e equipamento só pelo QAP (R237–R238)](#u121-a-v004-a-estrutura-aprovada-documento-ficha-a-mesma-tela-no-pop-up-e-equipamento-só-pelo-qap-r237r238)
+- [U122 — a revisão geral da tela da atividade: uma régua de margem, um scroll, o modal por cima (R239)](#u122-a-revisão-geral-da-tela-da-atividade-uma-régua-de-margem-um-scroll-o-modal-por-cima-r239)
+- [U123 — a v0.0.5: o chat vira conversa (o campo colorido e as caixas de mensagem, R240)](#u123-a-v005-o-chat-vira-conversa-o-campo-colorido-e-as-caixas-de-mensagem-r240)
+- [U124 — a v0.0.6: a proposta volta a nascer (prédio novo é PROSPECÇÃO, R21/R22) e o admin faz visita (R241)](#u124-a-v006-a-proposta-volta-a-nascer-prédio-novo-é-prospecção-r21r22-e-o-admin-faz-visita-r241)
+- [U125 — a v0.0.7: a capa do chamado nasce ANTES da visita (a terceira camada do mesmo caminho) e o endereço para de parecer recusado (R242)](#u125-a-v007-a-capa-do-chamado-nasce-antes-da-visita-a-terceira-camada-do-mesmo-caminho-e-o-endereço-para-de-parecer-recusado-r242)
+- [U126 — a v0.0.8: a tela da atividade fala menos e mostra maior (R243), e o seletor volta a funcionar dentro do pop-up](#u126-a-v008-a-tela-da-atividade-fala-menos-e-mostra-maior-r243-e-o-seletor-volta-a-funcionar-dentro-do-pop-up)
+- [U127 — a v0.0.9: a revisão sistêmica — OPERACIONAL (R244), o chat que não perde mensagem (R245), a Início inteira (R246), a tela de campo no desktop (R247) e as ferramentas da IA](#u127-a-v009-a-revisão-sistêmica-operacional-r244-o-chat-que-não-perde-mensagem-r245-a-início-inteira-r246-a-tela-de-campo-no-desktop-r247-e-as-ferramentas-da-ia)
+- [U128 — a v0.0.10: "A seguir" vira card do quadro (R248), o cursor na caixa do chat (R249), a busca pelo prédio (R250), o filtro de Tipo (R251) e o Comercial em duas visões (R252)](#u128-a-v0010-a-seguir-vira-card-do-quadro-r248-o-cursor-na-caixa-do-chat-r249-a-busca-pelo-prédio-r250-o-filtro-de-tipo-r251-e-o-comercial-em-duas-visões-r252)
+- [U129 — o Sobreaviso reestruturado: a semana como unidade (R253) e o calendário com barra (R254)](#u129-o-sobreaviso-reestruturado-a-semana-como-unidade-r253-e-o-calendário-com-barra-r254)
+- [U130 — as correções pedidas antes do executável: o apoio que faltava (R255), as setinhas (R256), o prazo sem palavra (R257), a caixa do chat (R258) e a Proposta Comercial que fala menos e fica alinhada (R259/R260)](#u130-as-correções-pedidas-antes-do-executável-o-apoio-que-faltava-r255-as-setinhas-r256-o-prazo-sem-palavra-r257-a-caixa-do-chat-r258-e-a-proposta-comercial-que-fala-menos-e-fica-alinhada-r259r260)
+- [U131 — o gráfico para de esquecer o que foi feito (R261) e a data de conclusão vira corrigível, com rastro (R262)](#u131-o-gráfico-para-de-esquecer-o-que-foi-feito-r261-e-a-data-de-conclusão-vira-corrigível-com-rastro-r262)
+- [U132 — o app do técnico de campo, primeira etapa: três telas (R263), só campo (R264) e a escala por cargo (R265)](#u132-o-app-do-técnico-de-campo-primeira-etapa-três-telas-r263-só-campo-r264-e-a-escala-por-cargo-r265)
+- [U133 — as viaturas: o documento mestre e as regras (R266–R273); a implementação é a U134](#u133-as-viaturas-o-documento-mestre-e-as-regras-r266r273-a-implementação-é-a-u134)
+- [U134 — as viaturas, construídas: o banco, a tela da etiqueta, a faixa na Início, a aba Viaturas e a chegada por localização (R266–R274)](#u134-as-viaturas-construídas-o-banco-a-tela-da-etiqueta-a-faixa-na-início-a-aba-viaturas-e-a-chegada-por-localização-r266r274)
+- [U135 — a revisão de margem das telas novas: o chip que a casa já tinha, a grade da folha e a régua (R275)](#u135-a-revisão-de-margem-das-telas-novas-o-chip-que-a-casa-já-tinha-a-grade-da-folha-e-a-régua-r275)
+- [U136 — o km sai das viaturas: a viagem passa a mapear quem, quando e onde (R276)](#u136-o-km-sai-das-viaturas-a-viagem-passa-a-mapear-quem-quando-e-onde-r276)
+- [U138 — a leva que saiu da revisão completa: a porta pública fecha, o baseline de tipos vai a ZERO, e três defeitos que ninguém via (R277–R280)](#u138-a-leva-que-saiu-da-revisão-completa-a-porta-pública-fecha-o-baseline-de-tipos-vai-a-zero-e-três-defeitos-que-ninguém-via-r277r280)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -12940,3 +12975,100 @@ inversão que ela criou: o app foi publicado ANTES, então por algumas horas o
 registro de viagem ficou parado — é a primeira vez neste projeto que a ordem
 pesa nesse sentido (o normal é o app novo aguentar o banco velho). Foi nessa
 janela que apareceu o erro em inglês do PostgREST, consertado no mesmo dia.
+
+## U138 — a leva que saiu da revisão completa: a porta pública fecha, o baseline de tipos vai a ZERO, e três defeitos que ninguém via (R277–R280)
+
+**De onde veio.** O Davi pediu uma revisão completa do sistema, inclusive da
+estrutura de documentos. Nove frentes leram o repositório em paralelo e cada
+achado foi entregue a um segundo revisor com a tarefa de DERRUBÁ-LO; sobraram
+141. Depois ele disse: "execute tudo o que não faltam informações e só depende
+de você. Execute tudo e suba no sistema." Esta entrada é a primeira leva.
+
+**A porta que estava aberta (R277).** A tela `/auth` tinha um botão "Criar
+conta". Qualquer pessoa da internet clicava, e virava `authenticated` no
+Postgres. A TELA barrava — o perfil nascia `pendente_aprovacao` e a rota
+mostrava "Aguardando aprovação" — mas a API não: 28 policies de leitura
+respondiam `USING (true)`, e entre elas estavam `profiles` (nome, e-mail e
+telefone de todo mundo) e o catálogo de preço. O cadastro público era
+**redundante** desde a R59 (22/08): quem entra é criado pelo admin, no servidor.
+
+O conserto tem duas metades. O código fecha a porta (o modo "register", o
+`handleRegister` e o botão saíram; `AuthMode` só conhece login e forgot). A
+**U137** fecha a janela: nasce `eh_do_time(uid)` — conta ativa e aprovada, o
+mesmo predicado que a casa já escrevia à mão em 17 migrations — e as 28
+policies passam a exigi-lo. `profiles` ganha a exceção `OR id = auth.uid()`,
+senão a tela "Aguardando aprovação" ficaria sem o que ler.
+
+O censo de policies permissivas do verificador, que existia para vigiar essas
+28, **ficou vazio** — e a asserção mudou de "são exatamente estas 28" para
+"não existe nenhuma", que é a invariante forte. De quebra, "desativar usuário"
+deixou de ser cosmético: o token de quem saiu continua válido e não lê mais
+nada. Não substitui revogar a sessão; substitui o silêncio.
+
+**O baseline de tipos foi a ZERO.** Ele era 57 havia quase um mês, e o
+CLAUDE.md já avisava que baseline é onde defeito de produção se esconde (a U84).
+A revisão mediu de onde vinham: **53 dos 57 eram a MESMA causa** — quatro
+colunas de proposta faltavam no `types.ts`, e o cliente do Supabase, ao não
+achar uma coluna, devolve `SelectQueryError` e derruba em cascata todo campo
+lido junto. Quatro linhas, e o número caiu para 4.
+
+Os quatro que sobraram eram defeito de verdade, e é o ponto da história:
+navegação para `/clientes/null` quando a atividade é de prospecção (R22), conta
+de cobrança multiplicando por valor de tipo desconhecido, e um
+`cargo === "comercial"` no Calendário que nunca poderia ser verdade porque
+`useUserCargo` colapsa admin e comercial. O compilador vinha dizendo as três
+coisas havia semanas, dentro de um número que ninguém olhava. Hoje o baseline
+é **zero**, e o CLAUDE.md e o manual dizem isso nos dois lugares que o
+verificador casa.
+
+**A foto que parou de funcionar em 20/08 (R278).** A S1 tornou privados os três
+buckets de foto. Duas telas continuaram chamando `getPublicUrl` neles E
+gravando a URL morta em `visitas_tecnicas.foto_fachada_url`. Não é defeito de
+render: é dado ruim PERSISTIDO em toda proposta e toda visita criadas em 24
+dias. Passou despercebido porque imagem que não carrega parece "não subiram
+foto".
+
+Achei a segunda tela seguindo a primeira: a de pré-envio grava em
+`blocos-fotos`, a de Nova Visita Técnica em `visita-fotos` — e a S1 fechou os
+dois. Nasceu `lib/foto-storage.ts`: guarda-se `bucket/caminho`, e a leitura
+aceita as três formas que existem no banco hoje (o endereço novo, a URL morta,
+o caminho nu), o que faz as linhas velhas voltarem a mostrar a foto **sem
+migration** — a URL morta carrega o caminho dentro dela.
+
+**O total que saía menor (R279).** `valorPortariaRemota` devolve `null` acima de
+100 apartamentos, e está certo: prédio grande é negociação. A linha sai como
+"Sob consulta" no documento. Mas `totalMensalServicos` fazia `s + (l.valor ?? 0)`
+— o item principal entrava como ZERO, e o .docx imprimia, sob o rótulo "TOTAL
+MENSAL", um número menor do que a proposta vale, sem dizer que faltava coisa.
+Agora, com qualquer linha sob consulta, o total também é "Sob consulta" — no
+documento e na tela do vendedor. É a única leitura que não engana nenhum dos
+dois lados.
+
+**O gerador de sumários estava cego havia 34 entregas.** `if (l.includes(INICIO))`
+rodava antes do teste do FIM, com `continue`. Numa linha que traz os DOIS
+marcadores — e existe uma: a do diário que documenta este gerador — ele ligava
+o modo-sumário e nunca mais saía. As entradas U103 a U136 não estavam no mapa,
+e o `--check` respondia `ok` porque comparava o sumário gravado com o que o
+MESMO parser truncado gerava. A defesa estava verde por cima do defeito. Uma
+linha de conserto, e o sumário do diário voltou de 31 para **65** entradas — a
+conta fecha exatamente com as 34 que faltavam.
+
+**O APK (R280).** O manifesto tinha UM intent-filter (MAIN/LAUNCHER), nenhuma
+permissão de localização e nenhuma de NFC: as duas promessas da entrega da
+semana — bipar a etiqueta e a sugestão de chegada — não tinham como funcionar.
+Entraram as permissões (NFC como recurso **não obrigatório**, para celular sem
+NFC continuar instalando). O App Link fica **preparado e comentado**, esperando
+uma coisa só: o domínio. O Davi já decidiu que o sistema sai da Lovable e que
+quem conduz é o Nicholas — e a revisão mediu a consequência que ninguém tinha
+formulado: o servidor Windows serve HTTP puro, e o Android bloqueia cleartext.
+O domínio precisa de TLS.
+
+**O que NÃO entrou nesta leva, e por quê.** Ficaram de fora os itens que são
+decisão de produto disfarçada de conserto (recortar o PRODUTO.md, apagar os 28
+arquivos shadcn, arquivar o diário em duas eras), os que exigem uma frase do
+Davi, e os de semanas (a sessão fora do `localStorage`, os seis componentes
+acima de 1.100 linhas). Estão todos no painel da revisão, com decisão marcável.
+
+**Números.** Verificador: 3.359 asserções, 0 falharam. `tsc`: **0** (era 57). Build completa.
+Migration **U137 PENDENTE** — o app já vai publicado com a porta fechada, mas a
+janela do banco só fecha quando ela rodar.

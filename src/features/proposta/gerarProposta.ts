@@ -19,6 +19,7 @@ import {
 import {
   computeLinhasMensais,
   totalMensalServicos,
+  temSobConsulta,
   type LinhaMensal,
 } from "@/features/comercial/mensalidadesProjeto";
 import { gerarResumosProposta, type ResumosProposta } from "@/lib/proposta.functions";
@@ -280,6 +281,8 @@ export async function gerarPropostaDocx({
     turnoPortaria,
   });
   const totalServicos = totalMensalServicos(linhasMensais);
+  // uma linha sem preço torna o TOTAL impossível de imprimir como número
+  const totalSobConsulta = temSobConsulta(linhasMensais);
 
   // ── 3) Textos determinísticos ───────────────────────────────────────────────
   const servicosKeys: string[] = [
@@ -584,7 +587,9 @@ export async function gerarPropostaDocx({
     precos,
     Tem_total_mensal: temTotalMensal,
     Rotulo_total_mensal: rotuloTotal,
-    Total_mensal: fmtBRL(totalMensal),
+    // R279: com item sob consulta, o total é "Sob consulta" — nunca a soma
+    // parcial, que sairia menor do que a proposta vale
+    Total_mensal: totalSobConsulta ? "Sob consulta" : fmtBRL(totalMensal),
     Tem_prazo_contratual: temPrazoContratual,
     Sem_prazo_contratual: !temPrazoContratual,
     Prazo_contratual: prazoContratual,

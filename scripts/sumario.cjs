@@ -58,8 +58,15 @@ function cabecalhos(texto, alvo) {
   for (let i = 0; i < linhas.length; i++) {
     const l = linhas[i];
     if (l.startsWith('```')) { emCodigo = !emCodigo; continue; }
-    if (l.includes(INICIO)) { emSumario = true; continue; }
-    if (l.includes(FIM)) { emSumario = false; continue; }
+    // Uma linha que traz os DOIS marcadores está FALANDO SOBRE eles (é
+    // prosa do diário explicando este gerador), não abrindo um bloco. O
+    // teste do par vem primeiro: sem ele, o `continue` do INÍCIO impedia o
+    // FIM de ser lido e o parser nunca mais saía do modo-sumário — 34
+    // entradas do diário evaporaram por causa disso.
+    const abre = l.includes(INICIO), fecha = l.includes(FIM);
+    if (abre && fecha) continue;
+    if (abre) { emSumario = true; continue; }
+    if (fecha) { emSumario = false; continue; }
     if (emCodigo || emSumario) continue;
     const m = /^(#{2,3}) (.+?)\s*$/.exec(l);
     if (!m) continue;

@@ -8,11 +8,11 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-13** · última regra: **R276** · último diário:
-**U136** · verificador: **3.351 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-14** · última regra: **R280** · último diário:
+**U138** · verificador: **3.359 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U134** (U131, U132 e U134 em 13/09/2026,
 nesta ordem) · migrations rodadas até a **U136** (13/09/2026) ·
-**nenhuma migration pendente** ·
+**Pendente: U137** (só quem é do time lê) ·
 **versão no servidor: v0.0.7**
 (192.168.10.182); **esta entrega é a v0.0.11**, e ela sobe de uma vez o que a
 v0.0.8, a v0.0.9 e a v0.0.10 já tinham entregue — o que entrou em cada versão
@@ -123,12 +123,29 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U134 | **as viaturas, construídas** (R266–R274). Migration com as três tabelas, os índices únicos parciais e as três portas; o modelo puro (`features/viaturas/modelo.ts`: estado da tela, km, duração, permanência, folha, chegada — 150 m, 2 minutos, máquina de estados); a **tela da etiqueta** `/viatura/$codigo` (livre → iniciar · minha → encerrar · de outro → assumir) e a lista `/viatura`; a **faixa** na Início do técnico, que vira "Você chegou a X?" quando o GPS diz (só com viagem aberta e a página visível; a posição não é gravada); a **aba Viaturas** do Administrativo (cadastro, sede ajustável, folha com correção de km na linha). A `Atividade` ganhou `clienteId`. **R274**: os destinos são TODAS as atividades do dia mais a sede; abastecimento fica no QAP. Migration **U134 (pendente, depois da U132)** |
 | U135 | **a revisão de margem das telas novas** (R275), com o Davi já tendo rodado as três migrations. O **chip de estado das viaturas** passou a ser a `etiqueta()` do design system — o que eu tinha inventado media **4,45:1** no tema claro, abaixo do piso de 4,5 (agora 4,99 a 5,71); a **aba Viaturas** ganhou grade própria (`.viaturas-colunas`, 360px de formulário \| o resto) porque a do painel de usuários deixava o cadastro com 669px de sobra e a folha rolando dentro de 427px; os **dois km viraram uma coluna** ("100.431 → 100.500") e os cabeçalhos encurtaram; os espaçamentos voltaram para a **régua da R239** (10 e 14 não existem). De quebra, o placeholder do km na tela do carro que está com outro técnico mostrava "0". **Teste funcional pendente** — exige o login do Davi, e o fluxo do técnico exige conta de técnico. Sem migration nova |
 | U136 | **o km sai das viaturas** (R276). Horas depois de a U134 entrar no ar e de registrarmos a primeira viagem de verdade, o Davi tirou a quilometragem do sistema — "já é controlado no ERP" —, e o que a viagem responde passou a ser **com quem estava o carro, quando e para onde**. Saíram seis funções puras, o campo da tela, três colunas da folha, um KPI, quatro colunas do banco e um CHECK; **bipar virou um toque**. As três portas mudaram de assinatura, então a migration as DERRUBA pela assinatura exata antes de recriar (duas vivas seriam uma sobrecarga que o PostgREST escolheria sozinho). A correção da gestão mudou de assunto: agora ela **encerra a viagem deixada aberta**, com rastro. Revoga a R268; muda o "assumir" da R269 e a folha da R272. Migration **U136 (pendente — o registro de viagem só volta a funcionar depois dela)** |
+| U138 | **a primeira leva da revisão completa** (R277–R280). A tela de entrada **deixa de cadastrar**: conta nasce por convite (R59), e a **U137** troca as 28 policies de `USING (true)` pelo crachá `eh_do_time` — conta ativa e aprovada; o censo de policies frouxas do verificador **ficou vazio**, e desativar usuário deixou de ser cosmético. O **baseline do `tsc` foi de 57 a ZERO**: 53 dos 57 eram quatro colunas faltando no `types.ts`, e os 4 que sobraram eram defeito de verdade. **R278**: a S1 fechou os buckets em 20/08 e duas telas seguiram gravando URL morta em `foto_fachada_url` — 24 dias de dado ruim; nasceu `lib/foto-storage.ts` e as linhas velhas voltam a mostrar a foto sem migration. **R279**: o TOTAL MENSAL da proposta somava "Sob consulta" como zero e o .docx saía com número menor do que a proposta vale. O gerador de sumários estava cego havia 34 entregas (U103–U136 fora do mapa, e o `--check` verde por cima). O manifesto do APK ganhou localização e NFC; o App Link espera o domínio (**R280**: o sistema sai da Lovable). Migration **U137 (pendente)** |
 
 ## 4. Banco: migrations
 
 O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
+
+- **U137** (`20261002090000_u137_so_o_time_le.sql`, **PENDENTE**) — SÓ QUEM É
+  DO TIME LÊ (R277). Nasce `eh_do_time(uid)` — conta ATIVA e APROVADA, o
+  predicado que a casa já escrevia à mão em 17 migrations — e as **28**
+  policies de leitura que respondiam `USING (true)` passam a exigi-lo.
+  `profiles` ganha a exceção `OR id = auth.uid()`, senão a tela "Aguardando
+  aprovação" fica sem o que ler. Liga a RLS de `chamado_contadores` (a única
+  tabela viva sem perímetro) e derruba a policy zumbi
+  `"Tecnico or admin update visitas"`, que anulava o aperto da U6c.
+  **Por que ela importa:** até a U137, qualquer pessoa que clicasse "Criar
+  conta" na tela de entrada virava `authenticated` e a API respondia — a tela
+  barrava, o banco não. O código já foi publicado com a porta fechada (R277),
+  mas a janela só fecha quando esta rodar. **Leia o item 9 da conferência**:
+  ele lista quem perderia leitura agora (deve ser só quem não é do time).
+  Nove itens de conferência; portão em transação própria que termina em
+  ROLLBACK, com o trabalho já commitado antes (cicatriz da U136).
 
 - **U136** (`20261001090000_u136_viaturas_sem_km.sql`, rodada em 13/09/2026 —
   na SEGUNDA tentativa; ver a cicatriz abaixo) — o KM sai

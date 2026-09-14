@@ -12,7 +12,9 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type AuthMode = "login" | "forgot" | "register";
+// R277: não há mais "register" — a conta nasce por convite do admin
+// (Administrativo › Usuários), nunca por auto-cadastro.
+type AuthMode = "login" | "forgot";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -22,8 +24,6 @@ function AuthPage() {
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [nome, setNome] = useState("");
-  const [confirmarSenha, setConfirmarSenha] = useState("");
   const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
 
   useEffect(() => {
@@ -63,53 +63,6 @@ function AuthPage() {
     }
     toast.success("Link de recuperação enviado para " + email);
     setMode("login");
-  }
-
-  async function handleRegister() {
-    if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
-      toast.error("Preencha todos os campos.");
-      return;
-    }
-    if (senha !== confirmarSenha) {
-      toast.error("As senhas não coincidem.");
-      return;
-    }
-    if (senha.length < 6) {
-      toast.error("A senha deve ter ao menos 6 caracteres.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: senha,
-        // o nome vai nos metadados: handle_new_user grava o perfil mesmo se a
-        // confirmação de e-mail estiver ativa (sem sessão, o upsert abaixo não passa)
-        options: { data: { nome: nome.trim() } },
-      });
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      if (data.user) {
-        // cargo e status são definidos pelo banco (handle_new_user):
-        // auto-cadastro entra como pendente_aprovacao e sem papel.
-        await supabase.from("profiles").upsert({
-          id: data.user.id,
-          email: email.trim(),
-          nome: nome.trim(),
-        } as any);
-        await supabase.auth.signOut();
-        toast.success("Solicitação enviada! Aguarde a aprovação do administrador.");
-        setNome("");
-        setEmail("");
-        setSenha("");
-        setConfirmarSenha("");
-        setMode("login");
-      }
-    } finally {
-      setLoading(false);
-    }
   }
 
 
@@ -292,31 +245,6 @@ function AuthPage() {
               >
                 {loading ? "Entrando..." : "Entrar"}
               </button>
-              <button
-                onClick={() => {
-                  setMode("register");
-                  setEmail("");
-                  setSenha("");
-                  setNome("");
-                  setConfirmarSenha("");
-                }}
-                style={{
-                  width: "100%",
-                  padding: "14px",
-                  borderRadius: 12,
-                  border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.20)",
-                  background: isLight ? "#f5f5f5" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
-                  color: isLight ? "#222222" : "rgba(255,255,255,0.75)",
-                  fontSize: 15,
-                  fontWeight: 400,
-                  cursor: "pointer",
-                  fontFamily: "var(--fonte)",
-                  marginTop: 8,
-                  transition: "all 0.2s",
-                }}
-              >
-                Criar conta
-              </button>
               <div style={{ textAlign: "center", marginTop: 4 }}>
                 <button onClick={() => setMode("forgot")} style={BTN_GHOST}>
                   Esqueci minha senha
@@ -385,93 +313,6 @@ function AuthPage() {
             </div>
           )}
 
-          {mode === "register" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <button
-                onClick={() => setMode("login")}
-                style={{ ...BTN_GHOST, display: "flex", alignItems: "center", gap: 6, color: isLight ? "#505050" : "rgba(255,255,255,0.6)", marginBottom: 4 }}
-              >
-                <ArrowLeft size={14} /> Voltar para o login
-              </button>
-              <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 17, color: isLight ? "#212121" : "#fff" }}>
-                Criar conta
-              </div>
-              <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12, color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 4 }}>
-                Sua solicitação será analisada por um administrador.
-              </div>
-
-              <div>
-                <label style={LBL}>Nome completo</label>
-                <input
-                  style={INPUT}
-                  type="text"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Seu nome"
-                />
-              </div>
-
-              <div>
-                <label style={LBL}>E-mail</label>
-                <input
-                  style={INPUT}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                />
-              </div>
-
-              <div>
-                <label style={LBL}>Senha</label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    style={{ ...INPUT, paddingRight: 48 }}
-                    type={showSenha ? "text" : "password"}
-                    value={senha}
-                    onChange={(e) => setSenha(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSenha((p) => !p)}
-                    style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.4)", display: "flex" }}
-                  >
-                    {showSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label style={LBL}>Confirmar senha</label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    style={{ ...INPUT, paddingRight: 48 }}
-                    type={showConfirmarSenha ? "text" : "password"}
-                    value={confirmarSenha}
-                    onChange={(e) => setConfirmarSenha(e.target.value)}
-                    placeholder="Repita a senha"
-                    onKeyDown={(e) => e.key === "Enter" && handleRegister()}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmarSenha((p) => !p)}
-                    style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.4)", display: "flex" }}
-                  >
-                    {showConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={handleRegister}
-                disabled={loading}
-                style={{ ...BTN_GOLD, opacity: loading ? 0.7 : 1, marginTop: 4 }}
-              >
-                {loading ? "Enviando..." : "Solicitar acesso"}
-              </button>
-            </div>
-          )}
 
         </div>
       </div>

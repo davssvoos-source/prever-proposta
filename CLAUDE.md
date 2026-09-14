@@ -39,15 +39,17 @@ Todo o repo (nomes, comentários, docs) é em **português**.
    (unidade real); `.tsx` só por regex no fonte — e grep acha comentário,
    filtre linhas que começam com `//` (já rendeu 5+ falsos positivos).
 4. **Build** — `npx vite build` (também regenera `src/routeTree.gen.ts`;
-   commite o gerado). `npx tsc --noEmit` funciona e tem **57 erros
-   pré-existentes** (types.ts do Supabase desatualizado) — o critério é não
-   criar erro NOVO nos arquivos tocados. O número JÁ CAIU DUAS VEZES por
-   conserto de verdade (85 → 83 → 78 → 59 → 57), e a U84 é a lição: **baseline de
-   erro de tipo é onde defeito de PRODUÇÃO se esconde.** Dois dos que saíram
-   eram escritas de `situacao: 'prospecto'`, valor que o CHECK recusa desde a
-   U27 — cadastrar prédio novo e consolidar duplicata estavam QUEBRADOS, e o
-   compilador vinha dizendo isso dentro de um número que ninguém olhava.
-   Quando o baseline cair, atualize aqui E em `docs/manual/desenvolvimento-e-verificacao.md`.
+   commite o gerado). **`npx tsc --noEmit` tem de terminar em 0 erros.**
+   O baseline de tipos é ZERO desde 13/09/2026 (U138) — e chegou lá assim:
+   85 → 83 → 78 → 59 → 57 → **0**. A queda final foi de quatro linhas: as
+   colunas de proposta faltavam no `types.ts` e o Supabase, sem achar uma
+   delas, derrubava em cascata TODO campo lido junto (53 dos 57 erros vinham
+   daí). Os quatro que sobraram eram defeito de verdade — navegação para
+   `/clientes/null`, conta de cobrança sobre valor de tipo desconhecido,
+   galho morto no Calendário —, que é exatamente a lição da U84: **baseline de
+   erro de tipo é onde defeito de PRODUÇÃO se esconde.** Agora não há onde:
+   erro novo é erro seu. Se algum dia voltar a ter baseline, atualize aqui E
+   em `docs/manual/desenvolvimento-e-verificacao.md`.
 5. **Diário** — entrada U-série em `docs/PLANO_UNIFICACAO.md` com o
    raciocínio em prosa (por que assim, o que se recusou a fazer, o que a
    verificação pegou). É o histórico de decisões do projeto.
@@ -182,6 +184,6 @@ ordem ler o resto.
 ```bash
 node scripts/verificar-logica.cjs   # tem de terminar "0 falharam"
 npx vite build                      # tem de completar
-npx tsc --noEmit | grep -c "error TS"   # baseline 57; não crie novos
+npx tsc --noEmit | grep -c "error TS"   # tem de dar 0 (baseline zero desde a U138)
 node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un   # fim de entrega: versão, ESTADO, sumários, verificador, números
 ```

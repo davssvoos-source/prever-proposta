@@ -28,7 +28,28 @@ as três coisas que já derrubaram o app quando ignoradas.
 (Atualizado em 2026-09-08, U84.) A nota antiga dizia que `tsc --noEmit` nunca
 completava — era o disco iCloud da máquina de então. Ele completa em segundos.
 
-**Baseline vivo: 57 erros.** Ele foi 85, depois 83, caiu para **59** na U84 e para **57** na U95 (a reescrita da página da atividade tirou dois erros antigos, um deles um `sp === "atrasada"` que comparava com um valor que `situacaoPrazo` nunca devolve).
+**Baseline vivo: ZERO.** `npx tsc --noEmit` tem de terminar sem nenhum erro.
+
+A história vale ser lida antes de alguém propor um baseline novo. Ele foi 85,
+depois 83, caiu para **59** na U84 e para **57** na U95 (a reescrita da página
+da atividade tirou dois erros antigos, um deles um `sp === "atrasada"` que
+comparava com um valor que `situacaoPrazo` nunca devolve). Ficou em 57 por
+quase um mês, até a revisão completa de **13/09/2026** medir de onde vinham:
+**53 dos 57** eram a MESMA causa — quatro colunas de proposta
+(`proposta_enviada_em` e as três irmãs) faltavam no `types.ts`, e o cliente do
+Supabase, ao não achar uma coluna, devolve `SelectQueryError` e derruba em
+cascata todo campo lido junto com ela. Quatro linhas no arquivo de tipos, e o
+número caiu para 4.
+
+Os quatro que sobraram eram defeito de verdade, e é o ponto: navegação para
+`/clientes/null` quando a atividade é de prospecção, conta de cobrança
+multiplicando por valor de tipo desconhecido, e um `cargo === "comercial"` no
+Calendário que nunca poderia ser verdade porque `useUserCargo` colapsa admin e
+comercial. **O compilador vinha dizendo as três coisas havia semanas, dentro de
+um número que ninguém olhava** — a mesma lição da U84, repetida.
+
+Por isso o baseline é zero e deve continuar zero: enquanto houver um número
+tolerado, defeito de produção tem onde se esconder.
 A maior parte é o `types.ts` gerado do Supabase, desatualizado desde a Etapa 1
 do sistema de OS. O critério não é zerar: é **não criar erro novo nos arquivos
 tocados** — `npx tsc --noEmit | grep -c "error TS"` tem de continuar no

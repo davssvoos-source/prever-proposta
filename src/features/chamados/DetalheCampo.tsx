@@ -452,7 +452,9 @@ export function DetalheCampo({ id, embutido = false }: {
       }
       // Implantação concluída alimenta o inventário do cliente (as-built):
       // é o que fecha o ciclo proposta → implantação → corretiva/preventiva.
-      if (os?.tipo === "implantacao" && os.visita_id) {
+      // o cliente entra na guarda: implantação de PROSPECÇÃO (prédio que
+      // ainda não é cliente, R22) não tem inventário para derivar
+      if (os?.tipo === "implantacao" && os.visita_id && os.cliente_id) {
         return derivarInventarioDaVisita(os.cliente_id, os.visita_id);
       }
       return null;
@@ -1447,17 +1449,27 @@ export function DetalheCampo({ id, embutido = false }: {
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div style={{ ...linha, borderTop: "none" }}>
                 <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Cliente</span>
-                <button
-                  onClick={() => navigate({ to: "/clientes/$id", params: { id: os.cliente_id } })}
-                  style={{
-                    background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "right",
-                    fontFamily: "var(--fonte)", fontSize: 13, color: gold, fontWeight: 600,
-                    display: "flex", alignItems: "center", gap: 5,
-                  }}
-                >
-                  <Building2 size={13} />
-                  {os.cliente?.nome ?? "—"}
-                </button>
+                {/* sem `cliente_id` a atividade é de PROSPECÇÃO (R22) e não há
+                    ficha para abrir — o botão viraria /clientes/null. Mostra o
+                    nome, sem virar link. */}
+                {os.cliente_id ? (
+                  <button
+                    onClick={() => navigate({ to: "/clientes/$id", params: { id: os.cliente_id as string } })}
+                    style={{
+                      background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "right",
+                      fontFamily: "var(--fonte)", fontSize: 13, color: gold, fontWeight: 600,
+                      display: "flex", alignItems: "center", gap: 5,
+                    }}
+                  >
+                    <Building2 size={13} />
+                    {os.cliente?.nome ?? "—"}
+                  </button>
+                ) : (
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
+                    <Building2 size={13} />
+                    {os.cliente?.nome ?? "—"}
+                  </span>
+                )}
               </div>
               {os.cliente?.endereco && (
                 <div style={linha}>

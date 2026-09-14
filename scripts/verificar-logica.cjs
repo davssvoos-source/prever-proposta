@@ -4861,8 +4861,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // e quem mudar um é obrigado a achar o outro.
   {
     const dv = fs.readFileSync('docs/manual/desenvolvimento-e-verificacao.md', 'utf8');
-    const nCl = (cl.match(/baseline (\d+); não crie novos/) ?? [])[1] ?? null;
-    const nDv = (dv.match(/\*\*Baseline vivo: (\d+) erros\.\*\*/) ?? [])[1] ?? null;
+    // 13/09/2026 (U138): o baseline virou ZERO e os dois textos passaram a
+    // dizer "zero" por extenso. O pino continua fazendo o que importa —
+    // exigir que os dois lugares concordem —, agora lendo a palavra.
+    const nCl = /baseline de tipos é ZERO/.test(cl) ? '0'
+      : ((cl.match(/baseline (\d+); não crie novos/) ?? [])[1] ?? null);
+    const nDv = /\*\*Baseline vivo: ZERO\.\*\*/.test(dv) ? '0'
+      : ((dv.match(/\*\*Baseline vivo: (\d+) erros\.\*\*/) ?? [])[1] ?? null);
     eq('CLAUDE.md registra o baseline do tsc — sem ele, a primeira sessão nova "conserta" erros que não são dela — e o número CONCORDA com o do manual, medido dos dois lados',
        [nCl !== null, nDv !== null, nCl === nDv], [true, true, true]);
     // …e a lição fica escrita onde ela é lida antes de qualquer trabalho: o
@@ -9711,39 +9716,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
    *   vivo é o mesmo teste de dois eixos de `pessoasDaGrade()` movido para a
    *   fronteira, e ele é medido pela conferência 106 da própria migration.
    */
-  eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 28, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
+  // ┌─ 13/09/2026, U137 (R277): ESTA LISTA FICOU VAZIA, e é a melhor notícia
+  // │  que este censo já deu. Ele nasceu para vigiar 28 policies de leitura
+  // │  que respondiam `USING (true)` — ou seja, a QUALQUER `authenticated`.
+  // │  A revisão completa de 13/09 mostrou quem era esse `authenticated`:
+  // │  qualquer pessoa da internet, porque a tela /auth tinha um botão
+  // │  "Criar conta" (R277 fechou, e a U137 trocou as 28 pelo crachá).
+  // │
+  // │  A asserção passou de "são exatamente estas 28" para "não existe
+  // │  nenhuma", que é a invariante FORTE. Uma policy nova e frouxa agora
+  // │  aparece sozinha nesta lista e fica vermelha na hora.
+  // └─
+  eq('CRÍTICO (R277/U137): NENHUMA policy de leitura responde `USING (true)`. Eram 28 até 13/09/2026; hoje todas passam por `eh_do_time(auth.uid())` — conta ATIVA e APROVADA. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA',
      censoPermissivas(),
-     ['agenda_campo|agenda_campo_select',
-      'blocos_itens|blocos_itens read all auth',
-      'blocos|blocos read all auth',
-      'catalogo_equipamentos|catalogo_equipamentos_select',
-      'chamado_apoios|chamado_apoios_select',
-      'chamado_checklist_templates|chamado_checklist_templates_select',
-      'chamado_equipamentos|chamado_equipamentos_select',
-      'chamado_equipes|chamado_equipes_select',
-      'chamado_locais|chamado_locais_select',
-      'chamado_sla|chamado_sla_select',
-      // 'chamados|chamados_select' SAIU DAQUI na U132 (R264): a policy continua
-      // aberta para todo mundo (R221), mas o predicado deixou de ser `true` —
-      // o cargo TÉCNICO lê só o que não é interno. Não é frouxa; é recortada.
-      'cliente_equipamento_unidades|unidades_select',
-      'duplas_escala_semanas|duplas_escala_semanas_select',
-      'duplas_escala|duplas_escala_select',
-      'duplas|duplas_select',
-      'equipamentos|equip read all auth',
-      'locais_de_referencia|locais_de_referencia_select',  // R274 (U134): a SEDE como ponto — endereço público da operação, e o técnico precisa dela para a chegada da volta
-      'mensagens_chat|mensagens_chat_select',     // R223 (U119): recado para todo mundo é público por definição
-      'permissoes_tela|permissoes_select',
-      'profiles|profiles_select',
-      'profiles|profiles_select_all_authenticated',
-      'regras_blocos|authenticated read regras_blocos',
-      'regras_cerca|auth read regras_cerca',
-      'regras_cftv|authenticated read regras_cftv',
-      'servicos|servicos read all auth',
-      'tecnico_aliases|tecnico_aliases_select',
-      'viagens_viatura|viagens_viatura_select',     // R269 (U134): metadado operacional, não dinheiro — o técnico precisa ler a viagem do colega para a tela dizer "em uso por Nicholas"; a ESCRITA é só pelas portas
-      'viaturas|viaturas_select',                   // R266 (U134): os carros da empresa — todo logado lê; só a gestão escreve
-      'visitas_tecnicas|visitas_select']);       // R221 (U119): a visita é atividade (R218); os VALORES ficam nas tabelas de blocos/itens
+     []);
   // PAR NEGATIVO do censo, e ele é o achado desta rodada: `sobreaviso_select`
   // NÃO está na lista acima porque o predicado dela não é `true`. Se alguém
   // afrouxar a policy, a linha volta ao censo E esta asserção acende — duas
@@ -15720,7 +15706,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── O QUE NÃO PODE TER SUMIDO NO CAMINHO ───────────────────────────────
   eq('U90/R121: a derivação do inventário as-built da implantação sobreviveu ao roteamento — é ela que fecha o ciclo proposta → implantação → corretiva',
-     /if \(os\?\.tipo === "implantacao" && os\.visita_id\) \{\s*\n\s*return derivarInventarioDaVisita\(os\.cliente_id, os\.visita_id\);/.test(vivo90),
+     // 13/09: `os.cliente_id` entrou na guarda — implantação de PROSPECÇÃO
+     // (prédio que ainda não é cliente, R22) não tem inventário para derivar,
+     // e o compilador vinha dizendo isso escondido no baseline de 57 erros
+     /if \(os\?\.tipo === "implantacao" && os\.visita_id && os\.cliente_id\) \{\s*\n\s*return derivarInventarioDaVisita\(os\.cliente_id, os\.visita_id\);/.test(vivo90),
      true);
 
   eq('U90/R121: nenhuma chamada de `fechar.mutate()` sem decisão explícita — o padrão do parâmetro existe como rede, não como caminho',
@@ -21589,6 +21578,98 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /<Cadastro /.test(painelV), /<Sede /.test(painelV), /filtrarFolha\(viagens, \{ competencia, viaturaId: viaturaFiltro, tecnicoId: tecnicoFiltro \}\)/.test(painelV),
       /useCorrigirViagem\(\)/.test(painelV), /desativar\.mutate\(\{ id: v\.id, ativa: false \}/.test(painelV)],
      [true, true, true, true, true, true, true, true]);
+}
+
+// ── U138 — a leva que saiu da revisão completa de 13/09/2026 (R277–R280) ──
+{
+  const fs8 = require('fs');
+  const ler8 = (p) => (fs8.existsSync(p) ? fs8.readFileSync(p, 'utf8') : '');
+  const auth8 = ler8('src/routes/auth.tsx');
+  const mig137 = ler8('supabase/migrations/20261002090000_u137_so_o_time_le.sql');
+  const foto8 = ler8('src/lib/foto-storage.ts');
+  const pre8 = ler8('src/routes/_authenticated/visita.$id.orcamento.pre-envio.tsx');
+  const nova8 = ler8('src/features/gerencial/NovaVisitaTecnica.tsx');
+  const mens8 = ler8('src/features/comercial/mensalidadesProjeto.ts');
+  const prop8 = ler8('src/features/proposta/gerarProposta.ts');
+  const pag8 = ler8('src/routes/_authenticated/visita.$id.pagamento.tsx');
+  const sum8 = ler8('scripts/sumario.cjs');
+  const manif8 = ler8('android/app/src/main/AndroidManifest.xml');
+  const claude8 = ler8('CLAUDE.md');
+
+  // R277 — A PORTA PÚBLICA. Era um botão "Criar conta" numa tela de login, e
+  // por trás dele 28 policies que respondiam a qualquer `authenticated`. O
+  // cadastro sempre foi por convite (R59, 22/08): a porta era redundante.
+  eq('R277 CRÍTICO: a tela /auth NÃO cadastra ninguém — sem `signUp`, sem modo "register", e o tipo só conhece login e forgot. A conta nasce por convite do admin (R59)',
+     // o teste tem de olhar o CÓDIGO, não o comentário que explica a regra:
+     // "não há mais register" contém a palavra e passaria por código vivo
+     [/supabase\.auth\.signUp\(/.test(auth8), /setMode\("register"\)|mode === "register"/.test(auth8), /handleRegister/.test(auth8),
+      auth8.includes('type AuthMode = "login" | "forgot";'),
+      /Criar conta/.test(auth8)],
+     [false, false, false, true, false]);
+
+  eq('R277 CRÍTICO: a U137 dá crachá a quem é do time (ativo e aprovado), reguarda as 28 policies do censo, deixa quem AGUARDA APROVAÇÃO ler o próprio perfil, liga a RLS de `chamado_contadores`, derruba a policy zumbi de visitas — e o trabalho dela fecha em COMMIT antes do portão (cicatriz da U136)',
+     [/CREATE OR REPLACE FUNCTION public\.eh_do_time\(_user_id uuid\)/.test(mig137),
+      /COALESCE\(p\.status, 'ativo'\) <> 'pendente_aprovacao'/.test(mig137),
+      (mig137.match(/USING \(public\.eh_do_time\(auth\.uid\(\)\)\)/g) ?? []).length >= 27,
+      /USING \(public\.eh_do_time\(auth\.uid\(\)\) OR id = auth\.uid\(\)\)/.test(mig137),
+      /ENABLE ROW LEVEL SECURITY/.test(mig137),
+      /DROP POLICY IF EXISTS "Tecnico or admin update visitas"/.test(mig137),
+      mig137.indexOf('\nCOMMIT;') > 0 && mig137.indexOf('\nCOMMIT;') < mig137.indexOf('\nROLLBACK;'),
+      /U137 PRÉ-VOO/.test(mig137), />>> OLHAR <<</.test(mig137), /DESFAZER/.test(mig137)],
+     [true, true, true, true, true, true, true, true, true, true]);
+
+  // R278 — A FOTO GUARDADA. A S1 fechou os três buckets em 20/08 e DUAS telas
+  // continuaram gravando URL pública neles. Imagem que não carrega parece
+  // "o usuário não subiu foto" — por isso passou quase um mês sem ninguém ver.
+  eq('R278 CRÍTICO: nenhuma tela chama `getPublicUrl` (os buckets são privados desde a S1) — as duas que chamavam gravam agora o ENDEREÇO no storage pela peça única, e a leitura assina na hora',
+     [/getPublicUrl/.test(pre8), /getPublicUrl/.test(nova8),
+      foto8.includes('export function lerEndereco'), foto8.includes('export async function assinarFoto'),
+      pre8.includes('assinarFoto(guardado)'), pre8.includes('enderecoDeFoto("blocos-fotos", path)'),
+      nova8.includes('enderecoDeFoto("visita-fotos", path)')],
+     [false, false, true, true, true, true, true]);
+
+  eq('R278: `lerEndereco` entende as TRÊS formas que existem no banco — o endereço novo, a URL morta que ficou gravada entre 20/08 e 13/09, e o caminho nu — para as linhas velhas voltarem a mostrar a foto sem migration',
+     [(() => { const m = /export function lerEndereco[\s\S]*?\n}/.exec(foto8); return m ? m[0] : ''; })()]
+       .map((corpo) => [/startsWith\("http"\)/.test(corpo), corpo.includes("(?:public|sign)"), corpo.includes("BUCKETS_DE_FOTO as readonly string[]")])[0],
+     [true, true, true]);
+
+  // R279 — O TOTAL QUE NÃO EXISTE. `valorPortariaRemota` devolve null acima de
+  // 100 apartamentos (negociação caso a caso, e está certo). O total somava
+  // esse null como ZERO e imprimia, sob "TOTAL MENSAL", menos do que a
+  // proposta vale — num documento que vai para o cliente.
+  eq('R279 CRÍTICO: com item SOB CONSULTA não há total — nem no .docx nem na tela de pagamento. A soma parcial sairia menor do que a proposta vale',
+     [mens8.includes('export function temSobConsulta'),
+      prop8.includes('const totalSobConsulta = temSobConsulta(linhasMensais);'),
+      prop8.includes('Total_mensal: totalSobConsulta ? "Sob consulta" : fmtBRL(totalMensal),'),
+      pag8.includes('const totalSobConsulta = temSobConsulta(linhasMensais);'),
+      pag8.includes('totalSobConsulta ? "Sob consulta"')],
+     [true, true, true, true, true]);
+
+  // O GERADOR DE SUMÁRIOS. Uma linha com os DOIS marcadores ligava o modo e o
+  // `continue` impedia o desligamento: 34 entradas do diário evaporaram, e o
+  // `--check` respondia ok porque reproduzia a mesma truncagem.
+  eq('CRÍTICO: o gerador de sumários trata a linha que tem os DOIS marcadores como PROSA, não como bloco — sem isso ele entra em modo-sumário e não sai, e o mapa do diário para de crescer sem ninguém ver',
+     [sum8.includes('const abre = l.includes(INICIO), fecha = l.includes(FIM);'),
+      sum8.includes('if (abre && fecha) continue;'),
+      ler8('docs/PLANO_UNIFICACAO.md').split('<!-- sumario:fim -->')[0].includes('#u136-')],
+     [true, true, true]);
+
+  // O APK. Duas promessas da entrega da semana não funcionavam por falta de
+  // linha no manifesto. O App Link fica preparado: falta o domínio, que é
+  // decisão do Davi (13/09: "não vou manter na lovable").
+  eq('R280: o manifesto do APK pede localização e NFC (a chegada da R273 e a etiqueta da R266), com o NFC como recurso NÃO obrigatório — celular sem NFC continua instalando',
+     [/ACCESS_FINE_LOCATION/.test(manif8), /ACCESS_COARSE_LOCATION/.test(manif8),
+      /android\.permission\.NFC/.test(manif8),
+      /uses-feature android:name="android\.hardware\.nfc" android:required="false"/.test(manif8),
+      /autoVerify/.test(manif8)],
+     [true, true, true, true, true]);
+
+  // O BASELINE. Ele já foi 85, 83, 78, 59 e 57 — e o CLAUDE.md conta que
+  // escondeu defeito de produção duas vezes. Hoje é ZERO: o próximo erro de
+  // tipo que aparecer é erro de verdade, e o número deixou de ter onde esconder.
+  eq('CRÍTICO: o CLAUDE.md declara o baseline de `tsc` em ZERO — quando ele deixa de ser zero, é defeito novo, não herança',
+     [/baseline de tipos é ZERO/.test(claude8), /57 erros\s*\n?\s*pré-existentes/.test(claude8)],
+     [true, false]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

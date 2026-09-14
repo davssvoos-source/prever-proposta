@@ -151,6 +151,20 @@ export function computeLinhasMensais(input: MensalidadesInput): LinhaMensal[] {
   return linhas;
 }
 
+/**
+ * A soma do que TEM preço. Cuidado ao usar sozinha: uma linha `null` é
+ * "Sob consulta" (portaria remota acima de 100 apartamentos, por exemplo),
+ * e some da soma. Pergunte antes a `temSobConsulta`.
+ */
 export function totalMensalServicos(linhas: LinhaMensal[]): number {
   return linhas.reduce((s, l) => s + (l.valor ?? 0), 0);
+}
+
+/**
+ * Alguma linha está SOB CONSULTA? Enquanto estiver, não existe total —
+ * somar o resto imprimiria, sob o rótulo "TOTAL MENSAL", um número menor do
+ * que a proposta vale. Foi o que o .docx fez até 13/09/2026.
+ */
+export function temSobConsulta(linhas: LinhaMensal[]): boolean {
+  return linhas.some((l) => l.valor === null);
 }

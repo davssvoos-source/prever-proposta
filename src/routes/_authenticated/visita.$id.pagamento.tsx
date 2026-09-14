@@ -24,7 +24,7 @@ import {
   mensalidadesComodato,
   valorPortariaRemota,
 } from "@/features/comercial/regrasComerciais";
-import { computeLinhasMensais, totalMensalServicos } from "@/features/comercial/mensalidadesProjeto";
+import { computeLinhasMensais, totalMensalServicos, temSobConsulta } from "@/features/comercial/mensalidadesProjeto";
 import {
   gerarPropostaDocx,
   tituloPadraoProposta,
@@ -215,6 +215,8 @@ function PagamentoPage() {
     turnoPortaria,
   });
   const totalServicosMensais = totalMensalServicos(linhasMensais);
+  // R279: o mesmo cuidado do .docx — com item sob consulta não há total
+  const totalSobConsulta = temSobConsulta(linhasMensais);
 
   const nomeLocal = visita?.nome_predio || visita?.titulo || "Visita";
 
@@ -570,7 +572,7 @@ function PagamentoPage() {
             ))}
             <div style={{ ...linhaRow, borderTop: isLight ? "2px solid rgba(0,0,0,0.10)" : "2px solid rgba(255,255,255,0.12)" }}>
               <span style={{ ...linhaLabel, fontWeight: 700 }}>Total mensal de serviços</span>
-              <span style={{ ...linhaValor, fontSize: 16 }}>{fmtBRL(totalServicosMensais)}/mês</span>
+              <span style={{ ...linhaValor, fontSize: 16 }}>{totalSobConsulta ? "Sob consulta" : `${fmtBRL(totalServicosMensais)}/mês`}</span>
             </div>
           </div>
         )}

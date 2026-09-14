@@ -342,7 +342,7 @@ export const analisarCobrancaChamado = createServerFn({ method: "POST" })
       valorFaturavel: arredondar(
         linhasFinais
           .filter((l) => l.resultado === "faturavel")
-          .reduce((s, l) => s + Number(l.valor_calculado ?? 0) * (qtdPorPeca.get(l.peca_id) ?? 1), 0),
+          .reduce((s, l) => s + Number(l.valor_calculado ?? 0) * Number(qtdPorPeca.get(l.peca_id) ?? 1), 0),
       ),
       usouIa,
       aviso,

@@ -348,8 +348,11 @@ function CalendarioPage() {
   const esconderDica = () => setDica(null);
 
   const { data: cargo } = useUserCargo();
-  // SAC é gestor de chamados: vê o calendário de TODOS (R8/R26)
-  const isGestor = cargo === "admin" || cargo === "sac" || cargo === "comercial";
+  // SAC é gestor de chamados: vê o calendário de TODOS (R8/R26).
+  // `useUserCargo` COLAPSA admin e comercial num "admin" só (gerencial/data.ts),
+  // então comparar com "comercial" aqui era galho morto — o compilador vinha
+  // dizendo isso, escondido no baseline de 57 erros.
+  const isGestor = cargo === "admin" || cargo === "sac";
   // R263: o técnico de campo tem o interruptor Minhas | Equipe — o MESMO da
   // Início dele (a chave do localStorage é uma). "Minhas" é responsável ou
   // apoio; "Equipe" é tudo o que o banco lhe devolve (R264: só campo).

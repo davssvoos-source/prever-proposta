@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R276 (47)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R280 (51)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5160,3 +5160,47 @@ adaptado."
   "Remova a inserção do KM, mudei de ideia, não vamos controlar isso no nosso
   sistema. Já é controlado no ERP e não tem necessidade de passar isso pro nosso
   sistema. Quero apenas mapear local e data e com quem estava a viatura.")*
+
+- **R277** — **A conta nasce por CONVITE; ninguém se cadastra sozinho — e só
+  quem é do time lê.** A tela de entrada não cria conta: quem entra no sistema
+  é cadastrado pelo admin em Administrativo › Usuários (R59), e recebe o
+  convite por e-mail ou entra por "esqueci minha senha". No banco, a leitura
+  deixa de ser de todo `authenticated` e passa a ser de quem tem **conta ativa
+  e aprovada** (`eh_do_time`): as 28 policies que respondiam `USING (true)`
+  foram reguardadas de uma vez. Quem aguarda aprovação continua lendo o
+  **próprio** perfil, e nada mais. *(A revisão completa de 13/09/2026 achou o
+  buraco: o botão "Criar conta" deixava qualquer pessoa da internet virar
+  `authenticated` — a tela barrava, a API não, e entre as 28 estavam `profiles`
+  e o catálogo de preço. Davi, 13/09/2026: "eu quero que você execute tudo o
+  que não faltam informações e só depende de você. Execute tudo e suba no
+  sistema.")* **Efeito de quebra, e é grande:** desativar um usuário deixou de
+  ser cosmético — o token dele continua válido e não lê mais nada.
+
+- **R278** — **Foto guardada é ENDEREÇO no storage, nunca URL.** O que vai
+  para o banco é `bucket/caminho`; quem mostra assina na hora
+  (`lib/foto-storage.ts`). URL pública de bucket privado nasce morta, e o pior
+  é que ela parece funcionar: uma imagem que não carrega é lida como "não
+  subiram foto". *(Achado da revisão de 13/09/2026: a S1 fechou os três
+  buckets em 20/08 e DUAS telas — pré-envio da proposta e Nova Visita Técnica —
+  continuaram gravando `getPublicUrl`. Foram 24 dias de dado ruim persistido.)*
+  A leitura aceita as formas antigas para as linhas velhas voltarem a mostrar
+  a foto sem migration.
+
+- **R279** — **Com item SOB CONSULTA não há total.** Quando alguma linha da
+  proposta não tem preço — portaria remota acima de 100 apartamentos é o caso
+  normal, e é negociação caso a caso —, o TOTAL MENSAL sai como **"Sob
+  consulta"**, no documento e na tela. Somar o resto imprimiria, sob o rótulo
+  de total, um número MENOR do que a proposta vale. *(Achado da revisão de
+  13/09/2026: `totalMensalServicos` fazia `s + (l.valor ?? 0)` e o .docx que vai
+  ao cliente saía com o total errado.)*
+
+- **R280** — **O sistema sai da Lovable: host próprio, domínio próprio.** A
+  hospedagem definitiva é da empresa, não da plataforma — e é para o domínio
+  dela que o APK do técnico vai apontar. Quem conduz é o **Nicholas (T.I.)**.
+  Duas consequências já medidas: o App Link do APK precisa do domínio COM TLS
+  (o Android bloqueia cleartext, e o instalador do Windows serve HTTP puro), e
+  o `capacitor.config.ts` aponta hoje para `prever.lovable.app` — o host que
+  esta decisão existe para aposentar. *(Davi, 13/09/2026: "de antemão eu te digo
+  que não vou manter na lovable. Nós temos DDNS, pagamos host, temos dominio e
+  tudo"; e sobre para onde o APK aponta: "isso vou te responder amanhã com mais
+  clareza, pois quem irá tocar essa parte é o Nicholas, do T.I.")*

@@ -15,6 +15,7 @@
 // seu), a sangria some, e as colunas ficam em no máximo duas.
 
 import { useState, type CSSProperties } from "react";
+import { enderecoDeFoto } from "@/lib/foto-storage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, MapPin, Check, Camera, Square, CheckSquare, Building2, Home, Warehouse, Camera as CameraIcon, Lock, Phone, Bell, Zap, Eye, DoorOpen, Wrench, Settings, Video, Shield, Satellite, Radio, Briefcase } from "lucide-react";
 import type { ComponentType } from "react";
@@ -416,10 +417,10 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
         if (upErr) {
           toast.error("Erro ao enviar foto: " + upErr.message);
         } else {
-          const { data: { publicUrl } } = supabase.storage
-            .from("visita-fotos")
-            .getPublicUrl(path);
-          foto_fachada_url = publicUrl;
+          // o mesmo defeito da tela de pré-envio, e ninguém tinha notado: a S1
+          // fechou `visita-fotos` junto com os outros dois em 20/08, e a URL
+          // pública nasce morta desde então. Guarda-se o endereço.
+          foto_fachada_url = enderecoDeFoto("visita-fotos", path);
         }
       }
 

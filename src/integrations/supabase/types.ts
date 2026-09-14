@@ -888,6 +888,10 @@ export type Database = {
           notas_visita: string | null
           obs_agendamento: string | null
           prioridade: string | null
+          proposta_enviada_em: string | null
+          proposta_motivo_recusa: string | null
+          proposta_resultado: string | null
+          proposta_resultado_em: string | null
           projeto_id: string | null
           servico_solicitado: string | null
           servicos_propostos: string[]
@@ -929,6 +933,10 @@ export type Database = {
           notas_visita?: string | null
           obs_agendamento?: string | null
           prioridade?: string | null
+          proposta_enviada_em?: string | null
+          proposta_motivo_recusa?: string | null
+          proposta_resultado?: string | null
+          proposta_resultado_em?: string | null
           projeto_id?: string | null
           servico_solicitado?: string | null
           servicos_propostos?: string[]

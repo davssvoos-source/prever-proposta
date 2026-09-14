@@ -22,6 +22,32 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- ══ A ETIQUETA NFC ABRE O APP (R266) ═══════════════════════════
+                 A etiqueta guarda um ENDEREÇO (…/viatura/<codigo>). Sem este
+                 filtro, encostar o celular abre o NAVEGADOR, não o Prever.
+
+                 Falta UMA coisa: o host. O Davi decidiu em 13/09 que o sistema
+                 NÃO fica na Lovable (a empresa tem DDNS, host e domínio); qual
+                 domínio o APK passa a apontar é a resposta que vem do Nicholas
+                 (T.I.). Assim que ela existir, troque prever.exemplo.com.br
+                 pelos dois lugares abaixo, tire os comentários, e publique o
+                 assetlinks.json em https://<dominio>/.well-known/assetlinks.json
+                 (é o que o autoVerify confere; sem ele o Android pergunta
+                 "abrir com" em vez de abrir direto).
+
+                 ATENÇÃO, e isto a revisão mediu: o servidor Windows serve HTTP
+                 puro (deploy/windows/instalar.ps1). O Android bloqueia cleartext
+                 por padrão, então App Link em http:// não funciona — o domínio
+                 precisa de TLS.
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="prever.exemplo.com.br" android:pathPrefix="/viatura" />
+            </intent-filter>
+            ══════════════════════════════════════════════════════════════ -->
+
         </activity>
 
         <provider
@@ -38,4 +64,15 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- R273/R274: a chegada por localização. Sem estas duas, o
+         `navigator.geolocation` do WebView é recusado em silêncio e a faixa da
+         Início nunca sugere encerrar a viagem. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- R266: a etiqueta do carro. `required="false"` de propósito: celular
+         sem NFC continua instalando o app e usa a lista em /viatura. -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
 </manifest>

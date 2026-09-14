@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
+import { assinarFoto, enderecoDeFoto } from "@/lib/foto-storage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, MapPin, Calendar, Layers, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
@@ -116,10 +117,15 @@ function PreEnvioPage() {
   const [fotoBanner, setFotoBanner] = useState<string | null>(null);
   const fileBannerRef = useRef<HTMLInputElement>(null);
 
+  // O que está gravado pode ser `bucket/caminho` (o certo), uma URL morta
+  // (o que esta tela gravou entre 20/08 e hoje) ou um caminho nu — as três
+  // formas moram em `lib/foto-storage.ts`, com a história do defeito.
   useEffect(() => {
-    if (visita?.foto_fachada_url && !fotoBanner) {
-      setFotoBanner(visita.foto_fachada_url);
-    }
+    const guardado = visita?.foto_fachada_url;
+    if (!guardado || fotoBanner) return;
+    let vivo = true;
+    void assinarFoto(guardado).then((url) => { if (vivo && url) setFotoBanner(url); });
+    return () => { vivo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visita?.foto_fachada_url]);
 
@@ -140,10 +146,11 @@ function PreEnvioPage() {
       .upload(path, file, { upsert: true, contentType: file.type })
       .then(({ error }) => {
         if (!error) {
-          const { data } = supabase.storage.from("blocos-fotos").getPublicUrl(path);
+          // grava o ENDEREÇO no storage, não a URL: o bucket é privado (S1),
+          // e uma URL pública dele nasce morta — quem lê assina na hora
           supabase
             .from("visitas_tecnicas")
-            .update({ foto_fachada_url: data.publicUrl })
+            .update({ foto_fachada_url: enderecoDeFoto("blocos-fotos", path) })
             .eq("id", visitaId);
         }
       });
