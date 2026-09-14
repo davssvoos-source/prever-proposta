@@ -172,7 +172,8 @@ O `CLAUDE.md` vale igual para interface — em especial:
 3. **Asserção** em `scripts/verificar-logica.cjs` — regra visual verificável é
    regra travada (já existem asserções de contraste, de rampa, de token com
    par no tema claro, de "o card mostra só estas quatro coisas").
-4. `npx vite build` completa · `npx tsc --noEmit` no baseline (57).
+4. `npx vite build` completa · `npx tsc --noEmit` em **ZERO** (o baseline de
+   57 erros foi zerado na U138 — qualquer erro agora é seu).
 5. **Diário** U-série em `docs/PLANO_UNIFICACAO.md` com o raciocínio: por que
    assim, o que se recusou a fazer, o que a verificação pegou.
 6. `DESIGN_SYSTEM.md` atualizado quando token, componente ou receita mudar —

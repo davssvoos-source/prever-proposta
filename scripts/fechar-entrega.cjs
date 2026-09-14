@@ -103,4 +103,4 @@ for (const p of ['docs/PLANO_UNIFICACAO.md', 'docs/ESTADO_ATUAL.md']) {
 
 // ── 6. sumários de novo ─────────────────────────────────────────────────────
 sumarios('6.');
-console.log('\npronto — falta: tsc (baseline 57), vite build, commit + push, build:windows se a versão subiu');
+console.log('\npronto — falta: tsc (tem de dar ZERO), vite build, commit + push, build:windows se a versão subiu');

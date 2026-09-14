@@ -21702,6 +21702,56 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [[1], [2]]);
 }
 
+// ── P21 — a parcela pulava fevereiro (14/09/2026) ─────────────────────────
+{
+  const fsP21 = require('fs');
+  const fech21 = fsP21.readFileSync('src/features/financeiro/fechamentos.ts', 'utf8');
+  const comp = (d) => P.competencia(d);
+
+  // A armadilha clássica: 31 de janeiro + 1 mês, com `setMonth`, vira 3 de
+  // MARÇO — o 31 de fevereiro não existe e o JavaScript transborda. Numa
+  // cobrança em três parcelas lançada no dia 31: fevereiro sem boleto e março
+  // com dois.
+  eq('P21 CRÍTICO: a parcela seguinte não TRANSBORDA de mês — 31/01 mais um mês é o último dia de fevereiro, e não 3 de março como o `setMonth` devolvia',
+     [comp(P.mesesAdiante(new Date(2026, 0, 31), 1)),
+      P.mesesAdiante(new Date(2026, 0, 31), 1).getDate(),
+      comp(P.mesesAdiante(new Date(2026, 0, 31), 2)),
+      comp(P.mesesAdiante(new Date(2026, 0, 31), 3)),
+      P.mesesAdiante(new Date(2026, 0, 31), 3).getDate()],
+     ['2026-02', 28, '2026-03', '2026-04', 30]);
+
+  // 2028 é bissexto: o mesmo 31/01 cai em 29, não 28.
+  eq('P21: em ano bissexto o dia aparado é 29, não 28 — a conta olha o mês de destino, não uma tabela decorada',
+     [P.mesesAdiante(new Date(2028, 0, 31), 1).getDate(),
+      P.mesesAdiante(new Date(2026, 0, 31), 1).getDate(),
+      comp(P.mesesAdiante(new Date(2028, 0, 31), 1))],
+     [29, 28, '2028-02']);
+
+  // Doze parcelas a partir de 31/01 têm de dar DOZE competências distintas —
+  // era exatamente isso que o defeito quebrava.
+  eq('P21 CRÍTICO: doze parcelas a partir do dia 31 dão DOZE competências DISTINTAS e consecutivas — com o transbordo, duas caíam no mesmo mês e uma ficava sem',
+     (() => {
+       const c = Array.from({ length: 12 }, (_, i) => comp(P.mesesAdiante(new Date(2026, 0, 31), i)));
+       return [new Set(c).size, c[0], c[1], c[11]];
+     })(),
+     [12, '2026-01', '2026-02', '2026-12']);
+
+  // E a virada de ano, que é onde uma conta de mês ingênua erra o ano.
+  eq('P21: a parcela atravessa a virada do ano sem perder o ano',
+     [comp(P.mesesAdiante(new Date(2026, 10, 30), 3)), comp(P.mesesAdiante(new Date(2026, 11, 31), 2))],
+     ['2027-02', '2027-02']);
+
+  // A busca do `setMonth` roda sobre o código SEM comentário: a explicação do
+  // defeito, dentro do próprio arquivo, cita o `setMonth` — e uma busca crua
+  // acha a explicação e acusa o conserto de ser o defeito. Asserção olha
+  // construção de código, nunca prosa.
+  const soCodigo = fech21.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  eq('P21: a cobrança parcelada usa `mesesAdiante` — nenhum `setMonth` solto sobrou no caminho do dinheiro',
+     [/mesesAdiante\(dados\.dataBase, i\)/.test(soCodigo), /setMonth/.test(soCodigo),
+      /setMonth/.test(fech21)],
+     [true, false, true]);
+}
+
 // ── O TEMPO REAL PARAVA DE CHEGAR, EM SILÊNCIO (14/09/2026) ───────────────
 //
 // Achado pelo console da Início, que reclamava a cada carregamento:
@@ -22148,6 +22198,24 @@ assincronas.push(async () => {
   eq('CRÍTICO: o CLAUDE.md declara o baseline de `tsc` em ZERO — quando ele deixa de ser zero, é defeito novo, não herança',
      [/baseline de tipos é ZERO/.test(claude8), /57 erros\s*\n?\s*pré-existentes/.test(claude8)],
      [true, false]);
+
+  // E o número não morava só no CLAUDE.md: morava nos RITUAIS — a lista que a
+  // próxima sessão confere antes de commitar. Um baseline errado PARA CIMA não
+  // é engano inofensivo: ele autoriza 57 erros novos em silêncio, que é
+  // exatamente o que o baseline antigo fez duas vezes.
+  eq('CRÍTICO: os rituais de fechamento também dizem ZERO — o baseline velho (57) saiu dos QUATRO lugares que alguém lê antes de commitar, senão o número volta por onde ninguém olhou',
+     (() => {
+       const vivos = [
+         '.claude/skills/designer/SKILL.md',
+         '.claude/skills/organizador/references/rituais.md',
+         'docs/ESTADO_ATUAL.md',
+         'scripts/fechar-entrega.cjs',
+       ];
+       const comVelho = vivos.filter((a) => /baseline\s*\(?\**57/.test(fs8.readFileSync(a, 'utf8')));
+       const comZero = vivos.filter((a) => /ZERO|zerado/.test(fs8.readFileSync(a, 'utf8'))).length;
+       return [comVelho, comZero];
+     })(),
+     [[], 4]);
 }
 
 (async () => {

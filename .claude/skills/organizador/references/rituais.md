@@ -108,7 +108,7 @@ Os sete passos do `CLAUDE.md`, mais o oitavo:
 ```bash
 node scripts/verificar-logica.cjs | tail -1     # "0 falharam"
 npx vite build                                  # completa
-npx tsc --noEmit | grep -c "error TS"           # baseline (57)
+npx tsc --noEmit | grep -c "error TS"           # ZERO (baseline zerado na U138)
 node scripts/sumario.cjs                        # regenera os sumários
 node scripts/sumario.cjs --check                # confere
 git add -A && git commit -F - <<'EOF' … EOF && git push

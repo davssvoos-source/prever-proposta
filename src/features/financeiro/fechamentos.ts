@@ -8,7 +8,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatarDocumento } from "@/lib/normalizar";
-import { rotuloReferencia, parcelar, dataIso, competencia } from "@/lib/periodos";
+import { rotuloReferencia, parcelar, dataIso, competencia, mesesAdiante } from "@/lib/periodos";
 import { moeda, type Cobranca } from "@/features/chamados/cobranca";
 
 export type TipoFechamento = "semanal" | "mensal";
@@ -133,8 +133,10 @@ export async function lancarCobrancaAvulsa(dados: {
   const { data: u } = await supabase.auth.getUser();
   const valores = parcelar(dados.valorTotal, dados.parcelas);
   const linhas = valores.map((valor, i) => {
-    const d = new Date(dados.dataBase);
-    d.setMonth(d.getMonth() + i);
+    // P21: `setMonth` transborda — 31/01 + 1 mês vira 3 de março, e a
+    // parcela cairia na competência errada (fevereiro sem boleto, março com
+    // dois). `mesesAdiante` apara o dia para o último do mês de destino.
+    const d = mesesAdiante(dados.dataBase, i);
     return {
       cliente_id: dados.clienteId,
       descricao:

@@ -13168,8 +13168,92 @@ sensores em vez de ler a tabela, e o verificador me corrigiu cinco vezes antes
 de eu ir buscar `SENSOR_INFO`. Fica registrado porque é o valor da asserção
 escrita contra o código, não contra a memória.
 
-**Números.** Verificador: 3.390 asserções, 0 falharam (eram 3.359 no começo do dia).
-`tsc`: 0. Build completa. Migration **U139 rodada pelo Davi em 14/09/2026**.
+**6. O que sumia sem avisar para de sumir (P32 e P42).** Os dois achados da
+auditoria são a mesma doença, e é a pior que uma tela pode ter:
+**VAZIO-PORQUE-FALHOU indistinguível de VAZIO-PORQUE-NÃO-TEM**. Quem olha lê
+"não tem" onde a verdade é "não coube" ou "não consegui perguntar", e age em
+cima disso.
+
+No P32 eram duas consultas da Início com teto (`.limit(2000)` nos apoios,
+`.limit(4000)` nos locais) e um `if (error) return m` que devolve mapa vazio
+numa falha. Nasceu `src/lib/paginar.ts`: lê em páginas até uma vir CURTA, e
+**levanta** o erro em vez de engolir. Ele recebe a função que busca a página —
+não o cliente do banco —, e é por isso que o verificador consegue exercitá-lo
+sem banco nenhum, inclusive no caso de 2.500 linhas, que só aconteceria com a
+empresa bem maior do que é hoje.
+
+Seguindo o fio apareceu um TERCEIRO teto que a auditoria não tinha visto, no
+histórico dos gráficos. Esse era deliberado e tinha o motivo escrito — mas o
+próprio comentário temia o que o `.limit` faz: "os gráficos ficariam errados
+sem nenhum sinal de erro, que é o pior jeito de estarem errados". Os 4.000
+viraram TAMANHO DE PÁGINA: hoje é uma requisição só, do mesmo tamanho de
+antes; quando a janela crescer, o gráfico continua certo.
+
+Sobrou um `.limit` na Início e ele FICA: é a R246, "as 300 encerradas mais
+recentes", teto com nome, motivo e ordem por recência. A diferença que importa
+é essa — teto acidental é o que corta sem ninguém ter decidido.
+
+No P42, o item 2 da própria pendência: `useBlocosDaGrade` sempre devolveu
+`erro`, e a página o descartava na desestruturação. Uma semana que falha
+deixava a grade vazia indefinidamente, e aí a cegueira que a pendência descreve
+(o formulário não vê conflito porque não vê bloco) deixava de ser uma janela de
+menos de um segundo e virava permanente, com a tela inteira dizendo "semana
+livre". Agora há faixa avisando que a grade está incompleta. Ela **não** trava
+a tela: travar num erro de leitura é pior que a janela que fecha, e o banco
+continua sendo a porta.
+
+De quebra, o verificador ganhou **fila para asserção assíncrona**: `await` não
+roda no topo de um `.cjs`, e sem a fila o resumo sairia impresso antes de as
+asserções de paginação terminarem de contar — um "0 falharam" que não teria
+olhado o que dizia ter olhado.
+
+**7. O tempo real parava de chegar, em silêncio.** Achado pelo console da
+Início, que reclamava a cada carregamento: `cannot add postgres_changes
+callbacks … after subscribe()`. Um canal do Supabase é identificado pelo
+**tópico**, e pedir o mesmo tópico duas vezes devolve o MESMO objeto. Quando o
+efeito remonta, a limpeza chama `removeChannel` — que é assíncrono — e a
+montagem seguinte chega antes de a remoção terminar: pega o canal velho, já
+inscrito, e o `.on()` é recusado.
+
+O efeito é sempre silencioso. Aquela tela para de receber tempo real e só
+atualiza quando a consulta reexecuta por outro motivo; ninguém abre chamado,
+porque **sino que não toca parece sino sem novidade**.
+
+Os QUATRO canais do sistema tinham nome fixo — só o do sino gritava no console
+(é o que mais remonta), mas os outros três carregavam o mesmo defeito esperando
+a remontagem certa. `src/lib/realtime.ts` dá um tópico único por montagem, e a
+asserção trava as duas metades: que dois pedidos seguidos nunca devolvem o
+mesmo nome, e que **nenhum** dos quatro arquivos volta a escrever o tópico à
+mão, que é como o defeito reaparece.
+
+Aqui eu quase me enganei sozinho: depois do conserto o console ainda mostrava o
+erro, e eu ia atrás de uma segunda causa. O console era o BUFFER ANTIGO — uma
+aba nova veio limpa. Vale a lição: a prova de que um erro sumiu é a sessão
+nova, não a rolagem para cima.
+
+**8. A parcela pulava fevereiro (P21).** `d.setMonth(d.getMonth() + i)` é a
+armadilha clássica do JavaScript: **31 de janeiro mais um mês vira 3 de
+março**, porque 31 de fevereiro não existe e a data transborda. Uma cobrança em
+três parcelas lançada no dia 31 saía em janeiro, março e março — fevereiro sem
+boleto e março com dois. A porta da U80 já fazia certo com `make_interval`, o
+que significa que **as duas telas discordavam sobre a mesma conta**.
+
+`mesesAdiante(base, n)` foi para `src/lib/periodos.ts`, com as outras contas de
+data da casa, e apara o dia para o último do mês de destino — que é o que
+"daqui a um mês" significa para quem emite boleto. Por ser pura, o verificador
+a exercita nos dias que só existem em alguns meses, no 29 de fevereiro dos anos
+bissextos e na virada de ano. A asserção que mais vale é a que conta: doze
+parcelas a partir do dia 31 têm de dar **doze competências distintas**. Com o
+`setMonth`, duas caíam no mesmo mês e uma ficava sem nenhuma.
+
+E a asserção precisou de duas tentativas, pela terceira vez nesta casa: a
+primeira procurava `setMonth` no arquivo inteiro e achava o **comentário** que
+explica o defeito — acusando o conserto de ser o defeito. Asserção olha
+construção de código; comentário sai antes da busca. Fica escrito aqui porque
+três repetições já não são descuido, são padrão.
+
+**Números.** Verificador: **3.402 asserções**, 0 falharam (eram 3.359 no começo do dia).
+`tsc`: 0. Build completa. Migrations **U136, U137 e U139 rodadas pelo Davi** — nada pendente no banco.
 
 **O que falta do motor de orçamento:** `blockAutoItems.ts` (503 linhas) tem
 muito mais regra do que os dois helpers que provei. É o próximo pedaço.

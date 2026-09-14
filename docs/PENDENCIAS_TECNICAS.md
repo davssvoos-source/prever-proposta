@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **66 em aberto, 10 fechadas.**
+> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **63 em aberto, 13 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -24,7 +24,7 @@
 - [P18 — ~~CRÍTICO · A linha do tempo entrega o valor em reais a TODO autenticado~~ FECHADA (S4, 2026-09-03)](#p18-crítico-a-linha-do-tempo-entrega-o-valor-em-reais-a-todo-autenticado-fechada-s4-2026-09-03)
 - [P19 — RESOLVIDO em 2026-09-10 pela U88 · O DELETE de `aprovar_chamado_financeiro` comia o avulso vinculado (2026-09-01, U80)](#p19-resolvido-em-2026-09-10-pela-u88-o-delete-de-aprovarchamadofinanceiro-comia-o-avulso-vinculado-2026-09-01-u80)
 - [P20 — MÉDIO · `em_conferencia` é um buraco negro: o chamado sai de toda fila sem ninguém aprovar (2026-09-01, U80)](#p20-médio-emconferencia-é-um-buraco-negro-o-chamado-sai-de-toda-fila-sem-ninguém-aprovar-2026-09-01-u80)
-- [P21 — MÉDIO · Duas telas discordam sobre a data da parcela: `setMonth` pula fevereiro (2026-09-01, U80)](#p21-médio-duas-telas-discordam-sobre-a-data-da-parcela-setmonth-pula-fevereiro-2026-09-01-u80)
+- [P21 — ~~MÉDIO~~ FECHADA EM PARTE (U140, 2026-09-14) · Duas telas discordam sobre a data da parcela: `setMonth` pula fevereiro (2026-09-01, U80)](#p21-médio-fechada-em-parte-u140-2026-09-14-duas-telas-discordam-sobre-a-data-da-parcela-setmonth-pula-fevereiro-2026-09-01-u80)
 - [P22 — ALTO · O catálogo de preço é público, e isto é R12 CONTRA R13 (2026-09-03, S4)](#p22-alto-o-catálogo-de-preço-é-público-e-isto-é-r12-contra-r13-2026-09-03-s4)
 - [P23 — MÉDIO · O SAC lê o orçamento da visita, por deriva silenciosa da U6a (2026-09-03, S4)](#p23-médio-o-sac-lê-o-orçamento-da-visita-por-deriva-silenciosa-da-u6a-2026-09-03-s4)
 - [P24 — MÉDIO · A S1 §2.3 está morta desde que nasceu: `unidades_select` sobreviveu (2026-09-03, S4)](#p24-médio-a-s1-23-está-morta-desde-que-nasceu-unidadesselect-sobreviveu-2026-09-03-s4)
@@ -35,7 +35,7 @@
 - [P29 — BAIXO · Duas cópias desatualizadas de `pode_editar_chamado` (2026-09-04, achado na U81)](#p29-baixo-duas-cópias-desatualizadas-de-podeeditarchamado-2026-09-04-achado-na-u81)
 - [P30 — BAIXO · O relatório de atendimento imprime UMA pessoa quando a turma foi de duas (2026-09-04, achado na U81)](#p30-baixo-o-relatório-de-atendimento-imprime-uma-pessoa-quando-a-turma-foi-de-duas-2026-09-04-achado-na-u81)
 - [P31 — MÉDIO · Quem foi na ida aparece na agenda do RETORNO (2026-09-04, U81)](#p31-médio-quem-foi-na-ida-aparece-na-agenda-do-retorno-2026-09-04-u81)
-- [P32 — MÉDIO · `useApoiosDeTodos` tem teto silencioso de 2000, e agora o conjunto só cresce (2026-09-04, U81)](#p32-médio-useapoiosdetodos-tem-teto-silencioso-de-2000-e-agora-o-conjunto-só-cresce-2026-09-04-u81)
+- [P32 — ~~MÉDIO~~ FECHADA (U140, 2026-09-14) · `useApoiosDeTodos` tem teto silencioso de 2000, e agora o conjunto só cresce (2026-09-04, U81)](#p32-médio-fechada-u140-2026-09-14-useapoiosdetodos-tem-teto-silencioso-de-2000-e-agora-o-conjunto-só-cresce-2026-09-04-u81)
 - [P33 — MÉDIO · A reconciliação devolve "corrigido" sem corrigir (2026-09-04, U81)](#p33-médio-a-reconciliação-devolve-corrigido-sem-corrigir-2026-09-04-u81)
 - [P34 — ALTO · Cinco caminhos encerram um chamado sem perguntar nada (2026-09-05, U82)](#p34-alto-cinco-caminhos-encerram-um-chamado-sem-perguntar-nada-2026-09-05-u82)
 - [P35 — MÉDIO · O espelho de um chamado encerrado fica na PRIMEIRA visita, e a auditoria não o enxerga (2026-09-05, U82)](#p35-médio-o-espelho-de-um-chamado-encerrado-fica-na-primeira-visita-e-a-auditoria-não-o-enxerga-2026-09-05-u82)
@@ -45,7 +45,7 @@
 - [P39 — BAIXO · Duas decisões de produto da U82 que ficaram por confirmar (2026-09-05)](#p39-baixo-duas-decisões-de-produto-da-u82-que-ficaram-por-confirmar-2026-09-05)
 - [P40 — ALTO · A CARGA RETROATIVA da U82 foi adiada, e espera número (2026-09-05, U82)](#p40-alto-a-carga-retroativa-da-u82-foi-adiada-e-espera-número-2026-09-05-u82)
 - [P41 — MÉDIO · Turma vazia na semana em que o espelho repousa apaga a lista de apoio (2026-09-05, U82)](#p41-médio-turma-vazia-na-semana-em-que-o-espelho-repousa-apaga-a-lista-de-apoio-2026-09-05-u82)
-- [P42 — MÉDIO · A janela de carregamento continua cega, e a grade anda junto (2026-09-08, U84)](#p42-médio-a-janela-de-carregamento-continua-cega-e-a-grade-anda-junto-2026-09-08-u84)
+- [P42 — ~~MÉDIO~~ FECHADA EM PARTE (U140, 2026-09-14) · A janela de carregamento continua cega, e a grade anda junto (2026-09-08, U84)](#p42-médio-fechada-em-parte-u140-2026-09-14-a-janela-de-carregamento-continua-cega-e-a-grade-anda-junto-2026-09-08-u84)
 - [P43 — MÉDIO · A casca `geocode()` colapsa "não achei" e "o serviço recusou" (2026-09-08, U84)](#p43-médio-a-casca-geocode-colapsa-não-achei-e-o-serviço-recusou-2026-09-08-u84)
 - [P44 — ~~ALTO~~ **CONSERTADO** · `'prospecto'` tinha DOIS escritores, e os dois saíram (2026-09-08, U84)](#p44-alto-consertado-prospecto-tinha-dois-escritores-e-os-dois-saíram-2026-09-08-u84)
 - [P45 — BAIXO · O que a U84 mediu e deixou como está (2026-09-08)](#p45-baixo-o-que-a-u84-mediu-e-deixou-como-está-2026-09-08)
@@ -680,7 +680,7 @@ gates passam a aceitar `a_analisar` **ou** `em_conferencia`, ou a análise para 
 escrever o valor (e a coluna volta a ter quatro estados). A segunda é mais limpa;
 nenhum consumidor lê `em_conferencia` para nada.
 
-## P21 — MÉDIO · Duas telas discordam sobre a data da parcela: `setMonth` pula fevereiro (2026-09-01, U80)
+## P21 — ~~MÉDIO~~ FECHADA EM PARTE (U140, 2026-09-14) · Duas telas discordam sobre a data da parcela: `setMonth` pula fevereiro (2026-09-01, U80)
 
 `lancarCobrancaAvulsa` (`src/features/financeiro/fechamentos.ts:137`) avança a
 competência com `d.setMonth(d.getMonth() + i)`. Em JavaScript, **31/01 + 1 mês é
@@ -691,9 +691,28 @@ A porta da U80 (`concluir_chamado_com_cobranca`) usa `make_interval(months => �
 e portanto está certa. **As duas telas passam a discordar sobre a mesma conta** —
 a de fechamentos pula, a do cartão não.
 
-**Não foi consertado aqui** porque aquela tela é de outro dono e não é objeto
-deste passo. É uma troca de `setMonth` por uma soma de mês grampeada (ou pela
-mesma RPC), com asserção sobre 31/01, 31/03 e 29/02 de ano bissexto.
+~~**Não foi consertado aqui** porque aquela tela é de outro dono e não é objeto
+deste passo.~~
+
+**A METADE DA DATA ESTÁ FECHADA (U140, 2026-09-14).** Nasceu
+`mesesAdiante(base, n)` em `src/lib/periodos.ts`, ao lado das outras contas de
+data da casa: o dia é **aparado** para o último do mês de destino, que é o que
+"daqui a um mês" significa para quem emite boleto. 31/01 + 1 mês passou a ser
+28/02 (29 em ano bissexto) e 31/01 + 3 a ser 30/04 — a mesma resposta que o
+`make_interval` do Postgres já dava na porta da U80. **As duas telas voltaram a
+concordar.**
+
+A peça é pura, então o verificador a exercita sem banco, exatamente nos casos
+que a pendência pedia: 31/01, os anos bissextos (2028 dá 29; 2026 dá 28), a
+virada de ano, e — o que prova o defeito de verdade — **doze parcelas a partir
+do dia 31 têm de dar doze competências DISTINTAS**. Com o `setMonth`, duas
+caíam no mesmo mês e uma ficava sem nenhuma.
+
+> A asserção que guarda "nenhum `setMonth` solto sobrou" precisou de duas
+> tentativas: a primeira lia o **comentário** que explica o defeito dentro do
+> próprio arquivo — e o comentário cita `setMonth`. Terceira vez nesta casa que
+> uma busca crua acusa o conserto de ser o defeito. Asserção olha construção de
+> código; comentário sai antes.
 
 **E o avulso SEM chamado continua sem dedup algum**: dois cliques em "Lançar"
 criam dois jogos de parcelas. Nenhum dos dois índices da U80 o alcança — os dois
@@ -1019,7 +1038,7 @@ precisão num caso raro. Trocaria um fantasma estreito por um apagamento largo.
 data da SUA visita e a agenda deixa de depender do espelho. Enquanto isso não
 existe, o defeito é o preço declarado em R107.
 
-## P32 — MÉDIO · `useApoiosDeTodos` tem teto silencioso de 2000, e agora o conjunto só cresce (2026-09-04, U81)
+## P32 — ~~MÉDIO~~ FECHADA (U140, 2026-09-14) · `useApoiosDeTodos` tem teto silencioso de 2000, e agora o conjunto só cresce (2026-09-04, U81)
 
 `src/features/home/data.ts:114` traz `chamado_apoios` com `.limit(2000)` e
 `if (error) return m` — passado o teto, a pilha de avatares simplesmente para de
@@ -1030,6 +1049,31 @@ o DELETE não a alcança, e não há caminho de descongelamento. O conjunto pass
 crescer de forma **monotônica** — bater no teto deixou de ser hipótese e virou
 questão de quando. Duas saídas: paginar, ou trazer só os apoios dos chamados
 visíveis na tela (que é o que a consulta realmente precisa).
+
+**Status: FECHADA (U140, 2026-09-14) — pela primeira saída.** Nasceu
+`src/lib/paginar.ts`: lê em páginas de 1.000 até uma página vir CURTA, com teto
+de 50 páginas para não girar para sempre, e **levanta** o erro em vez de
+devolver lista vazia. Ele recebe a função que busca a página, então o
+verificador o exercita sem banco — inclusive o caso de 2.500 linhas, que só
+aconteceria com a empresa bem maior.
+
+As duas metades da doença saíram juntas, e a segunda era a pior: `.limit(2000)`
+corta em silêncio, e `if (error) return m` transforma **falha** em **lista
+vazia**. Quem olha o card lê "não tem apoio" onde a verdade é "não coube" ou
+"não consegui perguntar" — VAZIO-PORQUE-FALHOU indistinguível de
+VAZIO-PORQUE-NÃO-TEM.
+
+Seguindo o fio apareceu um **terceiro** teto que esta pendência não tinha
+visto, no histórico dos gráficos (`.limit(4000)`). Esse era deliberado e tinha
+o motivo escrito — mas o próprio comentário temia o que o `.limit` faz: "os
+gráficos ficariam errados sem nenhum sinal de erro, que é o pior jeito de
+estarem errados". Os 4.000 viraram **tamanho de página**: hoje é uma requisição
+só, do mesmo tamanho de antes; quando a janela crescer, o gráfico continua
+certo.
+
+Sobrou **um** `.limit` na Início, e ele fica: é a R246 ("as 300 encerradas mais
+recentes"), teto com nome, motivo e ordem por recência. Teto acidental é o que
+corta sem ninguém ter decidido.
 
 ## P33 — MÉDIO · A reconciliação devolve "corrigido" sem corrigir (2026-09-04, U81)
 
@@ -1379,7 +1423,7 @@ da U82 (chamados com visita afirmada e nenhuma linha de apoio congelada) — se 
 SUBIR depois que a porta entrar em uso, ou a trava não está fechando, ou é este
 resíduo aparecendo.
 
-## P42 — MÉDIO · A janela de carregamento continua cega, e a grade anda junto (2026-09-08, U84)
+## P42 — ~~MÉDIO~~ FECHADA EM PARTE (U140, 2026-09-14) · A janela de carregamento continua cega, e a grade anda junto (2026-09-08, U84)
 
 **O que foi consertado.** `FormularioDoBloco` recebe `blocos` de uma consulta de
 UMA SEMANA (`useBlocosDaSemana` / `useBlocosDaGrade`) e tem um `<input
@@ -1407,11 +1451,16 @@ pode ser de outra semana, sem ninguém ter trocado nada.
    e um formulário que se trava sozinho enquanto carrega é pior que a janela de
    menos de um segundo que ele fecha. **O banco continua sendo a porta** — o
    EXCLUDE e a RPC não têm janela nenhuma.
-2. **`useBlocosDaGrade` devolve `erro` e a página o DESCARTA**
-   (`chamados.programacao.tsx`: `const { blocos, idsDeChamado } = ...`). Uma
-   consulta de semana que FALHA deixa `blocos = []` indefinidamente, e aí a
-   cegueira do item 1 deixa de ser uma janela de um segundo. Vale uma linha, mas
-   é decisão de desenho (o que a tela faz com o erro), não conserto mecânico.
+2. ~~**`useBlocosDaGrade` devolve `erro` e a página o DESCARTA**~~ **FECHADO
+   (U140, 2026-09-14).** O hook sempre devolveu `erro`; a página o jogava fora
+   na desestruturação (`const { blocos, idsDeChamado } = ...`). Uma consulta de
+   semana que FALHA deixava `blocos = []` indefinidamente — e aí a cegueira do
+   item 1 deixava de ser uma janela de menos de um segundo e virava permanente,
+   com a grade inteira dizendo "semana livre". A decisão de desenho que faltava
+   é esta: a página mostra uma **faixa** avisando que a grade está incompleta e
+   **não** se trava. Travar a tela num erro de leitura seria pior que a janela
+   que ela fecha, e o banco continua sendo a porta — o EXCLUDE e a RPC não têm
+   janela nenhuma.
 3. **A grade anda junto.** Em `/chamados/programacao` o invólucro que consulta é
    a própria página, então trocar o dia no formulário para outra SEMANA navega a
    grade. É deliberado (ao fechar, a pessoa cai na semana em que acabou de

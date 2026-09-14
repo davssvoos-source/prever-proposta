@@ -41,6 +41,27 @@ export function referenciaSemanal(d: Date): string {
 }
 
 /** Competência mensal: "2026-08". */
+/**
+ * A mesma data, `n` meses adiante — sem transbordar para o mês seguinte.
+ *
+ * `setMonth(getMonth() + 1)` no dia 31 de janeiro devolve **3 de março**: o
+ * 31 de fevereiro não existe e o JavaScript o converte. Numa cobrança
+ * parcelada isso significa fevereiro sem boleto e março com dois (P21).
+ *
+ * Aqui o dia é APARADO para o último do mês de destino: 31/01 + 1 mês é
+ * 28/02 (29 em ano bissexto), e 31/01 + 3 é 30/04. É o que "daqui a um mês"
+ * significa para quem emite boleto.
+ */
+export function mesesAdiante(base: Date, n: number): Date {
+  const ano = base.getFullYear();
+  const mes = base.getMonth() + n;
+  // dia 0 do mês SEGUINTE é o último dia do mês de destino
+  const ultimoDoDestino = new Date(ano, mes + 1, 0).getDate();
+  const d = new Date(base);
+  d.setFullYear(ano, mes, Math.min(base.getDate(), ultimoDoDestino));
+  return d;
+}
+
 export function competencia(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
