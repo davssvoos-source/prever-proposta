@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 161 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 162 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -164,6 +164,7 @@
 - [U136 — o km sai das viaturas: a viagem passa a mapear quem, quando e onde (R276)](#u136-o-km-sai-das-viaturas-a-viagem-passa-a-mapear-quem-quando-e-onde-r276)
 - [U138 — a leva que saiu da revisão completa: a porta pública fecha, o baseline de tipos vai a ZERO, e três defeitos que ninguém via (R277–R280)](#u138-a-leva-que-saiu-da-revisão-completa-a-porta-pública-fecha-o-baseline-de-tipos-vai-a-zero-e-três-defeitos-que-ninguém-via-r277r280)
 - [U140 — os cinco que não dependiam do Davi: a fila do gestor, as cobranças na ficha, os cabeçalhos e o motor de orçamento provado (P20, R155, S10)](#u140-os-cinco-que-não-dependiam-do-davi-a-fila-do-gestor-as-cobranças-na-ficha-os-cabeçalhos-e-o-motor-de-orçamento-provado-p20-r155-s10)
+- [U141 — o checklist clicava na linha de baixo (R281)](#u141-o-checklist-clicava-na-linha-de-baixo-r281)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -13389,3 +13390,55 @@ que não é dela.
 
 **O que falta do motor de orçamento:** `blockAutoItems.ts` (503 linhas) tem
 muito mais regra do que os dois helpers que provei. É o próximo pedaço.
+
+## U141 — o checklist clicava na linha de baixo (R281)
+
+**O pedido.** Davi, 14/09/2026: *"No checklist de uma atividade, o hover do
+mouse cria uma região circular em amarelo no item de check muito grande, quero
+que não crie isso pois o checklist das atividades buga quando você tenta checar
+rápido, as vezes eu quero clicar na de cima e ele clica na de baixo, está ruim
+este mecanismo."*
+
+**A causa, MEDIDA e não deduzida.** O `:before` do item era um disco de 49×49
+sobre uma caixa de 19×19 — e `opacity: 0` **não** tira um elemento do teste de
+ponteiro (só `display:none`, `visibility:hidden` ou `pointer-events:none`
+tiram). O passo entre itens é de 21,5px no chat, 24,8px na tela de campo e
+27,7px no editor. Ou seja: **cada item reivindicava 49px dentro de um passo de
+~22px**, e vizinhos se sobrepunham de 21 a 27px.
+
+Quem ganhava a disputa era o de **baixo**: `.checklist-check` tem
+`translate3d(0,0,0)`, que cria contexto de empilhamento, então todos pintam com
+a mesma prioridade e a ordem do DOM decide. Varrendo a coluna da caixa com
+`elementFromPoint`, o número saiu cru: **dez dos dezenove pixels da caixa
+VISÍVEL de um item pertenciam ao item seguinte** — na tela de campo o item de
+baixo era dono já no CENTRO da caixa de cima. É literalmente o que o Davi
+descreveu.
+
+E no editor da Descrição não parava no hover: o `mouseDown` faz
+`closest(".editor-marcador")`, e como o alvo sob o cursor era o marcador do
+bloco seguinte, ele alternava **o bloco errado**. Na leitura o `<input>` está
+`disabled` em todos os chamadores de hoje, então lá o estrago era visual — mas
+no dia em que alguém passar `aoMudar`, o clique cruzado apareceria igual.
+
+**O conserto.** Tirar só o `pointer-events` consertaria o clique e deixaria um
+halo de 49px cobrindo metade da linha vizinha; o Davi pediu que ele **não seja
+criado**, e a R174 já dizia que brilho decorativo não entra. O disco saiu
+(`content: none`). O hover não ficou mudo — continua dourando o traço do SVG —,
+e a marcação continua com o "pop" da R53.
+
+**A segunda metade, que ele não pediu e a régua cobra.** Sem o disco, o item
+passou a valer exatamente 19px — e a tela de campo é justamente a que se usa
+com o dedo. Dois alvos de 40px só não se tocam se o **passo** for ≥ 40px, então
+quem cresce é a linha, não a caixa. O editor ficou de fora de propósito:
+crescer o bloco dele mudaria o ritmo de toda a digitação da Descrição, e isso é
+decisão do Davi, não correção.
+
+**MEDIDO no navegador, com a régua e não com a vista.** Ponteiro fino: a caixa
+do item 3 é dona de dy −10 a +9 — os 19px dela, inteiros, sem vizinho dentro
+(antes, o item 4 era dono em dy = 0). Ponteiro grosso: alvo de **40,00px**, 40
+pixels exclusivos, **4px de folga** entre alvos vizinhos, passo de 44px — e o
+texto **não se moveu** (continua a 28,00px da borda, porque a largura segue
+19px e só a altura cresce).
+
+**Números.** Verificador: **3.426 asserções**, 0 falharam. `tsc`: 0. Build
+completa. Sem migration.

@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R280 (51)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R281 (52)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5204,3 +5204,23 @@ adaptado."
   que não vou manter na lovable. Nós temos DDNS, pagamos host, temos dominio e
   tudo"; e sobre para onde o APK aponta: "isso vou te responder amanhã com mais
   clareza, pois quem irá tocar essa parte é o Nicholas, do T.I.")*
+
+- **R281** — **O item de checklist vale a própria caixa, e nada além dela.**
+  O disco amarelo que acendia no hover saiu. Ele media **49×49 numa caixa de
+  19×19**, e um elemento com `opacity: 0` continua recebendo ponteiro — então,
+  com o passo entre itens em ~22px, cada item reivindicava 49px e se sobrepunha
+  ao vizinho por 21 a 27px. **Dez dos dezenove pixels da caixa visível de um
+  item pertenciam ao item de baixo** (o de baixo ganha porque a caixa tem
+  `translate3d`, que cria contexto de empilhamento, e aí decide a ordem do DOM).
+  No editor da Descrição não parava no hover: o `mouseDown` faz `closest` e
+  alternava o bloco errado. O hover continua respondendo — pelo traço dourado do
+  SVG —, e a marcação continua com o "pop" da R53; o que sai é só o disco, que é
+  o brilho decorativo que a R174 já proibia. **No dedo a linha cresce para 40px**
+  (a régua de alvo de toque), porque sem o disco o item passou a valer 19px e a
+  tela de campo é justamente a que se usa com o dedo; a largura fica em 19px, e
+  o texto não se move. *(Davi, 14/09/2026: "o hover do mouse cria uma região
+  circular em amarelo no item de check muito grande, quero que não crie isso
+  pois o checklist das atividades buga quando você tenta checar rápido, as vezes
+  eu quero clicar na de cima e ele clica na de baixo, está ruim este
+  mecanismo".)* Revisa a R50/R53 em UM ponto: a geometria original de mrhyddenn
+  (Uiverse.io) era de um botão isolado, não de uma lista de linhas de 22px.

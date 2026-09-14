@@ -1096,18 +1096,23 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   transform: translate3d(0, 0, 0);
   flex-shrink: 0;
 }
-.checklist-check:before {
-  content: "";
-  position: absolute;
-  top: -15px;
-  left: -15px;
-  width: 49px;
-  height: 49px;
-  border-radius: 50%;
-  background: var(--gold-glow);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
+/* R281 (Davi, 14/09/2026): o disco amarelo do hover SAIU.
+
+   Ele era 49×49 numa caixa de 19×19, e um elemento com `opacity: 0`
+   continua recebendo ponteiro. Com o passo entre itens em ~22px, cada item
+   reivindicava 49px e se sobrepunha ao vizinho por 21 a 27px — 10 dos 19px
+   da caixa VISÍVEL de um item pertenciam ao item de baixo (o de baixo ganha
+   porque `translate3d` acima cria contexto de empilhamento e a ordem do DOM
+   decide). Era isso o "quero clicar na de cima e ele clica na de baixo", e
+   no editor não parava no hover: o `mouseDown` faz `closest` e alternava o
+   bloco errado.
+
+   Tirar só o `pointer-events` consertaria o clique e deixaria um halo de
+   49px cobrindo metade da linha vizinha — o Davi pediu que ele NÃO SEJA
+   CRIADO, e a R174 já dizia que brilho decorativo não entra. O hover
+   continua respondendo pelo traço dourado do SVG, e a marcação continua com
+   o "pop" da R53 — o que sai é só o disco. */
+.checklist-check:before { content: none; }
 .checklist-check svg {
   position: relative;
   z-index: 1;
@@ -1121,8 +1126,25 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
 }
 .checklist-check svg path { stroke-dasharray: 60; stroke-dashoffset: 0; }
 .checklist-check svg polyline { stroke-dasharray: 22; stroke-dashoffset: 66; }
-.checklist-check:hover:before { opacity: 1; }
 .checklist-check:hover svg { stroke: var(--gold-primary); }
+
+/* R281, segunda metade: no DEDO o alvo tem de ter 40px (DESIGN_SYSTEM §
+   alvo de toque). Sem o disco, o item passou a valer exatamente a própria
+   caixa — 19px, e a tela de campo é justamente a que se usa com o dedo.
+   Dois alvos de 40px só não se tocam se o passo for >= 40px, então a LINHA
+   cresce no toque; a largura fica em 19px, e o texto não se move (medido:
+   deslocamento horizontal 0,00px). O editor fica de fora: crescer o bloco
+   dele mudaria o ritmo de TODA a digitação da Descrição, e isso é decisão,
+   não correção. */
+@media (pointer: coarse) {
+  .checklist-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+  }
+  .editor-rico-area .checklist-check { height: 19px; }
+}
 .checklist-input:checked + .checklist-check svg {
   stroke: var(--gold-primary);
   /* o "pop": estica um pouco além de 1 e volta — é o que faz a marcação

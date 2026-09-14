@@ -22324,6 +22324,68 @@ assincronas.push(async () => {
      [[], 4]);
 }
 
+// ── R281 — O CHECKLIST CLICAVA NA LINHA DE BAIXO (14/09/2026) ─────────────
+//
+// Davi: "as vezes eu quero clicar na de cima e ele clica na de baixo".
+//
+// A causa medida: o `:before` do item era um disco de 49×49 sobre uma caixa de
+// 19×19, e `opacity: 0` NÃO tira um elemento do teste de ponteiro. Com o passo
+// entre itens em ~22px, cada item reivindicava 49px — sobreposição de 21 a 27px
+// com o vizinho, e o de BAIXO ganhava (a caixa tem `translate3d`, que cria
+// contexto de empilhamento, e aí quem decide é a ordem do DOM). Dez dos dezenove
+// pixels da caixa VISÍVEL de um item pertenciam ao item seguinte.
+{
+  const fsR281 = require('fs');
+  const css281 = fsR281.readFileSync('src/styles.css', 'utf8');
+  // o bloco do checklist, do seletor da caixa até o fim das regras dele
+  const iCk = css281.indexOf('.checklist-check {');
+  const fCk = css281.indexOf('.checklist-input:checked + .checklist-check svg');
+  const bloco281 = css281.slice(iCk, fCk);
+
+  eq('R281 CRÍTICO: o disco de 49px do item de checklist NÃO EXISTE mais — um `:before` invisível de 49px sobre uma caixa de 19px continua recebendo clique, e era ele que entregava metade de cada item ao vizinho de baixo',
+     [/\.checklist-check:before \{ content: none; \}/.test(bloco281),
+      /width: 49px/.test(bloco281),
+      /top: -15px/.test(bloco281),
+      /\.checklist-check:hover:before/.test(css281)],
+     [true, false, false, false]);
+
+  // O hover não ficou mudo: o traço do SVG continua dourando, e a marcação
+  // continua com o "pop" da R53. O que saiu foi só o brilho decorativo — que é
+  // o que a R174 já proibia.
+  eq('R281: o hover e a marcação continuam respondendo — o traço dourado e o `pop` da R53 ficam; o que saiu foi só o disco (R174: brilho decorativo não entra)',
+     [/\.checklist-check:hover svg \{ stroke: var\(--gold-primary\); \}/.test(css281),
+      /\.checklist-input:checked \+ \.checklist-check svg/.test(css281),
+      /scale\(1\.14\)/.test(css281)],
+     [true, true, true]);
+
+  // Sem o disco, o item passou a valer 19px — e a tela de campo é justamente a
+  // que se usa com o dedo. Dois alvos de 40px só não se tocam se o PASSO for
+  // >= 40px, então quem cresce é a linha. O editor fica de fora de propósito:
+  // crescer o bloco dele mudaria o ritmo de toda a digitação da Descrição.
+  eq('R281 CRÍTICO: no dedo o item cresce para 40px (a régua de alvo de toque) — sem o disco ele valeria 19px, e é a tela de campo que se usa com o dedo; o editor da Descrição fica de fora, porque crescer o bloco dele mudaria o ritmo da digitação',
+     (() => {
+       const i = css281.indexOf('@media (pointer: coarse)');
+       if (i < 0) return [false, false, false];
+       const m = css281.slice(i, css281.indexOf('}', css281.indexOf('.editor-rico-area .checklist-check', i)) + 1);
+       return [/\.checklist-check \{[^}]*height: 40px/.test(m),
+               /\.editor-rico-area \.checklist-check \{ height: 19px; \}/.test(m),
+               /width/.test(m)];
+     })(),
+     [true, true, false]);
+
+  // A regra está escrita com a frase dele — senão vira interpretação minha.
+  eq('R281 (regra 1): a regra está no PRODUTO com a frase do Davi, e diz que ela revisa a geometria original da R50/R53',
+     (() => {
+       const prod = fsR281.readFileSync('docs/PRODUTO.md', 'utf8');
+       const i = prod.indexOf('- **R281**');
+       const t = i < 0 ? "" : prod.slice(i, i + 2200);
+       return [/quero clicar na de cima e ele clica na de baixo/.test(t),
+               /Revisa a R50\/R53/.test(t),
+               /40px/.test(t)];
+     })(),
+     [true, true, true]);
+}
+
 // ── P43 — "NÃO ACHEI" E "O SERVIÇO RECUSOU" ERAM A MESMA COISA (14/09/2026) ─
 //
 // O servidor sempre distinguiu os motivos; a casca de `gerencial/data.ts`
