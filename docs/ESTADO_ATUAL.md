@@ -11,8 +11,8 @@
 Última atualização: **2026-09-14** · última regra: **R280** · último diário:
 **U138** · verificador: **3.359 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U134** (U131, U132 e U134 em 13/09/2026,
-nesta ordem) · migrations rodadas até a **U136** (13/09/2026) ·
-**Pendente: U137** (só quem é do time lê) ·
+nesta ordem) · migrations rodadas até a **U137** (a U137 em 14/09/2026) ·
+**nenhuma migration pendente** ·
 **versão no servidor: v0.0.7**
 (192.168.10.182); **esta entrega é a v0.0.11**, e ela sobe de uma vez o que a
 v0.0.8, a v0.0.9 e a v0.0.10 já tinham entregue — o que entrou em cada versão
@@ -131,7 +131,7 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **U137** (`20261002090000_u137_so_o_time_le.sql`, **PENDENTE**) — SÓ QUEM É
+- **U137** (`20261002090000_u137_so_o_time_le.sql`, rodada em 14/09/2026) — SÓ QUEM É
   DO TIME LÊ (R277). Nasce `eh_do_time(uid)` — conta ATIVA e APROVADA, o
   predicado que a casa já escrevia à mão em 17 migrations — e as **28**
   policies de leitura que respondiam `USING (true)` passam a exigi-lo.
@@ -146,6 +146,13 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   ele lista quem perderia leitura agora (deve ser só quem não é do time).
   Nove itens de conferência; portão em transação própria que termina em
   ROLLBACK, com o trabalho já commitado antes (cicatriz da U136).
+  **Conferida em 14/09/2026 com a sessão do Davi**, e o retrato ficou limpo:
+  as 23 tabelas reguardadas respondem sem erro para quem é do time; dos 15
+  perfis do banco, os ÚNICOS quatro que o crachá recusa são os que já
+  estavam com `ativo = false` de propósito (Caio, Denner, Maria e uma conta
+  antiga do próprio Davi); **nenhum perfil está `pendente_aprovacao`**, e o
+  Gilleno — que virou SAC em 13/09 — passa. Ou seja: ninguém do time perdeu
+  nada, e quatro contas desativadas deixaram de ler o banco inteiro.
 
 - **U136** (`20261001090000_u136_viaturas_sem_km.sql`, rodada em 13/09/2026 —
   na SEGUNDA tentativa; ver a cicatriz abaixo) — o KM sai
