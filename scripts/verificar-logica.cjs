@@ -39,6 +39,17 @@ const M = carregar('src/lib/matching.ts');
 const P = carregar('src/lib/periodos.ts');
 
 let ok = 0, falhas = 0;
+
+/**
+ * A fila das asserções ASSÍNCRONAS.
+ *
+ * `await` não roda no topo de um `.cjs`, e o resumo mora na última linha do
+ * arquivo. Quem precisa esperar (uma leitura paginada, uma máquina que
+ * devolve Promise) empurra uma função aqui; o rodapé as executa em ordem
+ * ANTES de imprimir o número. Sem essa fila o resumo sairia antes de elas
+ * contarem — um verificador dizendo "0 falharam" sem ter olhado.
+ */
+const assincronas = [];
 const eq = (nome, obtido, esperado) => {
   const a = JSON.stringify(obtido), b = JSON.stringify(esperado);
   if (a === b) { ok++; } else { falhas++; console.log(`FALHOU  ${nome}\n  obtido=${a}\n  esperado=${b}`); }
@@ -1716,8 +1727,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /concluida_em\.gte\.\$\{desde\},fechada_em\.gte\.\$\{desde\}/.test(bloco), true);
   eq('o histórico não usa updated_at como corte (traria as 2000 importadas)',
      /gte\("updated_at", desde\)/.test(bloco), false);
-  eq('o histórico tem teto explícito (resposta truncada mente sem avisar)',
-     /\.limit\(2000\)/.test(bloco), true);
+  // 14/09/2026 (P32): este pino nasceu guardando um TETO explícito, e o motivo
+  // escrito ao lado era "resposta truncada mente sem avisar". O motivo continua
+  // valendo; o meio mudou. Os 2.000 viraram TAMANHO DE PÁGINA — hoje é uma
+  // requisição só, do mesmo tamanho de antes, e no dia em que a janela passar
+  // disso o gráfico continua certo em vez de ficar errado em silêncio. O pino
+  // guarda o fim (nada é cortado sem aviso), não o meio.
+  eq('o histórico não pode ser truncado em silêncio — lê em páginas de 2.000 em vez de cortar no teto',
+     [/lerPaginado</.test(bloco), /\.range\(de, ate\) as any, 2000\)/.test(bloco),
+      /\.limit\(2000\)/.test(bloco)],
+     [true, true, false]);
 
   // ── a tabela ────────────────────────────────────────────────────────────
   const tab = fs13.readFileSync('src/features/home/TabelaAtividades.tsx', 'utf8');
@@ -21680,6 +21699,67 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [[1], [2]]);
 }
 
+// ── P32 e P42 — o que some sem avisar (14/09/2026) ────────────────────────
+//
+// Os dois são a mesma doença, e ela é a pior que uma tela tem: VAZIO-PORQUE-
+// FALHOU indistinguível de VAZIO-PORQUE-NÃO-TEM. No P32 eram dois tetos
+// (`.limit(2000)` e `.limit(4000)`) que cortariam linhas em silêncio no dia em
+// que a empresa passasse deles, mais um `if (error) return m` que já hoje
+// devolve mapa vazio numa falha de rede. No P42, a grade da programação
+// recebia o erro da consulta e o DESCARTAVA na desestruturação.
+assincronas.push(async () => {
+  const fsPg = require('fs');
+  const PG = carregar('src/lib/paginar.ts');
+  const homeD = fsPg.readFileSync('src/features/home/data.ts', 'utf8');
+  const progT = fsPg.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8');
+
+  // uma tabela de mentira com 2.500 linhas, lida em páginas de 1.000
+  const tabela = Array.from({ length: 2500 }, (_, i) => ({ i }));
+  const pagina = (de, ate) => Promise.resolve({ data: tabela.slice(de, ate + 1), error: null });
+
+  eq('P32 CRÍTICO: a leitura paginada traz a tabela INTEIRA — 2.500 linhas em páginas de 1.000 — e para quando a página vem curta; um teto fixo devolveria 1.000 e ninguém saberia',
+     [(await PG.lerPaginado(pagina, 1000)).length,
+      (await PG.lerPaginado((de, ate) => Promise.resolve({ data: [], error: null }), 1000)).length,
+      (await PG.lerPaginado((de, ate) => Promise.resolve({ data: tabela.slice(de, ate + 1), error: null }), 3000)).length],
+     [2500, 0, 2500]);
+
+  // Erro NÃO vira lista vazia. É a lição da U86 escrita como código.
+  eq('P32 CRÍTICO: erro na leitura é LEVANTADO, nunca convertido em lista vazia — devolver [] numa falha faz a tela dizer "não tem" quando o certo é "não consegui perguntar"',
+     await (async () => { try { await PG.lerPaginado(() => Promise.resolve({ data: null, error: new Error('caiu') })); return 'passou'; } catch (e) { return e.message; } })(),
+     'caiu');
+
+  // Rede contra laço infinito: uma página que sempre volta cheia (um `range`
+  // ignorado pelo servidor, por exemplo) para no teto em vez de rodar para
+  // sempre e travar a aba.
+  eq('P32: a leitura paginada tem teto de SEGURANÇA — uma página que sempre volta cheia para, em vez de travar a aba num laço infinito',
+     (await PG.lerPaginado(() => Promise.resolve({ data: Array.from({ length: 10 }, () => ({})), error: null }), 10, 5)).length,
+     50);
+
+  // O teste tem de olhar o CÓDIGO, não o comentário: as linhas que EXPLICAM
+  // o defeito antigo citam `.limit(2000)` e passariam por código vivo. (Foi o
+  // que aconteceu na primeira tentativa desta asserção.)
+  const soCodigo = homeD.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+
+  // Sobra UM teto, e ele é REGRA, não descuido: a R246 manda mostrar "as 300
+  // encerradas mais recentes". Tem nome, motivo escrito e ordem por recência —
+  // o corte é intencional e o que fica na tela é o que a regra pede. Teto
+  // acidental é o que corta sem ninguém ter decidido.
+  eq('P32: no código da Início não sobrou teto ACIDENTAL nem erro engolido — as três consultas lêem em páginas, e o único `.limit` que resta é o da R246, que é regra com nome',
+     [/\.limit\(2000\)/.test(soCodigo), /\.limit\(4000\)/.test(soCodigo),
+      /if \(error\) return m;/.test(soCodigo),
+      (soCodigo.match(/\.limit\(/g) ?? []).length,
+      /\.limit\(TETO_ENCERRADAS_NA_INICIO\)/.test(soCodigo),
+      (soCodigo.match(/lerPaginado</g) ?? []).length],
+     [false, false, false, 1, true, 3]);
+
+  eq('P42 CRÍTICO: a grade da programação recebe o erro da consulta e AVISA que está incompleta — antes ela o descartava na desestruturação e uma semana que falhava virava grade vazia para sempre',
+     [/const \{ blocos, idsDeChamado, erro: erroDaGrade \} = useBlocosDaGrade\(dia\);/.test(progT),
+      /\{erroDaGrade && \(/.test(progT),
+      /A grade abaixo está/.test(progT),
+      /const \{ blocos, idsDeChamado \} = useBlocosDaGrade/.test(progT)],
+     [true, true, true, false]);
+});
+
 // ── O ALARME E A GUARITA (14/09/2026) ─────────────────────────────────────
 {
   const AL = carregar('src/features/orcamento/alarmeEngine.ts');
@@ -22027,5 +22107,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, false]);
 }
 
-console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
-process.exit(falhas === 0 ? 0 : 1);
+(async () => {
+  for (const bloco of assincronas) await bloco();
+  console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
+  process.exit(falhas === 0 ? 0 : 1);
+})();

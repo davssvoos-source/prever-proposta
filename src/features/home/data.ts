@@ -13,6 +13,7 @@
 //    reprovar ou reagendar uma visita.
 
 import { useQuery } from "@tanstack/react-query";
+import { lerPaginado } from "@/lib/paginar";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -152,19 +153,24 @@ export function useChamadosDaHome(s: Sessao, semEncerradas = false) {
  * TODOS os apoios, para a pilha de avatares dos cards. A tabela é pequena
  * (centenas de linhas) e a leitura é aberta — buscar tudo numa consulta é mais
  * barato que um `.in()` com centenas de ids na URL.
+ *
+ * P32 (14/09/2026): nasceu com `.limit(2000)` e `if (error) return m`. Os dois
+ * mentiam do mesmo jeito — no dia em que a tabela passasse de 2.000 linhas, ou
+ * numa falha de rede, o card simplesmente deixaria de mostrar o apoio, e quem
+ * olha lê "não tem" onde a verdade é "não coube" ou "não consegui perguntar".
+ * Agora lê em páginas (sem teto) e o erro SOBE para o React Query.
  */
 export function useApoiosDeTodos() {
   return useQuery({
     queryKey: ["home-apoios-todos"],
     staleTime: 60_000,
     queryFn: async (): Promise<Map<string, string[]>> => {
-      const { data, error } = await supabase
+      const data = await lerPaginado<any>((de, ate) => supabase
         .from("chamado_apoios" as any)
         .select("chamado_id, profile_id")
-        .limit(2000);
+        .range(de, ate) as any);
       const m = new Map<string, string[]>();
-      if (error) return m;
-      for (const r of ((data as any[]) ?? [])) {
+      for (const r of (data ?? [])) {
         const lista = m.get(r.chamado_id as string) ?? [];
         lista.push(r.profile_id as string);
         m.set(r.chamado_id as string, lista);
@@ -196,12 +202,12 @@ export function useLocaisDeTodos() {
     staleTime: 60_000,
     queryFn: async (): Promise<Map<string, string[]>> => {
       const m = new Map<string, string[]>();
-      const { data, error } = await supabase
+      // P32: o irmão do `useApoiosDeTodos` — mesmo teto silencioso
+      // (`.limit(4000)`) e mesmo erro engolido. Ver o comentário de lá.
+      const linhas = await lerPaginado<any>((de, ate) => supabase
         .from("chamado_locais" as any)
         .select("chamado_id, cliente_id, prospeccao_id, setor")
-        .limit(4000);
-      if (error) return m;
-      const linhas = ((data as any[]) ?? []);
+        .range(de, ate) as any);
       if (!linhas.length) return m;
 
       const idsCliente = [...new Set(linhas.map((r) => r.cliente_id).filter(Boolean))];
@@ -416,7 +422,12 @@ export function useHistoricoAmplo(s: Sessao, habilitado = true) {
       // de fechamento. Encerrado sem nenhuma das duas fica de fora — não dá
       // para colocar numa semana o que não tem data, e a Home já o mostra
       // enquanto for recente.
-      const { data, error } = await supabase
+      // P32 (14/09/2026): os 2.000 eram TETO, e teto corta em silêncio — o
+      // mesmo defeito que o comentário acima teme em voz alta. Agora são
+      // TAMANHO DE PÁGINA: hoje continua sendo uma requisição só, do mesmo
+      // tamanho de antes; no dia em que a janela passar disso, o gráfico
+      // continua certo em vez de ficar errado sem avisar.
+      const data = await lerPaginado<any>((de, ate) => supabase
         .from("chamados" as any)
         .select(CAMPOS_DA_HOME)
         // mesma razão da consulta da Home: a capa da proposta duplicaria a
@@ -424,10 +435,7 @@ export function useHistoricoAmplo(s: Sessao, habilitado = true) {
         .neq("natureza", "comercial")
         .in("status", ["concluido", "cancelado"])
         .or(`concluida_em.gte.${desde},fechada_em.gte.${desde}`)
-        // rede de segurança: se algum dia a janela crescer, é melhor faltar
-        // barra do que a resposta ser cortada sem avisar
-        .limit(2000);
-      if (error) throw error;
+        .range(de, ate) as any, 2000);
       return ((data as any[]) ?? []) as BrutoChamado[];
     },
   });

@@ -46,7 +46,7 @@
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
-import { ArrowLeft, CalendarClock, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ArrowLeft, CalendarClock, ChevronLeft, ChevronRight, Plus, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTecnicos } from "@/features/gerencial/data";
@@ -212,7 +212,10 @@ function ProgramacaoPage() {
   const semanaAberta = referenciaSemanal(dataDoAberto);
 
   // ── os blocos ───────────────────────────────────────────────────────────
-  const { blocos, idsDeChamado } = useBlocosDaGrade(dia);
+  // P42: o `erro` era descartado aqui. Uma semana que falha deixava a grade
+  // vazia para sempre, e vazio-porque-falhou é indistinguível de
+  // vazio-porque-não-tem — que é a pior mentira que uma tela conta.
+  const { blocos, idsDeChamado, erro: erroDaGrade } = useBlocosDaGrade(dia);
 
   /**
    * O denominador da faixa. `classificarChamado` precisa saber se o chamado tem
@@ -836,6 +839,26 @@ function ProgramacaoPage() {
 
   return (
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
+      {/* P42: a grade não pode parecer vazia quando na verdade não carregou.
+          A faixa NÃO trava a tela — o banco continua sendo a porta (EXCLUDE e
+          RPC recusam o conflito de verdade); ela só impede a leitura errada. */}
+      {erroDaGrade && (
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 12,
+          fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5,
+          color: isLight ? "#B1242E" : "#F17881",
+          background: isLight ? "rgba(177,36,46,0.06)" : "rgba(241,120,129,0.08)",
+          border: isLight ? "1px solid rgba(177,36,46,0.22)" : "1px solid rgba(241,120,129,0.24)",
+        }}>
+          <WifiOff size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>
+            <b style={{ fontWeight: 600 }}>Não consegui carregar a semana.</b>{" "}
+            A grade abaixo está <b style={{ fontWeight: 600 }}>incompleta</b> — o que você não vê aqui
+            pode existir. Confira a conexão e recarregue antes de marcar horário.
+          </span>
+        </div>
+      )}
+
       {/* cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
