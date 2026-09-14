@@ -21594,6 +21594,45 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true, true, true, true]);
 }
 
+// ── A ficha do cliente ganha COBRANÇAS (U140) ─────────────────────────────
+{
+  const fsCb = require('fs');
+  const CB = carregar('src/features/chamados/cobranca.ts');
+  const ficha = fsCb.readFileSync('src/routes/_authenticated/clientes.$id.tsx', 'utf8');
+
+  const cb = (status, valor) => ({ status, valor });
+  const carteira = [cb("aberta", 100), cb("aberta", 50.5), cb("fechada", 200),
+                    cb("faturada", 300), cb("cancelada", 999)];
+
+  // `cancelada` é rastro do que foi desfeito, não dinheiro: entra na contagem
+  // de canceladas e em nenhum dos dois valores. Se ela somasse, a ficha diria
+  // que o cliente deve o que já foi cancelado.
+  eq('U140 CRÍTICO: o retrato financeiro do cliente separa o que está EM ABERTO do que já entrou em fechamento, e a cancelada não vira dinheiro em nenhum dos dois',
+     CB.resumoDasCobrancas(carteira),
+     { abertas: 2, valorAberto: 150.5, fechadas: 2, valorFechado: 500, canceladas: 1 });
+
+  eq('U140: carteira vazia devolve zeros — a ficha mostra "nenhuma cobrança" em vez de um resumo mentindo',
+     CB.resumoDasCobrancas([]),
+     { abertas: 0, valorAberto: 0, fechadas: 0, valorFechado: 0, canceladas: 0 });
+
+  // A policy `cobrancas_select` é `pode_ver_financeiro` e FILTRA LINHAS em
+  // silêncio. Sem o gate na tela, o card ficaria eternamente vazio para o SAC
+  // sem dizer por quê — e vazio-por-permissão parece vazio-de-verdade.
+  eq('U140: a seção Cobranças existe na ficha, atrás do MESMO portão dos Contratos (`veFinanceiro`), e a consulta nem sai quando o portão está fechado',
+     [/<span style=\{SEC_LABEL\}>Cobranças<\/span>/.test(ficha),
+      /useCobrancasDoCliente\(id, veFinanceiro\)/.test(ficha),
+      /resumoDasCobrancas\(cobrancas\)/.test(ficha),
+      (ficha.match(/\{veFinanceiro && \(/g) ?? []).length,
+      /Nenhuma cobrança lançada para este cliente/.test(ficha)],
+     [true, true, true, 2, true]);
+
+  eq('U140: a lista do cliente vem da mais recente para a mais antiga e tem teto — ficha não é relatório; o fechamento da competência é que mostra tudo',
+     [/\.order\("data_referencia", \{ ascending: false \}\)/.test(fsCb.readFileSync('src/features/chamados/cobranca.ts', 'utf8')),
+      /\.limit\(200\)/.test(fsCb.readFileSync('src/features/chamados/cobranca.ts', 'utf8')),
+      /cobrancas\.slice\(0, 8\)/.test(ficha)],
+     [true, true, true]);
+}
+
 // ── R155 (U140) — a fila de validação do gestor ganha lugar na Início ─────
 {
   const fsV155 = require('fs');

@@ -41,7 +41,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Camera, FileText, MapPin, Wrench, Trash2, Home, Image as ImagemIcone,
+  ArrowLeft, Camera, FileText, MapPin, Wrench, Trash2, Home, Image as ImagemIcone, Receipt,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -53,6 +53,7 @@ import { PRISMA, cinzas } from "@/lib/paleta";
 import { CardLocal, CardContatos } from "@/features/clientes/ClienteForm";
 import { InventarioCliente } from "@/features/clientes/InventarioCliente";
 import { useChamadosDoCliente, usePessoas, mapaDePessoas } from "@/features/chamados/data";
+import { useCobrancasDoCliente, resumoDasCobrancas, moeda, FATURAMENTO_LABEL } from "@/features/chamados/cobranca";
 import { useAtendimentosDoCliente, TETO_DA_LISTA as TETO_PLANTAO } from "@/features/plantao/data";
 import { diaCurto, horaCurta, TIPO_LABEL as PLANTAO_TIPO_LABEL } from "@/features/plantao/modelo";
 // R212: o card de atividade da Início (R136) e o montador que a ficha compartilha com ela
@@ -95,6 +96,10 @@ function ClienteDetalhePage() {
   const { isLight } = useTheme();
   const { data: isGerente = false } = useIsGerente();
   const { data: veFinanceiro = false } = useVeFinanceiro();
+  // a leitura só sai quando quem olha enxerga financeiro — a policy já
+  // filtraria as linhas, mas pedir por pedir é consulta jogada fora
+  const { data: cobrancas = [] } = useCobrancasDoCliente(id, veFinanceiro);
+  const resumoCobrancas = useMemo(() => resumoDasCobrancas(cobrancas), [cobrancas]);
   const { data: cliente, isLoading } = useCliente(id);
   const { data: visitas = [] } = useVisitasDoCliente(id);
   // R143: inclui as atividades de GRUPO a que este cliente pertence, e as em
@@ -389,6 +394,68 @@ function ClienteDetalhePage() {
                     );
                   })}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Cobranças — o que este cliente tem em aberto e o que já entrou em
+              fechamento. Mesmo portão dos Contratos: `cobrancas_select` é
+              `pode_ver_financeiro` e FILTRA LINHAS em silêncio, então sem o
+              gate o card ficaria vazio sem dizer por quê. */}
+          {veFinanceiro && (
+            <div style={CARD}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Receipt size={15} color={gold} />
+                <span style={SEC_LABEL}>Cobranças</span>
+                {resumoCobrancas.abertas > 0 && (
+                  <span style={{ marginLeft: "auto", fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: gold, fontVariantNumeric: "tabular-nums" }}>
+                    {moeda(resumoCobrancas.valorAberto)} em aberto
+                  </span>
+                )}
+              </div>
+
+              {cobrancas.length === 0 ? (
+                <div style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 400, color: textSecondary, marginTop: 8, lineHeight: 1.5 }}>
+                  Nenhuma cobrança lançada para este cliente.
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary, marginTop: 6, fontVariantNumeric: "tabular-nums" }}>
+                    {resumoCobrancas.abertas} em aberto · {resumoCobrancas.fechadas} em fechamento ({moeda(resumoCobrancas.valorFechado)})
+                    {resumoCobrancas.canceladas > 0 && ` · ${resumoCobrancas.canceladas} cancelada(s)`}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                    {cobrancas.slice(0, 8).map((cb) => (
+                      <button
+                        key={cb.id}
+                        onClick={() => cb.chamado_id && navigate({ to: "/chamados/$id", params: { id: cb.chamado_id } })}
+                        disabled={!cb.chamado_id}
+                        style={{ ...itemLista(), cursor: cb.chamado_id ? "pointer" : "default" }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {cb.descricao}
+                          </div>
+                          <div style={{ fontFamily: FONT, fontSize: 11, color: textSecondary, fontVariantNumeric: "tabular-nums" }}>
+                            {cb.competencia} · {cb.status === "aberta" ? "em aberto" : cb.status === "cancelada" ? "cancelada" : "em fechamento"}
+                          </div>
+                        </div>
+                        <span style={{
+                          fontFamily: FONT, fontSize: 12.5, fontWeight: 600, fontVariantNumeric: "tabular-nums",
+                          color: cb.status === "cancelada" ? textSecondary : textPrimary,
+                          textDecoration: cb.status === "cancelada" ? "line-through" : "none",
+                        }}>
+                          {moeda(cb.valor)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {cobrancas.length > 8 && (
+                    <div style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary, marginTop: 8 }}>
+                      e mais {cobrancas.length - 8} — as {cobrancas.length} estão no fechamento da competência.
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

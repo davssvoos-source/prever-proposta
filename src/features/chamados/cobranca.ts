@@ -126,6 +126,58 @@ export function temLancamento(cobrancas: Pick<Cobranca, "status">[]): boolean {
   return cobrancas.some((c) => c.status !== "cancelada");
 }
 
+/**
+ * O retrato financeiro de um cliente, para a ficha dele — e a conta é PURA,
+ * para o número da seção e a lista que ela mostra nunca discordarem.
+ *
+ * `cancelada` fica de fora de tudo: ela existe como rastro do que foi
+ * desfeito, não como dinheiro. `aberta` é o que ainda não entrou em
+ * fechamento; `fechada` e `faturada` já entraram.
+ */
+export interface ResumoDoCliente {
+  abertas: number;
+  valorAberto: number;
+  fechadas: number;
+  valorFechado: number;
+  canceladas: number;
+}
+
+export function resumoDasCobrancas(cobrancas: Pick<Cobranca, "status" | "valor">[]): ResumoDoCliente {
+  let abertas = 0, valorAberto = 0, fechadas = 0, valorFechado = 0, canceladas = 0;
+  for (const c of cobrancas) {
+    const v = Number(c.valor) || 0;
+    if (c.status === "cancelada") { canceladas++; continue; }
+    if (c.status === "aberta") { abertas++; valorAberto += v; }
+    else { fechadas++; valorFechado += v; }
+  }
+  return { abertas, valorAberto, fechadas, valorFechado, canceladas };
+}
+
+/**
+ * As cobranças de um cliente, da mais recente para a mais antiga.
+ *
+ * Como em `useCobrancasDoChamado`, a policy de SELECT FILTRA LINHAS em vez de
+ * levantar erro: para quem não enxerga financeiro isto volta vazio, e é por
+ * isso que a seção da ficha também é fechada por `veFinanceiro` na tela —
+ * senão o card ficaria eternamente vazio sem explicar por quê.
+ */
+export function useCobrancasDoCliente(clienteId: string | undefined, habilitado = true) {
+  return useQuery({
+    queryKey: ["cobrancas-cliente", clienteId],
+    enabled: !!clienteId && habilitado,
+    queryFn: async (): Promise<Cobranca[]> => {
+      const { data, error } = await supabase
+        .from("cobrancas" as any)
+        .select(CAMPOS_COBRANCA)
+        .eq("cliente_id", clienteId as string)
+        .order("data_referencia", { ascending: false })
+        .limit(200);
+      if (error) return [];
+      return ((data as any[]) ?? []) as Cobranca[];
+    },
+  });
+}
+
 export function useCobrancasDoChamado(chamadoId: string | undefined) {
   return useQuery({
     queryKey: ["cobrancas-chamado", chamadoId],
