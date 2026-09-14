@@ -13352,7 +13352,39 @@ motivos **do servidor** e exige frase distinta para cada um — um motivo novo s
 frase própria cairia no caso final e receberia, calado, o conselho de "confira o
 endereço", que é o conselho errado para tudo o que não é `nao_encontrado`.
 
-**Números.** Verificador: **3.418 asserções**, 0 falharam (eram 3.359 no começo do dia — 59 nesta leva).
+**11. O PDF comia caractere, e os acentos passavam (P52).** `jsPDF` com a fonte
+padrão codifica em **WinAnsi** — um byte por caractere — e **descarta calado**
+tudo o que não couber. Os acentos passam: é exatamente por isso que ninguém
+nunca notou. O que some é pontuação de composição: o travessão, a meia-risca, o
+bullet, as reticências, as aspas curvas que qualquer editor produz sozinho.
+
+A U86 consertou o PDF do sobreaviso e DECLAROU os outros dois, com o motivo
+certo (são PDFs que já circulam por e-mail, e mexer neles de passagem é a classe
+de risco que esta casa já pagou duas vezes). Esta entrega os fechou de frente,
+pelo conserto barato — a fonte UTF-8 embutida muda o tamanho de todos os PDFs
+do sistema e continua sendo decisão do Davi.
+
+**O que a pendência não dizia é a metade que machuca.** Os literais do código
+eram a parte visível ("Registro fotográfico — antes" saía "Registro fotográfico
+antes"). A outra metade é o **texto digitado**: um técnico que escreve "Troquei
+a fonte — estava queimada" no diagnóstico perdia o travessão no relatório que
+vai ao cliente. Trocar só os literais deixaria essa metade viva, e invisível do
+mesmo jeito.
+
+Por isso o filtro mora nos TRÊS FUNIS por onde o texto passa — `tituloSecao`,
+`linhaCampo`, `paragrafo` — e não em cada chamada. São quinze chamadas de
+`linhaCampo`; a que alguém esquecesse voltaria a comer caractere calada, e o
+próximo censo ficaria verde por cima de um defeito vivo.
+
+O que não tem equivalente vira `?`, **feio de propósito**. O defeito inteiro era
+o silêncio: um `?` na página é alguém descobrindo em vez de nunca saber que o
+texto saiu mutilado.
+
+Uma linha ficou de fora, e é decisão: o `—` do `ExportarTab.tsx:218` é JSX — o
+navegador desenha, não o jsPDF. Trocá-lo pioraria a tela por causa de um defeito
+que não é dela.
+
+**Números.** Verificador: **3.422 asserções**, 0 falharam (eram 3.359 no começo do dia — 63 nesta leva).
 `tsc`: 0. Build completa. Migrations **U136, U137 e U139 rodadas pelo Davi** — nada pendente no banco.
 
 **O que falta do motor de orçamento:** `blockAutoItems.ts` (503 linhas) tem

@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **61 em aberto, 15 fechadas.**
+> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **60 em aberto, 16 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -58,7 +58,7 @@
 - [P50 — RESOLVIDO em 2026-09-10 pela U88 · `montar_fechamento` usava `fechamento_id` NU e levantava 42702 (2026-09-08, achado pela U86)](#p50-resolvido-em-2026-09-10-pela-u88-montarfechamento-usava-fechamentoid-nu-e-levantava-42702-2026-09-08-achado-pela-u86)
 - [P55 — MÉDIO · O DELETE da aprovação ignora `fechamento_id`: reaprovar mexe DENTRO de um período já montado (2026-09-10, declarado pela U88)](#p55-médio-o-delete-da-aprovação-ignora-fechamentoid-reaprovar-mexe-dentro-de-um-período-já-montado-2026-09-10-declarado-pela-u88)
 - [P51 — ALTO · `is_gestor()` não olha `ativo`: um ex-funcionário com login vivo é gestor do sistema INTEIRO (2026-09-08, achado pela U86)](#p51-alto-isgestor-não-olha-ativo-um-ex-funcionário-com-login-vivo-é-gestor-do-sistema-inteiro-2026-09-08-achado-pela-u86)
-- [P52 — MÉDIO · Os PDFs perdem em silêncio todo caractere acima de U+00FF (2026-09-08, achado pela U86)](#p52-médio-os-pdfs-perdem-em-silêncio-todo-caractere-acima-de-u00ff-2026-09-08-achado-pela-u86)
+- [P52 — ~~MÉDIO~~ FECHADA (U140, 2026-09-14) · Os PDFs perdem em silêncio todo caractere acima de U+00FF (2026-09-08, achado pela U86)](#p52-médio-fechada-u140-2026-09-14-os-pdfs-perdem-em-silêncio-todo-caractere-acima-de-u00ff-2026-09-08-achado-pela-u86)
 - [P53 — BAIXO · Atendimento de plantão apagado não deixa lápide (2026-09-09, U87)](#p53-baixo-atendimento-de-plantão-apagado-não-deixa-lápide-2026-09-09-u87)
 - [P54 — BAIXO · O plantão não tem leitura fora do painel que o registra (2026-09-09, U87)](#p54-baixo-o-plantão-não-tem-leitura-fora-do-painel-que-o-registra-2026-09-09-u87)
 - [P55 — BAIXO · `chamado_compra` e `chamado_equipes` ficaram no banco como arquivo (2026-09-03, U96)](#p55-baixo-chamadocompra-e-chamadoequipes-ficaram-no-banco-como-arquivo-2026-09-03-u96)
@@ -2136,7 +2136,7 @@ seja atualizado junto com a decisão.
 
 ---
 
-## P52 — MÉDIO · Os PDFs perdem em silêncio todo caractere acima de U+00FF (2026-09-08, achado pela U86)
+## P52 — ~~MÉDIO~~ FECHADA (U140, 2026-09-14) · Os PDFs perdem em silêncio todo caractere acima de U+00FF (2026-09-08, achado pela U86)
 
 `jsPDF` com a fonte padrão (helvetica) codifica em **WinAnsi**, um byte por
 caractere, e **descarta calado** tudo o que não couber. Medido nos bytes de um
@@ -2170,9 +2170,37 @@ mexer nele de passagem é a classe de risco que esta casa já pagou duas vezes):
 
 **O remédio, quando for a hora:** trocar os caracteres (é o conserto barato) ou
 embutir uma fonte UTF-8 via `addFileToVFS` + `addFont` — o que muda o tamanho de
-todos os PDFs e é decisão, não reflexo. A asserção da U86 já mede que o defeito
-**existe** em `relatorio.ts`, para o dia em que alguém o consertar não ficar sem
-saber que ele existia.
+todos os PDFs e é decisão, não reflexo.
+
+**FECHADA (U140, 2026-09-14) — pelo conserto barato.** A fonte embutida continua
+sendo decisão do Davi e não foi tomada aqui.
+
+Nasceu `src/lib/pdf-texto.ts`, puro: `textoDePdf()` troca cada caractere pelo
+equivalente que o WinAnsi tem (travessão e meia-risca viram `-`, bullet vira
+`·`, reticências viram `...`, aspas curvas viram retas) e `campoDePdf()` é a
+dupla que todo campo faz — o texto, ou o traço quando não há texto.
+
+**A segunda metade, que esta pendência não descrevia, é a que machucava.** Os
+literais do código eram metade do problema; a outra é o **texto digitado**. Um
+técnico que escreve "Troquei a fonte — estava queimada" no diagnóstico perdia o
+travessão no relatório que vai ao cliente, e ninguém no caminho tinha como
+saber. Por isso o filtro mora nos TRÊS FUNIS por onde o texto passa
+(`tituloSecao`, `linhaCampo`, `paragrafo`) e não em cada chamada: são quinze
+chamadas de `linhaCampo`, e a que alguém esquecesse voltaria a comer caractere
+em silêncio.
+
+O que não tem equivalente vira `?`, **feio de propósito**: o defeito inteiro era
+o silêncio, e um `?` na página é alguém descobrindo em vez de nunca saber.
+
+O censo da U86, que MEDIA o tamanho do defeito, virou o censo que prova a
+ausência dele — nos mesmos termos, para não trocar de régua no meio. E a
+asserção do texto digitado exercita a função com acento (que passa), com
+travessão, bullet e reticências (que trocam) e com `×`, `·`, `º`, `ª` (que são
+WinAnsi e ficam como estão).
+
+**Fora do recorte, de propósito:** o `—` do `ExportarTab.tsx:218` fica. Aquela
+linha é JSX — o navegador desenha, não o jsPDF —, e trocá-la pioraria a tela
+por causa de um defeito que não é dela.
 
 ## P53 — BAIXO · Atendimento de plantão apagado não deixa lápide (2026-09-09, U87)
 

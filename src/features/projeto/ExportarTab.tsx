@@ -3,6 +3,8 @@ import { FileDown, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { brl, formatDate, slug, CONTRATO_LABEL } from "@/lib/format";
+// P52: o jsPDF com a fonte padrão descarta CALADO tudo acima de U+00FF
+import { textoDePdf, VAZIO_PDF } from "@/lib/pdf-texto";
 import { useCatalogos, useProjetoBlocos, useProjetoItensVar, useProjetoServicos } from "./data";
 import { computeBom, computeServicoQty } from "./calc";
 import { toast } from "sonner";
@@ -96,7 +98,8 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(80, 80, 80);
-      doc.text(`Cliente: ${projeto.cliente?.nome ?? "—"}`, 40, y);
+      // P52: o nome do cliente é digitado e vai ao papel — filtra na entrada
+      doc.text(textoDePdf(`Cliente: ${projeto.cliente?.nome ?? VAZIO_PDF}`), 40, y);
       y += 14;
       doc.text(
         `Tipo: ${CONTRATO_LABEL[projeto.tipo_contrato]}  ·  Visita: ${formatDate(projeto.data_visita)}`,
@@ -121,7 +124,7 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
             r.modelo,
             `${r.qty} ${r.un}`,
             brl(r.precoUnit),
-            projeto.fornecimento ? brl(r.precoTotal) : "—",
+            projeto.fornecimento ? brl(r.precoTotal) : VAZIO_PDF,
           ]),
           headStyles: { fillColor: PRIMARY, textColor: 255 },
           styles: { fontSize: 9 },

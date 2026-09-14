@@ -9,7 +9,7 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-14** · última regra: **R280** · último diário:
-**U140** · verificador: **3.418 asserções, 0 falharam** · `tsc`: **0** (o
+**U140** · verificador: **3.422 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138) · migrations rodadas até a **U139**
 (U131, U132 e U134 em 13/09/2026, nesta ordem; U136, U137 e U139 em
 14/09/2026) · **nenhuma migration pendente** ·

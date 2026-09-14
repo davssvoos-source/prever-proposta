@@ -13653,15 +13653,61 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/`\(saiu\) \$\{l\.pessoa\.nome\}`/.test(vivoPdf), /`\$\{l\.pessoa\.nome\} \(saiu\)`/.test(vivoPdf)],
      [true, false]);
 
-  // O defeito é de CLASSE e é PRÉ-EXISTENTE nos outros três PDFs. Não se
-  // conserta aqui — está declarado —, mas o censo mede o tamanho dele.
+  // O defeito é de CLASSE, e era PRÉ-EXISTENTE nos outros dois PDFs. A U86
+  // consertou o do sobreaviso e DECLAROU os outros; a P52 (U140) fechou os
+  // dois que faltavam. O censo que media o tamanho do defeito virou o censo
+  // que prova a ausência dele — nos MESMOS termos, para não trocar de régua.
   {
-    const rel = fsF.readFileSync('src/features/chamados/relatorio.ts', 'utf8');
-    eq('CRÍTICO (regra 3, censo com recorte declarado): o mesmo defeito está VIVO no relatório de OS — `—` como placeholder e `•` na lista de peças, os dois somem hoje na página. Recorte: literais fora de comentário em src/features/chamados/relatorio.ts. Não foi consertado nesta rodada (é outro PDF, que já circula), e está em PENDENCIAS_TECNICAS.md',
-       [rel.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n')
-          .split('').some((ch) => ch.codePointAt(0) > 0xff),
-        /\\u[0-9a-f]{4}/.test(rel)],
-       [true, false]);
+    const semComentarioPdf = (s) => s.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
+    const PDFS = [
+      'src/features/sobreaviso/pdf.ts',
+      'src/features/chamados/relatorio.ts',
+    ];
+    eq('P52 CRÍTICO (regra 3, censo com recorte declarado): NENHUM literal acima de U+00FF sobrou no caminho dos PDFs — a meia-risca, o bullet e as reticências saíam do papel sem deixar rastro, e os acentos passavam, que é por que ninguém nunca notou. Recorte: literais fora de comentário nos arquivos que desenham PDF',
+       PDFS.filter((f) => [...semComentarioPdf(fsF.readFileSync(f, "utf8"))]
+         .some((ch) => ch.codePointAt(0) > 0xff)),
+       []);
+
+    // A OUTRA METADE, que a P52 não descrevia e é a que machuca: o texto
+    // DIGITADO. Um técnico que escreve "Troquei a fonte — estava queimada" no
+    // diagnóstico perdia o travessão no relatório que vai ao cliente. Trocar só
+    // os literais deixaria isso vivo, e invisível do mesmo jeito.
+    const PDFTX = carregar('src/lib/pdf-texto.ts');
+    eq('P52 CRÍTICO: o texto DIGITADO também é filtrado — travessão, meia-risca, bullet, reticências e aspas curvas viram equivalente WinAnsi, e o acento continua passando intacto',
+       [PDFTX.textoDePdf("Troquei a fonte — estava queimada"),
+        PDFTX.textoDePdf("• item"),
+        PDFTX.textoDePdf("aguardando…"),
+        PDFTX.textoDePdf("Portão, manutenção, José, ação"),
+        PDFTX.textoDePdf("3 × 4 · 50 º ª")],
+       ["Troquei a fonte - estava queimada", "\u00b7 item", "aguardando...",
+        "Portão, manutenção, José, ação", "3 × 4 · 50 º ª"]);
+
+    // O que não tem equivalente vira `?` — FEIO DE PROPÓSITO. O defeito inteiro
+    // era o silêncio: um `?` na página é alguém descobrindo em vez de nunca
+    // saber que o texto saiu mutilado.
+    eq('P52: o que não tem equivalente em WinAnsi vira `?` e não SOME — o defeito era o silêncio, e um `?` no papel é alguém descobrindo',
+       [PDFTX.textoDePdf("日本"), PDFTX.textoDePdf("a→b"), PDFTX.textoDePdf("")],
+       ["??", "a->b", ""]);
+
+    // E o campo vazio: era `—`, que sumia — a célula saía EM BRANCO, e ninguém
+    // sabia se o campo estava vazio ou se o PDF tinha comido alguma coisa.
+    eq('P52: o campo vazio imprime um traço que EXISTE no papel — era `—`, que sumia, e a célula saía em branco: vazio indistinguível de defeito',
+       [PDFTX.campoDePdf(null), PDFTX.campoDePdf(""), PDFTX.campoDePdf("   "),
+        PDFTX.campoDePdf("CH-2026-0001"), PDFTX.VAZIO_PDF.codePointAt(0) <= 0xff,
+        PDFTX.MARCA_PDF.codePointAt(0) <= 0xff],
+       ["-", "-", "-", "CH-2026-0001", true, true]);
+
+    // Os funis: o filtro mora nas TRÊS funções por onde o texto passa, e não
+    // em cada chamada — são quinze chamadas de `linhaCampo`, e a que alguém
+    // esquecer volta a comer caractere em silêncio.
+    const rel52 = fsF.readFileSync('src/features/chamados/relatorio.ts', 'utf8');
+    eq('P52: o filtro está nos FUNIS (`tituloSecao`, `linhaCampo`, `paragrafo`) e não espalhado por chamada — a chamada que alguém esquecesse voltaria a comer caractere calada',
+       [/doc\.text\(textoDePdf\(texto\)\.toUpperCase\(\), MARGEM, y\);/.test(rel52),
+        /const texto = campoDePdf\(valor\);/.test(rel52),
+        /const conteudo = campoDePdf\(texto\);/.test(rel52),
+        /splitTextToSize\(textoDePdf\(os\.titulo\), UTIL\)/.test(rel52),
+        /\\u[0-9a-f]{4}/.test(rel52)],
+       [true, true, true, true, false]);
   }
 }
 

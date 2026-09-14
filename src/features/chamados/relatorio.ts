@@ -5,6 +5,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { slug } from "@/lib/format";
+// P52: o jsPDF com a fonte padrão descarta CALADO tudo acima de U+00FF
+import { textoDePdf, campoDePdf, VAZIO_PDF, MARCA_PDF } from "@/lib/pdf-texto";
 import {
   PRIORIDADE_LABEL, TIPO_LABEL, chamadoStatusInfo,
   type ChamadoPrioridade, type ChamadoTipo,
@@ -59,12 +61,15 @@ async function carregarImagem(path: string | null | undefined): Promise<ImagemPr
   }
 }
 
+// P52: o jsPDF com a fonte padrão DESCARTA CALADO tudo acima de U+00FF — o
+// travessão, o bullet e as reticências saíam do papel sem deixar rastro, e os
+// acentos passavam, que é por que ninguém nunca notou. Ver lib/pdf-texto.ts.
 const fmtDataHora = (iso: string | null | undefined) =>
   iso
     ? new Date(iso).toLocaleString("pt-BR", {
         day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
       })
-    : "—";
+    : VAZIO_PDF;
 
 export interface DadosRelatorioOs {
   numero: string | null;
@@ -138,11 +143,11 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(...OURO);
-      doc.text(os.numero ?? "—", LARGURA - MARGEM, 22, { align: "right" });
+      doc.text(campoDePdf(os.numero), LARGURA - MARGEM, 22, { align: "right" });
       y = 40;
     } else {
       doc.setFontSize(8);
-      doc.text(`RELATÓRIO DE ATENDIMENTO · ${os.numero ?? ""}`, MARGEM, 9);
+      doc.text(textoDePdf(`RELATÓRIO DE ATENDIMENTO · ${os.numero ?? ""}`), MARGEM, 9);
       y = 22;
     }
   }
@@ -152,7 +157,7 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(...OURO);
-    doc.text(texto.toUpperCase(), MARGEM, y);
+    doc.text(textoDePdf(texto).toUpperCase(), MARGEM, y);
     doc.setDrawColor(...LINHA);
     doc.setLineWidth(0.3);
     doc.line(MARGEM, y + 1.8, LARGURA - MARGEM, y + 1.8);
@@ -160,20 +165,22 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
   }
 
   function linhaCampo(rotulo: string, valor: string) {
-    const texto = valor || "—";
+    // P52: o filtro fica AQUI, no funil, e não em cada chamada — são quinze
+    // chamadas, e a que alguém esquecer volta a comer caractere em silêncio.
+    const texto = campoDePdf(valor);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     const linhas = doc.splitTextToSize(texto, UTIL - 46) as string[];
     espaco(linhas.length * 4.6 + 2);
     doc.setTextColor(...CINZA);
-    doc.text(rotulo, MARGEM, y);
+    doc.text(textoDePdf(rotulo), MARGEM, y);
     doc.setTextColor(...ESCURO);
     doc.text(linhas, MARGEM + 44, y);
     y += Math.max(5.2, linhas.length * 4.6 + 0.8);
   }
 
   function paragrafo(texto: string | null) {
-    const conteudo = (texto ?? "").trim() || "—";
+    const conteudo = campoDePdf(texto);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
     doc.setTextColor(...ESCURO);
@@ -193,7 +200,8 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12.5);
   doc.setTextColor(...ESCURO);
-  const tituloLinhas = doc.splitTextToSize(os.titulo, UTIL) as string[];
+  // o título é DIGITADO: é o caso em que o texto da pessoa chega ao papel
+  const tituloLinhas = doc.splitTextToSize(textoDePdf(os.titulo), UTIL) as string[];
   doc.text(tituloLinhas, MARGEM, y);
   y += tituloLinhas.length * 5.6 + 2;
 
@@ -201,17 +209,17 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
   doc.setFontSize(8.5);
   doc.setTextColor(...CINZA);
   doc.text(
-    `${TIPO_LABEL[os.tipo as ChamadoTipo] ?? os.tipo} · Prioridade ${
+    textoDePdf(`${TIPO_LABEL[os.tipo as ChamadoTipo] ?? os.tipo} · Prioridade ${
       PRIORIDADE_LABEL[os.prioridade as ChamadoPrioridade] ?? os.prioridade
-    } · ${info.label}`,
+    } · ${info.label}`),
     MARGEM,
     y,
   );
   y += 8;
 
   tituloSecao("Cliente");
-  linhaCampo("Cliente", os.cliente?.nome ?? "—");
-  linhaCampo("Endereço", os.cliente?.endereco ?? "—");
+  linhaCampo("Cliente", os.cliente?.nome ?? "");
+  linhaCampo("Endereço", os.cliente?.endereco ?? "");
   if (os.cliente?.telefone_sindico) linhaCampo("Contato", os.cliente.telefone_sindico);
   if (os.sistema?.nome) linhaCampo("Sistema atendido", os.sistema.nome);
 
@@ -220,7 +228,7 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
   if (os.data_hora_agendada) linhaCampo("Agendamento", fmtDataHora(os.data_hora_agendada));
   linhaCampo("Início", fmtDataHora(os.iniciada_em));
   linhaCampo("Conclusão", fmtDataHora(os.finalizada_em));
-  linhaCampo("Técnico responsável", tecnicoNome ?? "—");
+  linhaCampo("Técnico responsável", tecnicoNome ?? "");
 
   if (os.descricao_problema?.trim()) {
     tituloSecao("Problema relatado");
@@ -248,7 +256,7 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
         p.tag_patrimonio ? `TAG ${p.tag_patrimonio}` : "",
       ].filter(Boolean).join(", ");
       paragrafo(
-        `• ${rotulo[p.direcao] ?? p.direcao}: ${qtd}${p.descricao}${ident ? ` (${ident})` : ""}`,
+        `${MARCA_PDF} ${rotulo[p.direcao] ?? p.direcao}: ${qtd}${p.descricao}${ident ? ` (${ident})` : ""}`,
       );
     }
   } else if (os.pecas_texto?.trim()) {
@@ -301,8 +309,8 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
     if (coluna !== 0) y += alturaLinha + 4;
   }
 
-  await grade("Registro fotográfico — antes", antes);
-  await grade("Registro fotográfico — depois", depois);
+  await grade("Registro fotográfico - antes", antes);
+  await grade("Registro fotográfico - depois", depois);
   await grade("Outras fotos", outras);
 
   // ── Assinatura ────────────────────────────────────────────────────────────
@@ -330,7 +338,7 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(...ESCURO);
-    doc.text(os.assinatura_nome ?? "—", MARGEM, y);
+    doc.text(campoDePdf(os.assinatura_nome), MARGEM, y);
     doc.setTextColor(...CINZA);
     doc.setFontSize(7.5);
     doc.text("Assinatura de quem acompanhou o atendimento", MARGEM, y + 4);
@@ -347,7 +355,7 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(...CINZA);
-    doc.text("Prever Serviços Especializados · (11) 2344-6611 · contato@grupoprever.com.br", MARGEM, ALTURA - 11);
+    doc.text(textoDePdf("Prever Serviços Especializados · (11) 2344-6611 · contato@grupoprever.com.br"), MARGEM, ALTURA - 11);
     doc.text(`${p}/${paginas}`, LARGURA - MARGEM, ALTURA - 11, { align: "right" });
   }
 
