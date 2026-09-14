@@ -485,10 +485,13 @@ Das 23 perguntas do plano, ficam duas:
    responsável automaticamente — proposto: chamado de campo urgente/emergencial
    criado fora de 08–18h ou em fim de semana/feriado vai para o plantonista da
    semana e o avisa. Quem abre à noite é a Rubia?
-8. **Trocar o cargo do Gilleno para SAC** em Administrativo › Usuários — ANTES
-   de rodar a U132 (ele opera o Controle Patrimonial em atividade interna).
+8. ~~**Trocar o cargo do Gilleno para SAC**~~ **FEITO** (13/09/2026, antes da
+   U132). Conferido no perfil dele (`estoque@grupoprever.com.br`): ativo, e
+   cargo `sac`.
 9. **A lista das viaturas** — placa e apelido de cada carro (13/09/2026: "Ok
-   eu passo"). A aba Viaturas do Administrativo JÁ EXISTE (U134): ele cadastra
+   eu passo"). **Parcial:** ele cadastrou a **VTR 253** (Gol preto, FPX3C86) e
+   a sede em 13/09; faltam os outros carros. A aba Viaturas do Administrativo
+   JÁ EXISTE (U134): ele cadastra
    lá, copia o endereço que a aba mostra e grava nas etiquetas NFC (NTAG213,
    app NFC Tools). Depois, ajustar a coordenada da sede na mesma aba (a
    semeada é o centro da rua). Q24–Q27 respondidas em 13/09 — ver
