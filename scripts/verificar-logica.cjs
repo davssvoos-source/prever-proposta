@@ -1693,8 +1693,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       { ...LN.FILTROS_INICIAIS, busca: 'feito' }, (s) => s.toLowerCase());
     eq('a busca continua recortando o painel', porBusca.map((a) => a.id), ['ch-1']);
   }
+  // 14/09 (R155): a união deixou de ser variável local do memo e virou
+  // `uniaoCompleta`, porque a fila de validação conta sobre ela SEM recorte.
+  // O que este pino guarda continua igual: o painel tem recorte próprio.
   eq('o painel usa o recorte próprio, não o do quadro',
-     /recorteDosPaineis\(uniao, filtros, normalizarTexto\)/.test(dash), true);
+     /recorteDosPaineis\(uniaoCompleta, filtros, normalizarTexto\)/.test(dash), true);
   // nenhum recorte por estado pode voltar: apaga metade do gráfico
   eq('o recorte dos painéis não olha situação nem período',
      /situacao|periodo|dentroDoPeriodo/.test(
@@ -3530,8 +3533,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // KPIs + barras + rosca sob um tipo só — as garantias são as mesmas)
   eq('dashboard mantém a seleção do painel LOCAL (não entra em Filtros/sessionStorage — é drill-down, não preferência)',
      /const \[selecaoPainel, setSelecaoPainel\] = useState<SelecaoPainel \| null>\(null\);/.test(dash2), true);
-  eq('atividadesSelecao roda sobre paraPaineis — a MESMA base que as peças do painel contam, não `atividades` cru nem `filtradas`',
-     /atividadesDaSelecao\(selecaoPainel, paraPaineis, agora\)/.test(dash2), true);
+  // 14/09 (R155): a regra deste pino não afrouxou, ela ficou mais exata. O que
+  // ele sempre guardou é que a lista aberta sai da MESMA base que a peça
+  // tocada CONTOU — e não de `atividades` cru nem de `filtradas`. Com a faixa
+  // de validação existem duas bases legítimas, cada uma casada com a sua peça:
+  // as peças do painel contam e abrem `paraPaineis`; a faixa conta e abre
+  // `uniaoCompleta` (ela é responsabilidade sobre tudo, não fatia da visão —
+  // MEDIDO: sobre `paraPaineis` ela sumia no preset padrão). O pino passa a
+  // exigir exatamente esse casamento.
+  eq('atividadesSelecao roda sobre a base que a peça tocada CONTOU — `paraPaineis` para as peças do painel, `uniaoCompleta` para a faixa de validação — nunca `atividades` cru nem `filtradas`',
+     [dash2.includes('const base = selecaoPainel.tipo === "validar" ? uniaoCompleta : paraPaineis;'),
+      /atividadesDaSelecao\(selecaoPainel, base, agora\)/.test(dash2),
+      /atividadesDaSelecao\(selecaoPainel, (atividades|filtradas), agora\)/.test(dash2)],
+     [true, true, false]);
   eq('CRÍTICO: listaAtual (o que quadro/tabela realmente recebem) prioriza o recorte da seleção sobre o filtro normal',
      /const listaAtual = atividadesSelecao \?\? filtradas;/.test(dash2), true);
   eq('CRÍTICO: o Quadro (kanban) usa listaAtual, não filtradas direto — senão clicar uma peça do painel não mudaria a visão de quadro',
@@ -21578,6 +21592,43 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /<Cadastro /.test(painelV), /<Sede /.test(painelV), /filtrarFolha\(viagens, \{ competencia, viaturaId: viaturaFiltro, tecnicoId: tecnicoFiltro \}\)/.test(painelV),
       /useCorrigirViagem\(\)/.test(painelV), /desativar\.mutate\(\{ id: v\.id, ativa: false \}/.test(painelV)],
      [true, true, true, true, true, true, true, true]);
+}
+
+// ── R155 (U140) — a fila de validação do gestor ganha lugar na Início ─────
+{
+  const fsV155 = require('fs');
+  const M155 = carregar('src/features/home/metricas.ts');
+  const dash155 = fsV155.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
+
+  const atv = (id, aConferir) => ({ id, aConferir });
+  const lista155 = [atv("a", true), atv("b", false), atv("c", true)];
+
+  // O sinal existia desde sempre e NINGUÉM o lia — o gestor terminava o dia
+  // sem saber que havia atendimento esperando o veredito dele, e é esse
+  // veredito que solta a cobrança.
+  eq('R155 CRÍTICO: a fila de validação é UMA função pura — a faixa conta o que o toque nela abre, e são a mesma chamada',
+     [M155.atividadesParaValidar(lista155).map((a) => a.id),
+      M155.atividadesDaSelecao({ tipo: "validar" }, lista155, new Date("2026-09-14T12:00:00Z")).map((a) => a.id),
+      M155.rotuloDaSelecao({ tipo: "validar" })],
+     [["a", "c"], ["a", "c"], "Esperando sua validação"]);
+
+  // MEDIDO no navegador: contando sobre `paraPaineis` (já recortado por
+  // vínculo), a faixa sumia no preset padrão — justamente a visão que o gestor
+  // abre. A fila é responsabilidade sobre TUDO, então conta a união inteira; e
+  // a lista que ela abre sai da MESMA base, senão o número mentiria.
+  eq('R155 CRÍTICO: a faixa conta a UNIÃO INTEIRA (não o recorte dos painéis) e a lista que ela abre sai da mesma base — senão ela some no preset padrão, que é onde o gestor vive',
+     [/const paraValidar = useMemo\(\(\) => atividadesParaValidar\(uniaoCompleta\), \[uniaoCompleta\]\);/.test(dash155),
+      /atividadesParaValidar\(paraPaineis\)/.test(dash155),
+      dash155.includes('const base = selecaoPainel.tipo === "validar" ? uniaoCompleta : paraPaineis;'),
+      /const uniaoCompleta = useMemo/.test(dash155)],
+     [true, false, true, true]);
+
+  eq('R155: a faixa só aparece para a GESTÃO e só com fila — faixa vazia é ruído, e quem se acostuma a ignorá-la deixa de ver a cheia; e ela sobrevive à troca de filtro, porque não depende dele',
+     [dash155.includes('{ehGestor && paraValidar.length > 0 && ('),
+      /const \{ data: ehGestor = false \} = useIsGerente\(\);/.test(dash155),
+      dash155.includes('setSelecaoPainel((atual) => (atual?.tipo === "validar" ? atual : null))'),
+      /esperando sua validação/.test(dash155)],
+     [true, true, true, true]);
 }
 
 // ── P20 (U139) — o chamado analisado volta a ser decidível ────────────────

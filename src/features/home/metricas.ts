@@ -199,7 +199,21 @@ export function atividadesDaMeta(atividades: Atividade[], agora: Date = new Date
 export type SelecaoPainel =
   | { tipo: "kpi"; chave: ChaveKpi }
   | { tipo: "semana"; chave: string; rotulo: string }
-  | { tipo: "meta" };
+  | { tipo: "meta" }
+  | { tipo: "validar" };
+
+/**
+ * R155 — a fila de validação do gestor: o atendimento de campo que já foi
+ * concluído e ainda espera alguém decidir a cobrança.
+ *
+ * O sinal `aConferir` existe em toda atividade desde sempre, e até 14/09/2026
+ * NINGUÉM o lia — o gestor não tinha como saber que havia fila. Esta é a
+ * função que a faixa da Início conta E que o toque nela abre: uma só, para o
+ * número e a lista nunca discordarem.
+ */
+export function atividadesParaValidar(atividades: Atividade[]): Atividade[] {
+  return atividades.filter((a) => a.aConferir);
+}
 
 /**
  * A lista que a seleção abre — SEMPRE derivada das mesmas funções que
@@ -216,6 +230,7 @@ export function atividadesDaSelecao(
     case "kpi": return atividadesDoKpi(sel.chave, atividades, agora);
     case "semana": return atividadesDaSemana(sel.chave, atividades);
     case "meta": return atividadesDaMeta(atividades, agora);
+    case "validar": return atividadesParaValidar(atividades);
   }
 }
 
@@ -227,5 +242,6 @@ export function rotuloDaSelecao(sel: SelecaoPainel): string {
     // tem — é a semana inteira, concluídas e em aberto.
     case "semana": return `Atividades da semana de ${sel.rotulo}`;
     case "meta": return "Meta do mês";
+    case "validar": return "Esperando sua validação";
   }
 }

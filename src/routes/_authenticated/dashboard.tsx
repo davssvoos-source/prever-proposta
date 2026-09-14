@@ -25,7 +25,7 @@
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { ArrowUpDown, ChevronsDownUp, ChevronsUpDown, Inbox, KanbanSquare, List as ListIcon, Plus, Search, WifiOff } from "lucide-react";
+import { ArrowUpDown, ChevronsDownUp, ChevronsUpDown, ClipboardCheck, Inbox, KanbanSquare, List as ListIcon, Plus, Search, WifiOff } from "lucide-react";
 import { NovaAtividadeDialog } from "@/features/home/NovaAtividadeDialog";
 import { usePermissoes } from "@/features/gerencial/permissoes";
 
@@ -55,7 +55,8 @@ import { DialogDaAtividade } from "@/features/chamados/DialogDaAtividade";
 import { ChatDeMencoes } from "@/features/home/ChatDeMencoes";
 import { CampoBusca } from "@/features/home/CampoBusca";
 import { GraficoDemanda, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
-import { atividadesDaSelecao, rotuloDaSelecao, type SelecaoPainel } from "@/features/home/metricas";
+import { atividadesDaSelecao, atividadesParaValidar, rotuloDaSelecao, type SelecaoPainel } from "@/features/home/metricas";
+import { useIsGerente } from "@/features/gerencial/data";
 import { CriarRapido } from "@/features/home/CriarRapido";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { Quadro } from "@/features/home/Quadro";
@@ -145,6 +146,12 @@ function InicioDoGestor() {
   // duas perguntas de quem não pode abrir.
   const { podeVer } = usePermissoes();
   const podeAbrirChamado = podeVer("chamados.novo") !== false;
+
+  // R155: "a validação do executado é uma atividade do Vinicius, com card na
+  // Início dele". O sinal (`aConferir`) existia desde sempre e NINGUÉM o lia —
+  // o gestor terminava o dia sem saber que havia atendimento esperando o
+  // veredito dele, e é esse veredito que solta a cobrança.
+  const { data: ehGestor = false } = useIsGerente();
 
   const [visao, setVisao] = useState<"lista" | "quadro">(() => {
     try {
@@ -238,7 +245,10 @@ function InicioDoGestor() {
    * apaga uma das duas metades do gráfico, que fala de passado e futuro ao
    * mesmo tempo. Valem só pessoa, vínculo, equipe e busca.
    */
-  const paraPaineis = useMemo(() => {
+  /** Tudo o que esta pessoa alcança, sem recorte nenhum — a base de onde os
+   *  painéis saem depois de filtrar, e de onde a fila de validação sai SEM
+   *  filtrar (R155: ela é responsabilidade sobre tudo, não fatia da visão). */
+  const uniaoCompleta = useMemo(() => {
     const vistos = new Set<string>();
     const uniao: Atividade[] = [];
     // a Home primeiro: a versão dela é a mais fresca das duas
@@ -247,8 +257,13 @@ function InicioDoGestor() {
       vistos.add(a.id);
       uniao.push(a);
     }
-    return recorteDosPaineis(uniao, filtros, normalizarTexto);
-  }, [atividades, historico, filtros]);
+    return uniao;
+  }, [atividades, historico]);
+
+  const paraPaineis = useMemo(
+    () => recorteDosPaineis(uniaoCompleta, filtros, normalizarTexto),
+    [uniaoCompleta, filtros],
+  );
 
   // R60/R65: TODO o painel superior filtra ao clicar — os 4 quadrados de
   // KPI, cada barra do gráfico de demanda e a rosca da meta — sob UM estado
@@ -256,11 +271,16 @@ function InicioDoGestor() {
   // entra em `filtros`/sessionStorage): drill-down temporário, não uma
   // preferência que sobrevive a fechar a aba.
   const [selecaoPainel, setSelecaoPainel] = useState<SelecaoPainel | null>(null);
+  // A MESMA função que a seleção "validar" abre, sobre a MESMA base (a união
+  // inteira) — o número da faixa não pode ser contado por um caminho que não
+  // seja o da lista que ela mostra. MEDIDO: contando sobre `paraPaineis`, a
+  // faixa sumia no preset padrão, que é o que o gestor abre.
+  const paraValidar = useMemo(() => atividadesParaValidar(uniaoCompleta), [uniaoCompleta]);
   // zera se a base mudar de pessoa/vínculo/equipe embaixo do pé (ex.: gestor
   // troca "Pessoa" com uma seleção ativa) — senão a lista ficaria presa a
   // um recorte que a tela já não anuncia mais em lugar nenhum
   useEffect(
-    () => setSelecaoPainel(null),
+    () => setSelecaoPainel((atual) => (atual?.tipo === "validar" ? atual : null)),
     [filtros.pessoa, filtros.vinculos, filtros.equipe, filtros.tipo],
   );
 
@@ -273,10 +293,15 @@ function InicioDoGestor() {
    * acontecido uma vez.
    */
   const atividadesSelecao = useMemo(
-    () => (selecaoPainel
-      ? ordenar(atividadesDaSelecao(selecaoPainel, paraPaineis, agora), ordem.chave, ordem.desc)
-      : null),
-    [selecaoPainel, paraPaineis, agora, ordem],
+    () => {
+      if (!selecaoPainel) return null;
+      // "validar" é a exceção declarada: a faixa conta a união inteira,
+      // então a lista dela sai da união inteira. As outras peças contam
+      // `paraPaineis` e abrem `paraPaineis` — cada uma casada com a sua base.
+      const base = selecaoPainel.tipo === "validar" ? uniaoCompleta : paraPaineis;
+      return ordenar(atividadesDaSelecao(selecaoPainel, base, agora), ordem.chave, ordem.desc);
+    },
+    [selecaoPainel, paraPaineis, uniaoCompleta, agora, ordem],
   );
   /** O que a lista/quadro efetivamente mostram: o recorte da seleção quando
    *  há uma ativa, senão o filtro normal da barra. */
@@ -598,6 +623,39 @@ function InicioDoGestor() {
           />
           {podeAbrirChamado && <CriarRapido />}
         </div>
+        )}
+
+        {/* R155 — A FILA DE VALIDAÇÃO DO GESTOR.
+            Só para a gestão, e só quando há fila: faixa vazia é ruído, e
+            quem se acostuma a ignorá-la deixa de ver a cheia. Tocar filtra
+            a lista para exatamente os que ela contou; tocar de novo desfaz.
+            O número e a lista saem da MESMA função (atividadesParaValidar). */}
+        {ehGestor && paraValidar.length > 0 && (
+          <button
+            onClick={() => setSelecaoPainel((atual) => (atual?.tipo === "validar" ? null : { tipo: "validar" }))}
+            aria-pressed={selecaoPainel?.tipo === "validar"}
+            className="sangra-x"
+            style={{
+              display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+              padding: "12px 14px", borderRadius: 14, cursor: "pointer",
+              background: isLight ? "#ffffff" : "#141414",
+              border: `1px solid ${selecaoPainel?.tipo === "validar" ? gold : (isLight ? "rgba(160,97,8,0.35)" : "rgba(248,200,17,0.30)")}`,
+              color: textPrimary, fontFamily: FONT,
+            }}
+          >
+            <ClipboardCheck size={18} color={gold} style={{ flexShrink: 0 }} />
+            <span style={{ minWidth: 0, flex: 1, fontSize: 13.5, lineHeight: 1.4 }}>
+              <b style={{ fontWeight: 600 }}>
+                {paraValidar.length === 1
+                  ? "1 atendimento esperando sua validação"
+                  : `${paraValidar.length} atendimentos esperando sua validação`}
+              </b>
+              <span style={{ display: "block", fontSize: 12, color: textSecondary }}>
+                Concluídos em campo, sem decisão de cobrança.
+                {selecaoPainel?.tipo === "validar" ? " Toque para ver tudo de novo." : " Toque para ver só eles."}
+              </span>
+            </span>
+          </button>
         )}
 
         {/* O título desceu para cá — o quadrado azul do desenho: vira o
