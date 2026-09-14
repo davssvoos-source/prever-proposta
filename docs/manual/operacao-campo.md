@@ -339,8 +339,9 @@ lateral.
 ## O calendário tem duas visões — Mensal e Semanal (R133, U94)
 
 O botão **Mensal | Semanal** no cabeçalho do Calendário troca o desenho, não a
-lista: as duas visões leem os mesmos eventos (visitas e chamados, por hora
-marcada ou por prazo) e passam pelos mesmos filtros de pessoa, tipo e setor.
+lista: as duas visões leem os mesmos eventos (visitas e chamados, pela data
+que os coloca num dia — ver "Em que dia a atividade aparece", abaixo) e passam
+pelos mesmos filtros de pessoa, tipo e setor.
 A **mensal** mostra só o título e o rosto — é para varrer o mês. A **semanal**
 é a visão de quem gere o dia (o Vinicius): sete colunas de **segunda a
 domingo** (a semana ISO, a mesma da programação), e em cada card **quatro
@@ -351,13 +352,29 @@ do status (atrasado em vermelho). A visão escolhida fica gravada no navegador;
 "Hoje" volta mês e semana. No celular a semana vira uma lista, um dia embaixo
 do outro.
 
-**Arrastar muda o prazo (R152).** Nas duas visões, a atividade **em aberto que
-está no calendário pelo prazo** pode ser arrastada para outro dia — o prazo
-passa a ser aquele dia (a hora é preservada), o card muda de coluna na hora e
-volta sozinho se o banco recusar (só responsável ou gestor alteram). O que
-tem hora marcada não se arrasta: a agenda muda pela programação. Concluído e
-cancelado não se arrastam. Arrastar é gesto de mouse — no celular o prazo
-muda pelo painel.
+**Em que dia a atividade aparece.** Na ordem, e a primeira que existir ganha:
+
+1. **Concluída** → o dia em que foi concluída (R145). Fato, não promessa.
+2. **Hora marcada** (`data_hora_agendada`, o campo) → aquele dia e hora.
+3. **Dia agendado** (R225 — o mesmo que põe o card na coluna "Agendado" do
+   quadro) → aquele dia. A dica diz "agendado neste dia", sem hora, porque
+   não há hora escolhida.
+4. **Prazo** → o dia de vencer. A dica diz "vence neste dia".
+
+É a mesma ordem da Início e do quadro: **a agenda vence o prazo**. Uma
+atividade com dia marcado para 20 e prazo para 30 aparece no **dia 20** nas
+três telas.
+
+**Arrastar muda a data que colocou o card ali (R152).** Nas duas visões, a
+atividade em aberto que está no calendário **pelo prazo** ou **pelo dia
+agendado** pode ser arrastada para outro dia: a que está pelo prazo tem o
+**prazo** movido (a hora é preservada); a que está pelo dia agendado é
+**reagendada** para o dia novo — e isso conta como reagendamento, então o
+card passa a dizer "Re-agendado Nx". O card muda de lugar na hora e volta
+sozinho se o banco recusar (só responsável ou gestor alteram). O que tem
+**hora marcada** não se arrasta: a agenda de campo muda pela programação.
+Concluído e cancelado não se arrastam. Arrastar é gesto de mouse — no
+celular a data muda pelo painel.
 
 ## Equipe de campo: a composição tem SEMANA (R96/R97, U76)
 

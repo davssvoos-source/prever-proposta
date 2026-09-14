@@ -1819,7 +1819,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // R190 (U105): o title nativo da mensal saiu — a DICA EXPANDIDA (DicaDaAtividade)
   // carrega o quando no fim, apagado; a frase continua começando pela conclusão (R145)
   eq('mas a hora continua a um hover de distância (a informação não sumiu) — na dica expandida da R190, começando pela conclusão (R145)',
-     /<DicaDaAtividade ancora=\{dica\}/.test(cal) && /e\.porConclusao \? "concluído neste dia" : e\.porPrazo \? "vence neste dia" : horaCurta\(e\.quando\)/.test(cal), true);
+     // P57 (U140): a frase passou a sair do MOTIVO (quatro casos) — o par de
+     // booleanos não comportava o dia agendado. O que este pino guarda é o
+     // mesmo: a conclusão abre a frase, e a hora continua a um hover.
+     /<DicaDaAtividade ancora=\{dica\}/.test(cal) && /e\.motivo === "conclusao" \? "concluído neste dia"/.test(cal), true);
   eq('o rosto do responsável continua na célula', /AvatarPilha/.test(cal), true);
 }
 
@@ -16894,15 +16897,23 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── R145: o calendário ───────────────────────────────────────────────────
   const cal96 = ler96('src/routes/_authenticated/calendario.tsx');
-  eq('R145 CRÍTICO: a consulta do calendário tem TRÊS pernas — concluído pela conclusão, em aberto pela hora agendada, em aberto pelo prazo',
+  // P57 (U140): viraram QUATRO — entrou a do dia agendado, e a do prazo
+  // ganhou `data_agendada.is.null`. As três de origem continuam aqui.
+  eq('R145 CRÍTICO: a consulta do calendário tem as pernas de origem — concluído pela conclusão, em aberto pela hora agendada, em aberto pelo prazo (a quarta, do dia agendado, é da P57)',
      [/and\(status\.eq\.concluido,concluida_em\.gte\./.test(cal96), /and\(status\.neq\.concluido,data_hora_agendada\.gte\./.test(cal96),
-      /and\(status\.neq\.concluido,data_hora_agendada\.is\.null,prazo_limite\.gte\./.test(cal96)],
+      /and\(status\.neq\.concluido,data_hora_agendada\.is\.null,data_agendada\.is\.null,prazo_limite\.gte\./.test(cal96)],
      [true, true, true]);
-  eq('R145: quem decide o dia é `quando` — a conclusão vence a hora agendada e o prazo (desde a R153 a palavra "concluído" mora na dica, não na célula)',
-     [/const porConclusao = c\.status === "concluido" && !!c\.concluida_em;/.test(cal96),
-      /const quando = porConclusao \? c\.concluida_em : \(c\.data_hora_agendada \?\? c\.prazo_limite\);/.test(cal96),
-      /porPrazo: !porConclusao && !c\.data_hora_agendada,/.test(cal96)],
-     [true, true, true]);
+  // P57 (U140): a conta saiu da tela e virou `lugarNoCalendario`, pura — e o
+  // pino segue a conta. A R145 continua sendo a primeira pergunta que ela faz.
+  eq('R145: quem decide o dia é `lugarNoCalendario` (puro, em atividades/modelo.ts) — a conclusão vence a hora agendada, o dia agendado e o prazo',
+     [/const lugar = lugarNoCalendario\(c\);/.test(cal96),
+      /const quando = lugar\.quando;/.test(cal96),
+      /motivo: lugar\.motivo,/.test(cal96),
+      carregar('src/features/atividades/modelo.ts').lugarNoCalendario({
+        status: 'concluido', concluida_em: '2026-09-05T14:00:00Z',
+        data_hora_agendada: '2026-09-10T08:00:00Z', data_agendada: '2026-09-20',
+        prazo_limite: '2026-09-30T23:59:59' }).motivo],
+     [true, true, true, 'conclusao']);
 
   // ── as telas da atividade ────────────────────────────────────────────────
   const di96 = ler96('src/features/chamados/DetalheInterno.tsx');
@@ -17074,14 +17085,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const cal97 = ler97('src/routes/_authenticated/calendario.tsx');
   const cal97c = codigo97(cal97);
-  eq('R152 CRÍTICO: só se arrasta o chamado EM ABERTO que está no calendário pelo PRAZO — visita nunca, concluído nunca, hora marcada nunca',
-     [/arrastavel: !final && !porConclusao && !c\.data_hora_agendada,/.test(cal97),
-      /porConclusao: false,\n\s*arrastavel: false,/.test(cal97)],
+  // P57 (U140): o critério deixou de ser uma negativa na tela ("não é final,
+  // não tem hora") e virou o campo que o arrasto GRAVA. Quem não tem campo
+  // não se arrasta — a mesma regra, dita pelo lado que ela realmente governa.
+  eq('R152 CRÍTICO: só se arrasta quem tem campo de data para gravar — visita nunca, concluído nunca, hora marcada nunca (o critério virou `campoDoArrasto`, P57)',
+     [/arrastavel: !!lugar\.campoDoArrasto,/.test(cal97),
+      /campoDoArrasto: null,\n\s*arrastavel: false,/.test(cal97)],
      [true, true]);
-  eq('R152: soltar num dia escreve prazo_limite por atualizarChamado, com moverPrazoParaODia, e pula a escrita se o dia é o mesmo',
-     [/const novo = moverPrazoParaODia\(c\.prazo_limite, dia\);/.test(cal97),
-      /if \(mesmoInstante\(novo, c\.prazo_limite\)\) return null;/.test(cal97),
-      /await atualizarChamado\(id, \{ prazo_limite: novo \}\);/.test(cal97)],
+  // P57 (U140): a conta do arrasto virou `patchDoArrastoNoCalendario` — ela
+  // escolhe o campo, preserva a hora do prazo e devolve `null` quando o dia
+  // já é aquele. A escrita continua pelo `atualizarChamado`.
+  eq('R152: soltar num dia escreve por `atualizarChamado` o campo que o `patchDoArrastoNoCalendario` escolheu, e pula a escrita se o dia é o mesmo',
+     [/const p = patchDoArrastoNoCalendario\(c, dia\);/.test(cal97),
+      /if \(!p\) return null;/.test(cal97),
+      /await atualizarChamado\(id, \{ \[p\.campo\]: p\.valor \} as any\);/.test(cal97)],
      [true, true, true]);
   eq('R152: a escrita é OTIMISTA e volta no erro — cancela a consulta, guarda o antes, troca, restaura',
      [/await qc\.cancelQueries\(\{ queryKey: chave \}\);/.test(cal97),
@@ -17112,8 +17129,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R153: o que saiu do card ficou na dica do navegador — tipo, status (atrasado primeiro), número, hora/vence/concluído',
      [/title=\{dicaDoEvento\(e\)\}/.test(sem97),
       // U105: a frase virou `quandoDoEvento` — a dica nativa da semanal e a dica expandida da mensal (R190) leem a mesma
+      // P57: a frase virou quatro casos (o dia agendado não tem hora para
+      // mostrar); as duas dicas continuam lendo a MESMA função.
       /const quando = quandoDoEvento\(e\);/.test(cal97)
-        && /const quandoDoEvento = \(e: Evento\) =>\s*\n\s*e\.porConclusao \? "concluído neste dia" : e\.porPrazo \? "vence neste dia" : horaCurta\(e\.quando\);/.test(cal97),
+        && /e\.motivo === "prazo" \? "vence neste dia"/.test(cal97)
+        && /e\.motivo === "dia_agendado" \? "agendado neste dia"/.test(cal97),
       /\[e\.tipoLabel, e\.atrasado \? "Atrasado" : e\.statusLabel, e\.numero, quando\]/.test(cal97)],
      [true, true, true]);
   eq('R153: a cor da borda esquerda (o status) fica — é cor, não texto',
@@ -17222,9 +17242,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /^## 5\. Fundos de página \(v4 minimalista · v10 no claro\)/m.test(ds97),
       /#0a0b0e/.test(ds97.replace(/quase-preto `#0a0b0e`|era `#0a0b0e`/g, ''))],
      [true, true, true, true, false]);
-  eq('U97 (regra 7): o manual fala do card de quatro coisas e do arrasto que muda o prazo',
-     [/quatro\s+coisas/.test(ler97('docs/manual/operacao-campo.md')), /Arrastar muda o prazo \(R152\)/.test(ler97('docs/manual/operacao-campo.md'))],
-     [true, true]);
+  // P57 (U140): o arrasto passou a mover a data que colocou o card ali — o
+  // prazo, ou o dia agendado. O manual diz as duas, e a ordem das quatro datas.
+  eq('U97 (regra 7): o manual fala do card de quatro coisas, do arrasto que muda a data que colocou o card ali, e da ORDEM em que a atividade cai num dia',
+     [/quatro\s+coisas/.test(ler97('docs/manual/operacao-campo.md')),
+      /Arrastar muda a data que colocou o card ali \(R152\)/.test(ler97('docs/manual/operacao-campo.md')),
+      /Em que dia a atividade aparece/.test(ler97('docs/manual/operacao-campo.md')),
+      /a agenda vence o prazo/.test(ler97('docs/manual/operacao-campo.md'))],
+     [true, true, true, true]);
 }
 
 // ── U97b — as respostas do Davi às Q1–Q4 (R155–R157), só documentação ───────
@@ -17568,14 +17593,24 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('U100b (R168): o tipo Chamado e o ChamadoPatch conhecem data_agendada — a tela vem com os fluxos, mas a leitura já traz a coluna',
      [/^\s+data_agendada: string \| null;/m.test(dados100b), /\| "prazo_limite" \| "data_agendada" \| "status"/.test(dados100b)],
      [true, true]);
-  eq('U100b (revisão da R152): soltar no MESMO dia não grava nem avisa — a comparação é por instante, porque o banco escreve "+00:00" e o JS ".000Z"',
-     [/const mesmoInstante = \(a: string, b: string \| null \| undefined\) =>\s*\n\s*!!b && new Date\(a\)\.getTime\(\) === new Date\(b\)\.getTime\(\);/.test(ler100b('src/routes/_authenticated/calendario.tsx')),
-      /if \(mesmoInstante\(novo, c\.prazo_limite\)\) return null;/.test(ler100b('src/routes/_authenticated/calendario.tsx'))],
-     [true, true]);
+  // P57 (U140): a comparação por INSTANTE mudou de casa — foi para dentro do
+  // `patchDoArrastoNoCalendario`, que agora também compara DIA quando o campo
+  // é data seca. O pino passa a exercitar a conta em vez de ler a tela: é o
+  // mesmo que ele guardava, e agora prova em vez de reconhecer.
+  eq('U100b (revisão da R152): soltar no MESMO dia não grava nem avisa — a comparação é por instante no prazo (o banco escreve "+00:00" e o JS ".000Z") e por dia na agenda',
+     (() => {
+       const M = carregar('src/features/atividades/modelo.ts');
+       const c = { status: 'aberto', prazo_limite: '2026-09-30T23:59:59.000Z', data_hora_agendada: null, data_agendada: null };
+       const mesmoDia = new Date(new Date(c.prazo_limite).getFullYear(),
+         new Date(c.prazo_limite).getMonth(), new Date(c.prazo_limite).getDate());
+       return [M.patchDoArrastoNoCalendario(c, mesmoDia),
+               M.patchDoArrastoNoCalendario({ ...c, prazo_limite: null, data_agendada: '2026-09-20' }, new Date(2026, 8, 20))];
+     })(),
+     [null, null]);
   const pend100b = ler100b('docs/PENDENCIAS_TECNICAS.md');
   eq('U100b (regra 7): P58 e P60 fechadas, P57 em andamento (coluna existe, tela não), P56 com o motivo de não ter entrado; a U100b está no diário',
      [/^## P58 — ~~BAIXO~~ FECHADA/m.test(pend100b), /^## P60 — ~~BAIXO~~ FECHADA/m.test(pend100b),
-      /^## P57 — MÉDIO · EM ANDAMENTO/m.test(pend100b), /P56[^\n]*\n(?:[^\n]*\n){0,12}[^\n]*trg_chamado_evento_upd/.test(pend100b),
+      /^## P57 — ~~MÉDIO~~ FECHADA/m.test(pend100b), /P56[^\n]*\n(?:[^\n]*\n){0,12}[^\n]*trg_chamado_evento_upd/.test(pend100b),
       /^## U100b /m.test(ler100b('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true, true, true]);
 }
@@ -22216,6 +22251,141 @@ assincronas.push(async () => {
        return [comVelho, comZero];
      })(),
      [[], 4]);
+}
+
+// ── P57 — O CALENDÁRIO NUNCA LEU O DIA AGENDADO (14/09/2026) ──────────────
+//
+// `data_agendada` nasceu na U99 e virou regra na R225 (U119): é o dia marcado
+// de QUALQUER atividade. O quadro monta a coluna "Agendado" com ela; a Início
+// já a usava em `Atividade.quando`. O calendário, não — ele parava em "hora
+// marcada ou prazo". Então as DUAS TELAS DISCORDAVAM sobre a mesma atividade:
+// o quadro no dia 20, o calendário no dia do prazo, e quem marcou o dia não
+// tinha como saber qual das duas estava certa.
+{
+  const fsP57 = require('fs');
+  const MOD57 = carregar('src/features/atividades/modelo.ts');
+  const cal57 = fsP57.readFileSync('src/routes/_authenticated/calendario.tsx', 'utf8');
+  const base = (extra) => ({
+    id: 'x', numero: 'CH-1', titulo: 't', status: 'aberto', natureza: 'interno',
+    tipo: 'corretiva', prioridade: 'normal', equipe: null, sprint: null,
+    prazo_limite: null, data_hora_agendada: null, data_agendada: null,
+    concluida_em: null, responsavel_id: 'u1', aberto_por: 'u1',
+    created_at: '2026-01-01T00:00:00Z', updated_at: null, ...extra,
+  });
+
+  // O DEFEITO, em uma linha: as duas datas existem e a agenda tem de ganhar.
+  eq('P57 CRÍTICO: com dia agendado E prazo, o calendário coloca a atividade no DIA AGENDADO — era aqui que ele discordava do quadro, que monta a coluna Agendado pela mesma coluna',
+     (() => {
+       const l = MOD57.lugarNoCalendario(base({ data_agendada: '2026-09-20', prazo_limite: '2026-09-30T23:59:59' }));
+       const d = new Date(l.quando);
+       return [l.motivo, d.getFullYear(), d.getMonth() + 1, d.getDate()];
+     })(),
+     ['dia_agendado', 2026, 9, 20]);
+
+  // A ordem inteira, de uma vez. `modoDeQuando` já declarava que a AGENDA
+  // VENCE O PRAZO; isto só aplica a mesma ordem no calendário.
+  eq('P57: a ordem é conclusão (R145) → hora marcada → dia agendado (R225) → prazo, e cada perna cede para a de cima quando ela existe',
+     [MOD57.lugarNoCalendario(base({
+        status: 'concluido', concluida_em: '2026-09-05T14:00:00Z',
+        data_hora_agendada: '2026-09-10T08:00:00Z', data_agendada: '2026-09-20', prazo_limite: '2026-09-30T23:59:59' })).motivo,
+      MOD57.lugarNoCalendario(base({ data_hora_agendada: '2026-09-10T08:00:00Z', data_agendada: '2026-09-20', prazo_limite: '2026-09-30T23:59:59' })).motivo,
+      MOD57.lugarNoCalendario(base({ data_agendada: '2026-09-20', prazo_limite: '2026-09-30T23:59:59' })).motivo,
+      MOD57.lugarNoCalendario(base({ prazo_limite: '2026-09-30T23:59:59' })).motivo,
+      MOD57.lugarNoCalendario(base({})).motivo,
+      MOD57.lugarNoCalendario(base({})).quando],
+     ['conclusao', 'hora_marcada', 'dia_agendado', 'prazo', null, null]);
+
+  // A ARMADILHA DO FUSO, que é onde uma data seca se perde. O conversor é o
+  // `fimDoDiaAgendado` da R225 — o mesmo que a Início usa —, e o teste é: em
+  // que DIA LOCAL o card cai, e ele está atrasado no próprio dia?
+  eq('P57 CRÍTICO: o dia agendado vira o FIM do dia LOCAL — `new Date("2026-09-20")` é meia-noite UTC (19/09 às 21h em Brasília, o card cairia no dia anterior), e a meia-noite local faria a atividade de HOJE nascer atrasada às 00h01',
+     (() => {
+       const iso = MOD57.lugarNoCalendario(base({ data_agendada: '2026-09-20' })).quando;
+       const d = new Date(iso);
+       const meioDia20 = new Date(2026, 8, 20, 12, 0, 0);
+       const meioDia21 = new Date(2026, 8, 21, 12, 0, 0);
+       return [d.getDate(), d.getHours(), d.getTime() > meioDia20.getTime(), d.getTime() < meioDia21.getTime()];
+     })(),
+     [20, 23, true, true]);
+
+  // A INVARIANTE ENTRE TELAS. É esta que o defeito quebrava, e é ela que
+  // impede o próximo desencontro: a Início monta `Atividade.quando` com a
+  // mesma ordem, e as duas TÊM de dar o mesmo instante.
+  eq('P57 CRÍTICO: o calendário e a Início colocam a MESMA atividade no MESMO instante — as duas contas são a mesma ordem, e a asserção morre se alguém mudar uma sem a outra',
+     (() => {
+       const ctx = { userId: 'u1', apoios: new Set() };
+       const casos = [
+         { data_agendada: '2026-09-20', prazo_limite: '2026-09-30T23:59:59' },
+         { data_hora_agendada: '2026-09-10T08:00:00Z', data_agendada: '2026-09-20' },
+         { prazo_limite: '2026-09-30T23:59:59' },
+       ];
+       return casos.filter((e) => {
+         const c = base(e);
+         const cal = MOD57.lugarNoCalendario(c).quando;
+         const ini = MOD57.atividadeDoChamado(c, ctx).quando;
+         return new Date(cal).getTime() !== new Date(ini).getTime();
+       });
+     })(),
+     []);
+
+  // O ARRASTO (R152) grava o campo que COLOCOU o card ali. Gravar sempre o
+  // prazo faria o arrasto de um card agendado parecer não ter funcionado — o
+  // prazo mudaria e o card ficaria onde estava. É o mesmo motivo pelo qual a
+  // R152 recusou arrastar o que entra pela hora do campo.
+  eq('P57/R152 CRÍTICO: o arrasto grava o campo que colocou o card no dia — `data_agendada` para quem está pela agenda, `prazo_limite` para quem está pelo prazo, e NADA para conclusão, hora do campo e cancelado',
+     [MOD57.lugarNoCalendario(base({ data_agendada: "2026-09-20" })).campoDoArrasto,
+      MOD57.lugarNoCalendario(base({ prazo_limite: "2026-09-30T23:59:59" })).campoDoArrasto,
+      MOD57.lugarNoCalendario(base({ data_hora_agendada: "2026-09-10T08:00:00Z" })).campoDoArrasto,
+      MOD57.lugarNoCalendario(base({ status: "concluido", concluida_em: "2026-09-05T14:00:00Z" })).campoDoArrasto,
+      MOD57.lugarNoCalendario(base({ status: "cancelado", data_agendada: "2026-09-20" })).campoDoArrasto,
+      MOD57.lugarNoCalendario(base({ status: "cancelado", prazo_limite: "2026-09-30T23:59:59" })).campoDoArrasto],
+     ['data_agendada', 'prazo_limite', null, null, null, null]);
+
+  eq('P57: soltar num dia grava a data DAQUELE dia (fuso local, não UTC), e soltar no MESMO dia não grava nada — sem isso todo arrasto contaria um reagendamento a mais no gatilho da U119',
+     [MOD57.patchDoArrastoNoCalendario(base({ data_agendada: "2026-09-20" }), new Date(2026, 8, 25)),
+      MOD57.patchDoArrastoNoCalendario(base({ data_agendada: "2026-09-20" }), new Date(2026, 8, 20)),
+      MOD57.patchDoArrastoNoCalendario(base({ data_hora_agendada: "2026-09-10T08:00:00Z" }), new Date(2026, 8, 25))],
+     [{ campo: 'data_agendada', valor: '2026-09-25' }, null, null]);
+
+  // O prazo continua preservando a HORA que tinha — a R152 é explícita, e
+  // quem tinha 23:59:59 não pode virar meia-noite por ter sido arrastado.
+  eq('P57/R152: arrastar pelo prazo continua preservando a HORA do prazo — muda a data, não o horário',
+     (() => {
+       const p = MOD57.patchDoArrastoNoCalendario(
+         base({ prazo_limite: new Date(2026, 8, 30, 17, 30, 0).toISOString() }), new Date(2026, 9, 2));
+       const d = new Date(p.valor);
+       return [p.campo, d.getDate(), d.getMonth() + 1, d.getHours(), d.getMinutes()];
+     })(),
+     ['prazo_limite', 2, 10, 17, 30]);
+
+  // E a TELA: a consulta tem de trazer a coluna e a perna nova, senão a
+  // lógica pura acima estaria certa sobre uma linha que nunca chega.
+  eq('P57 CRÍTICO: o calendário PEDE `data_agendada` ao banco e tem a quarta perna no or() — a perna do prazo passou a exigir `data_agendada.is.null`, senão traria linha para colocar num dia que a janela não desenha',
+     [/data_hora_agendada, data_agendada, prazo_limite/.test(cal57),
+      /data_agendada\.gte\.\$\{deDia\},data_agendada\.lte\.\$\{ateDia\}/.test(cal57),
+      /data_hora_agendada\.is\.null,data_agendada\.is\.null,prazo_limite\.gte/.test(cal57),
+      (cal57.match(/and\(status\./g) ?? []).length],
+     [true, true, true, 4]);
+
+  // O par de booleanos não comporta quatro casos: com ele, o dia agendado
+  // cairia no `else` e o card mostraria uma HORA que ninguém escolheu.
+  eq('P57: a tela lê o MOTIVO (quatro casos), e o par de booleanos que só comportava três sumiu — com ele, o dia agendado mostraria "23:59" como se fosse hora marcada',
+     [/e\.motivo === "dia_agendado" \? "agendado neste dia"/.test(cal57),
+      /porPrazo:|porConclusao:/.test(cal57),
+      /lugarNoCalendario\(c\)/.test(cal57),
+      /patchDoArrastoNoCalendario/.test(cal57)],
+     [true, false, true, true]);
+
+  // Um conversor só para o dia seco. Dois seriam duas verdades sobre o mesmo
+  // instante, e a divergência apareceria como card em dia diferente.
+  eq('P57: o dia seco vira instante por UM conversor só (`fimDoDiaAgendado`, R225) — o que eu tinha escrito a mais foi apagado antes de virar a segunda verdade',
+     (() => {
+       const mod = fsP57.readFileSync('src/features/atividades/modelo.ts', 'utf8');
+       return [/export function fimDoDiaAgendado/.test(mod),
+               (mod.match(/T23:59:59/g) ?? []).length,
+               /fimDoDiaLocal/.test(mod)];
+     })(),
+     [true, 1, false]);
 }
 
 (async () => {

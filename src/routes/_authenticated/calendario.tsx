@@ -13,10 +13,22 @@
 //
 // Por isso cada item entra pela data que REALMENTE o coloca num dia:
 //   · visita e chamado de campo → a hora agendada (é quando a dupla sai)
+//   · atividade com DIA MARCADO → o dia agendado (R225 — ver P57, abaixo)
 //   · chamado interno           → o prazo (é quando tem que estar pronto)
 //   · chamado CONCLUÍDO         → a data da conclusão (R145, U96)
-// A célula distingue os três: hora para o que é agendado, "prazo" para o que
-// vence, "concluído" para o que já foi.
+// A célula distingue os quatro: hora para o que é agendado com hora,
+// "agendado neste dia" para o dia seco, "vence neste dia" para o prazo e
+// "concluído neste dia" para o que já foi.
+//
+// ── P57 (U140): O DIA AGENDADO CHEGOU AO CALENDÁRIO ────────────────────────
+// A `data_agendada` nasceu na U99 e virou regra na R225 (U119): é o dia
+// marcado de QUALQUER atividade, e é por ela que o quadro monta a coluna
+// "Agendado". O calendário nunca a leu — então as duas telas discordavam
+// sobre a mesma atividade: o quadro no dia 20, o calendário no dia do prazo.
+// Quem marcasse o dia e fosse conferir via a atividade em outro lugar, sem
+// jeito de saber qual das telas estava certa. A ordem aplicada é a que
+// `modoDeQuando` já declarava desde a R225 — a AGENDA VENCE O PRAZO —, e
+// quem decide é `lugarNoCalendario`, em features/atividades/modelo.ts.
 //
 // ── R145 (U96): O CONCLUÍDO FICA NO DIA EM QUE FOI CONCLUÍDO ────────────────
 // Davi, 2026-09-03: "O Calendário deverá ter as atividades na data de
@@ -73,11 +85,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
-import { chamadoStatusInfo, TIPO_LABEL, moverPrazoParaODia } from "@/lib/chamado-status";
+import { chamadoStatusInfo, TIPO_LABEL } from "@/lib/chamado-status";
 import { getStatusInfo as getStatusInfoVisita } from "@/lib/visita-status";
 import { PRISMA, misturar, cinzas } from "@/lib/paleta";
 import { inicioSemana, fimSemana, referenciaSemanal } from "@/lib/periodos";
 import { usePessoas, atualizarChamado } from "@/features/chamados/data";
+// P57: quem decide o dia do card e o que o arrasto grava é lógica PURA, e
+// mora junto do resto do modelo de atividade — a tela só pinta.
+import { lugarNoCalendario, patchDoArrastoNoCalendario, type MotivoNoCalendario } from "@/features/atividades/modelo";
 import {
   useClientes, SERVICO_ORDEM, SERVICO_LABEL, type ServicoCliente,
 } from "@/features/clientes/data";
@@ -131,11 +146,17 @@ interface Evento {
   /** quem toca — responsável primeiro, apoios depois */
   pessoas: string[];
   quando: string;
-  /** true = entrou pelo PRAZO, não por hora marcada */
-  porPrazo: boolean;
-  /** true = entrou pela data de CONCLUSÃO (R145) — já foi, não vence nem sai */
-  porConclusao: boolean;
-  /** true = pode ser arrastado para outro dia (R152): chamado em aberto que está aqui pelo PRAZO */
+  /**
+   * POR QUE este item caiu neste dia — conclusão, hora marcada, dia agendado
+   * ou prazo. Era um par de booleanos (`porPrazo`/`porConclusao`), e um par
+   * não comporta quatro casos: a quarta data chegaria como "nem um nem",
+   * ou seja, como hora marcada, e o card mostraria uma HORA que ninguém
+   * escolheu. Um motivo só, e a frase sai dele.
+   */
+  motivo: MotivoNoCalendario | null;
+  /** o campo que o arrasto grava (R152); null = não se arrasta */
+  campoDoArrasto: "prazo_limite" | "data_agendada" | null;
+  /** true = pode ser arrastado para outro dia (R152) */
   arrastavel: boolean;
   /** true = já passou da data e não chegou a um estado final — pinta vermelho */
   atrasado: boolean;
@@ -172,14 +193,25 @@ const horaCurta = (iso: string) =>
 const mesmoInstante = (a: string, b: string | null | undefined) =>
   !!b && new Date(a).getTime() === new Date(b).getTime();
 
-/** A frase do QUANDO — a conclusão vence a hora e o prazo (R145). */
+/**
+ * A frase do QUANDO. A hora só aparece para quem TEM hora: mostrar "23:59"
+ * num dia agendado seria inventar um horário que ninguém marcou (e é o que
+ * aconteceria se o dia agendado caísse no ramo do `else`).
+ */
 const quandoDoEvento = (e: Evento) =>
-  e.porConclusao ? "concluído neste dia" : e.porPrazo ? "vence neste dia" : horaCurta(e.quando);
+  e.motivo === "conclusao" ? "concluído neste dia"
+  : e.motivo === "prazo" ? "vence neste dia"
+  : e.motivo === "dia_agendado" ? "agendado neste dia"
+  : horaCurta(e.quando);
 
 const dicaDoEvento = (e: Evento) => {
   const quando = quandoDoEvento(e);
   const partes = [e.tipoLabel, e.atrasado ? "Atrasado" : e.statusLabel, e.numero, quando].filter(Boolean);
-  return partes.join(" · ") + (e.arrastavel ? " — arraste para outro dia para mudar o prazo" : "");
+  // a dica nomeia o que o arrasto REALMENTE muda — prometer "o prazo" e
+  // mexer na agenda seria a tela mentindo sobre a própria ação
+  const arrasto = e.campoDoArrasto === "data_agendada" ? " — arraste para outro dia para reagendar"
+    : e.campoDoArrasto === "prazo_limite" ? " — arraste para outro dia para mudar o prazo" : "";
+  return partes.join(" · ") + arrasto;
 };
 
 /** Quantos meses além do escolhido a mensal anexa ao rolar (R189: "até um limite de mais 3 meses"). */
@@ -443,16 +475,27 @@ function CalendarioPage() {
     queryFn: async () => {
       const de = janela.de.toISOString();
       const ate = janela.ate.toISOString();
+      // a janela em DIA local, para a coluna `date` (ver o or() abaixo)
+      const deDia = chaveDia(janela.de);
+      const ateDia = chaveDia(janela.ate);
       let q = supabase
         .from("chamados" as any)
         // responsavel_id, NÃO tecnico_id: a coluna mudou de nome na U7 e o
         // nome velho derrubava a consulta inteira (42703).
         // `!cliente_id`: desambigua o embed — ver features/home/data.ts (U45).
-        .select("id, numero, status, tipo, natureza, titulo, data_hora_agendada, prazo_limite, concluida_em, responsavel_id, cliente_id, cliente:clientes!cliente_id(nome)")
+        .select("id, numero, status, tipo, natureza, titulo, data_hora_agendada, data_agendada, prazo_limite, concluida_em, responsavel_id, cliente_id, cliente:clientes!cliente_id(nome)")
+        // P57: a terceira perna é a do DIA AGENDADO, e ela compara com
+        // `AAAA-MM-DD` do fuso LOCAL — a coluna é `date`, e mandar o instante
+        // UTC da janela erraria o dia de ponta a ponta. A quarta (o prazo)
+        // ganhou `data_agendada.is.null` pelo mesmo motivo que já tinha
+        // `data_hora_agendada.is.null`: quem tem agenda entra pela agenda, e
+        // buscá-lo de novo pelo prazo traria linha para colocar num dia que a
+        // janela não desenha.
         .or(
           `and(status.eq.concluido,concluida_em.gte.${de},concluida_em.lte.${ate}),`
           + `and(status.neq.concluido,data_hora_agendada.gte.${de},data_hora_agendada.lte.${ate}),`
-          + `and(status.neq.concluido,data_hora_agendada.is.null,prazo_limite.gte.${de},prazo_limite.lte.${ate})`,
+          + `and(status.neq.concluido,data_hora_agendada.is.null,data_agendada.gte.${deDia},data_agendada.lte.${ateDia}),`
+          + `and(status.neq.concluido,data_hora_agendada.is.null,data_agendada.is.null,prazo_limite.gte.${de},prazo_limite.lte.${ate})`,
         );
       // R264 (U132): cinto e suspensório. Quem recorta é o BANCO; o front só
       // deixa de mostrar o interno ao técnico na janela entre subir o pacote
@@ -510,34 +553,50 @@ function CalendarioPage() {
   });
 
   /**
-   * R152 — soltar num dia muda o PRAZO. Otimista: a lista em cache troca o
-   * prazo_limite na hora (o card pula de coluna), e se o banco recusar
-   * (RLS: não é responsável nem gestor) a lista volta e o erro aparece.
-   * `onSettled` invalida tudo o que lê prazo — calendário, Início, listas.
+   * R152 — soltar num dia muda a data que COLOCOU o card ali: o prazo de quem
+   * está no dia pelo prazo, o dia agendado de quem está pela agenda (P57).
+   * Gravar sempre o prazo faria o arrasto de um card agendado parecer não ter
+   * funcionado — o prazo mudaria e o card ficaria exatamente onde estava. É o
+   * mesmo motivo pelo qual a R152 recusou arrastar o que entra pela hora do
+   * campo.
+   *
+   * Otimista: a lista em cache troca o campo na hora (o card pula de dia), e se
+   * o banco recusar (RLS: não é responsável nem gestor) a lista volta e o erro
+   * aparece. `onSettled` invalida tudo o que lê data — calendário, Início,
+   * listas. Reagendar conta como reagendamento sem ninguém pedir: o gatilho
+   * `contar_reagendamento` (U119) é quem soma o "Re-agendado Nx".
    */
   const moverPrazo = useMutation({
     mutationFn: async ({ id, dia }: { id: string; dia: Date }) => {
       const c = (chamados as any[]).find((x) => x.id === id);
       if (!c) throw new Error("A atividade não está mais nesta janela.");
-      const novo = moverPrazoParaODia(c.prazo_limite, dia);
-      if (mesmoInstante(novo, c.prazo_limite)) return null;
-      await atualizarChamado(id, { prazo_limite: novo });
-      return novo;
+      const p = patchDoArrastoNoCalendario(c, dia);
+      if (!p) return null;
+      await atualizarChamado(id, { [p.campo]: p.valor } as any);
+      return p;
     },
     onMutate: async ({ id, dia }) => {
       const chave = ["calendario", "chamados", chaveJanela];
       await qc.cancelQueries({ queryKey: chave });
       const antes = qc.getQueryData<any[]>(chave);
       qc.setQueryData<any[]>(chave, (velho) =>
-        (velho ?? []).map((c) => (c.id === id ? { ...c, prazo_limite: moverPrazoParaODia(c.prazo_limite, dia) } : c)));
+        (velho ?? []).map((c) => {
+          if (c.id !== id) return c;
+          const p = patchDoArrastoNoCalendario(c, dia);
+          return p ? { ...c, [p.campo]: p.valor } : c;
+        }));
       return { antes, chave };
     },
     onError: (err, _vars, ctx) => {
       if (ctx) qc.setQueryData(ctx.chave, ctx.antes);
-      toast.error((err as Error)?.message ?? "Não foi possível mover o prazo.");
+      toast.error((err as Error)?.message ?? "Não foi possível mover a atividade.");
     },
-    onSuccess: (novo) => {
-      if (novo) toast.success(`Prazo movido para ${new Date(novo).toLocaleDateString("pt-BR")}.`);
+    onSuccess: (p) => {
+      if (!p) return;
+      const dia = new Date(p.campo === "data_agendada" ? `${p.valor}T12:00:00` : p.valor);
+      toast.success(p.campo === "data_agendada"
+        ? `Reagendada para ${dia.toLocaleDateString("pt-BR")}.`
+        : `Prazo movido para ${dia.toLocaleDateString("pt-BR")}.`);
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["calendario"] });
@@ -619,22 +678,30 @@ function CalendarioPage() {
         numero: null,
         pessoas: v.tecnico_id ? [v.tecnico_id] : [],
         quando: v.data_hora_agendada,
-        porPrazo: false,
-        porConclusao: false,
+        // a visita entra sempre pela hora marcada, e não se arrasta: a agenda
+        // de campo é da programação (R101/U78)
+        motivo: "hora_marcada" as const,
+        campoDoArrasto: null,
         arrastavel: false,
         atrasado,
         cor: atrasado ? vermelho : (isLight ? info.colorLight : info.color),
         setores: v.cliente_id ? (servicosPorCliente[v.cliente_id] ?? []) : [],
       };
     });
-    const deChamados: Evento[] = (chamados as any[]).map((c) => {
+    const deChamados: Evento[] = (chamados as any[]).flatMap((c) => {
       const info = chamadoStatusInfo(c.status);
       const final = c.status === "concluido" || c.status === "cancelado";
-      // R145: concluído fica no dia da conclusão; em aberto, hora marcada ou prazo
-      const porConclusao = c.status === "concluido" && !!c.concluida_em;
-      const quando = porConclusao ? c.concluida_em : (c.data_hora_agendada ?? c.prazo_limite);
+      // quem decide o dia é a lógica pura (features/atividades/modelo.ts):
+      // conclusão (R145) → hora marcada → dia agendado (R225/P57) → prazo
+      const lugar = lugarNoCalendario(c);
+      const quando = lugar.quando;
+      // sem data nenhuma não há dia onde pôr: as quatro pernas da consulta
+      // impedem que isto chegue, e se chegasse `new Date(null)` mandaria o
+      // card para 1970 — um dia que o calendário não desenha, ou seja, sumiria
+      // sem ninguém saber. Cair fora aqui é a mesma ausência, dita.
+      if (!quando) return [];
       const atrasado = !final && !!quando && new Date(quando).getTime() < hoje.getTime();
-      return {
+      return [{
         kind: "chamado" as const,
         id: c.id,
         // o TÍTULO na frente: é o que responde "o que é isto?" varrendo o mês.
@@ -652,10 +719,10 @@ function CalendarioPage() {
           ...((apoios as Record<string, string[]>)[c.id] ?? []),
         ])),
         quando,
-        porPrazo: !porConclusao && !c.data_hora_agendada,
-        porConclusao,
-        // R152: em aberto e aqui pelo prazo — hora agendada é da programação
-        arrastavel: !final && !porConclusao && !c.data_hora_agendada,
+        motivo: lugar.motivo,
+        // R152: quem tem campo para gravar se arrasta; quem não tem, não
+        campoDoArrasto: lugar.campoDoArrasto,
+        arrastavel: !!lugar.campoDoArrasto,
         atrasado,
         cor: atrasado ? vermelho : (isLight ? info.colorLight : info.color),
         // etiqueta explícita + serviço do cliente principal + serviço de cada
@@ -667,7 +734,7 @@ function CalendarioPage() {
               ? [l.setor]
               : l.cliente_id ? (servicosPorCliente[l.cliente_id] ?? []) : [])),
         ])),
-      };
+      }];
     });
     return [...deVisitas, ...deChamados]
       .sort((a, b) => new Date(a.quando).getTime() - new Date(b.quando).getTime());

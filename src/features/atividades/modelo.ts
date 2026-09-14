@@ -19,12 +19,12 @@
 
 import {
   chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, prazoEmNumero, sprintDoPrazo,
-  TIPO_LABEL, TIPO_CORES, PRIORIDADE_LABEL, PRIORIDADE_CORES, STATUS_ORDEM,
+  TIPO_LABEL, TIPO_CORES, PRIORIDADE_LABEL, PRIORIDADE_CORES, STATUS_ORDEM, moverPrazoParaODia,
   IMPACTO_LABEL, IMPACTO_CORES, IMPACTO_RANK,
   type ChamadoStatus, type ChamadoPrioridade, type ChamadoTipo, type Natureza,
   type ImpactoOperacional,
 } from "@/lib/chamado-status";
-import { fimSemana } from "@/lib/periodos";
+import { fimSemana, dataIso } from "@/lib/periodos";
 import { podeDecidirCobranca } from "@/features/chamados/cobranca";
 import { getStatusInfo, statusBucket } from "@/lib/visita-status";
 import { equipesDePessoas } from "@/lib/equipes";
@@ -274,6 +274,108 @@ export function parDeQuando(modo: ModoDeQuando | null, dia: string): { prazo: st
 /** R225: a atividade tem dia marcado (data só, ou data e hora do campo)? */
 export function temAgendamento(c: Pick<BrutoChamado, "data_agendada" | "data_hora_agendada">): boolean {
   return !!(c.data_agendada || c.data_hora_agendada);
+}
+
+// ── ONDE A ATIVIDADE CAI NO CALENDÁRIO (P57) ────────────────────────────────
+//
+// O calendário sempre colocou o item pela data que REALMENTE o coloca num dia:
+// conclusão (R145), hora marcada do campo, ou prazo. Faltava a QUARTA, que
+// nasceu com a R225 e nunca chegou lá: o **dia agendado** (`data_agendada`,
+// data seca), que é justamente o que o quadro usa para montar a coluna
+// "Agendado".
+//
+// Enquanto o calendário não a lia, as duas telas discordavam sobre a MESMA
+// atividade: o quadro a punha no dia 20, o calendário no dia do prazo. Quem
+// marcou o dia 20 e foi conferir no calendário via a atividade em outro lugar —
+// e não tinha como saber qual das duas telas estava certa.
+//
+// A ordem não é nova: `modoDeQuando`, logo acima, já declara que **a agenda
+// vence o prazo** quando as duas datas existem. Isto aqui só aplica a mesma
+// ordem no calendário, com a conclusão na frente de tudo (R145: concluído fica
+// no dia em que foi feito, não no dia que foi prometido) e a hora do campo na
+// frente do dia seco (é a mesma agenda, com mais precisão).
+
+export type MotivoNoCalendario = "conclusao" | "hora_marcada" | "dia_agendado" | "prazo";
+
+export interface LugarNoCalendario {
+  /** o instante que coloca o card num dia; null quando nenhuma data existe */
+  quando: string | null;
+  motivo: MotivoNoCalendario | null;
+  /** o campo que o ARRASTO grava; null = este card não se arrasta */
+  campoDoArrasto: "prazo_limite" | "data_agendada" | null;
+}
+
+// O dia seco vira instante por `fimDoDiaAgendado` (R225), acima — a MESMA
+// conta que `Atividade.quando` usa. Ela resolve duas armadilhas de uma vez:
+// `new Date("2026-09-20")` é meia-noite UTC, que em Brasília é 19/09 às 21h
+// (o card cairia no dia ANTERIOR, e só de setembro a fevereiro alguém
+// notaria); e o FIM do dia, não o começo, é a leitura certa de um
+// compromisso sem hora — o calendário compara com o relógio de agora, então
+// meia-noite faria a atividade agendada para HOJE nascer atrasada às 00h01.
+
+type ParaOCalendario = Pick<BrutoChamado,
+  "status" | "prazo_limite" | "data_hora_agendada"> & {
+  concluida_em?: string | null;
+  data_agendada?: string | null;
+};
+
+/**
+ * Por qual data a atividade entra no calendário, e o que o arrasto grava.
+ *
+ * O arrasto (R152) grava **o campo que colocou o card ali** — senão ele
+ * pareceria não ter funcionado, que é exatamente o motivo pelo qual a R152
+ * recusou arrastar o que entra pela hora do campo: mover o prazo de um card
+ * que está no dia pela agenda não o tira do lugar. O que é FATO não se arrasta
+ * (concluído, cancelado); a agenda de campo também não, que é da programação
+ * (R101/U78).
+ *
+ * O arrasto muda a DATA e só ela — não mexe no status. O quadro faz mais
+ * (R225: agendar de volta para a fila quem já tinha começado) porque lá o
+ * movimento É entre colunas de status; aqui é entre dias.
+ */
+export function lugarNoCalendario(c: ParaOCalendario): LugarNoCalendario {
+  const final = c.status === "concluido" || c.status === "cancelado";
+  if (c.status === "concluido" && c.concluida_em) {
+    return { quando: c.concluida_em, motivo: "conclusao", campoDoArrasto: null };
+  }
+  if (c.data_hora_agendada) {
+    return { quando: c.data_hora_agendada, motivo: "hora_marcada", campoDoArrasto: null };
+  }
+  const diaAgendado = fimDoDiaAgendado(c.data_agendada);
+  if (diaAgendado) {
+    return { quando: diaAgendado, motivo: "dia_agendado", campoDoArrasto: final ? null : "data_agendada" };
+  }
+  if (c.prazo_limite) {
+    return { quando: c.prazo_limite, motivo: "prazo", campoDoArrasto: final ? null : "prazo_limite" };
+  }
+  return { quando: null, motivo: null, campoDoArrasto: null };
+}
+
+/**
+ * O que soltar num dia GRAVA — `null` quando o card não se arrasta ou quando
+ * o dia já é aquele (aí quem chama pula a escrita).
+ *
+ * Puro de propósito: a mutação e a atualização OTIMISTA do cache precisam da
+ * mesma conta. Duas contas seriam duas verdades, e a que erra é sempre a
+ * otimista — o card pula para o dia novo e volta sozinho meio segundo depois,
+ * sem erro nenhum na tela.
+ *
+ * O prazo preserva a HORA que tinha (moverPrazoParaODia); o dia agendado é
+ * data seca e não tem hora para preservar.
+ */
+export function patchDoArrastoNoCalendario(
+  c: ParaOCalendario,
+  dia: Date,
+): { campo: "prazo_limite" | "data_agendada"; valor: string } | null {
+  const campo = lugarNoCalendario(c).campoDoArrasto;
+  if (!campo) return null;
+  if (campo === "data_agendada") {
+    const valor = dataIso(dia);
+    return valor === (c.data_agendada ?? "").slice(0, 10) ? null : { campo, valor };
+  }
+  const valor = moverPrazoParaODia(c.prazo_limite, dia);
+  const antes = c.prazo_limite ? new Date(c.prazo_limite).getTime() : NaN;
+  return new Date(valor).getTime() === antes ? null : { campo, valor };
 }
 
 /**

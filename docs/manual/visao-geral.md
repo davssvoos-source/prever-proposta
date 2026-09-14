@@ -231,11 +231,12 @@ Ditada pelo Davi em 03/09/2026 e transcrita em
   "de Portaria Presencial" — R143/R173) ou interno. O grupo é um card só,
   conta no histórico de cada cliente e põe um checklist dos clientes na
   descrição.
-- **Calendário**: arrastar uma atividade em aberto para outro dia muda o prazo
-  (R152); o card da semana mostra só quem toca, título, cliente e tipo (R153).
+- **Calendário**: arrastar uma atividade em aberto para outro dia muda a data
+  que a colocou ali — o prazo, ou o dia agendado (R152/R225); o card da semana
+  mostra só quem toca, título, cliente e tipo (R153).
 - **Recebimento, início e conclusão** ficam registrados; o **calendário**
-  mostra a concluída no dia da conclusão e a em aberto na hora agendada ou no
-  prazo.
+  mostra a concluída no dia da conclusão e a em aberto na hora agendada, no
+  dia agendado ou no prazo — nessa ordem, a mesma da Início e do quadro.
 - **Ficha do cliente**: duas colunas no computador, síndico e zelador com
   WhatsApp, tipo de local e a foto da fachada (que aparece no card da lista).
 

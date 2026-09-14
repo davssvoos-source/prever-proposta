@@ -13252,7 +13252,66 @@ explica o defeito — acusando o conserto de ser o defeito. Asserção olha
 construção de código; comentário sai antes da busca. Fica escrito aqui porque
 três repetições já não são descuido, são padrão.
 
-**Números.** Verificador: **3.402 asserções**, 0 falharam (eram 3.359 no começo do dia).
+**9. O calendário nunca leu o dia agendado (P57).** `data_agendada` nasceu na
+U99 e virou regra na R225 (U119): é o dia marcado de QUALQUER atividade, e é
+com ela que o quadro monta a coluna "Agendado". O calendário parava em "hora
+marcada ou prazo" — nunca a leu.
+
+O efeito é o pior tipo de defeito de leitura: **duas telas discordando sobre a
+mesma atividade**. Quem marcasse o dia 20 via o card na coluna Agendado do
+quadro e, no calendário, a mesma atividade no dia do prazo. Sem erro, sem
+aviso, e sem jeito de saber qual das duas estava certa. A Início já fazia
+certo — `Atividade.quando` lê a agenda antes do prazo desde a R225 —, o que
+deixava o calendário sozinho contra as outras duas telas.
+
+Quem decide o dia passou a ser `lugarNoCalendario`, puro, junto do resto do
+modelo de atividade. A ordem não é invenção minha: `modoDeQuando`, no mesmo
+arquivo, já declarava desde a R225 que **a agenda vence o prazo**. O conserto
+foi aplicar no calendário a ordem que a casa já tinha escrito, com a conclusão
+na frente de tudo (R145) e a hora do campo na frente do dia seco.
+
+A asserção que vale por todas é a da **invariante entre telas**:
+`lugarNoCalendario(c).quando` e `atividadeDoChamado(c).quando` têm de dar o
+MESMO instante, para os três casos. Ela morre se alguém mexer numa das contas
+sem a outra — que é exatamente como o desencontro nasceu.
+
+Duas armadilhas de fuso apareceram no caminho, e as duas já estavam resolvidas
+no repositório: `new Date("2026-09-20")` é meia-noite **UTC**, que em Brasília
+é 19/09 às 21h (o card cairia no dia anterior, e só de setembro a fevereiro
+alguém notaria); e o instante escolhido decide se o card aparece ATRASADO,
+porque o calendário compara com o relógio de agora — meia-noite local faria a
+atividade agendada para HOJE nascer atrasada às 00h01. Eu escrevi um conversor
+novo para isso e **apaguei em seguida**: `fimDoDiaAgendado` já fazia as duas
+coisas, quinze linhas acima, no mesmo arquivo, desde a R225. Duas contas para o
+mesmo instante são duas verdades esperando divergir, e a que teria de sobrar é
+justamente a que a Início já usa. Ficou asserção: **um** conversor, e nenhum
+`T23:59:59` solto no arquivo.
+
+**O arrasto passou a gravar o campo que colocou o card ali** — `data_agendada`
+para quem está no dia pela agenda, `prazo_limite` para quem está pelo prazo.
+Não é regra nova: é a razão que a própria R152 escreveu para recusar arrastar o
+que entra pela hora do campo — "mover o prazo não o moveria de dia, o arrasto
+pareceria não ter funcionado". Um card agendado tinha exatamente esse problema.
+O arrasto muda a DATA e só ela; não mexe no status, diferente do quadro (R225),
+porque lá o movimento é entre colunas de status e aqui é entre dias. E
+reagendar pelo calendário conta como reagendamento de graça: quem soma o
+"Re-agendado Nx" é o gatilho `contar_reagendamento` da U119, no banco.
+
+De quebra, o compilador cobrou um caso que o `any` escondia: o chamado sem
+data NENHUMA. Ele não chega (as quatro pernas da consulta exigem uma das datas
+na janela), mas se chegasse, `new Date(null)` mandaria o card para 1º de
+janeiro de 1970 — um dia que o calendário não desenha, ou seja, sumiria em
+silêncio. Agora sai fora explicitamente.
+
+**MEDIDO no navegador**, e o achado foi melhor do que o esperado: a base inteira
+tem **uma** atividade com dia agendado (CH-2026-0076, "Câmera off-line",
+marcada para 10/09) e ela **não tem prazo nenhum**. Ou seja, ela não estava no
+dia errado — ela **não aparecia no calendário**, e nenhuma das três pernas
+antigas da consulta conseguia alcançá-la. Depois do conserto, o card está na
+célula do dia 10, arrastável. A pendência dizia "falta a tela"; o que faltava
+era a tela **inteira** para essa atividade.
+
+**Números.** Verificador: **3.413 asserções**, 0 falharam (eram 3.359 no começo do dia — 54 nesta leva).
 `tsc`: 0. Build completa. Migrations **U136, U137 e U139 rodadas pelo Davi** — nada pendente no banco.
 
 **O que falta do motor de orçamento:** `blockAutoItems.ts` (503 linhas) tem

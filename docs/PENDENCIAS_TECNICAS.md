@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **63 em aberto, 13 fechadas.**
+> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **62 em aberto, 14 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -63,7 +63,7 @@
 - [P54 — BAIXO · O plantão não tem leitura fora do painel que o registra (2026-09-09, U87)](#p54-baixo-o-plantão-não-tem-leitura-fora-do-painel-que-o-registra-2026-09-09-u87)
 - [P55 — BAIXO · `chamado_compra` e `chamado_equipes` ficaram no banco como arquivo (2026-09-03, U96)](#p55-baixo-chamadocompra-e-chamadoequipes-ficaram-no-banco-como-arquivo-2026-09-03-u96)
 - [P56 — BAIXO · A coluna `chamados.sprint` está morta, e o gatilho ainda a preenche (2026-09-03, U96)](#p56-baixo-a-coluna-chamadossprint-está-morta-e-o-gatilho-ainda-a-preenche-2026-09-03-u96)
-- [P57 — MÉDIO · EM ANDAMENTO · "Data agendada" das atividades internas não existe (2026-09-03, U96)](#p57-médio-em-andamento-data-agendada-das-atividades-internas-não-existe-2026-09-03-u96)
+- [P57 — ~~MÉDIO~~ FECHADA (U140, 2026-09-14) · "Data agendada" das atividades internas não existe (2026-09-03, U96)](#p57-médio-fechada-u140-2026-09-14-data-agendada-das-atividades-internas-não-existe-2026-09-03-u96)
 - [P58 — ~~BAIXO~~ FECHADA (U100b, 2026-09-04) · Liberar os grupos novos de clientes quando a U100 rodar](#p58-baixo-fechada-u100b-2026-09-04-liberar-os-grupos-novos-de-clientes-quando-a-u100-rodar)
 - [P59 — BAIXO · `importar-notion.ts` ficou sem tela (2026-09-04, U99)](#p59-baixo-importar-notionts-ficou-sem-tela-2026-09-04-u99)
 - [P60 — ~~BAIXO~~ FECHADA (U100b, 2026-09-04) · `comFallbackDaU96` pode sair: a U96 rodou](#p60-baixo-fechada-u100b-2026-09-04-comfallbackdau96-pode-sair-a-u96-rodou)
@@ -2226,13 +2226,50 @@ coluna pede reescrever o gatilho e a função que escreve na linha do tempo
 própria, com a conferência de que o evento de mudança de status continua
 sendo gravado. Dano hoje: nenhum.
 
-## P57 — MÉDIO · EM ANDAMENTO · "Data agendada" das atividades internas não existe (2026-09-03, U96)
+## P57 — ~~MÉDIO~~ FECHADA (U140, 2026-09-14) · "Data agendada" das atividades internas não existe (2026-09-03, U96)
 
 **Andamento (04/09/2026):** o Davi respondeu a Q18 — quer a data agendada e
 uma coluna "Agendados" no quadro (R168). A coluna `chamados.data_agendada`
 (date) nasceu na U99 e já é lida (`CAMPOS_CHAMADO`, tipo `Chamado`,
-`ChamadoPatch`). Falta a TELA: o campo no pop-up e na página, a coluna do
-quadro e o calendário lendo-a — vem com os fluxos da área técnica.
+`ChamadoPatch`). Faltava a TELA: o campo no pop-up e na página, a coluna do
+quadro e o calendário lendo-a.
+
+**FECHADA (U140, 2026-09-14).** O campo e a coluna chegaram com a R225
+(U119) — o pop-up, a página e a coluna "Agendado" do quadro. **A última peça
+era o calendário, e ela ficou de fora por quase uma semana sem ninguém notar:**
+ele parava em "hora marcada ou prazo" e nunca leu `data_agendada`.
+
+O efeito é o pior tipo de defeito de leitura — **duas telas discordando sobre
+a mesma atividade**. Quem marcasse o dia 20 via o card na coluna Agendado do
+quadro e, no calendário, a mesma atividade no dia do prazo. Sem erro, sem
+aviso, e sem jeito de saber qual das duas telas estava certa. A Início já
+fazia certo (`Atividade.quando` lê a agenda antes do prazo desde a R225), o
+que deixava o calendário sozinho contra as outras duas.
+
+Quem decide o dia agora é `lugarNoCalendario` (puro, em
+`src/features/atividades/modelo.ts`), com a ordem que a casa já declarava em
+`modoDeQuando` — **a agenda vence o prazo** —, mais a conclusão na frente de
+tudo (R145) e a hora do campo na frente do dia seco. A invariante entre telas
+virou asserção: `lugarNoCalendario(c).quando` e `atividadeDoChamado(c).quando`
+têm de dar o **mesmo instante**, senão o verificador quebra.
+
+Duas armadilhas resolvidas de passagem. A do fuso: `new Date("2026-09-20")` é
+meia-noite **UTC**, que em Brasília é 19/09 às 21h — o card cairia no dia
+anterior. E a do atraso: o calendário compara com o relógio de agora, então
+meia-noite local faria a atividade agendada para HOJE nascer atrasada às
+00h01. As duas já estavam resolvidas pelo `fimDoDiaAgendado` da R225, e o
+conserto passou a usá-lo em vez de escrever um segundo conversor.
+
+**O arrasto (R152) passou a gravar o campo que colocou o card ali** —
+`data_agendada` para quem está no dia pela agenda, `prazo_limite` para quem
+está pelo prazo. Gravar sempre o prazo faria o arrasto de um card agendado
+parecer não ter funcionado: o prazo mudaria e o card ficaria exatamente onde
+estava. É o mesmo motivo pelo qual a R152 já recusava arrastar o que entra
+pela hora do campo. O arrasto muda a DATA e só ela — não mexe no status,
+diferente do quadro (R225), porque lá o movimento é entre colunas de status e
+aqui é entre dias. Reagendar pelo calendário conta como reagendamento sem
+ninguém pedir: quem soma o "Re-agendado Nx" é o gatilho `contar_reagendamento`
+(U119), no banco.
 
 O documento do Davi lista "Data Agendada (opcional)" em toda atividade fora da
 técnica. A coluna `data_hora_agendada` é ESPELHO da agenda de campo (R101) e
