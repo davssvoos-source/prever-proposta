@@ -14,9 +14,11 @@ baseline de 57 erros foi a ZERO na U138) · migrations rodadas até a **U139**
 (U131, U132 e U134 em 13/09/2026, nesta ordem; U136, U137 e U139 em
 14/09/2026) · **nenhuma migration pendente** ·
 **versão no servidor: v0.0.7**
-(192.168.10.182); **esta entrega é a v0.0.11**, e ela sobe de uma vez o que a
-v0.0.8, a v0.0.9 e a v0.0.10 já tinham entregue — o que entrou em cada versão
-está em `docs/VERSOES.md`. Fim de entrega:
+(192.168.10.182); **o pacote gerado é a v0.0.12** (14/09/2026), e ele sobe de
+uma vez o que a v0.0.8 até a v0.0.11 já tinham entregue — o que entrou em cada
+versão está em `docs/VERSOES.md`. **Nenhuma migration pendente**: as seis de
+que a v0.0.12 depende (U131, U132, U134, U136, U137, U139) já rodaram. Fim de
+entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
 
 ---

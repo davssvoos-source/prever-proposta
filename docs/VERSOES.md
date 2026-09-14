@@ -9,6 +9,86 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v0.0.12 — 2026-09-14 (U130–U140) · **nenhuma migration pendente** (U131, U132 e U134 rodadas em 13/09; U136, U137 e U139 em 14/09)
+
+> Três semanas de entrega num pacote só. O servidor está na **v0.0.7**: ele
+> recebe de uma vez a v0.0.8 até esta. Todas as migrations de que este pacote
+> depende **já foram rodadas** — é instalar e usar.
+
+### O app do técnico de campo
+
+- **Três telas no celular para quem tem cargo técnico** (R263): a agenda do dia,
+  a atividade e a etiqueta da viatura. Quem é técnico vê **só campo** — nada de
+  atividade interna no aparelho dele (R264), e o recorte é do BANCO, não da tela.
+- **A escala de sobreaviso é do CARGO técnico** (R265), e não da equipe: o
+  recorte por equipe da R254 foi revertido.
+- **O técnico não lê "schema cache"** (R276): mensagem de banco virou frase de
+  gente em toda tela do celular.
+
+### As viaturas por NFC
+
+- **Cada viatura tem uma etiqueta** (R266). Encostar o celular abre a tela da
+  viatura; o técnico registra **saída** e **chegada**, e o sistema guarda quem
+  estava com ela, quando e **onde** (R273 — a chegada usa a localização).
+- **Sem quilometragem** (R276, decisão do Davi em 13/09: "não vamos controlar
+  isso no nosso sistema, já é controlado no ERP"). O que o sistema mapeia é
+  **local, data e com quem** — nada além disso.
+- **Aba Viaturas** no painel, **faixa na Início** com quem está com o quê, e o
+  vínculo da etiqueta feito pelo painel administrativo.
+
+### A Início e as atividades
+
+- **Quem não edita a atividade pode entrar como apoio** (R255) — e isso não vira
+  permissão de edição.
+- **A fila de validação do gestor ganhou lugar na Início** (R155): o sinal
+  existia e ninguém o lia.
+- **A Demanda no tempo conta a semana inteira** (R261) e a **data de conclusão
+  virou corrigível, com rastro** (R262).
+- **A caixa do chat convida na linha do texto** (R258), e o cursor já cai nela.
+- **As setinhas do campo de horas** só aparecem no dia clicado (R256); o card da
+  Início mostra só o ícone e o tempo (R257).
+- **"há 0 min" virou "agora mesmo"**.
+
+### O comercial e o dinheiro
+
+- **A Proposta Comercial fala menos e fica alinhada** (R259/R260); o responsável
+  vem do Comercial.
+- **A ficha do cliente ganhou a seção Cobranças**, atrás do mesmo portão dos
+  Contratos.
+- **O chamado analisado volta a ser decidível** (P20): analisar a cobrança
+  FECHAVA o caminho de aprovar, e o chamado saía da fila do financeiro **com
+  dinheiro dentro**. Exigiu a migration U139, já rodada.
+- **A parcela não pula mais fevereiro** (P21): numa cobrança em três parcelas
+  lançada no dia 31, fevereiro ficava sem boleto e março com dois.
+
+### O calendário e as listas
+
+- **O calendário passou a ler o DIA AGENDADO** (P57). Ele mostrava a atividade
+  no dia do prazo enquanto o quadro a mostrava no dia marcado — duas telas
+  discordando sobre a mesma atividade. Agora as três concordam, e **arrastar no
+  calendário move a data que colocou o card ali** (o prazo, ou o agendamento).
+- **O que sumia sem avisar parou de sumir** (P32/P42): consultas com teto
+  silencioso passaram a ler tudo, e uma semana que falha ao carregar agora
+  **avisa** em vez de mostrar a grade vazia.
+- **O tempo real voltou a chegar**: o sino e três telas paravam de receber
+  atualização em silêncio depois de algumas navegações.
+
+### O que sai impresso e o que o sistema diz
+
+- **Os PDFs pararam de comer caractere** (P52): travessão, bullet e reticências
+  sumiam do papel — inclusive dentro de texto digitado pelo técnico.
+- **O "Localizar" do endereço diz o que aconteceu** (P43): agora ele separa "não
+  achei este endereço" de "o serviço de mapas recusou agora", e só o primeiro
+  manda conferir o texto.
+
+### Segurança
+
+- **A porta pública fechou** (R277–R280): não há mais "Criar conta" na tela de
+  entrada — quem cadastra é o administrador.
+- **Só quem é do time lê** (U137): 28 políticas de leitura passaram a exigir
+  perfil ativo e aprovado.
+- **Os cabeçalhos de segurança** entram em toda resposta do servidor (S10).
+
 ## v0.0.11 — 2026-09-11 (U129) · migrations **U127 e U129 já rodadas** (11/09/2026)
 
 > Este pacote sobe de uma vez tudo o que o servidor não tinha: ele está na
