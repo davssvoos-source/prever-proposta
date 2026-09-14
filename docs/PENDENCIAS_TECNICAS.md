@@ -1741,8 +1741,40 @@ ficaram de fora da migration S1 por decisão, não por esquecimento:
   cliente a cliente. Está anotado dentro da própria migration (§8), onde quem
   for escrever o importador vai ler.
 
-- **S10 — os cabeçalhos de segurança HTTP foram REVERTIDOS** (2026-08-20):
-  não há CSP, HSTS, `nosniff` nem `Referrer-Policy` no app hoje.
+- **S10 — os cabeçalhos de segurança HTTP: os quatro baratos ENTRARAM;
+  falta a CSP e os assets** (2026-08-20, retomada em 2026-09-14):
+
+  **O que está no ar desde 14/09/2026** — `nosniff`, `Referrer-Policy`,
+  `X-Frame-Options` e `Permissions-Policy` em toda resposta do app, mais
+  `Strict-Transport-Security` **quando a conversa já é HTTPS** (o servidor
+  Windows serve HTTP puro; mandar HSTS de lá travaria o host errado).
+
+  **A prescrição abaixo foi seguida na ordem, e o passo 1 foi o que
+  destravou.** A lógica saiu de `src/server.ts` — que só roda em produção e
+  por isso não tinha como ser exercitado — e virou função PURA em
+  `src/lib/cabecalhos.ts`. O verificador a chama direto com Response de 200,
+  304 e 500; e, além disso, o build do preset `node-server` (o do pacote
+  Windows) foi levantado localmente e respondeu com os cabeçalhos numa
+  requisição HTTP de verdade. É a primeira vez que este caminho é exercitado
+  sem publicar.
+
+  A armadilha que as asserções guardam: **304 não pode ter corpo**, e
+  `new Response(body, { status: 304 })` levanta `TypeError`. Errar nisso
+  derrubaria toda revalidação de asset — a segunda visita de cada pessoa.
+
+  **O que FALTA, e por que não entrou junto:**
+
+  1. **A CSP.** É o passo 3 da prescrição e continua valendo: precisa de
+     nonce por request, o que mexe no `<Scripts />` do `__root.tsx`. Foi
+     exatamente o `script-src 'self'` sem nonce que deu tela preta em 20/08.
+  2. **Os assets estáticos.** MEDIDO em 14/09: o HTML recebe os cabeçalhos,
+     um `/assets/*.css` NÃO — ele é servido pela camada de assets da
+     plataforma, que não passa pelo `fetch` do `src/server.ts`. Cobrir isso
+     pede `routeRules` do Nitro, e o `vite.config.ts` é o wrapper da Lovable
+     com aviso escrito de não mexer. Fica para a saída da Lovable (R280),
+     quando a configuração passa a ser nossa.
+
+  O texto original da pendência, que continua explicando o "por quê":
 
   Tentei duas vezes e derrubei o app duas vezes. A primeira versão usava
   `script-src 'self'`, que bloqueia o `<script>` inline com o estado de

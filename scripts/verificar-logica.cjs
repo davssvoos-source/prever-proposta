@@ -21594,6 +21594,69 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true, true, true, true]);
 }
 
+// ── S10 — os cabeçalhos de segurança HTTP ─────────────────────────────────
+//
+// Esta pendência derrubou o app DUAS VEZES em 20/08/2026, e o documento dela
+// fecha dizendo por quê: "eu inverti a ordem e o app caiu". A ordem prescrita
+// é (1) um jeito de exercitar, (2) os cabeçalhos que não olham conteúdo, (3) a
+// CSP por último, com nonce. Este bloco é o passo 1 — `src/server.ts` só roda
+// em produção, então a lógica virou função pura e o exercício acontece aqui,
+// com Response de verdade nos três status que importam.
+{
+  const fsH = require('fs');
+  const H = carregar('src/lib/cabecalhos.ts');
+  const serv = fsH.readFileSync('src/server.ts', 'utf8');
+
+  const r200 = H.comCabecalhosDeSeguranca(new Response('<html></html>', { status: 200, headers: { 'content-type': 'text/html' } }), 'https://prever.exemplo.com.br/dashboard');
+  const r304 = H.comCabecalhosDeSeguranca(new Response(null, { status: 304 }), 'https://prever.exemplo.com.br/assets/app.js');
+  const r500 = H.comCabecalhosDeSeguranca(new Response('erro', { status: 500 }), 'http://192.168.10.182:8080/dashboard');
+
+  eq('S10 CRÍTICO: os quatro cabeçalhos que não olham conteúdo entram em TODA resposta — 200, 304 e 500 — e o corpo e o status sobrevivem intactos',
+     [r200.headers.get('x-content-type-options'), r200.headers.get('referrer-policy'),
+      r200.headers.get('x-frame-options'), r200.status, r200.headers.get('content-type'),
+      r304.headers.get('x-content-type-options'), r304.status,
+      r500.headers.get('x-content-type-options'), r500.status],
+     ['nosniff', 'strict-origin-when-cross-origin', 'SAMEORIGIN', 200, 'text/html',
+      'nosniff', 304, 'nosniff', 500]);
+
+  // A armadilha que mataria o app na SEGUNDA visita de cada pessoa: 304 não
+  // pode ter corpo, e `new Response(body, {status: 304})` levanta TypeError.
+  // Errar aqui derruba toda revalidação de asset — a mesma classe de erro que
+  // já derrubou esta pendência duas vezes.
+  eq('S10 CRÍTICO: 304 e 204 saem SEM corpo — reconstruir uma resposta desse status com corpo levanta TypeError e derrubaria toda revalidação de asset',
+     [r304.body === null,
+      H.comCabecalhosDeSeguranca(new Response(null, { status: 204 }), 'https://x.com/').body === null,
+      (() => { try { void new Response("corpo", { status: 304 }); return "passou"; } catch { return "TypeError"; } })()],
+     [true, true, 'TypeError']);
+
+  // `geolocation=(self)` é PERMISSÃO. Um `geolocation=()` seco mataria a
+  // sugestão de chegada da viatura (R273/R274) sem erro nenhum na tela.
+  eq('S10/R273: a política de permissões LIBERA a localização para a própria página — a chegada da viatura depende dela — e fecha câmera, microfone e pagamento, que o sistema não usa',
+     [H.CABECALHOS_DE_SEGURANCA['permissions-policy'].includes('geolocation=(self)'),
+      H.CABECALHOS_DE_SEGURANCA['permissions-policy'].includes('camera=()'),
+      H.CABECALHOS_DE_SEGURANCA['permissions-policy'].includes('microphone=()'),
+      /geolocation=\(\)/.test(H.CABECALHOS_DE_SEGURANCA['permissions-policy'])],
+     [true, true, true, false]);
+
+  // O servidor Windows da empresa serve HTTP puro. Mandar HSTS de lá é, no
+  // melhor caso, ignorado; no pior, trava o host errado. Quando o domínio
+  // próprio subir com TLS (R280), este teste passa a dar true sozinho.
+  eq('S10/R280: o HSTS só entra quando a conversa JÁ é HTTPS — o servidor interno serve HTTP puro, e travar o host errado é pior que não travar',
+     [H.querHsts('https://prever.exemplo.com.br/x'), H.querHsts('http://192.168.10.182:8080/x'),
+      H.querHsts('nao-e-url'),
+      r200.headers.get('strict-transport-security'), r500.headers.get('strict-transport-security')],
+     [true, false, false, H.HSTS, null]);
+
+  // A CSP é o passo 3 e NÃO entrou: ela precisa de nonce por request, que mexe
+  // no __root.tsx. Esta asserção existe para que ninguém a acrescente sem ler
+  // a história — se entrar, é aqui que se declara.
+  eq('S10: a CSP NÃO está no ar (é o passo 3 da pendência, e precisa de nonce por request) — e os cabeçalhos entram num ponto só, o `fetch` do server, para nenhum caminho de saída ficar sem',
+     [/content-security-policy/i.test(fsH.readFileSync('src/lib/cabecalhos.ts', 'utf8')),
+      (serv.match(/comCabecalhosDeSeguranca\(/g) ?? []).length,
+      /import \{ comCabecalhosDeSeguranca \} from "\.\/lib\/cabecalhos"/.test(serv)],
+     [false, 2, true]);
+}
+
 // ── A ficha do cliente ganha COBRANÇAS (U140) ─────────────────────────────
 {
   const fsCb = require('fs');

@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { comCabecalhosDeSeguranca } from "./lib/cabecalhos";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -39,16 +40,26 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    // S10: os cabeçalhos entram no ÚNICO ponto por onde tudo passa — página,
+    // asset, 304 de revalidação e a página de erro. Pôr em cada `return`
+    // seria esquecer um. A CSP NÃO está aqui: é o passo 3 da pendência e
+    // precisa de nonce por request (ver src/lib/cabecalhos.ts).
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return comCabecalhosDeSeguranca(
+        await normalizeCatastrophicSsrResponse(response),
+        request.url,
+      );
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return comCabecalhosDeSeguranca(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+        request.url,
+      );
     }
   },
 };
