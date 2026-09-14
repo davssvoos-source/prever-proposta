@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { nomeDeCanal } from "@/lib/realtime";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -42,8 +43,10 @@ export function useNotificacoes() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
+      // `nomeDeCanal` e não um nome fixo: ver lib/realtime.ts — tópico
+      // repetido devolve o canal anterior, já inscrito, e o `.on()` é recusado
       channel = supabase
-        .channel(`notificacoes-${user.id}`)
+        .channel(nomeDeCanal(`notificacoes-${user.id}`))
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "notificacoes" },

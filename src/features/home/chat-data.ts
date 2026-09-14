@@ -20,6 +20,7 @@
 // de `notificacoes` (useNotificacoes) invalida ["minhas-mencoes"] junto.
 
 import { useEffect } from "react";
+import { nomeDeCanal } from "@/lib/realtime";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -125,7 +126,8 @@ export function useCanalDoChat(ativo = true) {
   useEffect(() => {
     if (!ativo) return;
     const canal = supabase
-      .channel("mensagens-chat")
+      // nome ÚNICO por montagem — ver lib/realtime.ts
+      .channel(nomeDeCanal("mensagens-chat"))
       .on("postgres_changes", { event: "*", schema: "public", table: "mensagens_chat" }, () => {
         qc.invalidateQueries({ queryKey: ["mensagens-chat"] });
       })

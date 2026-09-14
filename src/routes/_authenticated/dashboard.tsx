@@ -23,6 +23,7 @@
 // Ver docs/PRODUTO.md §9 e o registro da etapa em docs/PLANO_UNIFICACAO.md.
 
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
+import { nomeDeCanal } from "@/lib/realtime";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { ArrowUpDown, ChevronsDownUp, ChevronsUpDown, ClipboardCheck, Inbox, KanbanSquare, List as ListIcon, Plus, Search, WifiOff } from "lucide-react";
@@ -206,7 +207,8 @@ function InicioDoGestor() {
     // o canal compartilhado cobre `chamados`; a visita é fonte da Início
     // também, e sem isto aprovar ou reagendar não refletia mais aqui
     const canal = supabase
-      .channel("home-visitas-realtime")
+      // nome ÚNICO por montagem — ver lib/realtime.ts
+      .channel(nomeDeCanal("home-visitas-realtime"))
       .on("postgres_changes", { event: "*", schema: "public", table: "visitas_tecnicas" }, () =>
         qc.invalidateQueries({ queryKey: ["dashboard-visitas"] }))
       .subscribe();

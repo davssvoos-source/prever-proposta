@@ -19265,7 +19265,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /\{m\.numero \? `\$\{m\.numero\} · ` : ""\}/.test(chatUi), /dataHoraCurta\(m\.criadoEm\)/.test(chatUi)],
      [true, true, false, true]);
   eq('R223 CRÍTICO: recado para todos lê e grava em mensagens_chat (ao vivo pelo canal); a resposta armada é o chip #Código; o envio passa por rotearEnvio; abrir o chat marca as menções lidas; nada de SELECT em chamado_eventos',
-     [/\.from\("mensagens_chat" as any\)/.test(chatD), /\.channel\("mensagens-chat"\)/.test(chatD), /table: "mensagens_chat"/.test(chatD),
+     // 14/09: o tópico deixou de ser escrito à mão — tópico fixo devolve o
+     // canal anterior, já inscrito, e a tela para de receber tempo real em
+     // silêncio (ver lib/realtime.ts). O que este pino guarda é o mesmo.
+     [/\.from\("mensagens_chat" as any\)/.test(chatD), /\.channel\(nomeDeCanal\("mensagens-chat"\)\)/.test(chatD), /table: "mensagens_chat"/.test(chatD),
       /rotearEnvio\(texto, resposta, conhecidas\)/.test(chatUi), /hashtagDaAtividade\(resposta\.numero\)/.test(chatUi),
       /marcarLida\(n\.id\)/.test(chatUi), /\.from\("chamado_eventos"/.test(chatUi + chatD)],
      [true, true, true, true, true, true, false]);
@@ -21697,6 +21700,46 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       DIM.dimensionar({ portasPoe: 0, portasRede: 0, wattsPoe: 0, amps12: 130, wattsDc: 0 }, true)
         .filter((i) => i.cod_eq === 'EQ182').map((i) => i.qtd)],
      [[1], [2]]);
+}
+
+// ── O TEMPO REAL PARAVA DE CHEGAR, EM SILÊNCIO (14/09/2026) ───────────────
+//
+// Achado pelo console da Início, que reclamava a cada carregamento:
+//   cannot add `postgres_changes` callbacks for realtime … after `subscribe()`
+//
+// Um canal do Supabase é identificado pelo TÓPICO, e pedir o mesmo tópico duas
+// vezes devolve o MESMO objeto. Quando o efeito remonta, a limpeza chama
+// `removeChannel` — que é assíncrono — e a montagem seguinte chega antes da
+// remoção terminar: pega o canal velho, já inscrito, e o `.on()` é recusado.
+//
+// O efeito é sempre silencioso: aquela tela para de receber tempo real e só
+// atualiza quando a consulta reexecuta por outro motivo. Ninguém abre chamado,
+// porque sino que não toca parece sino sem novidade.
+{
+  const fsRt = require('fs');
+  const RT = carregar('src/lib/realtime.ts');
+  const arquivos = [
+    'src/hooks/useNotificacoes.ts',
+    'src/features/chamados/data.ts',
+    'src/features/home/chat-data.ts',
+    'src/routes/_authenticated/dashboard.tsx',
+  ];
+  const canais = arquivos.map((a) => fsRt.readFileSync(a, 'utf8'));
+
+  eq('TEMPO REAL: cada montagem pede um TÓPICO novo — dois pedidos seguidos nunca devolvem o mesmo nome, que é o que fazia a tela herdar o canal já inscrito',
+     [RT.nomeDeCanal("x") === RT.nomeDeCanal("x"),
+      /^x#\d+$/.test(RT.nomeDeCanal("x")),
+      RT.nomeDeCanal("chamados-realtime").startsWith("chamados-realtime#")],
+     [false, true, true]);
+
+  // Os QUATRO canais do sistema tinham nome fixo. Só o do sino gritava no
+  // console (é o que remonta mais), mas os outros três tinham o mesmo defeito
+  // esperando a remontagem certa.
+  eq('TEMPO REAL CRÍTICO: os quatro canais do sistema usam `nomeDeCanal` — nenhum escreve o tópico à mão, que é como o defeito volta',
+     [canais.filter((s) => /\.channel\(nomeDeCanal\(/.test(s)).length,
+      canais.filter((s) => /\.channel\("[^"]+"\)/.test(s)).length,
+      canais.every((s) => /from "@\/lib\/realtime"/.test(s))],
+     [4, 0, true]);
 }
 
 // ── P32 e P42 — o que some sem avisar (14/09/2026) ────────────────────────

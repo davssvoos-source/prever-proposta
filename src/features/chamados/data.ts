@@ -10,6 +10,7 @@
 // desatualizado desde a Etapa 1 do sistema de OS (ver PLANO_UNIFICACAO §12).
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { nomeDeCanal } from "@/lib/realtime";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type {
@@ -982,7 +983,9 @@ export function useChamadosRealtime() {
       }, 1200);
     };
     const canal = supabase
-      .channel("chamados-realtime")
+      // nome ÚNICO por montagem (lib/realtime.ts): tópico fixo devolve o canal
+      // anterior, já inscrito, e a tela para de receber tempo real em silêncio
+      .channel(nomeDeCanal("chamados-realtime"))
       .on("postgres_changes", { event: "*", schema: "public", table: "chamados" }, invalidar)
       .subscribe();
     return () => {
