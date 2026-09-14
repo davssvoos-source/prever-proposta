@@ -621,79 +621,33 @@ SELECT n, o_que, obtido, esperado,
   FROM conferencia ORDER BY n;
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- §7  O PORTÃO — prova que a regra pega, e desfaz sozinho
+-- §7  O PORTÃO — DESARMADO, E SUBSTITUÍDO PELA U143
 --
--- Escreve de mentira, confere que o banco recusou o que tem de recusar, e
--- ROLLBACK. Nada aqui sobrevive. (O ROLLBACK só é seguro porque o trabalho
--- acima já foi fechado com COMMIT — cicatriz da U136, que rodava e não
--- aplicava nada.)
+-- O portão original pegava `SELECT id FROM profiles ORDER BY id LIMIT 1` — uma
+-- pessoa REAL, que o backfill do §2 já tinha posto numa equipe com faixa
+-- aberta. A primeira inserção do teste colidia com a composição de verdade e
+-- subia 23P01 ANTES do bloco que sabia tratá-lo.
+--
+-- O erro era, ele mesmo, a prova de que a regra funciona: a restrição recusando
+-- a mesma pessoa em duas equipes ao mesmo tempo. O que estava errado era o
+-- TESTE.
+--
+-- POR QUE ELE FOI DESARMADO AQUI, E NÃO CORRIGIDO: esta migration JÁ APLICOU o
+-- trabalho dela, e a regra da casa é não editar migration que o Davi rodou —
+-- editar não mudaria o banco, e a alteração ficaria invisível. O portão é a
+-- exceção estrita: ele termina em ROLLBACK, nunca teve efeito persistente, e
+-- deixá-lo como estava faria esta migration FALHAR para sempre em toda
+-- releitura da pasta — inclusive numa instalação nova, rodando tudo em ordem.
+--
+-- As cinco provas vivem na U143 (`20261005090000_u143_conferencia_da_u142.sql`),
+-- que roda o mesmo teste só com gente LIVRE e imprime a conferência que esta
+-- aqui não conseguiu mostrar.
 -- ═══════════════════════════════════════════════════════════════════════════
 BEGIN;
 
 DO $u142portao$
-DECLARE
-  v_eq1  uuid;
-  v_eq2  uuid;
-  v_p1   uuid;
-  v_p2   uuid;
-  -- `clock_timestamp()`, e NÃO `now()`: dentro de uma transação o `now()` é
-  -- CONSTANTE, então fechar e reabrir aqui produziria uma faixa de duração
-  -- zero — que o CHECK `saiu_em > entrou_em` recusa, e o portão acusaria um
-  -- defeito que não existe fora dele. Na vida real cada chamada da RPC é uma
-  -- transação própria e os instantes já são distintos.
-  v_t0   timestamptz := clock_timestamp() - interval '2 hours';
-  v_t1   timestamptz := clock_timestamp() - interval '1 hour';
 BEGIN
-  INSERT INTO public.duplas (nome, ativa) VALUES ('__portao_u142_a', true) RETURNING id INTO v_eq1;
-  INSERT INTO public.duplas (nome, ativa) VALUES ('__portao_u142_b', true) RETURNING id INTO v_eq2;
-  SELECT id INTO v_p1 FROM public.profiles ORDER BY id LIMIT 1;
-  SELECT id INTO v_p2 FROM public.profiles ORDER BY id OFFSET 1 LIMIT 1;
-  IF v_p1 IS NULL OR v_p2 IS NULL THEN
-    RAISE NOTICE 'PORTÃO: menos de dois perfis no banco — teste pulado.';
-    RETURN;
-  END IF;
-
-  -- 1) uma pessoa em duas equipes ao mesmo tempo TEM de ser recusada
-  INSERT INTO public.equipe_membros (equipe_id, pessoa_id, papel, entrou_em)
-  VALUES (v_eq1, v_p1, 'ajudante', v_t0);
-  BEGIN
-    INSERT INTO public.equipe_membros (equipe_id, pessoa_id, papel, entrou_em)
-    VALUES (v_eq2, v_p1, 'ajudante', v_t0);
-    RAISE EXCEPTION 'PORTÃO FALHOU: o banco ACEITOU a mesma pessoa em duas equipes ao mesmo tempo.';
-  EXCEPTION WHEN exclusion_violation THEN
-    RAISE NOTICE 'PORTÃO 1 ok: duas equipes ao mesmo tempo → recusado.';
-  END;
-
-  -- 2) dois líderes na mesma equipe TEM de ser recusado
-  UPDATE public.equipe_membros SET papel = 'lider' WHERE equipe_id = v_eq1 AND pessoa_id = v_p1;
-  BEGIN
-    INSERT INTO public.equipe_membros (equipe_id, pessoa_id, papel, entrou_em)
-    VALUES (v_eq1, v_p2, 'lider', v_t0);
-    RAISE EXCEPTION 'PORTÃO FALHOU: o banco ACEITOU dois líderes na mesma equipe.';
-  EXCEPTION WHEN exclusion_violation THEN
-    RAISE NOTICE 'PORTÃO 2 ok: dois líderes → recusado.';
-  END;
-
-  -- 3) SAIR E ENTRAR NO MESMO INSTANTE tem de ser ACEITO — é o gesto de mover,
-  --    e se a faixa fosse fechada nos dois lados ele seria impossível
-  UPDATE public.equipe_membros SET saiu_em = v_t1 WHERE equipe_id = v_eq1 AND pessoa_id = v_p1;
-  BEGIN
-    INSERT INTO public.equipe_membros (equipe_id, pessoa_id, papel, entrou_em)
-    VALUES (v_eq2, v_p1, 'ajudante', v_t1);
-    RAISE NOTICE 'PORTÃO 3 ok: sair e entrar no mesmo instante → aceito (a troca é atômica).';
-  EXCEPTION WHEN exclusion_violation THEN
-    RAISE EXCEPTION 'PORTÃO FALHOU: o banco RECUSOU sair e entrar no mesmo instante — mover ficaria impossível.';
-  END;
-
-  -- 4) a leitura responde pelo INSTANTE: antes da troca ele estava na primeira
-  --    equipe, depois na segunda — e é isso que a semana não sabia dizer
-  IF public.equipe_da_pessoa(v_p1, v_t1 - interval '30 minutes') IS DISTINCT FROM v_eq1 THEN
-    RAISE EXCEPTION 'PORTÃO FALHOU: antes da troca, equipe_da_pessoa não devolveu a equipe ANTIGA — o passado foi reescrito.';
-  END IF;
-  IF public.equipe_da_pessoa(v_p1, clock_timestamp()) IS DISTINCT FROM v_eq2 THEN
-    RAISE EXCEPTION 'PORTÃO FALHOU: depois de mover, equipe_da_pessoa não devolveu a equipe nova.';
-  END IF;
-  RAISE NOTICE 'PORTÃO 4 ok: antes da troca a equipe antiga, depois a nova — o passado NÃO é reescrito.';
+  RAISE NOTICE 'U142 §7: portão desarmado — as provas estão na U143. Rode a U143 (ela não muda schema) para ver a conferência e o portão corrigido.';
 END
 $u142portao$;
 

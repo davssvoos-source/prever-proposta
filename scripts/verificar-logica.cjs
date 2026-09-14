@@ -22740,23 +22740,41 @@ assincronas.push(async () => {
 
   // O portão prova a regra no banco e desfaz sozinho — e o COMMIT vem ANTES
   // dele (cicatriz da U136, que rodava e não aplicava nada).
-  eq('U142 (regra do banco): tem pré-voo, o trabalho fecha com COMMIT ANTES do portão, o portão prova as duas recusas E a aceitação da troca atômica, e o DESFAZER está escrito',
+  // O portão da U142 foi DESARMADO: ele pegava o primeiro perfil por id — uma
+  // pessoa real que o backfill já tinha posto numa equipe — e colidia com a
+  // composição de verdade. Como a migration já rodou, corrigi-la no lugar
+  // seria editar o que o Davi aplicou; mas deixá-la como estava faria a pasta
+  // falhar para sempre em toda releitura. O portão é a exceção estrita (ele
+  // termina em ROLLBACK e nunca teve efeito), e as CINCO PROVAS mudaram de
+  // endereço: vivem na U143. As asserções seguem as provas.
+  const u143 = fsR285.readFileSync('supabase/migrations/20261005090000_u143_conferencia_da_u142.sql', 'utf8');
+  eq('U142/U143 (regra do banco): a U142 tem pré-voo e fecha o trabalho com COMMIT antes do portão; o portão dela está DESARMADO e aponta para a U143, que prova as duas recusas, a aceitação da troca atômica e que o passado não é reescrito',
      [/PRÉ-VOO/.test(u142),
       u142.indexOf("COMMIT;") < u142.indexOf("ROLLBACK;"),
-      /o banco ACEITOU a mesma pessoa em duas equipes/.test(u142),
-      /o banco ACEITOU dois líderes/.test(u142),
-      /o banco RECUSOU sair e entrar no mesmo instante/.test(u142),
-      /o passado foi reescrito/.test(u142),
+      /portão desarmado — as provas estão na U143/.test(u142),
+      /o banco ACEITOU a mesma pessoa em duas equipes/.test(u143),
+      /o banco ACEITOU dois líderes/.test(u143),
+      /o banco RECUSOU sair e entrar no mesmo instante/.test(u143),
+      /o passado foi reescrito/.test(u143),
       /DESFAZER/.test(u142)],
-     [true, true, true, true, true, true, true]);
+     [true, true, true, true, true, true, true, true]);
+
+  // E a U143 só toca gente LIVRE — é o conserto do defeito, e é o que impede
+  // o portão de brigar com a composição de verdade na próxima releitura.
+  eq('U143 CRÍTICO: o portão só usa quem NÃO está em equipe nenhuma, e pula com aviso se não houver duas pessoas assim — foi pegar gente real que derrubou o portão da U142',
+     [/NOT EXISTS \(SELECT 1 FROM public\.equipe_membros m/.test(u143),
+      /PORTÃO PULADO: não há duas pessoas fora de equipe/.test(u143),
+      /ORDER BY p\.id LIMIT 1/.test(u143),
+      /FROM public\.profiles p\s*\n\s*ORDER BY p?\.?id LIMIT 1/.test(u143)],
+     [true, true, true, false]);
 
   // O portão usa `clock_timestamp()` e não `now()`: dentro de uma transação o
   // `now()` é constante, e fechar e reabrir com ele produziria uma faixa de
   // duração zero — que o próprio CHECK recusa. O portão acusaria um defeito
   // que não existe fora dele.
-  eq('U142: o portão usa `clock_timestamp()` — com `now()`, que é constante dentro da transação, fechar e reabrir daria uma faixa de duração ZERO e o CHECK recusaria, acusando um defeito que só existe dentro do portão',
+  eq('U143: o portão usa `clock_timestamp()` — com `now()`, que é constante dentro da transação, fechar e reabrir daria uma faixa de duração ZERO e o CHECK recusaria, acusando um defeito que só existe dentro do portão',
      (() => {
-       const portao = u142.slice(u142.indexOf('§7  O PORTÃO'));
+       const portao = u143.slice(u143.indexOf('§2  O PORTÃO'));
        return [/clock_timestamp\(\)/.test(portao),
                /saiu_em > entrou_em/.test(u142)];
      })(),
