@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 163 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 165 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -166,6 +166,8 @@
 - [U140 — os cinco que não dependiam do Davi: a fila do gestor, as cobranças na ficha, os cabeçalhos e o motor de orçamento provado (P20, R155, S10)](#u140-os-cinco-que-não-dependiam-do-davi-a-fila-do-gestor-as-cobranças-na-ficha-os-cabeçalhos-e-o-motor-de-orçamento-provado-p20-r155-s10)
 - [U141 — o checklist clicava na linha de baixo (R281)](#u141-o-checklist-clicava-na-linha-de-baixo-r281)
 - [U142 — a equipe passa a valer do instante da troca (R285)](#u142-a-equipe-passa-a-valer-do-instante-da-troca-r285)
+- [U143 — a conferência da U142, e as nove decisões da leva do Vinicius (R286–R294)](#u143-a-conferência-da-u142-e-as-nove-decisões-da-leva-do-vinicius-r286r294)
+- [As nove decisões (R286–R294)](#as-nove-decisões-r286r294)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -13544,3 +13546,90 @@ chamada direta à RPC. Está na P51, com o recorte.
 
 **Números.** Verificador: **3.441 asserções**, 0 falharam. `tsc`: 0. Migration
 **U142 PENDENTE** — o Davi roda no SQL Editor. A tela vem no passo seguinte.
+
+## U143 — a conferência da U142, e as nove decisões da leva do Vinicius (R286–R294)
+
+**O que aconteceu com a U142.** Ela aplicou o trabalho e falhou no PORTÃO — o
+teste do fim, que roda depois do COMMIT. Por causa disso o Davi nunca viu a
+conferência: o SQL Editor mostra o erro no lugar do último resultado, e o
+retrato que ele teve do banco foi só a linha vermelha.
+
+O erro, lido inteiro, era mais informativo do que parecia:
+
+```
+ERROR 23P01: conflicting key value violates exclusion constraint
+"equipe_membros_uma_equipe_por_vez"
+DETAIL: Key (pessoa_id, tstzrange(entrou_em, saiu_em))=(0958084a…, ["2026-09-14 17:31:21",))
+conflicts with existing key (…)=(0958084a…, ["0001-01-01 03:06:28",))
+```
+
+Duas coisas ali. A primeira: **o erro é a prova de que a regra funciona** — foi
+a restrição recusando a mesma pessoa em duas equipes ao mesmo tempo, que é
+exatamente o que ela existe para fazer. O que estava errado era o TESTE: ele
+pegava `SELECT id FROM profiles ORDER BY id LIMIT 1`, uma pessoa REAL que o
+backfill já tinha posto numa equipe, e colidia com a composição de verdade.
+
+**A segunda quase me fez estragar o dado.** As seis linhas do backfill nasceram
+com `entrou_em = 0001-01-01`, e a minha primeira leitura foi "data absurda,
+corrigir". Cheguei a escrever a trava que abortaria a migration se qualquer
+data caísse antes de 2020.
+
+Antes de rodar, pedi o diagnóstico. E ele mostrou uma semana chamada
+**`0001-S01`** na escala antiga — não é lixo: é o **MARCO ZERO** que a U76
+criou de propósito, com o motivo escrito no arquivo dela:
+
+> "Preferido a uma âncora CALCULADA (menor data do sistema, ou hoje-84): uma
+> importação retroativa futura — as U59/U61 já fizeram isso uma vez — cairia
+> ANTES da âncora e perderia a turma em silêncio. Antes de '0001-S01' não
+> existe data."
+
+Esse motivo vale IGUAL no modelo por instante. Um chamado com
+`data_hora_agendada` retroativa pergunta "quem estava na equipe naquele dia?" e,
+com a faixa começando em 31/08/2026, receberia **ninguém** — o apoio sumiria sem
+erro nenhum na tela. A faixa que começa no marco zero responde "esta equipe,
+desde sempre", que é a verdade que o sistema tem.
+
+Ou seja: **a minha conta estava certa e o dado também.** O que era feio era a
+VISTA, e é a vista que se ajusta — `ehMarcoZero`/`desdeQuando` fazem a tela
+dizer "desde sempre" no lugar de 01/01/0001. Trocar o dado para arrumar a
+vista teria reintroduzido, calado, o defeito que a U76 documentou. **A lição
+não é sobre datas: é que "isso parece errado" num dado que outra entrega
+escolheu a dedo merece o diagnóstico ANTES do conserto.**
+
+A U143 não muda schema. Ela imprime a conferência que a U142 não conseguiu
+mostrar (com uma linha a mais, dizendo que as faixas no marco zero são
+ESPERADAS) e roda o portão de verdade — agora só com gente **livre**, quem não
+tem faixa aberta, pulando com aviso se não houver duas pessoas assim.
+
+E o próprio verificador cobrou a U143 por uma cicatriz da casa: ela tinha
+`ROLLBACK` sem `COMMIT` antes. Não escreve nada fora do portão, então era
+inofensiva — mas a varredura cobra a ESTRUTURA, não a intenção, e está certa:
+a U136 rodou duas vezes sem aplicar nada exatamente assim.
+
+## As nove decisões (R286–R294)
+
+O Davi respondeu as dez perguntas de uma vez. Nove viraram regra; a décima
+(Erik e Nicholas fora do chamado de campo) entrou na R294.
+
+**A R286 foi a única em que a decisão foi MINHA**, a pedido dele: *"Ou talvez
+seja melhor criar um chamado novo..? Eu quero que você analise isso e tome a
+decisão de maneira estratégica"*. Decidi pela **mesma atividade**, e as razões
+estão na regra porque decisão sem o porquê é ordem: (1) o sistema já tem essa
+forma — `agenda_campo` é uma linha por IDA e a U81 já congela o apoio de cada
+uma; (2) "quantas idas para resolver" é o número que diz se a equipe está
+resolvendo ou empurrando, e com chamados separados ninguém sabe quais são o
+mesmo problema; (3) uma falha é uma cobrança. O contra — o chamado com seis
+retornos suja a fila — é a própria razão de ele ficar: um problema crônico tem
+de parecer crônico.
+
+Duas regras carregam uma recusa minha a inventar número. A **R287**: enquanto
+não houver duração medida por tipo, o campo **não nasce preenchido** — valor
+sugerido que ninguém mediu é indistinguível de um medido, que é o que a P16
+recusou na U78. A **R288**: o tempo de estrada entra como **estimativa
+rotulada**, por linha reta vezes um fator de via urbana, sobrescrevível por
+quem agenda; rota real depende da chave que a P46 documenta, e número de rota
+apresentado como certeza, no trânsito de São Paulo, não é honesto.
+
+**Números.** Verificador: **3.450 asserções**, 0 falharam. `tsc`: 0. Migration
+**U143 PENDENTE** (não muda schema — imprime a conferência da U142 e roda o
+portão corrigido).

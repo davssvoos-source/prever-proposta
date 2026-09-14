@@ -22341,6 +22341,98 @@ assincronas.push(async () => {
      [[], 4]);
 }
 
+// ── O MARCO ZERO NÃO É DEFEITO (14/09/2026) ───────────────────────────────
+//
+// As faixas trazidas do cadastro antigo começam no ANO 1, e a primeira coisa
+// que eu quis fazer foi "corrigir a data absurda". Estava errado: `0001-S01` é
+// a semana sintética que a U76 criou de propósito, com o motivo escrito no
+// arquivo — "antes de '0001-S01' não existe data", para que uma importação
+// retroativa não caia antes da âncora e perca a turma em silêncio.
+//
+// No modelo por instante o motivo vale IGUAL: um chamado com data retroativa
+// pergunta "quem estava na equipe naquele dia?" e, com a faixa começando em
+// 31/08/2026, receberia NINGUÉM. É certo no dado e feio na tela — e é a TELA
+// que se ajusta.
+{
+  const DMZ = carregar('src/features/duplas/modelo.ts');
+
+  eq('MARCO ZERO CRÍTICO: faixa ancorada no ano 1 é reconhecida como "desde sempre" e NÃO como data — trocar o dado para arrumar a vista reintroduziria o defeito que a U76 documentou (importação retroativa perde a turma em silêncio)',
+     [DMZ.ehMarcoZero("0001-01-01T03:06:28.000Z"),
+      DMZ.ehMarcoZero("2026-08-31T03:00:00.000Z"),
+      DMZ.ehMarcoZero(null),
+      DMZ.desdeQuando("0001-01-01T03:06:28.000Z"),
+      DMZ.desdeQuando("2026-09-10T15:00:00.000Z").startsWith("desde "),
+      DMZ.desdeQuando(null)],
+     [true, false, false, "desde sempre", true, "—"]);
+
+  // E a leitura continua funcionando PARA TRÁS, que é o ponto inteiro do marco
+  // zero: um chamado com data retroativa ainda acha a equipe.
+  eq('MARCO ZERO CRÍTICO: um chamado com data RETROATIVA ainda acha a equipe — é exatamente por isto que a âncora existe, e é o que uma data "bonita" de 2026 teria quebrado',
+     (() => {
+       const M = [{ equipeId: "A", pessoaId: "p1", papel: "ajudante", entrouEm: "0001-01-01T03:06:28.000Z", saiuEm: null },
+                  { equipeId: "A", pessoaId: "p2", papel: "lider", entrouEm: "0001-01-01T03:06:28.000Z", saiuEm: null }];
+       return [DMZ.equipeDaPessoaNoInstante(M, "p1", new Date(2020, 0, 15)),
+               DMZ.parceirosNoInstante(M, "p1", new Date(2020, 0, 15)),
+               DMZ.equipeDaPessoaNoInstante(M, "p1", new Date(2026, 8, 14))];
+     })(),
+     ["A", ["p2"], "A"]);
+}
+
+// ── AS DEZ RESPOSTAS DO DAVI DE 14/09/2026 ESTÃO REGISTRADAS ──────────────
+//
+// Regra ditada que não é escrita na hora vira interpretação minha depois. Este
+// bloco não prova comportamento — prova que a DECISÃO existe, com a frase dele,
+// e dizendo o que derruba. É a regra 1 do ciclo de trabalho.
+{
+  const prod286 = require('fs').readFileSync('docs/PRODUTO.md', 'utf8');
+  const trecho = (r) => {
+    const i = prod286.indexOf("- **" + r + "**");
+    if (i < 0) return "";
+    const j = prod286.indexOf("\n- **R", i + 5);
+    return prod286.slice(i, j < 0 ? prod286.length : j);
+  };
+
+  eq('REGRA 1 CRÍTICO: as nove decisões de 14/09 estão no PRODUTO, cada uma com a FRASE do Davi — sem a frase, a regra é interpretação minha e ninguém depois sabe o que ele realmente pediu',
+     ["R286", "R287", "R288", "R289", "R290", "R291", "R292", "R293", "R294"]
+       // `\s+` e não um espaço: a quebra de linha do markdown separa "Davi," da
+       // data em três das nove, e o regex cru acusaria regras que estão certas
+       .filter((r) => !/\*\(Davi,\s+14\/09\/2026/.test(trecho(r))),
+     []);
+
+  // A R286 é a única em que a DECISÃO foi minha — o Davi pediu a análise. Então
+  // ela tem de carregar o porquê, não só o quê.
+  eq('R286: a decisão do retorno (mesma atividade, não chamado novo) traz as três razões e o contra-argumento — foi decisão minha a pedido dele, e decisão sem o porquê é ordem',
+     (() => {
+       const t = trecho("R286");
+       return [/tome a decisão de maneira estratégica/.test(t),
+               /agenda_campo. é uma linha por IDA|linha por IDA/.test(t),
+               /Quantas idas para resolver/.test(t),
+               /UMA cobrança/.test(t),
+               /suja a fila/.test(t),
+               /LINHA DO TEMPO/.test(t)];
+     })(),
+     [true, true, true, true, true, true]);
+
+  // As que REVISAM regra viva têm de dizer qual — senão as duas ficam de pé,
+  // discordando, e quem ler depois escolhe por sorte.
+  eq('REGRA 1 CRÍTICO: toda regra nova que derruba uma anterior NOMEIA a anterior — R290/R291 mexem na cobrança (R104, R120/R121), R292 separa a preventiva de campo da interna, R294 revisa a R244',
+     [/60 parcelas da R120\/R121|R120\/R121/.test(trecho("R290")),
+      /Revisa a R104/.test(trecho("R291")),
+      /R294/.test(trecho("R292")),
+      /Revisa a R244/.test(trecho("R294"))],
+     [true, true, true, true]);
+
+  // A R287 e a R288 carregam a recusa que me impediria de inventar número: sem
+  // padrão medido, o campo nasce VAZIO; e a estimativa de estrada é rotulada
+  // como estimativa.
+  eq('R287/R288: o que ainda não foi medido não nasce preenchido — duração sem padrão fica vazia (P16), e o tempo de estrada entra como ESTIMATIVA que quem agenda sobrescreve',
+     [/não nasce preenchido/.test(trecho("R287")),
+      /P16/.test(trecho("R287")),
+      /ESTIMATIVA/.test(trecho("R288")),
+      /recusa, como o conflito de horário/.test(trecho("R288"))],
+     [true, true, true, true]);
+}
+
 // ── DUAS CICATRIZES DA U142, VARRIDAS EM TODA MIGRATION (14/09/2026) ──────
 //
 // A primeira versão da U142 abortou no SQL Editor do Davi, e por dois motivos

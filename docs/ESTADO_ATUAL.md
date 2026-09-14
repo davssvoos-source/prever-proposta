@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-14** · última regra: **R285** · último diário:
-**U142** · verificador: **3.441 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-14** · última regra: **R294** · último diário:
+**U143** · verificador: **3.450 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138) · migrations rodadas até a **U139**
 (U131, U132 e U134 em 13/09/2026, nesta ordem; U136, U137 e U139 em
 14/09/2026) · **nenhuma migration pendente** ·
@@ -18,8 +18,13 @@ baseline de 57 erros foi a ZERO na U138) · migrations rodadas até a **U139**
 uma vez o que a v0.0.8 até a v0.0.11 já tinham entregue — o que entrou em cada
 versão está em `docs/VERSOES.md`. **Nenhuma migration pendente**: as seis de
 que a v0.0.12 depende (U131, U132, U134, U136, U137, U139) já rodaram.
-**PENDENTE: a U142** (`20261004090000_u142_equipe_por_instante.sql`) — a
-composição da equipe de campo passa a valer do INSTANTE da troca (R285).
+**A U142 RODOU em 14/09/2026** — a tabela, as duas garantias, o backfill e as
+funções estão no banco. O portão dela falhou (usava uma pessoa real, já
+backfillada) e por isso a conferência nunca apareceu: **PENDENTE a U143**
+(`20261005090000_u143_conferencia_da_u142.sql`), que não muda schema — só
+imprime a conferência da U142 e roda o portão corrigido.
+
+As **R282–R294** estão DITADAS; a U142 implementa a metade de banco da R285.
 **As R282–R285 estão DITADAS e ainda NÃO implementadas** (14/09/2026 — a leva
 do Vinicius: a corretiva com dois textos, a vistoria virando atividade
 interna, o campo sem prazo, a equipe valendo do momento da troca). Fim de

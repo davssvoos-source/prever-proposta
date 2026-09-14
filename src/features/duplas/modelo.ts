@@ -150,6 +150,33 @@ export function equipeAAbandonar(
 }
 
 /**
+ * A faixa começa no MARCO ZERO (a semana sintética `0001-S01` da U76)?
+ *
+ * A U76 criou essa âncora de propósito, e o motivo está escrito lá: "antes de
+ * '0001-S01' não existe data" — para que uma importação retroativa não caia
+ * antes da âncora e perca a turma em silêncio. A U142 converteu a âncora
+ * fielmente, e por isso as faixas trazidas do cadastro antigo começam no ano 1.
+ *
+ * Isso é CERTO no dado e feio na tela. Quem desenha a composição mostra
+ * "desde sempre" no lugar da data — trocar o dado para arrumar a vista
+ * reintroduziria, calado, o defeito que a U76 documentou.
+ */
+export function ehMarcoZero(iso: string | null | undefined): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  return !Number.isNaN(d.getTime()) && d.getUTCFullYear() < 1900;
+}
+
+/** "desde sempre" para o marco zero; a data, para o resto. */
+export function desdeQuando(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  if (ehMarcoZero(iso)) return "desde sempre";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `desde ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
  * O instante de referência do apoio automático — gêmeo de
  * `instante_da_equipe`. O agendamento manda; sem ele, a criação; sem as duas,
  * agora. Sucessor de `diaDaDupla`, que devolvia DATA e por isso não sabia

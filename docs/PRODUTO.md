@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R285 (56)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R294 (65)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5300,3 +5300,109 @@ adaptado."
   clicar em remover da outra. E **o apoio do chamado passa a nascer da equipe do
   responsável**: atribuir o André, que lidera uma equipe com o Lucas, põe o
   Lucas como apoio — e quem cria, o gestor ou quem tem permissão ainda troca.
+
+- **R286** — **O retorno é a MESMA atividade, com o número de idas na
+  etiqueta.** Quando o técnico vai ao cliente e não resolve, o chamado NÃO se
+  desdobra em outro: nasce uma ida nova na agenda e o card passa a dizer
+  **"Retornado 2x"**. Cada ida guarda **quem foi, quando foi e o que tentou** —
+  o registro do que se tentou vai para a LINHA DO TEMPO do chamado, e não para
+  o bloco da agenda, que a R99 mantém magro de propósito.
+
+  *(Davi, 14/09/2026, pedindo a decisão: "O retorno deve manter a mesma
+  atividade e adicionar uma etiqueta de Retornado 2x ou algo do tipo… Assim
+  mapeamos quantas vezes foram ao local tentar solucionar, quem foi, quando
+  foi, e o que cada um tentou… Ou talvez seja melhor criar um chamado novo..?
+  Eu quero que você analise isso e tome a decisão de maneira estratégica".)*
+
+  **Por que a mesma atividade, e não um chamado novo:** (1) o sistema já tem
+  essa forma — `agenda_campo` é uma linha por IDA, e a U81 já congela o apoio
+  de cada ida para preservar quem esteve no prédio; chamado novo duplicaria um
+  mecanismo que existe. (2) "Quantas idas para resolver" é o número que diz se
+  a equipe está resolvendo ou empurrando, e com chamados separados ninguém sabe
+  quais são o mesmo problema. (3) Uma falha é UMA cobrança. O argumento
+  contrário — um chamado com seis retornos suja a fila — é justamente a razão
+  de ele ficar: um problema crônico tem de PARECER crônico, e escondido atrás
+  de chamados novos ele pareceria seis problemas resolvidos.
+
+- **R287** — **A duração estimada é inserida ao ABRIR o chamado.** Quem abre
+  diz quanto tempo aquilo deve levar, e é esse número que a agenda do técnico
+  usa para reservar o dia. Não há padrão por tipo **ainda**: mapear quanto dura
+  cada problema exige antes mapear os problemas, e isso leva tempo. *(Davi,
+  14/09/2026: "A duração estimada deve ser inserida ao abrir o chamado, mais pra
+  frente vamos criar certinho a duração estimada para cada tipo de problema, mas
+  até lá precisamos mapear os problemas certinho e isso vai levar tempo".)*
+  Enquanto não houver padrão, **o campo não nasce preenchido**: um valor
+  sugerido que ninguém mediu é indistinguível de um medido, e é exatamente o
+  que a P16 recusou na U78.
+
+- **R288** — **Técnico indisponível RECUSA o agendamento, e o deslocamento
+  ocupa a agenda.** A indisponibilidade tem as duas formas — **dia inteiro**
+  (férias, folga, atestado, treinamento) e **faixa de horas** (saiu meio
+  período) —, e ela não avisa: recusa, como o conflito de horário já recusa
+  hoje. *(Davi, 14/09/2026: "As duas, recusa o agendamento".)*
+
+  **O tempo de estrada não pode ser descartado** — ele ocupa o dia do técnico
+  como ocupa o serviço. *(Davi: "Como podemos calcular o tempo de transporte e
+  computar isso na agenda dos técnicos? Pois isso ocupa tempo deles também…
+  Não pode ser simplesmente descartado".)* O bloco da agenda **já tem o campo
+  de deslocamento** desde a R99 — o que falta é calculá-lo em vez de digitá-lo.
+  A ordem é: **(1)** distância em linha reta entre a coordenada do local
+  anterior e a do próximo, multiplicada por um fator de via urbana, entregue
+  como ESTIMATIVA que quem agenda pode sobrescrever — não depende de serviço
+  externo nenhum e erra para mais, que é o lado seguro; **(2)** rota real,
+  quando houver a chave de roteamento que a P46 já documenta. Estimativa
+  rotulada como estimativa é honesta; número de rota apresentado como certeza,
+  num trânsito de São Paulo, não é.
+
+- **R289** — **O mapa de calor é por EQUIPE; por TÉCNICO, só quem não está em
+  equipe.** A ocupação mede o tempo do **carro**, não o das pessoas (R100): a
+  equipe sai junta no mesmo veículo, então pintar as mesmas horas em duas ou
+  três linhas inventaria trabalho que não existe. Mas o técnico que trabalha
+  **sozinho** — numa moto, numa viatura própria — é uma unidade de agenda por
+  si, e para ele a linha é dele. *(Davi, 14/09/2026: "por equipe, e por técnico
+  quando ele não estiver em uma equipe. Pois também teremos a situação do
+  técnico trabalhar sozinho em uma moto ou viatura por exemplo…".)*
+
+- **R290** — **O parcelamento de 1x a 12x é da MANUTENÇÃO.** Ele existe para o
+  adicional de **venda de equipamento a cliente atual**, dentro de uma
+  manutenção. A **instalação/obra mantém as 60 parcelas** da R120/R121 — é
+  outro tipo de negócio, com outro prazo. *(Davi, 14/09/2026: "Só para
+  manutenção, só para este adicional de venda de equipamentos no caso de
+  manutenções para atuais clientes".)*
+
+- **R291** — **Quem lança escolhe o MÊS em que a cobrança começa.** A
+  competência da primeira parcela deixa de ser deduzida da data do atendimento:
+  no lançamento, o Vinicius **seleciona a partir de que mês** cobrar. *(Davi,
+  14/09/2026: "No lançamento o Vinicius deverá selecionar a partir de que mês a
+  cobrança será feita".)* Isso resolve, sem caso especial, o atendimento
+  concluído em 30/09 e revisado em 02/10: ele escolhe. **Revisa a R104** na
+  parte em que a competência saía de `finalizada_em`.
+
+- **R292** — **A preventiva de campo é UMA atividade com o roteiro de TODOS os
+  blocos.** Um condomínio, uma preventiva, e dentro dela o checklist de cada
+  bloco instalado. Não é uma atividade por bloco. *(Davi, 14/09/2026: "Uma
+  atividade com o roteiro de todos os blocos do condominio (LEMBRANDO QUE
+  ESTAMOS FALANDO DO FLUXO DE PREVENTIVA DA EQUIPE TECNICA, CARGO TECNICO, Não
+  da galera da sede…)".)* A preventiva **interna** — a que a T.I. ou o controle
+  patrimonial fazem na sede — é outra coisa e continua como está (R294).
+
+- **R293** — **A baixa de equipamento gera UMA atividade para o Gilleno por
+  ATENDIMENTO, com a lista do que saiu.** Não é uma por equipamento: é uma por
+  visita, com a descrição automática de tudo o que foi removido naquela ida.
+  *(Davi, 14/09/2026: "Uma por atendimento com a lista de tudo o que saiu".)*
+  Ela nasce como **atividade interna** (o Gilleno é SAC, trabalha na sede, e o
+  que ele faz aparece na Início dele — não é chamado de campo), com o título
+  "Movimentação de equipamentos no QAP". Serve para ele não esquecer de dar
+  baixa no QAP do que já saiu do cliente.
+
+- **R294** — **O cargo OPERACIONAL cria atividade interna e NÃO executa chamado
+  de campo.** Quem não tem cargo TÉCNICO não é da Equipe Técnica e não vai a
+  campo: ele sai da lista de responsáveis por chamado de campo e por visita
+  técnica. O que ele cria na Início é **atividade**: demanda operacional,
+  melhoria, proposta comercial, **manutenção corretiva e preventiva INTERNAS**
+  — porque elas existem (a T.I. faz preventiva no servidor). *(Davi,
+  14/09/2026: "Claro que existe manutenção preventiva na equipe interna, eu
+  nunca disse que não existe. Sim, pode remover o Nicholas e o Erik da lista de
+  quem pode ser responsável por chamado em campo, vamos manter essa parte para
+  os técnicos de campo".)* **Revisa a R244**, que os punha na lista única da
+  R241. O **admin** continua na lista: o que saiu foi o cargo operacional.
