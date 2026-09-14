@@ -44,6 +44,15 @@ export interface Tela {
   sempre?: boolean;
   /** O que vale enquanto não existe linha no banco (banco fora do ar, tela nova). */
   padrao: Record<PapelPermissao, boolean>;
+  /**
+   * CAPACIDADE, não página (R294/U144). A chave liga um GESTO dentro de uma
+   * tela que já existe — `atividades.nova` é o pop-up do "+" da Início — em
+   * vez de abrir uma rota. Marcar isto importa porque duas medidas da casa
+   * contam páginas: "toda chave com rota própria é lida por uma guarda" e "o
+   * operacional abre Início, Calendário, Clientes e Perfil e NADA mais". As
+   * duas continuam certas sobre páginas; a capacidade não é uma.
+   */
+  capacidade?: boolean;
   /** Explica uma escolha não óbvia, direto na tela. */
   nota?: string;
 }
@@ -100,6 +109,17 @@ export const TELAS: Tela[] = [
   // de campo foram absorvidos pelo Painel Operacional. As duas chaves saíram
   // do catálogo; a U30 apaga as linhas delas no banco.
   T("chamados.novo", "Abrir chamado", "/chamados/novo", "Chamados", [false, true, true]),
+  // R294 (U144): CRIAR ATIVIDADE não é ABRIR CHAMADO DE CAMPO. O pop-up da
+  // Início sempre criou `natureza: interno` — nunca abriu chamado —, mas era
+  // travado por `chamados.novo`, a chave da triagem de CAMPO. Quem não tinha
+  // essa chave recebia a tela do técnico ("o chamado chega a você pela
+  // programação"), e para o OPERACIONAL, que trabalha na sede e cria as
+  // próprias atividades, isso é porta trancada com a placa errada. Foi o que
+  // o Erik encontrou.
+  T("atividades.nova", "Criar atividade (Início)", "/dashboard", "Trabalho", [false, true, true, true], {
+    capacidade: true,
+    nota: "o técnico não cria: para ele o chamado vem pela programação (R163)",
+  }),
   T("chamados.painel", "Painel de chamados", "/chamados/painel", "Chamados", [false, true, true]),
   T("chamados.programacao", "Programação das duplas", "/chamados/programacao", "Chamados", [false, true, true]),
   // R167/U99: "chamados.importar" SAIU — Davi (Q17): "não conheço essa tela,

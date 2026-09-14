@@ -119,12 +119,20 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
   const ehTecnico = equipeDoResponsavel === "tecnica";
   const ehProposta = tipo === "prospeccao";
   const pronto = !!tipo && !!responsavelId;
-  // R163: quem não tem a chave `chamados.novo` (o técnico, por padrão) não vê
-  // as duas perguntas — o "+" fica com ele porque é a porta do plantão (R117).
-  // Enquanto a matriz carrega (undefined) o corpo aparece: é gate de tela, o
-  // dado continua protegido pela RLS.
+  // R294 (U144): a chave é `atividades.nova`, e NÃO `chamados.novo`.
+  //
+  // Esta tela cria SEMPRE `natureza: "interno"` — ela nunca abriu chamado de
+  // campo. Travá-la com a chave da triagem de CAMPO fazia o OPERACIONAL, que
+  // trabalha na sede e cria as próprias atividades, receber a tela do técnico
+  // ("o chamado chega a você pela programação"). Porta trancada com a placa
+  // errada, e foi o que o Erik encontrou.
+  //
+  // R163 continua valendo para quem ela descreve: o TÉCNICO não cria
+  // atividade, e o "+" dele é a porta do plantão (R117). Enquanto a matriz
+  // carrega (undefined) o corpo aparece: é gate de tela, o dado continua
+  // protegido pela RLS.
   const { podeVer } = usePermissoes();
-  const podeAbrirChamado = podeVer("chamados.novo") !== false;
+  const podeCriarAtividade = podeVer("atividades.nova") !== false;
 
   const pessoasOrdenadas = useMemo(
     () => [...(pessoas as any[])].sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "")),
@@ -299,7 +307,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
 
   const subtitulo = modoPlantao
     ? "O que aconteceu fora do expediente. Isto não vira chamado."
-    : !podeAbrirChamado
+    : !podeCriarAtividade
       ? "Chamado, quem abre é o SAC e a gestão. O que se registra por aqui é o plantão."
     : !pronto
       ? "Duas perguntas decidem o resto: o tipo de demanda e quem é o responsável."
@@ -371,7 +379,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
 
         {modoPlantao ? (
           <PainelDePlantao euId={euId} opcoesPessoas={opcoesPessoas} aoFechar={fechar} />
-        ) : !podeAbrirChamado ? (
+        ) : !podeCriarAtividade ? (
           /* R163 (Davi, 04/09/2026): "O técnico de campo não pode abrir chamado
              sozinho, vamos manter assim por enquanto." As duas perguntas não
              aparecem para ele; sobra a porta do plantão, que sempre foi dele. */

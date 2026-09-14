@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 165 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 166 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -168,6 +168,7 @@
 - [U142 — a equipe passa a valer do instante da troca (R285)](#u142-a-equipe-passa-a-valer-do-instante-da-troca-r285)
 - [U143 — a conferência da U142, e as nove decisões da leva do Vinicius (R286–R294)](#u143-a-conferência-da-u142-e-as-nove-decisões-da-leva-do-vinicius-r286r294)
 - [As nove decisões (R286–R294)](#as-nove-decisões-r286r294)
+- [U144 — criar atividade deixa de ser a mesma chave de abrir chamado (R294)](#u144-criar-atividade-deixa-de-ser-a-mesma-chave-de-abrir-chamado-r294)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -13633,3 +13634,67 @@ apresentado como certeza, no trânsito de São Paulo, não é honesto.
 **Números.** Verificador: **3.450 asserções**, 0 falharam. `tsc`: 0. Migration
 **U143 PENDENTE** (não muda schema — imprime a conferência da U142 e roda o
 portão corrigido).
+
+## U144 — criar atividade deixa de ser a mesma chave de abrir chamado (R294)
+
+**O pedido.** Davi, 14/09/2026: *"O Erik foi criar uma atividade para ele
+executar em breve, e o sistema confundiu um ponto importante: os usuários que
+não são da Equipe Técnica, que não têm cargo TÉCNICO, não deverão executar
+CHAMADOS, eles executam Atividades."*
+
+**O defeito é de VOCABULÁRIO, e por isso ninguém o via.** O pop-up "Nova
+atividade" da Início cria **sempre** `natureza: "interno"` — ele nunca abriu
+chamado de campo. Mas o corpo dele era travado pela chave `chamados.novo`, que
+é a chave da triagem `/chamados/novo`, de onde sai o chamado **de campo**.
+
+O resultado, para quem não tem essa chave, era receber no lugar do formulário
+a tela do técnico de campo: *"Abrir chamado é tarefa do SAC e da gestão — o
+chamado chega a você pela programação. O que você registra por aqui é o
+atendimento de plantão."*
+
+Para o TÉCNICO essa frase é verdade, e a R163 a colocou ali de propósito. Para
+o OPERACIONAL, que trabalha na sede e cria as próprias atividades, é **porta
+trancada com a placa errada** — e foi exatamente o que o Erik encontrou. O
+print que o Davi mandou mostra a tela inteira: um botão de plantão oferecido a
+quem queria criar uma atividade interna.
+
+**O conserto é uma linha, e a linha é a chave.** Nasceu `atividades.nova`. O
+pop-up passa a ler ela; `chamados.novo` continua sendo o que sempre foi.
+
+| chave | técnico | comercial | SAC | operacional |
+|---|---|---|---|---|
+| `atividades.nova` (nova) | não | sim | sim | **sim** |
+| `chamados.novo` (não muda) | não | sim | sim | não |
+
+O técnico continua caindo na porta do plantão — com a frase certa, porque para
+ele o chamado realmente chega pela programação (R163/R263).
+
+**O campo de I.A. da Início fica com `chamados.novo`, e isso é decisão.** Ele
+cria com a natureza que a I.A. decidiu, e essa natureza PODE ser `campo` — é
+a única porta da Início que abre chamado de verdade.
+
+**A outra metade da R294:** o operacional saiu de `CARGOS_DE_CAMPO`. Revisa a
+R244, que o tinha posto lá em 10/09. O **admin fica**: o que o Davi mandou
+tirar foi o cargo operacional, e tirar o admin junto tiraria ele e o Vinicius
+das listas de responsável sem ninguém pedir.
+
+**O catálogo ganhou uma distinção que ele nunca precisou ter.** Duas asserções
+vivas medem o catálogo como se toda chave fosse uma PÁGINA: "toda chave com
+rota própria é lida por alguma guarda" e "o operacional abre Início,
+Calendário, Clientes e Perfil — e NADA mais". As duas estão certas sobre
+páginas, e `atividades.nova` não é uma: é um **gesto** dentro da Início.
+
+Podia ter resolvido com exceção nominal nas duas varreduras. Não resolvi: a
+exceção com o nome da chave envelhece calada, e a próxima capacidade entraria
+sem ninguém perceber. A chave passou a carregar a marca `capacidade: true`, e
+as duas varreduras filtram pela MARCA — quem vier depois é filtrado também.
+
+**Uma asserção minha que media o que não era dela.** Ao repontar a R163 eu
+quis provar "nenhuma das duas telas carrega lista de cargos copiada" com um
+regex por `cargo === "..."`. Ele acendeu na Início — que compara cargo para o
+RECORTE do técnico (R263), coisa completamente diferente de permissão para
+criar. O remédio errado teria sido mexer no recorte. A asserção passou a
+provar o que de fato importa: que cada tela CHAMA `podeVer` com a chave certa.
+
+**Números.** Verificador: **3.455 asserções**, 0 falharam. `tsc`: 0. Migration
+**U144 PENDENTE** — semeia as quatro linhas da chave nova.

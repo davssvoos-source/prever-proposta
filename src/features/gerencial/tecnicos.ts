@@ -18,11 +18,21 @@
 
 /**
  * Os cargos que podem ser responsáveis por uma visita ou um chamado de campo.
- * R244: o OPERACIONAL entra — é para ele que o Nicholas e o Erik vão, e eles
- * são justamente quem hoje responde por visita e chamado. A ordem da lista é a
- * ordem em que aparecem para escolher: quem vai ao prédio todo dia primeiro.
+ *
+ * R294 (Davi, 14/09/2026): o OPERACIONAL SAIU. "Os usuários que não são da
+ * Equipe Técnica, que não têm cargo TÉCNICO, não deverão executar CHAMADOS,
+ * eles executam Atividades" — e, direto: "pode remover o Nicholas e o Erik da
+ * lista de quem pode ser responsável por chamado em campo, vamos manter essa
+ * parte para os técnicos de campo". Revisa a R244, que os tinha posto aqui.
+ *
+ * O ADMIN fica: o que saiu foi o cargo operacional. O admin é quem faz a
+ * visita quando a equipe está cheia (R241), e tirá-lo tiraria o Davi e o
+ * Vinicius das listas sem ninguém pedir.
+ *
+ * A ordem da lista é a ordem em que aparecem para escolher: quem vai ao prédio
+ * todo dia primeiro.
  */
-export const CARGOS_DE_CAMPO = ["tecnico", "operacional", "admin"] as const;
+export const CARGOS_DE_CAMPO = ["tecnico", "admin"] as const;
 export type CargoDeCampo = (typeof CARGOS_DE_CAMPO)[number];
 
 /** `cargo` pode responder por trabalho técnico? */

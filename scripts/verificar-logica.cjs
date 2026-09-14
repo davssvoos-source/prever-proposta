@@ -378,6 +378,11 @@ const ARQUIVOS_SEMENTE = [
   // têm as mesmas telas" acusaria a chave nova como órfã — e o remédio errado
   // (tirar a chave do catálogo) deixaria a tela sem linha em permissoes_tela.
   'supabase/migrations/20260908090000_u86_sobreaviso.sql',
+  // U144: a chave `atividades.nova` (R294). Mesma razão da U86 — sem esta
+  // linha a asserção "catálogo e semente têm as mesmas telas" acusaria a
+  // chave nova como órfã, e o remédio errado (tirá-la do catálogo) deixaria
+  // o operacional sem poder criar atividade de novo.
+  'supabase/migrations/20261006090000_u144_atividade_nao_e_chamado_de_campo.sql',
   // U94: as chaves 'gerencial.usuarios' e 'gerencial.permissoes' saem — as
   // telas viraram abas do Administrativo (R131), e o DELETE participa da semente.
   'supabase/migrations/20260912090000_u94_administrativo_absorve_usuarios_e_permissoes.sql',
@@ -16599,7 +16604,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // 'admin' SAIU desta lista na U109: a chave não existe mais (R198), e
        // a tela nova ("equipamentos") gateia pela chave própria.
        const excecoes = new Set(['dashboard', 'perfil', 'clientes.novo', 'clientes.migrar']);
-       return TL94.TELAS.filter((t) => !excecoes.has(t.chave) && !comGuarda.includes(`"${t.chave}"`))
+       // R294/U144: chave de CAPACIDADE não tem guarda de rota porque não abre
+       // rota — ela liga um gesto dentro de uma tela que já é guardada. Sai da
+       // varredura pela MARCA, não pelo nome: exceção nominal envelhece calada,
+       // e a próxima capacidade entraria sem ninguém perceber.
+       return TL94.TELAS.filter((t) => !t.capacidade && !excecoes.has(t.chave) && !comGuarda.includes(`"${t.chave}"`))
          .map((t) => t.chave);
      })(), []);
 
@@ -17377,20 +17386,42 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        [true, true]);
   }
   const nad98 = codigo98(ler98('src/features/home/NovaAtividadeDialog.tsx'));
-  eq('R163: o diálogo do "+" esconde as DUAS perguntas de quem não tem a chave — e deixa a porta do plantão (R117), que sempre foi do técnico',
-     [/const podeAbrirChamado = podeVer\("chamados\.novo"\) !== false;/.test(nad98),
-      /\) : !podeAbrirChamado \? \(/.test(nad98),
+  // R294 (U144): a chave do diálogo virou `atividades.nova`. Ele SEMPRE criou
+  // `natureza: interno` — nunca abriu chamado de campo —, e travá-lo com a
+  // chave da triagem de CAMPO dava ao OPERACIONAL a tela do técnico ("o
+  // chamado chega a você pela programação"). A R163 continua valendo para quem
+  // ela descreve: o TÉCNICO não cria atividade, e o "+" dele é o plantão.
+  eq('R163/R294: o diálogo do "+" esconde as DUAS perguntas de quem não pode CRIAR ATIVIDADE — e deixa a porta do plantão (R117), que sempre foi do técnico',
+     [/const podeCriarAtividade = podeVer\("atividades\.nova"\) !== false;/.test(nad98),
+      /\) : !podeCriarAtividade \? \(/.test(nad98),
       /onClick=\{\(\) => setModoPlantao\(true\)\}/.test(nad98),
-      /Registrar atendimento de plantão/.test(nad98)],
-     [true, true, true, true]);
+      /Registrar atendimento de plantão/.test(nad98),
+      // e NÃO sobrou nenhum uso da chave velha aqui: se sobrar, volta a
+      // existir a tela que trancou o Erik
+      /"chamados\.novo"/.test(nad98)],
+     [true, true, true, true, false]);
   const dash98 = codigo98(ler98('src/routes/_authenticated/dashboard.tsx'));
   eq('R163: o campo de IA (que cria chamado) só aparece para quem pode abrir; o "+" continua para todo mundo (é a porta do plantão)',
      [/\{podeAbrirChamado && <CriarRapido \/>\}/.test(dash98),
       /podeAbrirChamado && \(\s*<button/.test(dash98),
       /aria-label="Criar uma nova atividade"/.test(dash98)],
      [true, false, true]);
-  eq('R163: a chave é a MESMA nos três lugares — rotas, diálogo e Início leem "chamados.novo", não uma lista de cargos copiada',
-     [(nad98.match(/"chamados\.novo"/g) ?? []).length, (dash98.match(/"chamados\.novo"/g) ?? []).length], [1, 1]);
+  // R294: são DUAS chaves porque são DUAS perguntas — "posso abrir chamado de
+  // campo?" e "posso criar atividade?". O que a asserção guarda não mudou:
+  // cada tela pergunta à MATRIZ, uma chave, e nunca a uma lista de cargos
+  // copiada. O campo de I.A. da Início fica com `chamados.novo` porque ele
+  // pode mesmo criar natureza `campo` — quem decide a natureza é a I.A.
+  eq('R163/R294 CRÍTICO: cada tela lê UMA chave da matriz, e a chave certa — o diálogo pergunta por `atividades.nova`, o campo de I.A. da Início por `chamados.novo` (ele cria natureza campo), e nenhum dos dois carrega lista de cargos copiada',
+     [(nad98.match(/"atividades\.nova"/g) ?? []).length,
+      (nad98.match(/"chamados\.novo"/g) ?? []).length,
+      (dash98.match(/"chamados\.novo"/g) ?? []).length,
+      // o que prova "pergunta à matriz" é a CHAMADA, não a ausência de
+      // `cargo ===` no arquivo: a Início compara cargo para o recorte do
+      // técnico (R263), que é outra coisa, e medir isso aqui acusaria código
+      // correto.
+      /podeVer\("atividades\.nova"\)/.test(nad98),
+      /podeVer\("chamados\.novo"\)/.test(dash98)],
+     [1, 0, 1, true, true]);
 
   // ── R164: valores da visita só para quem vê valores ──────────────────────
   const pag98 = ler98('src/routes/_authenticated/visita.$id.pagamento.tsx');
@@ -20099,11 +20130,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true]);
 
   // ── R241: quem responde por trabalho técnico ──────────────────────────────
-  // R244 (U127): o OPERACIONAL entrou — é para ele que o Nicholas e o Erik vão
-  eq('R241/R244 CRÍTICO: os cargos de campo são o técnico, o OPERACIONAL e o admin — comercial e SAC montam a visita mas não vão ao prédio',
+  // R244 (U127) pôs o OPERACIONAL aqui; a R294 (14/09/2026) o TIROU: "pode
+  // remover o Nicholas e o Erik da lista de quem pode ser responsável por
+  // chamado em campo, vamos manter essa parte para os técnicos de campo".
+  // O ADMIN fica — tirá-lo tiraria o Davi e o Vinicius das listas sem ninguém
+  // pedir, e a R241 existe justamente para o admin fazer visita quando a
+  // equipe está cheia.
+  eq('R294 CRÍTICO: os cargos de campo são o técnico e o admin — o OPERACIONAL saiu (ele executa ATIVIDADE, não chamado), e comercial e SAC montam a visita mas não vão ao prédio',
      [TEC.CARGOS_DE_CAMPO, TEC.ehCargoDeCampo('tecnico'), TEC.ehCargoDeCampo('admin'), TEC.ehCargoDeCampo('operacional'),
       TEC.ehCargoDeCampo('comercial'), TEC.ehCargoDeCampo('sac'), TEC.ehCargoDeCampo(null)],
-     [['tecnico', 'operacional', 'admin'], true, true, true, false, false, false]);
+     [['tecnico', 'admin'], true, true, false, false, false, false]);
   eq('R241: na lista, técnico vem primeiro (cada grupo em ordem alfabética) e quem não é técnico mostra o cargo entre parênteses',
      [TEC.ordenarResponsaveis([
         { nome: 'Zeca', cargo: 'tecnico' }, { nome: 'Ana', cargo: 'admin' }, { nome: 'Bia', cargo: 'tecnico' },
@@ -20451,7 +20487,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── R244: o perfil OPERACIONAL ───────────────────────────────────────────
   eq('R244 CRÍTICO: o OPERACIONAL abre Início, Calendário, Clientes e Perfil — e NADA mais — no catálogo (padrão) e no menu; não é gestor (gerencial/data.ts continua admin/comercial/sac) e abre a Início sem recorte',
-     [TL7.TELAS.filter((t) => t.padrao.operacional).map((t) => t.chave).sort(),
+     // R294/U144: `.filter((t) => !t.capacidade)` — o operacional ganhou a
+     // CAPACIDADE de criar atividade, e isso não é uma página nova. A R244
+     // continua dizendo o que dizia: as PÁGINAS dele são quatro.
+     [TL7.TELAS.filter((t) => t.padrao.operacional && !t.capacidade).map((t) => t.chave).sort(),
       TL7.PAPEIS.map((p) => p.chave),
       NAV7.itensDoCargo('operacional').map((i) => i.tela),
       TL7.podeAbrir('gerencial', 'operacional', undefined), TL7.podeAbrir('clientes', 'operacional', undefined),
@@ -22339,6 +22378,76 @@ assincronas.push(async () => {
        return [comVelho, comZero];
      })(),
      [[], 4]);
+}
+
+// ── R294/U144 — CRIAR ATIVIDADE NÃO É ABRIR CHAMADO DE CAMPO (14/09/2026) ─
+//
+// Davi: "O Erik foi criar uma atividade para ele executar em breve, e o
+// sistema confundiu um ponto importante".
+//
+// O pop-up "Nova atividade" da Início cria SEMPRE `natureza: interno` — ele
+// nunca abriu chamado de campo. Mas o corpo dele era travado por
+// `chamados.novo`, que é a chave da triagem `/chamados/novo`, de onde sai o
+// chamado DE CAMPO. Quem não tem essa chave recebia, no lugar do formulário,
+// a tela do técnico: "o chamado chega a você pela programação; o que você
+// registra por aqui é o atendimento de plantão".
+//
+// Para o TÉCNICO isso é verdade (R163). Para o OPERACIONAL, que trabalha na
+// sede e cria as próprias atividades, é porta trancada com a placa errada.
+{
+  const fsR294 = require('fs');
+  const TL294 = carregar('src/lib/telas.ts');
+  const TEC294 = carregar('src/features/gerencial/tecnicos.ts');
+  const nad294 = fsR294.readFileSync('src/features/home/NovaAtividadeDialog.tsx', 'utf8');
+
+  // A raiz: as duas chaves existem e dizem coisas DIFERENTES.
+  eq('R294 CRÍTICO: são duas chaves porque são duas perguntas — o OPERACIONAL CRIA ATIVIDADE e NÃO abre chamado de campo. Uma chave só para as duas foi o que deu ao Erik a tela do técnico',
+     (() => {
+       const nova = TL294.TELAS.find((t) => t.chave === "atividades.nova");
+       const campo = TL294.TELAS.find((t) => t.chave === "chamados.novo");
+       return [nova?.padrao.operacional, campo?.padrao.operacional,
+               nova?.padrao.tecnico, campo?.padrao.tecnico,
+               nova?.padrao.sac, nova?.padrao.comercial];
+     })(),
+     [true, false, false, false, true, true]);
+
+  // E o diálogo lê a chave certa — é a linha que conserta o defeito.
+  eq('R294 CRÍTICO: o pop-up que cria `natureza: interno` pergunta por `atividades.nova`, e NÃO pela chave da triagem de campo — a tela que trancou o Erik só volta se esta linha voltar',
+     [/podeVer\("atividades\.nova"\)/.test(nad294),
+      /podeVer\("chamados\.novo"\)/.test(nad294),
+      /natureza: "interno"/.test(nad294)],
+     [true, false, true]);
+
+  // A outra metade da R294: o operacional sai dos cargos de campo.
+  eq('R294 CRÍTICO: o OPERACIONAL não é mais responsável por chamado de campo nem por visita — e o ADMIN fica, porque o que o Davi mandou tirar foi o cargo operacional',
+     [TEC294.ehCargoDeCampo("operacional"), TEC294.ehCargoDeCampo("tecnico"),
+      TEC294.ehCargoDeCampo("admin"), [...TEC294.CARGOS_DE_CAMPO]],
+     [false, true, true, ["tecnico", "admin"]]);
+
+  // A chave é CAPACIDADE, não página — e a marca é o que mantém as duas
+  // medidas da casa (guarda por rota; as quatro páginas do operacional)
+  // medindo páginas em vez de ganhar uma exceção com o nome dela.
+  eq('R294: `atividades.nova` é marcada como CAPACIDADE — ela liga um gesto dentro da Início, não abre rota. Sem a marca, ou ela viraria exceção nominal nas duas varreduras de página, ou a R244 passaria a dizer que o operacional abre cinco telas',
+     (() => {
+       const nova = TL294.TELAS.find((t) => t.chave === "atividades.nova");
+       const paginas = TL294.TELAS.filter((t) => t.padrao.operacional && !t.capacidade).map((t) => t.chave).sort();
+       return [nova?.capacidade, nova?.rota, paginas];
+     })(),
+     [true, "/dashboard", ["calendario", "clientes", "dashboard", "perfil"]]);
+
+  // A migration semeia a chave. Sem ela, a asserção "catálogo e semente têm as
+  // mesmas telas" acende, e a chave some da matriz do Administrativo — o Davi
+  // não conseguiria mudá-la.
+  eq('U144: a migration semeia as quatro linhas da chave nova, com ON CONFLICT DO NOTHING (escolha do Davi na matriz vence a semente) e sem tocar em `chamados.novo`',
+     (() => {
+       const u = fsR294.readFileSync('supabase/migrations/20261006090000_u144_atividade_nao_e_chamado_de_campo.sql', 'utf8');
+       const corpo = u.slice(u.indexOf('INSERT INTO public.permissoes_tela'), u.indexOf('COMMIT;'));
+       return [(corpo.match(/\('atividades\.nova'/g) ?? []).length,
+               /ON CONFLICT \(tela, cargo\) DO NOTHING/.test(corpo),
+               /UPDATE public\.permissoes_tela/.test(u),
+               /'chamados\.novo'/.test(corpo)];
+     })(),
+     [4, true, false, false]);
 }
 
 // ── O MARCO ZERO NÃO É DEFEITO (14/09/2026) ───────────────────────────────
