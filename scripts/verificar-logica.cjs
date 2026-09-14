@@ -21594,6 +21594,92 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true, true, true, true]);
 }
 
+// ── O MOTOR DE ORÇAMENTO ENTRA NO VERIFICADOR (14/09/2026) ────────────────
+//
+// A revisão completa achou o buraco mais silencioso do repositório: os quatro
+// arquivos que calculam QUANTO A PROPOSTA CUSTA não tinham uma única asserção.
+// E não tinham como ter — a conta vivia dentro de uma função `async` que
+// consulta o banco e escreve de volta, então provar "22 portas dão 1 switch de
+// 24" exigiria um banco.
+//
+// A matemática foi separada (regra da casa: lógica pura primeiro). O que era
+// comentário no topo do arquivo — "as fórmulas da planilha v12, confirmadas com
+// os técnicos" — passa a ser prova que roda a cada mudança.
+{
+  const DIM = carregar('src/features/orcamento/dimensionamento.ts');
+
+  // O caso realista: 10 câmeras PoE (EQ089: 1 porta PoE, 6 W cada) e 2
+  // roteadores (EQ001: 1 porta de rede, 0,65 A cada). Mais duas linhas que a
+  // soma TEM de ignorar: um switch que o próprio dimensionamento gerou, e um
+  // item marcado como removido.
+  const itens = [
+    { cod_eq: 'EQ089', qtd: 10 },
+    { cod_eq: 'EQ001', qtd: 2 },
+    { cod_eq: 'EQ159', qtd: 5 },              // saída do próprio dimensionamento
+    { cod_eq: 'EQ089', qtd: 99, removido: true },
+    { cod_eq: 'EQ_QUE_NAO_EXISTE', qtd: 3 },
+  ];
+
+  eq('ORÇAMENTO CRÍTICO: a soma de consumo ignora o que o PRÓPRIO dimensionamento gerou e o que foi removido — sem isso o switch que ele acabou de somar entraria na conta do switch seguinte, e o projeto cresceria a cada recálculo',
+     DIM.somarConsumo(itens),
+     { portasPoe: 10, portasRede: 2, wattsPoe: 60, amps12: 1.3, wattsDc: 0 });
+
+  // A propriedade que garante a idempotência declarada no topo do arquivo:
+  // realimentar as saídas dá consumo ZERO, então o segundo recálculo devolve
+  // o mesmo resultado do primeiro.
+  eq('ORÇAMENTO CRÍTICO: realimentar as SAÍDAS do dimensionamento soma zero — é o que faz o recálculo ser idempotente, como o cabeçalho do arquivo promete',
+     DIM.somarConsumo(DIM.dimensionar({ portasPoe: 10, portasRede: 2, wattsPoe: 60, amps12: 1.3, wattsDc: 0 }, true)),
+     { portasPoe: 0, portasRede: 0, wattsPoe: 0, amps12: 0, wattsDc: 0 });
+
+  // As TRÊS faixas de switch da planilha, nas bordas — que é onde regra de
+  // faixa erra: ≤8 · ≤16 · >16 com ⌈portas/24⌉.
+  const so = (portas) => DIM.dimensionar(
+    { portasPoe: portas, portasRede: 0, wattsPoe: 0, amps12: 0, wattsDc: 0 }, false,
+  ).map((i) => i.cod_eq + ':' + i.qtd);
+  eq('ORÇAMENTO: as três faixas de switch da planilha, nas BORDAS — 8 e 9, 16 e 17, 24 e 25 — e zero porta não pede switch nenhum',
+     [so(0), so(8), so(9), so(16), so(17), so(24), so(25), so(48), so(49)],
+     [[], ['EQ159:1'], ['EQ160:1'], ['EQ160:1'], ['EQ212:1'], ['EQ212:1'], ['EQ212:2'], ['EQ212:2'], ['EQ212:3']]);
+
+  // Fontes 12V: corrente × 1,2 de margem ÷ 5 A, arredondando para cima. A
+  // margem é o que separa 4,0 A (uma fonte) de 4,2 A (duas).
+  const fontesDe = (amps) => DIM.dimensionar(
+    { portasPoe: 0, portasRede: 0, wattsPoe: 0, amps12: amps, wattsDc: 0 }, false,
+  ).map((i) => i.cod_eq + ':' + i.qtd);
+  eq('ORÇAMENTO: a margem de 1,2 das fontes 12V é o que separa 4,0 A (uma fonte) de 4,2 A (duas) — sem ela o projeto sairia no limite',
+     [fontesDe(0), fontesDe(1.3), fontesDe(4), fontesDe(4.2), fontesDe(8.3), fontesDe(8.4)],
+     [[], ['EQ174:1'], ['EQ174:1'], ['EQ174:2'], ['EQ174:2'], ['EQ174:3']]);
+
+  // Nobreak e baterias só existem com redundância energética contratada
+  // (resposta da página Complementos). Sem ela, nem um nem outro.
+  const consumoCheio = { portasPoe: 10, portasRede: 2, wattsPoe: 60, amps12: 10, wattsDc: 12 };
+  eq('ORÇAMENTO CRÍTICO: nobreak e bateria só entram com REDUNDÂNCIA ENERGÉTICA contratada — sem ela o projeto não os lista, e o mesmo consumo com ela lista os dois',
+     [DIM.dimensionar(consumoCheio, false).map((i) => i.cod_eq),
+      DIM.dimensionar(consumoCheio, true).map((i) => i.cod_eq)],
+     [['EQ160', 'EQ174'], ['EQ160', 'EQ174', 'EQ182', 'EQ187']]);
+
+  // A conta do nobreak, com os números da planilha: carga = (12V×A + PoE + DC)
+  // × 1,15 de overhead; VA = carga ÷ 0,85; e a autonomia de 4 h vira Ah ÷ 56
+  // (a bateria é de 70 Ah, mas só 80% é usável).
+  {
+    const saida = DIM.dimensionar(consumoCheio, true);
+    const nobreak = saida.find((i) => i.cod_eq === 'EQ182');
+    const bateria = saida.find((i) => i.cod_eq === 'EQ187');
+    eq('ORÇAMENTO CRÍTICO: a conta do nobreak e das baterias — 120 W (12V) + 60 W (PoE) + 12 W (DC) = 192 W, ×1,15 de overhead = 220,8 W, ÷0,85 = 260 VA → 1 nobreak; e 4 h de autonomia = 92 Ah ÷ 56 úteis → 2 baterias',
+       [nobreak.qtd, bateria.qtd,
+        nobreak.observacao.includes('221 W'), nobreak.observacao.includes('260 VA'),
+        bateria.observacao.includes('92 Ah')],
+       [1, 2, true, true, true]);
+  }
+
+  // E a fronteira do nobreak: 2 kVA por unidade.
+  eq('ORÇAMENTO: acima de 2 kVA entra o segundo nobreak — a fronteira é por unidade, não por projeto',
+     [DIM.dimensionar({ portasPoe: 0, portasRede: 0, wattsPoe: 0, amps12: 122, wattsDc: 0 }, true)
+        .filter((i) => i.cod_eq === 'EQ182').map((i) => i.qtd),
+      DIM.dimensionar({ portasPoe: 0, portasRede: 0, wattsPoe: 0, amps12: 130, wattsDc: 0 }, true)
+        .filter((i) => i.cod_eq === 'EQ182').map((i) => i.qtd)],
+     [[1], [2]]);
+}
+
 // ── S10 — os cabeçalhos de segurança HTTP ─────────────────────────────────
 //
 // Esta pendência derrubou o app DUAS VEZES em 20/08/2026, e o documento dela

@@ -74,53 +74,62 @@ const OUTPUT_CODES = [EQ_SWITCH_8P, EQ_SWITCH_16P, EQ_SWITCH_24P, EQ_FONTE_5A, E
 
 const AUTONOMIA_HORAS = 4; // padrão da planilha (célula C75)
 
-/** Recalcula switches/fontes/nobreak/baterias do projeto e hospeda no bloco CENT. */
-export async function reconcileDimensionamentoProjeto(visitaId: string): Promise<void> {
-  // 1) Blocos — o dimensionamento é hospedado na Central de Portaria Remota
-  const { data: blocos } = await supabase
-    .from("visita_blocos" as any)
-    .select("id, tipo_bloco")
-    .eq("visita_id", visitaId);
-  const todos = ((blocos as any[]) ?? []);
-  const cent = todos.find((b) => b.tipo_bloco === "CENT");
-  if (!cent) return; // sem central (projeto não-PR): dimensionamento fica de fora por ora
+// ── A MATEMÁTICA, SEPARADA DO BANCO ────────────────────────────────────────
+//
+// Até 14/09/2026 tudo isto vivia dentro do `reconcile…` abaixo, misturado com
+// as consultas — e por isso o motor de orçamento inteiro não tinha UMA
+// asserção: para provar "22 portas dão 1 switch de 24" era preciso um banco.
+// As duas funções abaixo são as fórmulas da planilha e nada mais; o
+// verificador as chama direto.
 
-  // 2) Redundância energética (página Complementos) — habilita nobreak/baterias
-  const { data: orc } = await supabase
-    .from("visita_orcamentos")
-    .select("redundancia_energetica")
-    .eq("visita_id", visitaId)
-    .maybeSingle();
-  const comRedundancia = (orc as any)?.redundancia_energetica === true;
+export interface ConsumoTotal {
+  portasPoe: number;
+  portasRede: number;
+  wattsPoe: number;
+  amps12: number;
+  wattsDc: number;
+}
 
-  // 3) Consumos de TODOS os itens do projeto (auto + manuais, não removidos),
-  //    ignorando as próprias saídas do dimensionamento
-  const blocoIds = todos.map((b) => b.id);
-  const { data: itens } = await supabase
-    .from("visita_bloco_itens" as any)
-    .select("cod_eq, qtd, removido")
-    .in("visita_bloco_id", blocoIds);
-  const rows = ((itens as any[]) ?? []).filter(
-    (r) => !r.removido && !OUTPUT_CODES.includes(r.cod_eq),
-  );
+export interface ItemDimensionado {
+  cod_eq: string;
+  qtd: number;
+  observacao: string;
+}
 
-  let portasPoe = 0;
-  let portasRede = 0;
-  let wattsPoe = 0;
-  let amps12 = 0;
-  let wattsDc = 0;
-  for (const r of rows) {
+/**
+ * Soma o consumo dos itens do projeto.
+ *
+ * Ignora o que o próprio dimensionamento gerou (`OUTPUT_CODES`) e o que foi
+ * removido — senão o switch que ele acabou de somar entraria na conta do
+ * switch seguinte, e o número cresceria a cada recálculo.
+ */
+export function somarConsumo(
+  itens: readonly { cod_eq: string; qtd: number | string; removido?: boolean }[],
+): ConsumoTotal {
+  const total: ConsumoTotal = { portasPoe: 0, portasRede: 0, wattsPoe: 0, amps12: 0, wattsDc: 0 };
+  for (const r of itens) {
+    if (r.removido) continue;
+    if (OUTPUT_CODES.includes(r.cod_eq)) continue;
     const c = CONSUMO[r.cod_eq];
     if (!c) continue;
     const q = Number(r.qtd) || 0;
-    portasPoe += (c.poe ?? 0) * q;
-    portasRede += (c.rede ?? 0) * q;
-    wattsPoe += (c.wattsPoe ?? 0) * q;
-    amps12 += (c.amps12 ?? 0) * q;
-    wattsDc += (c.wattsDc ?? 0) * q;
+    total.portasPoe += (c.poe ?? 0) * q;
+    total.portasRede += (c.rede ?? 0) * q;
+    total.wattsPoe += (c.wattsPoe ?? 0) * q;
+    total.amps12 += (c.amps12 ?? 0) * q;
+    total.wattsDc += (c.wattsDc ?? 0) * q;
   }
+  return total;
+}
 
-  const novos: { cod_eq: string; qtd: number; observacao: string }[] = [];
+/**
+ * As saídas do dimensionamento, na ordem em que a planilha as lista:
+ * switch, fontes 12V e — só com redundância energética contratada —
+ * nobreak e baterias.
+ */
+export function dimensionar(consumo: ConsumoTotal, comRedundancia: boolean): ItemDimensionado[] {
+  const { portasPoe, portasRede, wattsPoe, amps12, wattsDc } = consumo;
+  const novos: ItemDimensionado[] = [];
 
   // 4) Switch
   const portas = portasPoe + portasRede;
@@ -178,6 +187,41 @@ export async function reconcileDimensionamentoProjeto(visitaId: string): Promise
       });
     }
   }
+
+  return novos;
+}
+
+/** Recalcula switches/fontes/nobreak/baterias do projeto e hospeda no bloco CENT. */
+export async function reconcileDimensionamentoProjeto(visitaId: string): Promise<void> {
+  // 1) Blocos — o dimensionamento é hospedado na Central de Portaria Remota
+  const { data: blocos } = await supabase
+    .from("visita_blocos" as any)
+    .select("id, tipo_bloco")
+    .eq("visita_id", visitaId);
+  const todos = ((blocos as any[]) ?? []);
+  const cent = todos.find((b) => b.tipo_bloco === "CENT");
+  if (!cent) return; // sem central (projeto não-PR): dimensionamento fica de fora por ora
+
+  // 2) Redundância energética (página Complementos) — habilita nobreak/baterias
+  const { data: orc } = await supabase
+    .from("visita_orcamentos")
+    .select("redundancia_energetica")
+    .eq("visita_id", visitaId)
+    .maybeSingle();
+  const comRedundancia = (orc as any)?.redundancia_energetica === true;
+
+  // 3) Consumos de TODOS os itens do projeto (auto + manuais, não removidos),
+  //    ignorando as próprias saídas do dimensionamento
+  const blocoIds = todos.map((b) => b.id);
+  const { data: itens } = await supabase
+    .from("visita_bloco_itens" as any)
+    .select("cod_eq, qtd, removido")
+    .in("visita_bloco_id", blocoIds);
+  // a soma e as fórmulas são as funções puras acima — uma cópia só, que é
+  // a mesma que o verificador prova
+  const consumo = somarConsumo(((itens as any[]) ?? []) as any);
+
+  const novos = dimensionar(consumo, comRedundancia);
 
   // 7) Re-hospeda no CENT (remove as saídas antigas e insere as novas)
   await supabase
