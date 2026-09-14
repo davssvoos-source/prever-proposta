@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 160 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 161 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -163,6 +163,7 @@
 - [U135 — a revisão de margem das telas novas: o chip que a casa já tinha, a grade da folha e a régua (R275)](#u135-a-revisão-de-margem-das-telas-novas-o-chip-que-a-casa-já-tinha-a-grade-da-folha-e-a-régua-r275)
 - [U136 — o km sai das viaturas: a viagem passa a mapear quem, quando e onde (R276)](#u136-o-km-sai-das-viaturas-a-viagem-passa-a-mapear-quem-quando-e-onde-r276)
 - [U138 — a leva que saiu da revisão completa: a porta pública fecha, o baseline de tipos vai a ZERO, e três defeitos que ninguém via (R277–R280)](#u138-a-leva-que-saiu-da-revisão-completa-a-porta-pública-fecha-o-baseline-de-tipos-vai-a-zero-e-três-defeitos-que-ninguém-via-r277r280)
+- [U140 — os cinco que não dependiam do Davi: a fila do gestor, as cobranças na ficha, os cabeçalhos e o motor de orçamento provado (P20, R155, S10)](#u140-os-cinco-que-não-dependiam-do-davi-a-fila-do-gestor-as-cobranças-na-ficha-os-cabeçalhos-e-o-motor-de-orçamento-provado-p20-r155-s10)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -13072,3 +13073,103 @@ acima de 1.100 linhas). Estão todos no painel da revisão, com decisão marcáv
 **Números.** Verificador: 3.359 asserções, 0 falharam. `tsc`: **0** (era 57). Build completa.
 Migration **U137 PENDENTE** — o app já vai publicado com a porta fechada, mas a
 janela do banco só fecha quando ela rodar.
+
+## U140 — os cinco que não dependiam do Davi: a fila do gestor, as cobranças na ficha, os cabeçalhos e o motor de orçamento provado (P20, R155, S10)
+
+**O pedido.** Depois do painel da revisão, o Davi mandou: "Faça os itens do
+tópico O que eu faço a seguir, sem precisar de você" — cinco, e depois
+"continue fazendo os itens que você pode fazer que não dependem de mim".
+Esta entrada é os cinco.
+
+**1. O buraco negro do `em_conferencia` (P20).** Analisar a cobrança FECHAVA o
+caminho de aprovar: `analisarCobranca` grava `em_conferencia` logo depois de
+salvar a análise da I.A., e os três gates da tela mais a porta da U80 exigiam
+`a_analisar`. O chamado saía da fila do financeiro com dinheiro dentro.
+
+O mais instrutivo é que a U80 **já tinha visto metade disto**: o item 113 da
+conferência dela conta os chamados presos em `em_conferencia` e os chama de
+"hoje invisíveis para toda a operação". Ela consertou a CONTAGEM — os painéis
+passaram a somá-los como pendentes — e deixou a DECISÃO trancada por dez dias.
+É o padrão que vale guardar: **medir um sintoma não conserta a causa**, e uma
+conferência que mede sem destravar deixa a dívida parecendo resolvida.
+
+O conserto não apagou o estado (ele é informação de verdade, e dois módulos
+dependem dela): virou `podeDecidirCobranca`, e a tela, o sinal da Início e a
+porta do banco passaram a perguntar a ela. A trava da duplicata continua
+inteira — só que agora protege os três estados DECIDIDOS em vez de exigir um.
+
+**2. A fila de validação do gestor (R155).** O sinal existia desde sempre e
+ninguém lia: toda atividade carregava `aConferir` e um `grep` não achava
+NENHUM leitor. A faixa entra como seleção do painel, com o número e a lista
+saindo da mesma função.
+
+O primeiro desenho estava errado e o navegador mostrou: montei a contagem
+sobre `paraPaineis`, que já vem recortado por vínculo — e o preset padrão tem
+vínculo. **A faixa sumia justamente na visão que o gestor abre.** A fila não é
+fatia da visão atual, é responsabilidade sobre tudo; passou a contar a união
+inteira, e a lista que ela abre sai da mesma base. Isso pediu reapontar o pino
+que guardava "a lista sai da MESMA base que a peça contou" — a regra não
+afrouxou, ficou mais exata: cada peça casada com a sua base.
+
+**3. Cobranças na ficha do cliente.** Peça barata que faltava há meses. Entra
+atrás do mesmo portão dos Contratos, e por um motivo que vale escrever: a
+policy `cobrancas_select` FILTRA LINHAS em silêncio, então sem o gate o card
+ficaria eternamente vazio para o SAC — e **vazio-por-permissão parece
+vazio-de-verdade**. A conta trata `cancelada` como rastro, não como dinheiro.
+
+**4. Os cabeçalhos de segurança (S10).** Esta derrubou o app duas vezes em
+20/08, e o documento dela fecha com a causa: "eu inverti a ordem e o app caiu".
+A prescrição era (1) achar um jeito de exercitar, (2) os cabeçalhos que não
+olham conteúdo, (3) a CSP por último. Segui nessa ordem, e **o passo 1 foi o
+que destravou**: a raiz era que `src/server.ts` só roda em produção, então toda
+tentativa virava teste em produção.
+
+A lógica saiu de lá e virou função pura — o verificador a chama com Response
+de 200, 304 e 500. E fui além: levantei localmente o build do preset
+`node-server` (o do pacote Windows) e conferi os cabeçalhos numa requisição
+HTTP de verdade, com a página renderizando. É a primeira vez que este caminho
+é exercitado sem publicar.
+
+Duas armadilhas ficaram guardadas por asserção: **304 não pode ter corpo** (e
+reconstruir a resposta com corpo levanta TypeError — derrubaria a segunda
+visita de cada pessoa), e **`geolocation=(self)` é permissão** — um
+`geolocation=()` seco mataria a chegada da viatura sem erro nenhum na tela.
+
+Não entrou: a CSP (passo 3, precisa de nonce por request) e os assets
+estáticos — MEDIDO, o HTML recebe os cabeçalhos e um `/assets/*.css` não,
+porque é servido pela camada da plataforma. Cobrir isso pede `routeRules` do
+Nitro, e o `vite.config.ts` é o wrapper da Lovable com aviso de não mexer:
+fica para a saída dela (R280).
+
+**5. O motor de orçamento entra no verificador.** Era o buraco mais silencioso
+do repositório: os quatro arquivos que calculam **quanto a proposta custa** não
+tinham uma única asserção, num verificador com 3.374. E não tinham como ter —
+a conta do dimensionamento vivia dentro de uma função `async` que consulta o
+banco e escreve de volta.
+
+Separei a matemática (`somarConsumo` e `dimensionar`) e o `reconcile…` passou a
+CHAMÁ-LA. Uma cópia só: deixar a conta duplicada faria o verificador provar a
+cópia que não roda, que é pior do que não provar nada. O `alarmeEngine` já era
+puro — só faltava alguém escrever a prova.
+
+O que virou asserção é o que estava em comentário no topo dos arquivos: as três
+faixas de switch nas bordas (8/9, 16/17, 24/25), a margem de 1,2 das fontes que
+separa 4,0 A de 4,2 A, a conta inteira do nobreak (192 W × 1,15 = 220,8 W ÷
+0,85 = 260 VA → 1 nobreak; 4 h = 92 Ah ÷ 56 úteis → 2 baterias), a
+idempotência (realimentar as saídas soma zero), o teto de 72 zonas do alarme —
+que ACUSA em vez de devolver um número que a instalação não sustenta —, o
+pacote de 5 do sensor de sobrepor, e o Módulo Guarita com seus 16 canais em
+**dois bancos de 8**, onde a conta é o maior dos dois e nunca a soma dividida
+por 16.
+
+As do dimensionamento passaram de primeira, o que confirma que a extração não
+mudou comportamento. As do alarme não: eu tinha inventado os códigos dos
+sensores em vez de ler a tabela, e o verificador me corrigiu cinco vezes antes
+de eu ir buscar `SENSOR_INFO`. Fica registrado porque é o valor da asserção
+escrita contra o código, não contra a memória.
+
+**Números.** Verificador: 3.390 asserções, 0 falharam (eram 3.359 no começo do dia).
+`tsc`: 0. Build completa. Migration **U139 rodada pelo Davi em 14/09/2026**.
+
+**O que falta do motor de orçamento:** `blockAutoItems.ts` (503 linhas) tem
+muito mais regra do que os dois helpers que provei. É o próximo pedaço.

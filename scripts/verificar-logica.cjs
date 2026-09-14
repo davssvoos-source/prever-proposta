@@ -21680,6 +21680,82 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [[1], [2]]);
 }
 
+// ── O ALARME E A GUARITA (14/09/2026) ─────────────────────────────────────
+{
+  const AL = carregar('src/features/orcamento/alarmeEngine.ts');
+  const BA = carregar('src/features/orcamento/blockAutoItems.ts');
+  // o motor ignora quantidade zero: a linha nem chega a existir na lista
+  const qtdDe = (r, cod) => ((r.itens.find((i) => i.cod_eq === cod) ?? {}).qtd ?? 0);
+
+  // ── A central COM FIO cobre 8 zonas; cada XEZ 4008 acrescenta 8 ──────────
+  const comFio = (n, extra) => AL.computeAlarme(Object.assign({
+    ramo: 'CAB',
+    zonas: Array.from({ length: n }, () => ({ tipo: 'ivp_int', qtd: 1, metros: 0, tx: false })),
+  }, extra || {}));
+
+  eq('ORÇAMENTO/ALARME CRÍTICO: a central com fio cobre 8 zonas e cada expansor acrescenta 8 — as bordas (8, 9, 16, 17) são onde regra de faixa erra',
+     [qtdDe(comFio(8), "ALM_XEZ4008"), qtdDe(comFio(9), "ALM_XEZ4008"),
+      qtdDe(comFio(16), "ALM_XEZ4008"), qtdDe(comFio(17), "ALM_XEZ4008"),
+      qtdDe(comFio(72), "ALM_XEZ4008")],
+     [0, 1, 1, 2, 8]);
+
+  eq('ORÇAMENTO/ALARME CRÍTICO: acima de 72 zonas o projeto não cabe numa central, e o motor ACUSA em vez de devolver um número que a instalação não sustenta',
+     [comFio(72).alertas.length, comFio(73).alertas.length,
+      comFio(73).alertas[0].tipo, comFio(73).alertas[0].msg.includes("72")],
+     [0, 1, "error", true]);
+
+  // ── A central de Portaria Remota já tem o painel: não se duplica ─────────
+  eq('ORÇAMENTO/ALARME CRÍTICO: em projeto de Portaria Remota a central, o GPRS, a bateria e a sirene NÃO entram de novo — é o mesmo painel físico que já vem no bloco CENT, e duplicá-lo inflaria a proposta',
+     [comFio(4).itens.filter((i) => ["ALM_AMT4010", "ALM_XEG4000", "ALM_XB1270", "ALM_SIRMOREY"].includes(i.cod_eq)).length,
+      comFio(4, { portariaRemota: true }).itens.filter((i) => ["ALM_AMT4010", "ALM_XEG4000", "ALM_XB1270", "ALM_SIRMOREY"].includes(i.cod_eq)).length],
+     [4, 0]);
+
+  // ── O sensor de sobrepor vende em pacote de 5 ────────────────────────────
+  const sobrepor = (qtdPorZona, zonas) => AL.computeAlarme({
+    ramo: 'CAB',
+    zonas: Array.from({ length: zonas }, () => ({ tipo: 'porta_int', qtd: qtdPorZona, metros: 0, tx: false })),
+  });
+  eq('ORÇAMENTO/ALARME: o sensor de sobrepor é vendido em PACOTE DE 5 — 5 unidades dão 1 pacote, 6 dão 2. Comprar por unidade seria pedir o que o fornecedor não vende',
+     [qtdDe(sobrepor(1, 5), "ALM_XASSOBP"), qtdDe(sobrepor(2, 3), "ALM_XASSOBP"),
+      qtdDe(sobrepor(1, 10), "ALM_XASSOBP")],
+     [1, 2, 2]);
+
+  // ── O teto de 3 sensores por zona é aparado, não recusado ────────────────
+  eq('ORÇAMENTO/ALARME: a zona aceita no máximo 3 sensores e o motor APARA o excesso (não recusa) — e no mínimo 1, para uma zona sem número não sumir da conta',
+     [qtdDe(AL.computeAlarme({ ramo: "CAB", zonas: [{ tipo: "ivp_int", qtd: 9, metros: 0, tx: false }] }), "ALM_IVP5311"),
+      qtdDe(AL.computeAlarme({ ramo: "CAB", zonas: [{ tipo: "ivp_int", qtd: 0, metros: 0, tx: false }] }), "ALM_IVP5311"),
+      AL.MAX_SENSORES_POR_ZONA],
+     [3, 1, 3]);
+
+  // ── O cabo vem em caixa de 300 m, e o TX troca cabo por rádio ────────────
+  eq('ORÇAMENTO/ALARME: o cabo é comprado em CAIXA DE 300 m, e o sensor convertido para TX 4020 não puxa metro nenhum — é a troca de cabeamento por rádio',
+     [qtdDe(AL.computeAlarme({ ramo: "CAB", zonas: [{ tipo: "ivp_int", qtd: 1, metros: 300, tx: false }] }), "EQ302"),
+      qtdDe(AL.computeAlarme({ ramo: "CAB", zonas: [{ tipo: "ivp_int", qtd: 1, metros: 301, tx: false }] }), "EQ302"),
+      AL.computeAlarme({ ramo: "CAB", zonas: [{ tipo: "ivp_int", qtd: 2, metros: 900, tx: true }] }).totalMetros,
+      qtdDe(AL.computeAlarme({ ramo: "CAB", zonas: [{ tipo: "ivp_int", qtd: 2, metros: 900, tx: true }] }), "ALM_TX4020")],
+     [1, 2, 0, 2]);
+
+  // ── O ramo SEM FIO é outra central, e o repetidor é decisão do técnico ───
+  eq('ORÇAMENTO/ALARME: o ramo SEM FIO monta outra central (AMT 8000 + GPRS + sirene + teclado, porque a central não acompanha teclado) e não pede cabo nem expansor',
+     [AL.computeAlarme({ ramo: "SF", zonas: [{ tipo: "sf_ivp_int", qtd: 1, metros: 0, tx: false }] }).itens.map((i) => i.cod_eq).sort(),
+      qtdDe(AL.computeAlarme({ ramo: "SF", zonas: [], repetidores: 3 }), "ALM_REP8000")],
+     [["ALM_AMT8000", "ALM_IVP4101", "ALM_XAG8000", "ALM_XAT8000", "ALM_XSS8000"], 3]);
+
+  // ── A guarita: 16 canais, em DOIS bancos de 8 ────────────────────────────
+  // O módulo tem 16 canais, mas eles NÃO são intercambiáveis: 8 para RTX e 8
+  // para RMF. Somar os dois e dividir por 16 daria metade dos módulos.
+  eq('ORÇAMENTO/GUARITA CRÍTICO: o Módulo Guarita divide 16 canais em DOIS bancos de 8 (RTX e RMF) — a conta é o MAIOR dos dois, nunca a soma dividida por 16',
+     [BA.qtdModulosGuarita(9, 0, false), BA.qtdModulosGuarita(0, 9, false),
+      BA.qtdModulosGuarita(8, 8, false), BA.qtdModulosGuarita(9, 9, false),
+      BA.qtdModulosGuarita(0, 0, false), BA.qtdModulosGuarita(0, 0, true)],
+     [2, 2, 1, 2, 0, 1]);
+
+  eq('ORÇAMENTO/GUARITA: o receptor Multifunção é uma sub-central de 4 antenas — 4 antenas cabem em um, 5 pedem dois',
+     [BA.qtdMultifuncao(0), BA.qtdMultifuncao(1), BA.qtdMultifuncao(4),
+      BA.qtdMultifuncao(5), BA.qtdMultifuncao(8), BA.qtdMultifuncao(-3)],
+     [0, 1, 1, 2, 2, 0]);
+}
+
 // ── S10 — os cabeçalhos de segurança HTTP ─────────────────────────────────
 //
 // Esta pendência derrubou o app DUAS VEZES em 20/08/2026, e o documento dela
