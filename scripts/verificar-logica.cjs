@@ -3117,7 +3117,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const u47 = fs29.readFileSync('supabase/migrations/20260822050000_u47_duplas_de_campo.sql', 'utf8');
   const prog = fs29.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8');
   const pop = fs29.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
-  const dlg = fs29.readFileSync('src/features/duplas/DialogoDuplas.tsx', 'utf8');
+  const dlg = fs29.readFileSync('src/features/duplas/DialogoEquipes.tsx', 'utf8');
   const conv = fs29.readFileSync('src/lib/convites.functions.ts', 'utf8');
   const CS2 = carregar('src/lib/chamado-status.ts');
 
@@ -3236,7 +3236,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /\{visiveis\.length > 0 && \(/.test(fs29.readFileSync('src/features/paineis/PainelBase.tsx', 'utf8')),
      true);
   eq('o painel tem o botão que abre o pop-up de cadastro de duplas',
-     /setDuplasAberto\(true\)/.test(pop) && /<DialogoDuplas aberto=\{duplasAberto\}/.test(pop), true);
+     /setDuplasAberto\(true\)/.test(pop) && /<DialogoEquipes aberto=\{duplasAberto\}/.test(pop), true);
   eq('o gráfico é de LINHAS (pedido explícito), uma <Line> por equipe QUE TEVE ESCALA na janela — não por equipe ativa hoje',
      /<LineChart data=\{serieDuplas\}/.test(pop)
      && /duplasDoGrafico\.map\(\(d, i\) => \{[\s\S]{0,300}<Line/.test(pop)
@@ -3270,30 +3270,52 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /stroke=\{`url\(#op-dupla-\$\{passo\}\)`\}/.test(pop)
      && /const passo = i % PECAS_ESPECTRO;/.test(pop), true);
 
-  // ── o pop-up de duplas (R56) ────────────────────────────────────────────
+  // ── o pop-up de equipes (R56 → R285) ────────────────────────────────────
+  // A SEMANA SAIU DA TELA com a R285: o seletor, as setinhas, a herança, a
+  // origem ("própria × herdada") e o modo "Escalar" — que obrigava a redigitar
+  // a equipe inteira para trocar uma pessoa. Os pinos daquelas três coisas
+  // morrem com a regra que os criou; os outros continuam, no endereço novo.
   eq('as opções vêm dos USUÁRIOS do sistema (useTecnicos), como o Davi pediu',
      /useTecnicos\(\)/.test(dlg), true);
-  eq('quem já está em outra equipe NAQUELA SEMANA não é oferecido (a PK recusaria; oferecer seria convidar ao erro)',
-     /disponiveisNaSemana\(/.test(dlg), true);
-  eq('desfazer uma equipe DESATIVA, não apaga — e desde a U76 o histórico do gráfico realmente depende disso',
+  eq('desfazer uma equipe DESATIVA, não apaga — e o histórico do gráfico depende disso',
      /tipo: "desativar"/.test(dlg) && /tipo: "reativar"/.test(dlg), true);
-  eq('valida no cliente antes de gravar, com as mesmas funções puras testadas acima',
-     /const erro = erroDaDupla\(\{ nome \}\)/.test(dlg)
-     && /erroDaEscala\(\{ duplaId, semana, membros: rascunho \}/.test(dlg), true);
+  eq('valida o CADASTRO no cliente antes de gravar, com a mesma função pura testada acima',
+     /const erro = erroDaDupla\(\{ nome \}\)/.test(dlg), true);
 
-  // ── R98: o pop-up virou tela de ESCALA ──────────────────────────────────
-  eq('CRÍTICO (R98): o pop-up tem seletor de SEMANA, e é ele que manda no que aparece',
-     /const semana = useMemo\(\(\) => referenciaSemanal\(base\)/.test(dlg)
-     && /aria-label="Semana anterior"/.test(dlg) && /aria-label="Próxima semana"/.test(dlg), true);
-  eq('…e a tela DIZ de onde veio o que mostra (própria × herdada), em vez de fingir que é decisão',
-     /rotuloDaOrigem\(origem\.semanaOrigem, semana\)/.test(dlg), true);
-  eq('cadastro e escala são coisas separadas — o formulário guarda nome e veículo, o botão Escalar guarda a semana',
-     /erroDaDupla\(\{ nome \}\)/.test(dlg) && /id="dupla-veiculo"/.test(dlg)
-     && !/id="dupla-membro-a"/.test(dlg), true);
-  eq('equipe sem ninguém na semana é gravável — "não sai nesta semana" é decisão, não formulário incompleto',
-     /Não sai nesta semana/.test(dlg), true);
-  eq('CRÍTICO: mover alguém de equipe PERGUNTA antes — o banco recusa, e a tela não repete sozinha com _mover',
-     /confirme a mudança para movê-lo/.test(dlg) && /window\.confirm\(/.test(dlg), true);
+  // ── R285: a tela mostra AGORA, e o que já passou fica ───────────────────
+  eq('R285 CRÍTICO: o pop-up NÃO tem mais eixo de semana — nem seletor, nem herança, nem o modo Escalar. Com ele, trocar alguém numa quarta reescrevia a segunda e a terça, e o apoio dos chamados daqueles dias mudava sozinho',
+     [/aria-label="Semana anterior"/.test(dlg), /referenciaSemanal\(/.test(dlg),
+      /rotuloDaOrigem\(/.test(dlg), /disponiveisNaSemana\(/.test(dlg),
+      /Não sai nesta semana/.test(dlg)],
+     [false, false, false, false, false]);
+
+  eq('R285 CRÍTICO: a tela lê a composição do INSTANTE e mostra desde quando cada um está — e "desde sempre" para quem veio do marco zero, em vez de 01/01/0001',
+     [/membrosNoInstante\(membros, d\.id, agora\)/.test(dlg),
+      /liderDaEquipe\(membros, d\.id, agora\)/.test(dlg),
+      /desdeQuando\(m\.entrouEm\)/.test(dlg)],
+     [true, true, true]);
+
+  // A R98 dizia o CONTRÁRIO: quem estava em outra equipe não era nem
+  // oferecido. A R285 mandou oferecer, com pergunta antes de mover — e a
+  // pergunta diz DE ONDE, porque "mover o Lucas?" sem dizer de onde faz o
+  // gestor aceitar sem saber o que está desfazendo.
+  eq('R285 CRÍTICO (revisa a R98): quem já está em outra equipe É oferecido, com o nome da equipe ao lado, e a tela PERGUNTA de onde vai tirar antes de mover',
+     [/equipeAAbandonar\(membros, t\.id, d\.id, agora\)/.test(dlg),
+      /window\.confirm\(/.test(dlg),
+      /Remover de lá e trazer para/.test(dlg),
+      /nomeDaEquipe\(ocupado\)/.test(dlg)],
+     [true, true, true, true]);
+
+  // E a trava de verdade é do BANCO: a tela pergunta a partir da lista que
+  // carregou, e entre o desenho e o clique alguém pode ter movido a pessoa.
+  eq('R285 CRÍTICO: a tela repete a pergunta a partir da MENSAGEM DA PORTA — trava só de tela some quando duas pessoas mexem ao mesmo tempo, e aí quem recusa é a restrição do banco',
+     [/JA_EM_OUTRA_EQUIPE/.test(dlg), /mover: true/.test(dlg)],
+     [true, true]);
+
+  eq('R285: nomear líder é um gesto de um clique, e a equipe SEM líder continua funcionando (o backfill da U142 não inventou nenhum)',
+     [/porNaEquipe\(d\.id, m\.pessoaId, "lider"\)/.test(dlg),
+      /sem líder nomeado/.test(dlg)],
+     [true, true]);
 
   // ── R59: cadastrar usuário não depende do e-mail sair ───────────────────
   eq('CRÍTICO: se o convite por e-mail falhar, createUser cria a conta assim mesmo — o cadastro não pode ficar em NADA',
@@ -4091,7 +4113,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('o card largo "Duplas de campo" saiu — o botão que cadastra dupla mora no cabeçalho do gráfico de duplas',
      /Duplas de campo|Cadastrar duplas/.test(op3cod), false);
   eq('…e o botão continua existindo, abrindo o mesmo diálogo',
-     /setDuplasAberto\(true\)/.test(op3) && /<DialogoDuplas aberto=\{duplasAberto\}/.test(op3), true);
+     /setDuplasAberto\(true\)/.test(op3) && /<DialogoEquipes aberto=\{duplasAberto\}/.test(op3), true);
   eq('a legenda da rosca foi para o LADO do arco (metade da altura, mesma informação)',
      /display: "flex", alignItems: "center", gap: 6 \}\}>[\s\S]{0,400}<PieChart>/.test(op3), true);
   eq('R125: sobrou UM ranking na tela (Abertos por cliente) — "Em aberto por técnico" saiu; o componente continua único',
@@ -22378,6 +22400,43 @@ assincronas.push(async () => {
        return [comVelho, comZero];
      })(),
      [[], 4]);
+}
+
+// ── A COMPOSIÇÃO É HISTÓRICO, E HISTÓRICO TEM GENTE DESLIGADA (14/09/2026) ─
+//
+// Achado MEDINDO a tela nova de equipes, não compilando: a "Dupla do André"
+// mostrava um membro sem nome. Era o Denner — técnico DESATIVADO que continua
+// ocupando vaga na equipe.
+//
+// A causa tem duas metades. A tela resolvia nome pela MESMA lista que usa para
+// OFERECER quem pode entrar (`useTecnicos`), e essa lista acabou de perder o
+// cargo operacional (R294); e `usePessoas()` filtra `ativo = true`, então quem
+// foi desligado não resolve por lá tampouco.
+//
+// São duas perguntas diferentes: QUEM PODE ENTRAR é cargo de campo hoje; QUEM
+// ESTÁ E COMO SE CHAMA é histórico, e inclui quem saiu da empresa. O nome vem
+// junto da linha, por embed — uma consulta só.
+{
+  const fsComp = require('fs');
+  const dat = fsComp.readFileSync('src/features/duplas/data.ts', 'utf8');
+  const tela = fsComp.readFileSync('src/features/duplas/DialogoEquipes.tsx', 'utf8');
+
+  eq('COMPOSIÇÃO CRÍTICO: o nome do membro vem JUNTO da linha (embed do perfil) — a lista de pessoas ATIVAS não resolve quem foi desligado, e um técnico desativado que ainda ocupa vaga apareceria sem nome, impossível de tirar porque ninguém sabe quem é',
+     [/pessoa:profiles!pessoa_id\(nome, ativo\)/.test(dat),
+      /nome: \(m\.pessoa\?\.nome \?\? null\)/.test(dat),
+      /ativo: \(m\.pessoa\?\.ativo \?\? null\)/.test(dat),
+      /const nomeDoMembro = \(m: MembroDaEquipe\)/.test(tela)],
+     [true, true, true, true]);
+
+  eq('COMPOSIÇÃO: quem está na equipe e foi DESATIVADO aparece marcado — vaga ocupada por quem não trabalha mais aqui é coisa que o gestor precisa VER para poder tirar',
+     [/m\.ativo === false &&/.test(tela), /desativado/.test(tela)],
+     [true, true]);
+
+  // Duas listas, dois papéis. Trocar uma pela outra é o defeito de novo.
+  eq('COMPOSIÇÃO: a tela usa DUAS listas — `useTecnicos` para quem PODE ENTRAR (cargo de campo, R294) e `usePessoas` para quem ESTÁ e como se chama. Resolver nome pela primeira foi o que produziu o membro sem nome',
+     [/useTecnicos\(\)/.test(tela), /usePessoas\(\)/.test(tela),
+      /\.filter\(\(t\) => !dentro\.some\(\(m\) => m\.pessoaId === t\.id\)\)/.test(tela)],
+     [true, true, true]);
 }
 
 // ── R294/U144 — CRIAR ATIVIDADE NÃO É ABRIR CHAMADO DE CAMPO (14/09/2026) ─

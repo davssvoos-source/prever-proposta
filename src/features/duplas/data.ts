@@ -8,12 +8,100 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { montarEscala, type Dupla, type Escala, type LinhaDeEscala } from "./modelo";
+import { montarEscala, type Dupla, type Escala, type LinhaDeEscala, type MembroDaEquipe } from "./modelo";
 
 // membro_a/membro_b saíram na U77. A constante é escrita à mão porque `*`
 // traria colunas de auditoria que ninguém usa — e porque nomear as colunas é o
 // que faz uma coluna nova só chegar ao cliente quando alguém decide.
 const CAMPOS = "id, nome, veiculo, ativa";
+
+/**
+ * A COMPOSIÇÃO INTEIRA, de uma vez (R285/U142).
+ *
+ * Uma linha por passagem: fulano esteve nesta equipe deste instante até
+ * aquele. Trazer tudo tem a mesma razão de `useEscala` — o pop-up, o gráfico e
+ * o filtro da programação saem de UMA consulta, resolvidos pelas funções puras
+ * de modelo.ts. Recortar por instante viraria uma consulta por pergunta.
+ *
+ * Inclui as faixas FECHADAS: é delas que sai "quem esteve com quem em agosto",
+ * que é o motivo inteiro de a composição ter virado faixa de tempo.
+ */
+export function useMembrosDeEquipe() {
+  return useQuery({
+    queryKey: ["equipe-membros"],
+    queryFn: async (): Promise<MembroDaEquipe[]> => {
+      const { data, error } = await supabase
+        .from("equipe_membros" as any)
+        // o embed do perfil vem JUNTO: a composição é histórico e tem gente
+        // desativada, que a lista de pessoas ativas não resolve. Sem o nome
+        // aqui, um técnico desligado que ainda ocupa vaga aparece sem nome.
+        .select("equipe_id, pessoa_id, papel, entrou_em, saiu_em, pessoa:profiles!pessoa_id(nome, ativo)")
+        .order("entrou_em");
+      if (error) throw error;
+      return ((data as any[]) ?? []).map((m) => ({
+        equipeId: m.equipe_id as string,
+        pessoaId: m.pessoa_id as string,
+        papel: (m.papel === "lider" ? "lider" : "ajudante") as MembroDaEquipe["papel"],
+        entrouEm: m.entrou_em as string,
+        saiuEm: (m.saiu_em ?? null) as string | null,
+        nome: (m.pessoa?.nome ?? null) as string | null,
+        ativo: (m.pessoa?.ativo ?? null) as boolean | null,
+      }));
+    },
+    staleTime: 60_000,
+  });
+}
+
+/** O prefixo que a porta usa para dizer "ela já está em outra equipe". */
+export const JA_EM_OUTRA_EQUIPE = "JA_EM_OUTRA_EQUIPE:";
+
+/**
+ * Põe alguém numa equipe A PARTIR DE AGORA (R285).
+ *
+ * Sem `mover`, a porta RECUSA quando a pessoa já está em outra e devolve o
+ * nome dela na mensagem — é assim que o pop-up do Davi sabe o que perguntar
+ * ("o Lucas está na Equipe B; remover de lá?"). A tela pergunta ANTES, pela
+ * função pura, mas quem recusa é o BANCO: trava só de tela some quando duas
+ * pessoas mexem ao mesmo tempo.
+ */
+export function useDefinirMembro() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: { equipeId: string; pessoaId: string; papel: "lider" | "ajudante"; mover?: boolean }) => {
+      const { data, error } = await supabase.rpc("equipe_definir_membro" as any, {
+        _equipe: v.equipeId, _pessoa: v.pessoaId, _papel: v.papel, _mover: v.mover ?? false,
+      } as any);
+      if (error) throw error;
+      return data as { mudou: boolean; moveu: boolean; trocouPapel: boolean };
+    },
+    onSuccess: () => invalidarComposicao(qc),
+  });
+}
+
+/** Tira alguém da equipe a partir de agora — fecha a faixa, nunca apaga. */
+export function useTirarMembro() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (pessoaId: string) => {
+      const { error } = await supabase.rpc("equipe_tirar_membro" as any, { _pessoa: pessoaId } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidarComposicao(qc),
+  });
+}
+
+/**
+ * Tudo o que a composição alimenta. O APOIO do chamado é derivado dela por
+ * gatilho no banco, então trocar alguém de equipe muda card de chamado — e a
+ * tela que não recarregar mostra o apoio velho até alguém apertar F5.
+ */
+function invalidarComposicao(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["equipe-membros"] });
+  qc.invalidateQueries({ queryKey: ["duplas"] });
+  qc.invalidateQueries({ queryKey: ["chamados"] });
+  qc.invalidateQueries({ queryKey: ["home-chamados"] });
+  qc.invalidateQueries({ queryKey: ["home"] });
+}
 
 export function useDuplas() {
   return useQuery({

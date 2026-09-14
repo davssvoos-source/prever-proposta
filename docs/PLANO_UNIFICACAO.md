@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 166 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 167 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -169,6 +169,7 @@
 - [U143 — a conferência da U142, e as nove decisões da leva do Vinicius (R286–R294)](#u143-a-conferência-da-u142-e-as-nove-decisões-da-leva-do-vinicius-r286r294)
 - [As nove decisões (R286–R294)](#as-nove-decisões-r286r294)
 - [U144 — criar atividade deixa de ser a mesma chave de abrir chamado (R294)](#u144-criar-atividade-deixa-de-ser-a-mesma-chave-de-abrir-chamado-r294)
+- [U145 — a tela das equipes perde o eixo da semana (R285)](#u145-a-tela-das-equipes-perde-o-eixo-da-semana-r285)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -13698,3 +13699,51 @@ provar o que de fato importa: que cada tela CHAMA `podeVer` com a chave certa.
 
 **Números.** Verificador: **3.455 asserções**, 0 falharam. `tsc`: 0. Migration
 **U144 PENDENTE** — semeia as quatro linhas da chave nova.
+
+## U145 — a tela das equipes perde o eixo da semana (R285)
+
+**O que saiu.** A semana era o eixo da tela inteira: o seletor no topo, as
+setinhas, o "Hoje", a herança ("ninguém lançou escala para esta semana — o que
+aparece é o que valia em 2026-S32"), a origem, e o modo **Escalar** — que
+obrigava a redigitar a equipe inteira só para trocar uma pessoa.
+
+No lugar: a composição de AGORA e dois gestos diretos. Pôr alguém, tirar
+alguém. Cada gesto vale do instante em que acontece.
+
+**O arquivo velho foi apagado, não guardado de lado.** Duas telas para montar
+equipe — uma por semana, outra por instante — são duas verdades, e a que
+ninguém abre é a que alguém reabre por engano seis meses depois. O histórico
+dela está no git.
+
+**A R98 foi ao contrário.** Ela dizia que quem já está em outra equipe **não é
+oferecido**. A R285 manda oferecer, com o nome da outra equipe ao lado e uma
+pergunta antes de mover — porque "mover o Lucas?" sem dizer de onde faz o
+gestor aceitar sem saber o que está desfazendo. E a tela repete a pergunta a
+partir da **mensagem da porta**: entre o desenho da tela e o clique alguém pode
+ter movido a pessoa, e aí a função pura (que olha a lista carregada) diria que
+ela está livre quando não está.
+
+**O que MEDIR pegou, e compilar não pegaria.** Aberta a tela, a "Dupla do
+André" mostrava um membro **sem nome** — só o rótulo genérico "Técnico".
+
+Era o **Denner**: técnico DESATIVADO que continua ocupando vaga na equipe. A
+causa tem duas metades, e as duas são consequência de decisões desta semana. A
+tela resolvia nome pela MESMA lista que usa para oferecer quem pode entrar
+(`useTecnicos`), e essa lista acabou de perder o cargo operacional (R294); e
+`usePessoas()` filtra `ativo = true`, então quem saiu da empresa não resolve
+por lá tampouco.
+
+São **duas perguntas diferentes**, e agora são duas listas: quem PODE ENTRAR é
+cargo de campo hoje; quem ESTÁ e como se chama é **histórico**, e histórico tem
+gente desligada. O nome passou a vir junto da linha, por embed — uma consulta
+só —, e quem está desativado aparece marcado, porque vaga ocupada por quem não
+trabalha mais aqui é coisa que o gestor precisa VER para poder tirar.
+
+**Números medidos na tela:** três equipes, seis pessoas, todas "desde sempre"
+(o marco zero, como projetado), nenhuma com líder nomeado (o backfill se
+recusou a inventar). Linha do membro 38px, menor alvo 30px, sem rolagem
+horizontal. Os meus dois botões novos tinham nascido com 28px — menor que a
+régua de 32 do próprio diálogo, e tamanho novo sem motivo é inconsistência.
+
+**Números.** Verificador: **3.458 asserções, 0 falharam**. `tsc`: 0. Sem migration nova — a
+tela lê a U142, que já rodou.

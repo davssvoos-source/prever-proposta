@@ -63,6 +63,17 @@ export interface MembroDaEquipe {
   entrouEm: string;
   /** ISO do instante em que saiu; null = ainda está */
   saiuEm: string | null;
+  /**
+   * O nome da pessoa, quando a consulta o traz junto.
+   *
+   * Existe porque a composição é HISTÓRICO: ela tem gente desativada, e a
+   * lista de pessoas ativas não resolve esses nomes. Sem isto, um técnico
+   * desligado que ainda ocupa vaga aparece sem nome — e o gestor não
+   * consegue nem tirá-lo, porque não sabe quem é.
+   */
+  nome?: string | null;
+  /** false = perfil desativado; a tela diz isso ao lado do nome. */
+  ativo?: boolean | null;
 }
 
 /**

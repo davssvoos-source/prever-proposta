@@ -64,7 +64,9 @@ import { useApoiosDeTodos } from "@/features/home/data";
 import { TabelaAtividades } from "@/features/home/TabelaAtividades";
 import { atividadeDoChamado, type Atividade } from "@/features/atividades/modelo";
 import { useDuplas, useEscala } from "@/features/duplas/data";
-import { DialogoDuplas } from "@/features/duplas/DialogoDuplas";
+// R285 (U142): a tela de equipes deixou de ter eixo de SEMANA — a composição
+// vale do instante da troca, e o pop-up mostra quem está com quem agora.
+import { DialogoEquipes } from "@/features/duplas/DialogoEquipes";
 import {
   serieAtividadesPorEscala, foraDeEscala, duplasNaJanela, composicaoDaDupla,
   montarEscala, rotuloDaComposicao, type SemanaDoGrafico,
@@ -1290,7 +1292,7 @@ function PainelOperacional() {
         )}
       </div>
 
-      <DialogoDuplas aberto={duplasAberto} aoFechar={() => setDuplasAberto(false)} />
+      <DialogoEquipes aberto={duplasAberto} aoFechar={() => setDuplasAberto(false)} />
 
       {/* R126 — o chamado nasce aqui e desliza no painel lateral (R33): quem
           abriu dez chamados continua olhando a mesma fila. */}
