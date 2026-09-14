@@ -25,6 +25,7 @@ import {
   type ImpactoOperacional,
 } from "@/lib/chamado-status";
 import { fimSemana } from "@/lib/periodos";
+import { podeDecidirCobranca } from "@/features/chamados/cobranca";
 import { getStatusInfo, statusBucket } from "@/lib/visita-status";
 import { equipesDePessoas } from "@/lib/equipes";
 
@@ -593,8 +594,11 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     reagendamentos: c.reagendamentos ?? 0,
     quando: c.data_hora_agendada ?? fimDoDiaAgendado(c.data_agendada) ?? c.prazo_limite ?? null,
     emAberto,
+    // P20: `podeDecidirCobranca` e não o literal `a_analisar` — senão este
+    // sinal também perde os chamados parados em `em_conferencia`, que são
+    // exatamente os que a U80 mediu como "invisíveis para toda a operação"
     aConferir: c.natureza === "campo" && c.status === "concluido"
-      && (c as any).faturamento_status === "a_analisar",
+      && podeDecidirCobranca((c as any).faturamento_status),
     criadoEm: c.created_at,
     atualizadoEm: c.updated_at ?? c.created_at,
     encerradoEm: emAberto

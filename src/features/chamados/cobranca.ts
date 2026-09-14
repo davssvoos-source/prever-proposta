@@ -27,6 +27,26 @@ export const RESULTADO_CORES: Record<ResultadoItem, { dark: string; light: strin
 export type FaturamentoStatus =
   | "a_analisar" | "em_conferencia" | "aprovada" | "faturada" | "sem_cobranca";
 
+/**
+ * Os três estados em que a cobrança JÁ FOI DECIDIDA. Depois de qualquer um
+ * deles, decidir de novo é duplicata — e é contra isso que a porta da U80
+ * levanta o cadeado.
+ */
+export const COBRANCA_DECIDIDA: readonly FaturamentoStatus[] = ["aprovada", "faturada", "sem_cobranca"];
+
+/**
+ * Dá para decidir a cobrança deste chamado?
+ *
+ * `a_analisar` é onde ele nasce; `em_conferencia` é onde a I.A. o deixa
+ * depois de analisar. Os dois são "ninguém decidiu ainda" — e era aí que
+ * estava o defeito (P20): a tela e a porta só aceitavam o primeiro, então
+ * ANALISAR fechava o caminho de aprovar e o chamado sumia da operação com
+ * dinheiro dentro. A U80 já media esses presos no item 113 da conferência.
+ */
+export function podeDecidirCobranca(status: string | null | undefined): boolean {
+  return status === "a_analisar" || status === "em_conferencia";
+}
+
 export const FATURAMENTO_LABEL: Record<FaturamentoStatus, string> = {
   a_analisar: "A analisar",
   em_conferencia: "Em conferência",

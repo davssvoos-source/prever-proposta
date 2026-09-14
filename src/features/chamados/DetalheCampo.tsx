@@ -32,7 +32,7 @@ import {
 import {
   useAnaliseChamado, useCobrancasDoChamado, useLancamentoDoChamado, aprovarCobranca,
   marcarFaturada, ajustarItem, totalFaturavel, moeda,
-  RESULTADO_LABEL, RESULTADO_CORES, FATURAMENTO_LABEL,
+  RESULTADO_LABEL, RESULTADO_CORES, FATURAMENTO_LABEL, podeDecidirCobranca,
   type ResultadoItem, type FaturamentoStatus,
 } from "@/features/chamados/cobranca";
 import { analisarCobrancaChamado } from "@/lib/cobranca.functions";
@@ -1073,7 +1073,7 @@ export function DetalheCampo({ id, embutido = false }: {
                           </div>
                         </div>
 
-                        {os.faturamento_status === "a_analisar" && (
+                        {podeDecidirCobranca(os.faturamento_status) && (
                           editando ? (
                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                               {(Object.keys(RESULTADO_LABEL) as ResultadoItem[]).map((r) => (
@@ -1237,7 +1237,7 @@ export function DetalheCampo({ id, embutido = false }: {
                   <Sparkles size={15} color={gold} />
                   {analisar.isPending ? "Analisando…" : analise.length === 0 ? "Analisar cobrança" : "Reanalisar"}
                 </button>
-                {analise.length > 0 && os.faturamento_status === "a_analisar" && (
+                {analise.length > 0 && podeDecidirCobranca(os.faturamento_status) && (
                   <button
                     style={{ ...btnSec, flex: 1, borderColor: gold, color: gold }}
                     onClick={() => aprovar.mutate()}
@@ -1274,7 +1274,7 @@ export function DetalheCampo({ id, embutido = false }: {
           {/* Conferência do gestor. Depois da U13 ela não é mais um ESTADO do
               chamado — é a fila do faturamento, que é onde ela sempre morou de
               verdade. Um chamado sem nada a cobrar sai dela sozinho. */}
-          {isGerente && os.status === "concluido" && os.faturamento_status === "a_analisar" && (
+          {isGerente && os.status === "concluido" && podeDecidirCobranca(os.faturamento_status) && (
             <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(4,120,87,0.35)" : "rgba(45,210,165,0.30)"}` }}>
               <span style={SEC}>Conferência</span>
               <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>

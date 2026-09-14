@@ -21580,6 +21580,46 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true, true, true, true]);
 }
 
+// ── P20 (U139) — o chamado analisado volta a ser decidível ────────────────
+{
+  const fsP = require('fs');
+  const C20 = carregar('src/features/chamados/cobranca.ts');
+  const telaP = fsP.readFileSync('src/features/chamados/DetalheCampo.tsx', 'utf8');
+  const modP = fsP.readFileSync('src/features/atividades/modelo.ts', 'utf8');
+  const migP = fsP.existsSync('supabase/migrations/20261003090000_u139_analisado_volta_a_ser_decidivel.sql')
+    ? fsP.readFileSync('supabase/migrations/20261003090000_u139_analisado_volta_a_ser_decidivel.sql', 'utf8') : '';
+
+  // O buraco negro: `analisarCobranca` grava `em_conferencia`, e TODOS os
+  // caminhos de decisão exigiam `a_analisar`. Analisar fechava o caminho de
+  // aprovar, e o chamado sumia da operação com dinheiro dentro. A U80 já
+  // media os presos (item 113) sem destravá-los.
+  eq('P20 CRÍTICO: decide-se a cobrança a partir dos DOIS estados sem decisão — `a_analisar` (onde nasce) e `em_conferencia` (onde a I.A. o deixa) —, e de nenhum dos três já decididos',
+     [C20.podeDecidirCobranca('a_analisar'), C20.podeDecidirCobranca('em_conferencia'),
+      C20.podeDecidirCobranca('aprovada'), C20.podeDecidirCobranca('faturada'),
+      C20.podeDecidirCobranca('sem_cobranca'), C20.podeDecidirCobranca(null), C20.podeDecidirCobranca(undefined),
+      C20.COBRANCA_DECIDIDA.length],
+     [true, true, false, false, false, false, false, 3]);
+
+  // Os três gates da tela e o sinal da Início têm de perguntar à MESMA
+  // função — literal solto foi o que criou o defeito.
+  eq('P20: os três gates da tela de campo e o sinal `aConferir` da Início passaram a perguntar a `podeDecidirCobranca` — nenhum deles compara com o literal `a_analisar`',
+     [(telaP.match(/podeDecidirCobranca\(os\.faturamento_status\)/g) ?? []).length,
+      /faturamento_status === "a_analisar"/.test(telaP),
+      /podeDecidirCobranca\(\(c as any\)\.faturamento_status\)/.test(modP),
+      /faturamento_status === "a_analisar"/.test(modP)],
+     [3, false, true, false]);
+
+  // A porta do banco: a trava da duplicata continua, agora protegendo os três
+  // estados DECIDIDOS em vez de exigir um só.
+  eq('P20/U139: a migration reemite `concluir_chamado_com_cobranca` com o gate aceitando os dois estados sem decisão, mantém o cadeado da duplicata, exige a U80 no pré-voo e fecha o trabalho em COMMIT',
+     [/NOT IN \('a_analisar', 'em_conferencia'\)/.test(migP),
+      /faturamento_status <> 'a_analisar'/.test(migP),
+      /FOR UPDATE/.test(migP), /já teve a cobrança decidida/.test(migP),
+      /U139 PRÉ-VOO/.test(migP), /concluir_chamado_com_cobranca/.test(migP),
+      migP.includes('\nCOMMIT;'), />>> OLHAR <<</.test(migP), /DESFAZER/.test(migP)],
+     [true, false, true, true, true, true, true, true, true]);
+}
+
 // ── U138 — a leva que saiu da revisão completa de 13/09/2026 (R277–R280) ──
 {
   const fs8 = require('fs');
