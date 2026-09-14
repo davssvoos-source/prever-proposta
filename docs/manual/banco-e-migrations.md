@@ -134,3 +134,50 @@ O que ficou:
   `SELECT` que pergunte por um objeto que a migration cria. Foi o que
   desmascarou esta — a porta VELHA ainda executava e respondia com a frase do
   corpo dela, o que só é possível se o DROP tivesse sido desfeito.
+
+## Duas coisas que só o banco pega (U142, 14/09/2026)
+
+A U142 abortou no SQL Editor por dois motivos que **nenhuma releitura do
+arquivo encontra**. Os dois viraram varredura sobre todas as migrations.
+
+### `EXCLUDE USING gist` precisa de `extensions` no `search_path`
+
+O opclass `gist` para `uuid` vem do **btree_gist**, e no Supabase a extensão
+mora no schema `extensions`. A resolução acontece pelo `search_path` **no
+momento do DDL**: sem ele na lista, o comando morre com
+
+```
+data type uuid has no default operator class for access method "gist"
+```
+
+— **mesmo com a extensão instalada**, e o pré-voo que só checa
+`pg_extension` passa verde. A U78 já sabia e tinha a linha:
+
+```sql
+SET LOCAL search_path = public, extensions;
+```
+
+`LOCAL` porque morre no `COMMIT` e não vaza para a próxima requisição do pool
+do editor.
+
+### `is_gestor()` sem argumento não existe
+
+A única assinatura neste banco é `is_gestor(_user_id uuid)`, desde a etapa 0.
+Chamar `public.is_gestor()` levanta **42883 no meio do DDL** — e o erro só
+aparece quando alguém aperta Run.
+
+Cinco migrations antigas CITAM `is_gestor()` em prosa, dentro de um
+`COMMENT ON`, e nenhuma delas chama: a varredura tira **linha de comentário e
+literal de texto** antes de procurar, senão acusaria as cinco.
+
+### O que fecha a classe inteira
+
+Pré-voo **por assinatura exata**, com os tipos escritos:
+
+```sql
+IF to_regprocedure('public.is_gestor(uuid)') IS NULL THEN …
+```
+
+`to_regclass` responde por tabela; `to_regprocedure` com os tipos é o que
+responde por função. É a diferença entre abortar na primeira linha dizendo o
+que falta e abortar no meio do DDL dizendo "function does not exist".

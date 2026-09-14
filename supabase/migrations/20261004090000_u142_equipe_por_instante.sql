@@ -52,8 +52,20 @@
 
 BEGIN;
 
+-- `extensions` é onde o Supabase guarda as extensões; `public` é onde um
+-- Postgres cru as põe. O opclass `gist` para uuid vem do btree_gist, e a
+-- resolução dele acontece pelo search_path NO MOMENTO DO DDL — sem os dois na
+-- lista, o EXCLUDE do §1.1 morre com "data type uuid has no default operator
+-- class for access method gist", mesmo com a extensão instalada. É a mesma
+-- linha da U78, pelo mesmo motivo; a primeira versão desta migration não a
+-- tinha e abortou no SQL Editor por isso. LOCAL: morre no COMMIT e não vaza
+-- para a próxima requisição do pool do editor.
+SET LOCAL search_path = public, extensions;
+
 -- ── §0  PRÉ-VOO ────────────────────────────────────────────────────────────
 DO $u142pre$
+DECLARE
+  v_falta text := '';
 BEGIN
   IF to_regclass('public.duplas') IS NULL THEN
     RAISE EXCEPTION 'U142 PRÉ-VOO: `duplas` não existe — este não é o banco do Prever, ou a U47 nunca rodou.';
@@ -66,6 +78,21 @@ BEGIN
   END IF;
   IF to_regclass('public.chamado_apoios') IS NULL THEN
     RAISE EXCEPTION 'U142 PRÉ-VOO: `chamado_apoios` não existe — a U64 não rodou.';
+  END IF;
+
+  -- AS FUNÇÕES, PELA ASSINATURA EXATA. A primeira versão desta migration
+  -- chamava `is_gestor()` sem argumento — que NÃO EXISTE neste banco (a única
+  -- assinatura é `is_gestor(uuid)`, desde a etapa 0) — e só descobriu isso no
+  -- SQL Editor, depois de o Davi apertar Run. Conferir por `to_regprocedure`
+  -- com os tipos escritos é o que transforma esse erro numa linha de pré-voo.
+  IF to_regprocedure('public.is_gestor(uuid)') IS NULL THEN
+    v_falta := v_falta || E'\n  · public.is_gestor(uuid) (etapa 0 / U6a)'; END IF;
+  IF to_regprocedure('public.eh_do_time(uuid)') IS NULL THEN
+    v_falta := v_falta || E'\n  · public.eh_do_time(uuid) (U137)'; END IF;
+  IF to_regprocedure('public.referencia_semanal(date)') IS NULL THEN
+    v_falta := v_falta || E'\n  · public.referencia_semanal(date) (U76)'; END IF;
+  IF v_falta <> '' THEN
+    RAISE EXCEPTION E'ABORTADO NO PRÉ-VOO — nada foi alterado (ROLLBACK).\nFaltam peças da casa em que a U142 se apoia:%', v_falta;
   END IF;
 END
 $u142pre$;
@@ -149,7 +176,7 @@ CREATE POLICY equipe_membros_select ON public.equipe_membros
 
 DROP POLICY IF EXISTS equipe_membros_write ON public.equipe_membros;
 CREATE POLICY equipe_membros_write ON public.equipe_membros
-  FOR ALL TO authenticated USING (public.is_gestor()) WITH CHECK (public.is_gestor());
+  FOR ALL TO authenticated USING (public.is_gestor(auth.uid())) WITH CHECK (public.is_gestor(auth.uid()));
 
 -- ── §2  O BACKFILL ─────────────────────────────────────────────────────────
 -- A composição de hoje não pode nascer vazia: se nascer, todo chamado de campo
@@ -441,7 +468,7 @@ DECLARE
   v_moveu   boolean := false;
   v_trocou  boolean := false;
 BEGIN
-  IF NOT public.is_gestor() THEN
+  IF NOT public.is_gestor(auth.uid()) THEN
     RAISE EXCEPTION 'Só a gestão monta equipe de campo.' USING ERRCODE = '42501';
   END IF;
   IF _papel NOT IN ('lider', 'ajudante') THEN
@@ -519,7 +546,7 @@ AS $u142tir$
 DECLARE
   v_n int;
 BEGIN
-  IF NOT public.is_gestor() THEN
+  IF NOT public.is_gestor(auth.uid()) THEN
     RAISE EXCEPTION 'Só a gestão monta equipe de campo.' USING ERRCODE = '42501';
   END IF;
   UPDATE public.equipe_membros SET saiu_em = now()

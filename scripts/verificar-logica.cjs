@@ -13570,7 +13570,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // O que ele ainda conseguiria, enquanto a P51 estiver de pé, é ESCREVER
        // por uma chamada direta à RPC. Fica declarado aqui e na P51: quando ela
        // for fechada, estas duas portas são cobertas pela mesma correção.
-       [true, false, 38, 161, 55]);
+       // (+2 ocorrências na revisão do mesmo dia: o pré-voo por assinatura exata
+       // que a U142 ganhou depois de abortar no SQL Editor cita `is_gestor(uuid)`
+       // duas vezes — no `to_regprocedure` e na mensagem do aborto.)
+       [true, false, 38, 163, 55]);
   }
 }
 
@@ -22336,6 +22339,68 @@ assincronas.push(async () => {
        return [comVelho, comZero];
      })(),
      [[], 4]);
+}
+
+// ── DUAS CICATRIZES DA U142, VARRIDAS EM TODA MIGRATION (14/09/2026) ──────
+//
+// A primeira versão da U142 abortou no SQL Editor do Davi, e por dois motivos
+// que NENHUM olho pega relendo o arquivo — só o banco pega:
+//
+//   1. `EXCLUDE USING gist (uuid WITH =, …)` precisa do opclass do btree_gist,
+//      e no Supabase a extensão mora no schema `extensions`. A resolução
+//      acontece pelo search_path NO MOMENTO DO DDL: sem `SET search_path`
+//      incluindo `extensions`, o DDL morre com "data type uuid has no default
+//      operator class for access method gist" — MESMO com a extensão
+//      instalada. A U78 já sabia disso e tinha a linha; eu não copiei.
+//
+//   2. `is_gestor()` sem argumento NÃO EXISTE neste banco. A única assinatura
+//      é `is_gestor(_user_id uuid)`, desde a etapa 0. As três chamadas erradas
+//      do repositório inteiro eram minhas, nesta migration.
+//
+// Os dois são varredura barata sobre TODAS as migrations. Um pré-voo por
+// assinatura exata (to_regprocedure com os tipos escritos) é o que transforma
+// o segundo numa linha de aborto em vez de um Run frustrado.
+{
+  const fsCic = require('fs');
+  const pathCic = require('path');
+  const dirCic = 'supabase/migrations';
+  const migs = fsCic.readdirSync(dirCic).filter((f) => f.endsWith(".sql")).sort()
+    .map((f) => [f, fsCic.readFileSync(pathCic.join(dirCic, f), "utf8")]);
+  // Fora da varredura: linha de comentário E literal de texto. A prosa desta
+  // casa CITA os dois erros de propósito — cinco migrations antigas escrevem
+  // "is_gestor()" dentro de um COMMENT ON para explicar o gate, e nenhuma
+  // delas chama. Sem tirar os literais, a asserção acusaria as cinco: seria o
+  // quarto caso nesta sessão de um pino lendo prosa como código.
+  const vivo = (s) => s.split("\n").map((l) => (/^\s*--/.test(l) ? "" : l)).join("\n")
+    .replace(/'(?:[^']|'')*'/g, "''");
+
+  eq('CICATRIZ U142 CRÍTICO: toda migration que cria `EXCLUDE USING gist` põe `extensions` no search_path ANTES — sem isso o DDL morre com "uuid has no default operator class" mesmo com o btree_gist instalado, e o erro só aparece quando o Davi aperta Run',
+     migs.filter(([, s]) => {
+       const v = vivo(s);
+       if (!/EXCLUDE\s+USING\s+gist/i.test(v)) return false;
+       const iSet = v.search(/SET\s+(LOCAL\s+)?search_path\s*=[^;\n]*extensions/i);
+       const iExc = v.search(/EXCLUDE\s+USING\s+gist/i);
+       return iSet < 0 || iSet > iExc;
+     }).map(([f]) => f),
+     []);
+
+  eq('CICATRIZ U142 CRÍTICO: nenhuma migration chama `is_gestor()` sem argumento — a única assinatura que existe é `is_gestor(uuid)`, e a chamada sem argumento levanta 42883 no meio do DDL',
+     migs.filter(([, s]) => /is_gestor\s*\(\s*\)/.test(vivo(s))).map(([f]) => f),
+     []);
+
+  // E a U142 aprendeu a se defender sozinha: pré-voo por ASSINATURA EXATA.
+  // `to_regprocedure` com os tipos escritos é a diferença entre abortar na
+  // primeira linha dizendo o que falta e abortar no meio do DDL dizendo
+  // "function does not exist".
+  eq('CICATRIZ U142: o pré-voo confere as funções pela ASSINATURA EXATA (to_regprocedure com os tipos), que é o que teria pego o `is_gestor()` sem argumento antes de o Davi apertar Run',
+     (() => {
+       const u = fsCic.readFileSync(dirCic + '/20261004090000_u142_equipe_por_instante.sql', 'utf8');
+       return [/to_regprocedure\('public\.is_gestor\(uuid\)'\)/.test(u),
+               /to_regprocedure\('public\.eh_do_time\(uuid\)'\)/.test(u),
+               /to_regprocedure\('public\.referencia_semanal\(date\)'\)/.test(u),
+               /SET LOCAL search_path = public, extensions;/.test(u)];
+     })(),
+     [true, true, true, true]);
 }
 
 // ── R285 / U142 — A EQUIPE VALE DO INSTANTE DA TROCA (14/09/2026) ─────────
