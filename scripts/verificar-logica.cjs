@@ -13556,7 +13556,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // conferência que prova o gate). Nenhuma policy nova: a escrita de viagem
        // continua não existindo pela tabela. O alcance da P51 não cresceu — é a
        // MESMA decisão de acesso, reescrita.
-       [true, false, 37, 157, 54]);
+       // U142 (+1 arquivo, +4 ocorrências, +1 policy): a composição da equipe por
+       // instante. A policy `equipe_membros_write` é FOR ALL de gestor (cita
+       // is_gestor duas vezes, em USING e WITH CHECK), e as duas portas de
+       // escrita — `equipe_definir_membro` e `equipe_tirar_membro` — repetem o
+       // gate porque SECURITY DEFINER não passa pela RLS.
+       //
+       // ESTA ENTRA NO ALCANCE DA P51, e é honesto dizer: diferente da U87, da
+       // U109 e da U129, ela NÃO traz o teste de dois eixos (`p.ativo AND
+       // p.status <> pendente_aprovacao`) escrito ao lado. O motivo é que a
+       // U137 já fechou a LEITURA de `equipe_membros` em `eh_do_time()`, que
+       // olha os dois eixos — um ex-funcionário com login vivo não lê a tabela.
+       // O que ele ainda conseguiria, enquanto a P51 estiver de pé, é ESCREVER
+       // por uma chamada direta à RPC. Fica declarado aqui e na P51: quando ela
+       // for fechada, estas duas portas são cobertas pela mesma correção.
+       [true, false, 38, 161, 55]);
   }
 }
 
@@ -22322,6 +22336,191 @@ assincronas.push(async () => {
        return [comVelho, comZero];
      })(),
      [[], 4]);
+}
+
+// ── R285 / U142 — A EQUIPE VALE DO INSTANTE DA TROCA (14/09/2026) ─────────
+//
+// A U76 fez a composição ser por SEMANA ISO, com herança. Era certo para o
+// que se sabia: a escala era montada na segunda. Mas o Vinicius troca gente na
+// quarta, e aí a semana como unidade REESCREVE O PASSADO — a segunda e a terça
+// passam a dizer que o ajudante novo esteve no prédio, e como o apoio do
+// chamado é DERIVADO da composição, o registro de quem foi ao cliente muda
+// sozinho, sem sino e sem evento.
+{
+  const fsR285 = require('fs');
+  const D285 = carregar('src/features/duplas/modelo.ts');
+  const T = (h) => new Date(2026, 8, 10, h, 0, 0).toISOString();
+  const hora = (h) => new Date(2026, 8, 10, h, 0, 0);
+
+  // O caso do Davi, inteiro: o Lucas estava na equipe A e às 14h foi para a B.
+  const MEMBROS = [
+    { equipeId: "A", pessoaId: "andre", papel: "lider",    entrouEm: T(6), saiuEm: null },
+    { equipeId: "A", pessoaId: "lucas", papel: "ajudante", entrouEm: T(6), saiuEm: T(14) },
+    { equipeId: "B", pessoaId: "breno", papel: "lider",    entrouEm: T(6), saiuEm: null },
+    { equipeId: "B", pessoaId: "lucas", papel: "ajudante", entrouEm: T(14), saiuEm: null },
+  ];
+
+  // ISTO É A REGRA. Antes das 14h o Lucas estava com o André; depois, com o
+  // Breno. Com a semana como unidade as DUAS perguntas davam a mesma resposta
+  // — a de depois —, e o chamado da manhã passava a dizer que o Breno foi.
+  eq('R285 CRÍTICO: a troca de equipe NÃO reescreve o passado — perguntado às 10h o Lucas ainda está na equipe A, perguntado às 16h ele está na B. Era exatamente isto que a escala por semana não sabia responder, e por isso o registro de quem foi ao prédio mudava sozinho',
+     [D285.equipeDaPessoaNoInstante(MEMBROS, "lucas", hora(10)),
+      D285.equipeDaPessoaNoInstante(MEMBROS, "lucas", hora(16)),
+      D285.equipeDaPessoaNoInstante(MEMBROS, "lucas", hora(14))],
+     ["A", "B", "B"]);
+
+  // O apoio automático é a consequência prática: o chamado da manhã grava o
+  // André, o da tarde grava o Breno.
+  eq('R285 CRÍTICO: o APOIO segue a composição do instante do chamado — o da manhã grava quem estava de manhã, o da tarde grava quem está à tarde',
+     [D285.parceirosNoInstante(MEMBROS, "lucas", hora(10)),
+      D285.parceirosNoInstante(MEMBROS, "lucas", hora(16)),
+      D285.parceirosNoInstante(MEMBROS, "andre", hora(10)),
+      D285.parceirosNoInstante(MEMBROS, "andre", hora(16))],
+     [["andre"], ["breno"], ["lucas"], []]);
+
+  // A FAIXA É [entrou, saiu). Não é detalhe de gosto: é o que faz a troca ser
+  // atômica. Se fosse fechada nos dois lados, sair de uma equipe e entrar em
+  // outra no mesmo instante se sobreporia — e o EXCLUDE do banco recusaria
+  // justamente o gesto que a regra existe para permitir.
+  eq('R285 CRÍTICO: a faixa é [entrou, saiu) — no instante EXATO da troca a pessoa já está na equipe nova e não está mais na antiga. Fechada nos dois lados, mover alguém seria impossível: o banco recusaria a sobreposição de um instante',
+     [D285.valeNoInstante(MEMBROS[1], hora(14)),
+      D285.valeNoInstante(MEMBROS[3], hora(14)),
+      D285.valeNoInstante(MEMBROS[1], hora(13)),
+      D285.valeNoInstante(MEMBROS[3], hora(13)),
+      D285.valeNoInstante(MEMBROS[0], hora(5))],
+     [false, true, true, false, false]);
+
+  // O líder é quem a R126 propõe como responsável — e é UM só por equipe.
+  // Equipe sem líder nomeado continua funcionando: é o estado de todas elas
+  // logo depois da migration, porque o backfill NÃO inventa líder.
+  eq('R285: o líder é um só por equipe, e equipe SEM líder nomeado continua funcionando — o backfill da U142 não inventa líder, e o apoio nunca dependeu dele',
+     (() => {
+       const semLider = MEMBROS.map((m) => ({ ...m, papel: "ajudante" }));
+       return [D285.liderDaEquipe(MEMBROS, "A", hora(10)),
+               D285.liderDaEquipe(MEMBROS, "B", hora(10)),
+               D285.liderDaEquipe(semLider, "A", hora(10)),
+               D285.parceirosNoInstante(semLider, "lucas", hora(10))];
+     })(),
+     ["andre", "breno", null, ["andre"]]);
+
+  // O pop-up: a tela pergunta ANTES, mas quem recusa é o banco. Uma trava só
+  // de tela some quando duas pessoas mexem ao mesmo tempo.
+  eq('R285: a tela sabe de qual equipe tirar antes de chamar a porta — e devolve `null` quando não há de onde tirar (pessoa livre, ou já é da equipe de destino)',
+     [D285.equipeAAbandonar(MEMBROS, "lucas", "C", hora(10)),
+      D285.equipeAAbandonar(MEMBROS, "lucas", "A", hora(10)),
+      D285.equipeAAbandonar(MEMBROS, "ninguem", "A", hora(10))],
+     ["A", null, null]);
+
+  // O instante de referência do apoio: o agendamento manda.
+  eq('R285: o instante do apoio é o do AGENDAMENTO; sem agendamento, o da criação; sem os dois, agora — sucessor do `dia_da_dupla`, que devolvia DATA e por isso não sabia responder por uma troca feita à tarde',
+     [D285.instanteDaEquipe(T(16), T(6), hora(20)).getHours(),
+      D285.instanteDaEquipe(null, T(6), hora(20)).getHours(),
+      D285.instanteDaEquipe(null, null, hora(20)).getHours(),
+      D285.instanteDaEquipe("nao-e-data", T(6), hora(20)).getHours()],
+     [16, 6, 20, 6]);
+
+  // ── A MIGRATION ─────────────────────────────────────────────────────────
+  const u142 = fsR285.readFileSync('supabase/migrations/20261004090000_u142_equipe_por_instante.sql', 'utf8');
+
+  // As duas regras têm de ser DECLARATIVAS. Gatilho tem corrida: dois
+  // navegadores pondo a mesma pessoa em duas equipes no mesmo milissegundo
+  // passam pelos dois gatilhos e gravam as duas linhas.
+  eq('U142 CRÍTICO: as duas garantias são EXCLUDE e não gatilho — uma pessoa numa equipe só, uma equipe com um líder só. Gatilho tem corrida, e a corrida aqui grava duas equipes para a mesma pessoa, que é justamente o que faz o apoio automático não saber qual delas foi ao prédio',
+     [/EXCLUDE USING gist \(pessoa_id WITH =, tstzrange\(entrou_em, saiu_em\) WITH &&\)/.test(u142),
+      /EXCLUDE USING gist \(equipe_id WITH =, tstzrange\(entrou_em, saiu_em\) WITH &&\)/.test(u142),
+      /WHERE \(papel = 'lider'\)/.test(u142),
+      /btree_gist/.test(u142)],
+     [true, true, true, true]);
+
+  // O backfill não pode ser opcional: sem ele a composição nasce VAZIA e todo
+  // chamado de campo perde o apoio na primeira sincronização, em silêncio.
+  eq('U142 CRÍTICO: o backfill traz a composição de hoje de `duplas_escala`, e a conferência COMPARA a contagem com a semana vigente — nascer vazia tiraria o apoio automático de todo chamado de campo sem erro nenhum na tela',
+     [/INSERT INTO public\.equipe_membros/.test(u142),
+      /FROM public\.duplas_escala e/.test(u142),
+      /a composição de HOJE veio \(ninguém perdeu equipe\)/.test(u142),
+      /backfill PULADO \(idempotência\)/.test(u142)],
+     [true, true, true, true]);
+
+  // O líder NÃO é inventado. `duplas_escala.ordem` é, por decisão escrita na
+  // própria U76, "só exibição — NÃO é regra".
+  eq('U142: o backfill entra como `ajudante` e a conferência exige ZERO líderes — promover a `ordem` 1 a líder inventaria um dado que ninguém digitou, contra o que a U76 escreveu sobre essa coluna',
+     [/'ajudante', min\(inicio\)/.test(u142),
+      /nenhum líder foi INVENTADO pelo backfill/.test(u142),
+      /papel = 'lider'\), '0'/.test(u142.replace(/\s+/g, " ")) || /count\(\*\)::text FROM public\.equipe_membros WHERE papel = 'lider'\), '0'/.test(u142.replace(/\s+/g, " "))],
+     [true, true, true]);
+
+  // A trava da U81 tem de sobreviver à reescrita. Ela é o que impede o
+  // automatismo de apagar a turma que JÁ ESTEVE no prédio.
+  eq('U142 CRÍTICO: a reescrita de `chamado_sincronizar_apoio` preserva a trava da U81 (`congelado_em IS NULL`) e passa a ler o INSTANTE — perder essa linha faria o apoio de uma visita já cumprida sumir quando a composição mudasse, sem sino e sem evento',
+     [/congelado_em IS NULL/.test(u142),
+      /instante_da_equipe\(c\.data_hora_agendada, c\.created_at\)/.test(u142),
+      /parceiros_da_equipe\(c\.responsavel_id, v_quando\)/.test(u142),
+      /a\.origem = 'dupla'/.test(u142)],
+     [true, true, true, true]);
+
+  // Os três gêmeos por DATA passam a ler a tabela nova. Deixar qualquer um
+  // lendo `duplas_escala` faria o sistema ter DUAS composições — e duas
+  // respostas para "quem foi ao prédio".
+  eq('U142 CRÍTICO: os três gêmeos por DATA (`dupla_da_pessoa`, `parceiros_da_dupla`, `parceiro_da_dupla`) passam a ler a tabela nova — deixar um deles na tabela velha daria ao sistema DUAS composições, e a pior hora de descobrir isso é numa discussão sobre quem quebrou o quê',
+     (() => {
+       const corpo = u142.slice(u142.indexOf('§4  O APOIO PASSA A LER O INSTANTE'), u142.indexOf('§4.1'));
+       return [/CREATE OR REPLACE FUNCTION public\.dupla_da_pessoa/.test(corpo),
+               /CREATE OR REPLACE FUNCTION public\.parceiros_da_dupla/.test(corpo),
+               /CREATE OR REPLACE FUNCTION public\.parceiro_da_dupla/.test(corpo),
+               (corpo.match(/equipe_da_pessoa|parceiros_da_equipe/g) ?? []).length >= 2,
+               /FROM public\.duplas_escala/.test(corpo)];
+     })(),
+     [true, true, true, true, false]);
+
+  // O portão prova a regra no banco e desfaz sozinho — e o COMMIT vem ANTES
+  // dele (cicatriz da U136, que rodava e não aplicava nada).
+  eq('U142 (regra do banco): tem pré-voo, o trabalho fecha com COMMIT ANTES do portão, o portão prova as duas recusas E a aceitação da troca atômica, e o DESFAZER está escrito',
+     [/PRÉ-VOO/.test(u142),
+      u142.indexOf("COMMIT;") < u142.indexOf("ROLLBACK;"),
+      /o banco ACEITOU a mesma pessoa em duas equipes/.test(u142),
+      /o banco ACEITOU dois líderes/.test(u142),
+      /o banco RECUSOU sair e entrar no mesmo instante/.test(u142),
+      /o passado foi reescrito/.test(u142),
+      /DESFAZER/.test(u142)],
+     [true, true, true, true, true, true, true]);
+
+  // O portão usa `clock_timestamp()` e não `now()`: dentro de uma transação o
+  // `now()` é constante, e fechar e reabrir com ele produziria uma faixa de
+  // duração zero — que o próprio CHECK recusa. O portão acusaria um defeito
+  // que não existe fora dele.
+  eq('U142: o portão usa `clock_timestamp()` — com `now()`, que é constante dentro da transação, fechar e reabrir daria uma faixa de duração ZERO e o CHECK recusaria, acusando um defeito que só existe dentro do portão',
+     (() => {
+       const portao = u142.slice(u142.indexOf('§7  O PORTÃO'));
+       return [/clock_timestamp\(\)/.test(portao),
+               /saiu_em > entrou_em/.test(u142)];
+     })(),
+     [true, true]);
+
+  // RESTRICT e não CASCADE: a doutrina escrita na U76 é "desativar, não
+  // apagar". Com CASCADE, apagar uma equipe levaria junto a história de quem
+  // esteve nela — e é dela que sai "quem foi ao prédio em agosto".
+  eq('U142: as FKs são RESTRICT e não CASCADE — apagar uma equipe levaria junto TODA a história de quem esteve nela, e é dessa história que sai quem foi ao prédio',
+     (() => {
+       const tab = u142.slice(u142.indexOf('CREATE TABLE IF NOT EXISTS public.equipe_membros'),
+                              u142.indexOf('COMMENT ON TABLE public.equipe_membros'));
+       return [/REFERENCES public\.duplas\(id\)\s+ON DELETE RESTRICT/.test(tab),
+               /REFERENCES public\.profiles\(id\) ON DELETE RESTRICT/.test(tab),
+               /ON DELETE CASCADE/.test(tab)];
+     })(),
+     [true, true, false]);
+
+  // E a regra está escrita, com a frase dele.
+  eq('R285 (regra 1): a regra está no PRODUTO com a frase do Davi e diz o que derruba — a R96 (semana como unidade) e a R98 (quem já está em outra equipe não era oferecido)',
+     (() => {
+       const prod = fsR285.readFileSync('docs/PRODUTO.md', 'utf8');
+       const i = prod.indexOf('- **R285**');
+       const t = i < 0 ? "" : prod.slice(i, i + 2400);
+       return [/alterna a partir do momento que ele fez\s+a alteração/.test(t),
+               /Revisa a R96/.test(t),
+               /R98/.test(t),
+               /pergunta antes de mover/.test(t)];
+     })(),
+     [true, true, true, true]);
 }
 
 // ── R281 — O CHECKLIST CLICAVA NA LINHA DE BAIXO (14/09/2026) ─────────────

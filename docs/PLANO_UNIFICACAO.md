@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 162 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 163 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -165,6 +165,7 @@
 - [U138 — a leva que saiu da revisão completa: a porta pública fecha, o baseline de tipos vai a ZERO, e três defeitos que ninguém via (R277–R280)](#u138-a-leva-que-saiu-da-revisão-completa-a-porta-pública-fecha-o-baseline-de-tipos-vai-a-zero-e-três-defeitos-que-ninguém-via-r277r280)
 - [U140 — os cinco que não dependiam do Davi: a fila do gestor, as cobranças na ficha, os cabeçalhos e o motor de orçamento provado (P20, R155, S10)](#u140-os-cinco-que-não-dependiam-do-davi-a-fila-do-gestor-as-cobranças-na-ficha-os-cabeçalhos-e-o-motor-de-orçamento-provado-p20-r155-s10)
 - [U141 — o checklist clicava na linha de baixo (R281)](#u141-o-checklist-clicava-na-linha-de-baixo-r281)
+- [U142 — a equipe passa a valer do instante da troca (R285)](#u142-a-equipe-passa-a-valer-do-instante-da-troca-r285)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -13442,3 +13443,104 @@ texto **não se moveu** (continua a 28,00px da borda, porque a largura segue
 
 **Números.** Verificador: **3.426 asserções**, 0 falharam. `tsc`: 0. Build
 completa. Sem migration.
+
+## U142 — a equipe passa a valer do instante da troca (R285)
+
+**O pedido.** Davi, 14/09/2026, depois de apurar com o Vinicius: *"isso é
+adaptado semanalmente, as vezes quinzenalmente, as vezes mensalmente, as vezes
+a dupla muda durante a semana… Ou seja, é dinâmico"* — e, sobre a vigência:
+*"sempre que ele atualizar uma equipe, alterna a partir do momento que ele fez
+a alteração"*.
+
+**O que estava errado, e por que estava certo antes.** A U76 fez a composição
+ser por SEMANA ISO, com herança: a semana sem escala própria herda a última
+lançada antes dela. Aquilo era a leitura certa do que se sabia em 31/08 — a
+escala era montada na segunda e valia a semana inteira.
+
+Com a troca podendo acontecer numa quarta-feira, a semana como unidade
+**reescreve o passado**: mexer na quarta faz a segunda e a terça passarem a
+dizer que o ajudante novo esteve no prédio. E como o apoio do chamado é
+DERIVADO da composição daquela semana (`chamado_sincronizar_apoio`), o registro
+de quem foi ao cliente mudava sozinho — sem sino, sem evento, sem `updated_at`.
+
+**A troca.** A composição virou uma FAIXA DE TEMPO por pessoa: entrou em tal
+instante, saiu em tal outro (ou ainda não saiu). "Quem estava com o André no
+dia 10 às 14h" passou a ser pergunta que o banco responde direto, e nenhuma
+troca futura mexe no que já foi.
+
+**A faixa é `[entrou, saiu)`, e isso não é gosto.** Fechada no começo, ABERTA
+no fim. É o que faz a troca ser atômica: sair de uma equipe e entrar em outra
+no MESMO instante não se sobrepõe, então não existe um micro-segundo em que a
+pessoa está em duas equipes — nem um em que ela não está em nenhuma. Se fosse
+fechada dos dois lados, o `EXCLUDE` recusaria justamente o gesto que a regra
+existe para permitir. O portão da migration prova as três coisas: recusa duas
+equipes ao mesmo tempo, recusa dois líderes, e **aceita** sair e entrar no
+mesmo instante.
+
+**Duas regras viraram garantia declarativa**, pelo mesmo `btree_gist` que a U78
+comprou para a grade: uma pessoa em no máximo UMA equipe por instante, e uma
+equipe com no máximo UM líder por instante. Gatilho não serviria: dois
+navegadores pondo a mesma pessoa em duas equipes no mesmo milissegundo passam
+pelos dois gatilhos e gravam as duas linhas — e aí o apoio automático não sabe
+qual equipe foi ao prédio.
+
+É a primeira dessas duas que dá o pop-up que o Davi pediu (*"o sistema deve
+sugerir a remoção do técnico da outra equipe… e só poderá prosseguir se ele
+clicar em remover"*): a tela pergunta antes, mas **quem recusa é o banco**.
+Uma trava só de tela some quando duas pessoas mexem ao mesmo tempo.
+
+**O que eu me recusei a fazer: inventar líder.** O backfill traz a composição
+de hoje de `duplas_escala`, e `duplas_escala.ordem` era o candidato óbvio para
+virar o líder — só que a própria U76 escreveu, na definição da coluna, que ela
+é *"só exibição. NÃO é regra: nenhuma unicidade e nenhuma leitura de composição
+dependem dela"*. Promover a ordem 1 a líder inventaria um dado que ninguém
+digitou. Todo mundo entra como `ajudante`, o Vinicius nomeia os líderes na
+tela, e a conferência exige **zero** líderes depois da migration. Até ele
+nomear, nada quebra: o apoio automático sempre foi "todos os OUTROS da equipe",
+e continua sendo.
+
+**A conversão semana → faixa.** As semanas EXPLÍCITAS de
+`duplas_escala_semanas` são os pontos de mudança (é o que a herança da U76 já
+significava), e cada uma vale até a próxima explícita; a última fica aberta. A
+borda é segunda-feira 00:00 no fuso de Brasília. Semanas consecutivas com a
+mesma pessoa na mesma equipe viram UMA faixa — sem isso o histórico nasceria
+com uma linha por semana por pessoa, verdadeiro e ilegível, e a tela mostraria
+"entrou e saiu" toda segunda-feira.
+
+**O que a reescrita não podia perder.** `chamado_sincronizar_apoio` foi
+reescrita com o corpo da U81 preservado linha por linha e UMA troca: a
+referência deixa de ser a data (mais a semana vigente) e passa a ser o
+instante. A trava da U81 — `congelado_em IS NULL` — continua exatamente onde
+estava. Ela é o que impede o automatismo de apagar a turma que JÁ ESTEVE no
+prédio, e com a vigência por instante ela fica menos provável de ser acionada,
+não desnecessária: o agendamento ainda pode ser movido, e o instante de
+referência anda junto.
+
+**Os três gêmeos por DATA** (`dupla_da_pessoa`, `parceiros_da_dupla`,
+`parceiro_da_dupla`) continuam existindo para quem ainda os chama, mas passam a
+ler a tabela nova — a data vira meio-dia local. Deixar um deles lendo
+`duplas_escala` daria ao sistema DUAS composições, e a pior hora de descobrir
+isso é numa discussão sobre quem quebrou o quê.
+
+**Quatro defeitos que eu mesmo escrevi e o conferir pegou antes de você.** (1)
+A coluna chama `semana`, não `referencia` — o backfill teria dado erro de
+coluna inexistente. (2) Eu pus `ON DELETE CASCADE` nas FKs num repositório cuja
+doutrina, escrita na própria U76, é *"desativar, NÃO apagar; que o banco
+grite"* — com CASCADE, apagar uma equipe levaria junto a história de quem
+esteve nela. (3) Em plpgsql o `FOUND` é reescrito por TODO `SELECT INTO`
+seguinte, e eu o consultava quatro vezes depois de outra consulta: a função
+decidiria pelo resultado da última escrita em vez da pergunta que fez. (4) Não
+existe agregado `min()` para `uuid` em Postgres, e o meu `parceiro_da_dupla`
+usava um. O quinto foi no portão: dentro de uma transação `now()` é
+**constante**, então fechar e reabrir com ele produziria uma faixa de duração
+zero — que o próprio CHECK recusa —, e o portão acusaria um defeito que só
+existe dentro dele. Virou `clock_timestamp()`, com o motivo escrito ao lado.
+
+**A dívida que esta entrega abre, declarada:** as duas portas de escrita
+exigem `is_gestor()` **sem** o teste de dois eixos ao lado. A leitura já está
+fechada pela U137 (`eh_do_time`, que olha `ativo` e `status`), então um
+ex-funcionário com login vivo não LÊ a composição — mas ainda ESCREVERIA por
+chamada direta à RPC. Está na P51, com o recorte.
+
+**Números.** Verificador: **3.441 asserções**, 0 falharam. `tsc`: 0. Migration
+**U142 PENDENTE** — o Davi roda no SQL Editor. A tela vem no passo seguinte.

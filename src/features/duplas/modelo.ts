@@ -37,6 +37,135 @@ export function erroDaDupla(entrada: { nome: string }): string | null {
   return null;
 }
 
+// ── R285 (U142): A COMPOSIÇÃO POR INSTANTE ─────────────────────────────────
+//
+// A U76 fez a composição ser por SEMANA ISO. Era a leitura certa do que se
+// sabia: a escala era montada na segunda e valia a semana. Só que o Vinicius
+// troca gente na quarta — e com a semana como unidade, mexer na quarta faz a
+// segunda e a terça passarem a dizer que o ajudante novo esteve no prédio.
+//
+// Davi, 14/09/2026: "sempre que ele atualizar uma equipe, alterna a partir do
+// momento que ele fez a alteração".
+//
+// Estas funções são os GÊMEOS de `membros_da_equipe`, `equipe_da_pessoa`,
+// `lider_da_equipe` e `parceiros_da_equipe` (U142). Existem para o verificador
+// exercitar a regra sem subir banco — e é por isso que recebem a lista pronta
+// em vez de consultar.
+
+export type PapelNaEquipe = "lider" | "ajudante";
+
+/** Uma passagem por uma equipe: entrou tal hora, saiu tal outra (ou não saiu). */
+export interface MembroDaEquipe {
+  equipeId: string;
+  pessoaId: string;
+  papel: PapelNaEquipe;
+  /** ISO do instante em que entrou */
+  entrouEm: string;
+  /** ISO do instante em que saiu; null = ainda está */
+  saiuEm: string | null;
+}
+
+/**
+ * A faixa vale NAQUELE instante?
+ *
+ * `[entrou, saiu)` — fechada no começo, ABERTA no fim. Não é detalhe: é o que
+ * faz a troca ser atômica. Sair de uma equipe e entrar em outra no MESMO
+ * instante não se sobrepõe, então o banco aceita as duas linhas e não existe
+ * um micro-segundo em que a pessoa está em duas equipes — nem um em que ela
+ * não está em nenhuma.
+ */
+export function valeNoInstante(m: MembroDaEquipe, quando: Date): boolean {
+  const t = quando.getTime();
+  const de = new Date(m.entrouEm).getTime();
+  if (Number.isNaN(de) || t < de) return false;
+  if (!m.saiuEm) return true;
+  const ate = new Date(m.saiuEm).getTime();
+  return Number.isNaN(ate) ? true : t < ate;
+}
+
+/** Quem está nesta equipe naquele instante — o líder primeiro. */
+export function membrosNoInstante(
+  membros: MembroDaEquipe[], equipeId: string, quando: Date,
+): MembroDaEquipe[] {
+  return membros
+    .filter((m) => m.equipeId === equipeId && valeNoInstante(m, quando))
+    .sort((a, b) => (a.papel === b.papel ? a.entrouEm.localeCompare(b.entrouEm)
+      : a.papel === "lider" ? -1 : 1));
+}
+
+/**
+ * Em que equipe a pessoa estava naquele instante. `null` = em nenhuma.
+ *
+ * Sem "primeiro achado": o EXCLUDE da U142 garante que há no máximo uma, e é
+ * por isso que ele é constraint e não gatilho. Se aparecer mais de uma aqui, o
+ * banco foi contornado — e devolver a primeira esconderia isso.
+ */
+export function equipeDaPessoaNoInstante(
+  membros: MembroDaEquipe[], pessoaId: string | null | undefined, quando: Date,
+): string | null {
+  if (!pessoaId) return null;
+  const achados = membros.filter((m) => m.pessoaId === pessoaId && valeNoInstante(m, quando));
+  return achados.length === 1 ? achados[0].equipeId : null;
+}
+
+/** O líder da equipe naquele instante. `null` = ninguém foi nomeado ainda. */
+export function liderDaEquipe(
+  membros: MembroDaEquipe[], equipeId: string, quando: Date,
+): string | null {
+  const l = membrosNoInstante(membros, equipeId, quando).filter((m) => m.papel === "lider");
+  return l.length === 1 ? l[0].pessoaId : null;
+}
+
+/**
+ * Os OUTROS da equipe da pessoa naquele instante — é esta que o apoio usa.
+ *
+ * NÃO olha papel: o líder não é condição para o automatismo. Atribuir o
+ * chamado a um ajudante põe o líder e os demais como apoio, do mesmo jeito —
+ * quem foi ao prédio foi a equipe, não o organograma dela.
+ */
+export function parceirosNoInstante(
+  membros: MembroDaEquipe[], pessoaId: string | null | undefined, quando: Date,
+): string[] {
+  const eq = equipeDaPessoaNoInstante(membros, pessoaId, quando);
+  if (!eq) return [];
+  return membrosNoInstante(membros, eq, quando)
+    .filter((m) => m.pessoaId !== pessoaId)
+    .map((m) => m.pessoaId);
+}
+
+/**
+ * O que a tela precisa saber ANTES de chamar a porta: esta pessoa já está em
+ * outra equipe? Devolve o id dela, para o pop-up poder dizer o nome.
+ *
+ * Davi: "o sistema deve sugerir (pop up) a remoção do técnico da outra equipe
+ * em que ele já estava, e só poderá prosseguir se ele clicar em remover".
+ * A pergunta é feita aqui e a RECUSA é do banco — a tela perguntar sem a porta
+ * recusar seria uma trava que some quando duas pessoas mexem ao mesmo tempo.
+ */
+export function equipeAAbandonar(
+  membros: MembroDaEquipe[], pessoaId: string, equipeDestino: string, quando: Date,
+): string | null {
+  const atual = equipeDaPessoaNoInstante(membros, pessoaId, quando);
+  return atual && atual !== equipeDestino ? atual : null;
+}
+
+/**
+ * O instante de referência do apoio automático — gêmeo de
+ * `instante_da_equipe`. O agendamento manda; sem ele, a criação; sem as duas,
+ * agora. Sucessor de `diaDaDupla`, que devolvia DATA e por isso não sabia
+ * responder por uma troca feita à tarde.
+ */
+export function instanteDaEquipe(
+  agendada: string | null | undefined, criado: string | null | undefined, agora: Date = new Date(),
+): Date {
+  for (const iso of [agendada, criado]) {
+    if (!iso) continue;
+    const d = new Date(iso);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return agora;
+}
+
 // ── Série do gráfico: atividades por equipe ao longo das semanas ────────────
 
 export interface SemanaDoGrafico {

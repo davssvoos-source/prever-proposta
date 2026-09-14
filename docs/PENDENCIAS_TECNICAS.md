@@ -2134,6 +2134,16 @@ decide por cargo e **não** por `ativo`) e o censo das três medidas acima. Se
 alguém consertar a função, a asserção acende — e o que ela pede é que o número
 seja atualizado junto com a decisão.
 
+**Entrou no alcance em 14/09/2026 (U142):** as duas portas de escrita da
+composição da equipe — `equipe_definir_membro` e `equipe_tirar_membro` —
+exigem `is_gestor()` **sem** o teste de dois eixos ao lado, diferente da U87,
+da U109 e da U129. Não foi descuido: a U137 já fechou a LEITURA de
+`equipe_membros` em `eh_do_time()`, que olha `ativo` e `status`, então um
+ex-funcionário com login vivo **não lê** a composição. O que ele ainda
+conseguiria é **escrever** por uma chamada direta à RPC — montar ou desmontar
+equipe de campo. Quando a P51 for fechada pela saída (a) ou (b), estas duas
+portas são cobertas pela mesma correção; até lá, está dito.
+
 ---
 
 ## P52 — ~~MÉDIO~~ FECHADA (U140, 2026-09-14) · Os PDFs perdem em silêncio todo caractere acima de U+00FF (2026-09-08, achado pela U86)
