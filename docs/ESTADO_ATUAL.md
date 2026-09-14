@@ -8,7 +8,7 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-14** · última regra: **R281** · último diário:
+Última atualização: **2026-09-14** · última regra: **R285** · último diário:
 **U141** · verificador: **3.426 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138) · migrations rodadas até a **U139**
 (U131, U132 e U134 em 13/09/2026, nesta ordem; U136, U137 e U139 em
@@ -17,7 +17,10 @@ baseline de 57 erros foi a ZERO na U138) · migrations rodadas até a **U139**
 (192.168.10.182); **o pacote gerado é a v0.0.12** (14/09/2026), e ele sobe de
 uma vez o que a v0.0.8 até a v0.0.11 já tinham entregue — o que entrou em cada
 versão está em `docs/VERSOES.md`. **Nenhuma migration pendente**: as seis de
-que a v0.0.12 depende (U131, U132, U134, U136, U137, U139) já rodaram. Fim de
+que a v0.0.12 depende (U131, U132, U134, U136, U137, U139) já rodaram.
+**As R282–R285 estão DITADAS e ainda NÃO implementadas** (14/09/2026 — a leva
+do Vinicius: a corretiva com dois textos, a vistoria virando atividade
+interna, o campo sem prazo, a equipe valendo do momento da troca). Fim de
 entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
 

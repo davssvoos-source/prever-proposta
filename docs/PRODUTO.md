@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R281 (52)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R285 (56)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5224,3 +5224,79 @@ adaptado."
   eu quero clicar na de cima e ele clica na de baixo, está ruim este
   mecanismo".)* Revisa a R50/R53 em UM ponto: a geometria original de mrhyddenn
   (Uiverse.io) era de um botão isolado, não de uma lista de linhas de 22px.
+
+> **As R282–R285 foram DITADAS em 14/09/2026 e ainda NÃO estão
+> implementadas.** Elas descrevem o destino, não o código de hoje. Cada uma
+> nomeia a regra que derruba — e a regra derrubada continua valendo até a
+> entrega que a substitui.
+
+- **R282** — **A corretiva tem DOIS textos: o problema e a solução.** O
+  "Problema apresentado" é o relato de quem abriu; a **"Solução"** é um campo
+  único onde o técnico conta **a causa E o que fez** — os dois textos que hoje
+  são separados (`diagnostico` e `servico_executado`) viram um. Cada um dos
+  dois campos tem o seu espaço de fotos. *(Davi, 14/09/2026: "A Manutenção
+  Corretiva vai se restringir a Problema apresentado, Solução em campos
+  diferentes e os respectivos espaços para fotos"; e, perguntado se o
+  Diagnóstico sairia ou ficaria à parte, escolheu "vira um campo só".)*
+  **Revisa a R213**, que fazia do Diagnóstico a marca registrada da corretiva:
+  o campo não morre de significado, morre de SEPARAÇÃO — para o técnico
+  digitar uma vez em vez de duas. O relatório em PDF passa a ter uma seção de
+  solução no lugar de duas.
+
+- **R283** — **A vistoria sai do campo e vira atividade interna do gestor.** O
+  técnico de campo tem exatamente três tipos de demanda: **corretiva,
+  preventiva e implantação** — e nada mais. A vistoria continua existindo,
+  porque é nela que a validação do Vinicius é registrada (R155/R156), mas
+  deixa de ser chamado de campo: passa a ser **atividade interna dele**, que
+  aparece na Início junto com o resto do que ele faz, sem ocupar a agenda da
+  equipe de campo. *(Davi, 14/09/2026: "Eles não tem mais nenhum tipo de
+  demanda para fazer"; e, perguntado onde a validação passaria a morar,
+  escolheu "vistoria vira atividade interna".)* **Revisa a R112**, que a
+  definia como tipo de chamado de campo com entrada na programação; **mantém a
+  R156** ("a vistoria É a validação"), só muda a natureza dela.
+
+- **R284** — **O chamado de campo não tem prazo: quem orienta a data agendada
+  é a PRIORIDADE.** O campo de prazo sai dos três tipos de campo. Quem agenda
+  é gente — o SAC ou o gestor —, e a prioridade é o que diz para quando: baixa,
+  alta ou urgente mudam a data que a pessoa escolhe, não um número que o
+  sistema calcula sozinho. **"Atrasado" no campo passa a significar "a data
+  agendada já passou e não foi feito"**, e a contagem de remarcações (R225)
+  continua sendo o registro de que a data mudou. *(Davi, 14/09/2026: "Não
+  precisa ter o campo de prazo, podemos trabalhar somente com Data agendada com
+  o sistema de contar a quantidade de vezes em que foi remarcada"; e, sobre o
+  SLA automático: "na verdade o gestor ou SAC vai agendar a atividade de acordo
+  com a prioridade. Se a prioridade for baixa, alta ou urgente ele vai adaptar
+  a data agendada de acordo com isso".)* **Revisa a R112** na segunda metade (o
+  SLA de `chamado_sla` deixa de reger o campo) e **a R225** deixa de ser
+  exceção no campo: no campo nunca há prazo, agendado ou não. Um prazo que
+  nasce sozinho e que ninguém usa para decidir é número que envelhece em
+  silêncio — a tela mostra a prioridade ao agendar, e a decisão continua de
+  quem agenda.
+
+  **Aberto nesta regra, e o Davi vai fechar:** *"abrir chamados urgentes fora
+  do horário comercial poderão ser atribuídos diretamente ao plantonista"* —
+  ainda é "poderão", não "serão". Enquanto for, o sistema não atribui sozinho.
+  **Quem é o plantonista já está resolvido e não se pergunta a ninguém:** é o
+  usuário escalado na janela de Sobreaviso (R253/R254, escala da U129), e é por
+  estar de plantão que ele recebe sobreaviso. *(Davi, 14/09/2026: "O plantonista
+  é o usuário selecionado na janela de SOBREAVISO. O plantonista recebe
+  sobreaviso por estar fazendo plantão. Isso deve ser levado em consideração e o
+  sistema deve integrar de maneira inteligente essas informações".)* O sistema já
+  sabe quem está de plantão em qualquer instante — o que falta decidir é só se
+  ele ATRIBUI sozinho ou se propõe e o humano confirma.
+
+- **R285** — **A composição da equipe vale do MOMENTO da troca em diante.** O
+  Vinicius monta equipes com **um líder e qualquer número de ajudantes** (não
+  só duplas), e quando ele troca alguém, a troca vale **daquele instante para
+  frente**: os dias já vividos continuam com quem realmente foi. *(Davi,
+  14/09/2026: "isso é adaptado semanalmente, as vezes quinzenalmente, as vezes
+  mensalmente, as vezes a dupla muda durante a semana… Ou seja, é dinâmico";
+  "sempre que ele atualizar uma equipe, alterna a partir do momento que ele fez
+  a alteração"; e, perguntado se podia valer a semana inteira como hoje,
+  escolheu "do momento em diante".)* **Revisa a R96** (a escala era por SEMANA
+  ISO, com herança da última semana lançada) e **a R98** (quem já está em outra
+  equipe naquela semana não era nem oferecido): agora ele PODE escolher o
+  técnico ocupado, e o sistema **pergunta antes de mover** — só prossegue se ele
+  clicar em remover da outra. E **o apoio do chamado passa a nascer da equipe do
+  responsável**: atribuir o André, que lidera uma equipe com o Lucas, põe o
+  Lucas como apoio — e quem cria, o gestor ou quem tem permissão ainda troca.
