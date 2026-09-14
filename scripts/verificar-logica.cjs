@@ -12057,24 +12057,27 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('U84: …e os dois que faltavam agora decidem por `!= null`',
      arvore84.filter(([, s]) => /mapUrl =\s*\n?\s*lat != null && lng != null/.test(s)).map(([p]) => p).sort(),
      ['src/features/gerencial/NovaVisitaTecnica.tsx', 'src/routes/_authenticated/visita.$id.tsx']);
-  // A FRASE DE FALHA NÃO PODE AFIRMAR QUE O ENDEREÇO NÃO EXISTE. A casca de
-  // `gerencial/data.ts` colapsa `nao_encontrado` e `servico_falhou` num `null`
-  // só (P43), e o bloqueio do Nominatim é POR IP: "este endereço não existe" é a
-  // única frase do sistema que instrui a pessoa a martelar quem a bloqueou.
-  eq('CRÍTICO: nenhuma das quatro telas afirma que o endereço NÃO EXISTE quando a geocodificação falha — a casca colapsa "não achei" e "o serviço recusou" no mesmo `null` (P43), e o bloqueio do Nominatim é por IP e cai sobre a operação inteira. As quatro dizem que pode ser o texto OU o serviço, e que repetir na mesma hora não adianta',
-     // R242 (U125): a frase virou UM texto em src/lib/endereco.ts, e as quatro
-     // telas o importam — o que o pino conta agora é o USO da constante (o
-     // conteúdo dela é assertado no bloco da U125, num lugar só). E ela deixou
-     // de ser vermelha: o endereço está salvo, o mapa é que não achou.
-     [chamamGeocode84.filter(([, s]) => /AVISO_ENDERECO_SEM_MAPA/.test(s)).length,
+  // A FRASE DE FALHA NÃO PODE AFIRMAR QUE O ENDEREÇO NÃO EXISTE — e isso não
+  // mudou com a P43, mudou o PORQUÊ. Antes era porque o sistema não sabia (a
+  // casca colapsava os motivos); agora é porque ele sabe e, quando o motivo é
+  // recusa, afirmar isso seria a única frase do sistema a instruir a pessoa a
+  // martelar o serviço que acabou de bloqueá-la (o bloqueio é POR IP).
+  eq('CRÍTICO: nenhuma das quatro telas afirma que o endereço NÃO EXISTE quando a geocodificação falha — e as quatro tiram a frase do MOTIVO que o servidor devolveu (P43, U140), nunca de um texto escolhido na tela',
+     // R242 (U125): a frase é UM texto em src/lib/endereco.ts; a P43 a
+     // desdobrou em três, e as quatro telas escolhem pela função — o conteúdo
+     // das três é assertado no bloco da U125, num lugar só.
+     [chamamGeocode84.filter(([, s]) => /avisoDoEndereco\(/.test(s)).length,
       chamamGeocode84.filter(([, s]) => /Endereço não localizado|Endereço não encontrado/.test(s)).map(([p]) => p)],
      [4, []]);
-  eq('U84: e o SERVIDOR continua distinguindo os dois motivos — a informação existe e está sendo apagada UMA camada acima, que é exatamente o que P43 declara; se ela sumisse do servidor, a dívida deixaria de ser resolvível sem uma entrega nova',
+  eq('P43 CRÍTICO (U140): a casca PAROU de apagar o motivo — ela devolve a resposta inteira do servidor, e o `return r.ok ? r.endereco : null` que colapsava os três casos num `null` só não existe mais',
      (() => { const g = fs84.readFileSync('src/lib/geocodificar.functions.ts', 'utf8');
+              const casca = fs84.readFileSync('src/features/gerencial/data.ts', 'utf8');
               return [/motivo: "nao_encontrado"/.test(g), /motivo: "servico_falhou"/.test(g),
-                      /return r\.ok \? r\.endereco : null;/
-                        .test(fs84.readFileSync('src/features/gerencial/data.ts', 'utf8'))]; })(),
-     [true, true, true]);
+                      /motivo: "sem_provedor"/.test(g),
+                      /return r\.ok \? r\.endereco : null;/.test(casca),
+                      /return await geocodificarEndereco\(\{ data: \{ q: endereco \} \}\);/.test(casca),
+                      /Promise<RespostaDaGeocodificacao>/.test(casca)]; })(),
+     [true, true, true, false, true, true]);
 
   // ── 3) A JANELA SEGUE O CAMPO — censo dos INVÓLUCROS ─────────────────────
   //
@@ -20125,20 +20128,42 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, false]);
 
   // ── R242: o endereço vale sem o mapa ─────────────────────────────────────
-  eq('R242 CRÍTICO: o aviso do endereço é UM texto para as QUATRO telas — e ele diz que o endereço ESTÁ SALVO, não afirma que o endereço não existe, e mantém o aviso de que repetir na mesma hora não adianta (o bloqueio do Nominatim é por IP, P43)',
-     [/O endereço fica salvo assim mesmo/.test(END.AVISO_ENDERECO_SEM_MAPA),
-      /não achei este ponto no mapa/.test(END.AVISO_ENDERECO_SEM_MAPA),
-      /Incluir bairro e cidade/.test(END.AVISO_ENDERECO_SEM_MAPA),
-      /repetir na mesma hora não adianta/.test(END.AVISO_ENDERECO_SEM_MAPA),
-      /não existe|não encontrado|não localizado/i.test(END.AVISO_ENDERECO_SEM_MAPA),
-      END.DICA_DO_CAMPO_ENDERECO],
-     [true, true, true, true, false, 'Rua, número, bairro, cidade']);
-  eq('R242 CRÍTICO: as quatro telas do endereço usam a constante comum — na frase e na placeholder —, e nenhuma delas guarda mais a frase antiga nem pinta o aviso de vermelho',
-     [TELAS_DO_ENDERECO.filter((f) => /AVISO_ENDERECO_SEM_MAPA/.test(ler125(f))).length,
+  // P43 (U140): virou UMA FRASE POR MOTIVO. O inegociável da R242 vale para as
+  // TRÊS — começam dizendo que o endereço está salvo, e nenhuma afirma que ele
+  // não existe. O "repetir não adianta" saiu da frase genérica e foi para a da
+  // RECUSA, que é o único caso em que ele é verdade.
+  eq('R242 + P43 CRÍTICO: as TRÊS frases começam dizendo que o endereço ESTÁ SALVO e NENHUMA afirma que ele não existe — e cada uma manda fazer a coisa certa: conferir o texto, tentar mais tarde, ou esperar porque o serviço recusou',
+     (() => {
+       const todas = [END.AVISO_ENDERECO_SEM_MAPA, END.AVISO_MAPA_FORA_DO_AR, END.AVISO_MAPA_RECUSOU];
+       return [todas.filter((f) => /^O endereço fica salvo assim mesmo/.test(f)).length,
+               todas.filter((f) => /não existe|não encontrado|não localizado/i.test(f)),
+               /Incluir bairro e cidade/.test(END.AVISO_ENDERECO_SEM_MAPA),
+               /não é o texto do endereço|Não é o texto do endereço/.test(END.AVISO_MAPA_FORA_DO_AR),
+               /tentar de novo daqui a pouco/.test(END.AVISO_MAPA_FORA_DO_AR),
+               /Repetir na mesma hora.{0,3}não adianta/.test(END.AVISO_MAPA_RECUSOU),
+               END.DICA_DO_CAMPO_ENDERECO];
+     })(),
+     [3, [], true, true, true, true, 'Rua, número, bairro, cidade']);
+
+  // A frase da RECUSA carrega a instrução de diagnóstico que só existia no
+  // documento de dívida: o limite é da OPERAÇÃO INTEIRA (o bloqueio do
+  // Nominatim é por IP), então mexer no endereço não resolve — e quem vê o
+  // sintoma precisa saber disso na hora de ver o sintoma.
+  eq('P43: a frase da RECUSA diz que o limite é da operação inteira e não deste cadastro — era a única coisa que o sistema sabia e nunca dizia a ninguém',
+     [/limite de uso/.test(END.AVISO_MAPA_RECUSOU),
+      /em todas as telas/.test(END.AVISO_MAPA_RECUSOU),
+      /da operação inteira, não deste/.test(END.AVISO_MAPA_RECUSOU),
+      END.avisoDoEndereco("nao_encontrado") === END.AVISO_ENDERECO_SEM_MAPA,
+      END.avisoDoEndereco("servico_falhou") === END.AVISO_MAPA_FORA_DO_AR,
+      END.avisoDoEndereco("sem_provedor") === END.AVISO_MAPA_RECUSOU,
+      new Set([END.AVISO_ENDERECO_SEM_MAPA, END.AVISO_MAPA_FORA_DO_AR, END.AVISO_MAPA_RECUSOU]).size],
+     [true, true, true, true, true, true, 3]);
+  eq('R242 + P43 CRÍTICO: as quatro telas tiram a frase da MESMA função (nenhuma escolhe texto sozinha), usam a placeholder comum, e nenhuma guarda a frase antiga nem pinta o aviso de vermelho',
+     [TELAS_DO_ENDERECO.filter((f) => /avisoDoEndereco\(/.test(ler125(f))).length,
       TELAS_DO_ENDERECO.filter((f) => /placeholder=\{DICA_DO_CAMPO_ENDERECO\}/.test(ler125(f))).length,
       TELAS_DO_ENDERECO.filter((f) => /Não achei este endereço/.test(ler125(f))),
       /color: vermelho, fontFamily: FONT, margin: "8px 0 0" \}\}>\s*\n\s*Não achei/.test(ler125('src/features/gerencial/NovaVisitaTecnica.tsx')),
-      /color: cz\.textoSecundario, fontFamily: FONT, margin: "8px 0 0", lineHeight: 1\.5 \}\}>\s*\n\s*\{AVISO_ENDERECO_SEM_MAPA\}/.test(ler125('src/features/gerencial/NovaVisitaTecnica.tsx'))],
+      /color: cz\.textoSecundario, fontFamily: FONT, margin: "8px 0 0", lineHeight: 1\.5 \}\}>\s*\n\s*\{avisoDoEndereco\(/.test(ler125('src/features/gerencial/NovaVisitaTecnica.tsx'))],
      [4, 4, [], false, true]);
   eq('R242: a coordenada NÃO entra na conta do que serve para salvar — enderecoServe olha só o texto, e a validação da tela da visita continua sem lat/lng',
      [END.enderecoServe('Rua Engelbert Romer, 124'), END.enderecoServe('   '), END.enderecoServe(null),
@@ -22251,6 +22276,67 @@ assincronas.push(async () => {
        return [comVelho, comZero];
      })(),
      [[], 4]);
+}
+
+// ── P43 — "NÃO ACHEI" E "O SERVIÇO RECUSOU" ERAM A MESMA COISA (14/09/2026) ─
+//
+// O servidor sempre distinguiu os motivos; a casca de `gerencial/data.ts`
+// fazia `return r.ok ? r.endereco : null` e apagava a diferença UMA camada
+// acima. As quatro telas diziam a mesma frase nos dois casos — e a frase tinha
+// de hesitar nos dois, porque afirmar "o endereço não existe" durante um
+// bloqueio seria a única frase do sistema a instruir a pessoa a MARTELAR o
+// serviço que acabou de recusá-la (o bloqueio do Nominatim é por IP e cai
+// sobre a operação inteira).
+{
+  const fsP43 = require('fs');
+  const geo43 = fsP43.readFileSync('src/lib/geocodificar.functions.ts', 'utf8');
+  const END43 = carregar('src/lib/endereco.ts');
+
+  // ORDEM, não presença: um `grep` pelo ramo da recusa fica verde mesmo que
+  // ele esteja DEPOIS do `!r.ok` genérico — e ali ele nunca executaria, porque
+  // 429 e 403 também são `!r.ok`. O pino compara as posições.
+  eq('P43 CRÍTICO: o ramo da RECUSA (429/403/401) vem ANTES do `!r.ok` genérico — depois dele nunca executaria, porque recusa também é resposta não-ok, e os três voltariam a virar "falhou"',
+     (() => {
+       const recusa = geo43.indexOf('r.status === 429 || r.status === 403 || r.status === 401');
+       const generico = geo43.indexOf('if (!r.ok) return { ok: false, motivo: "servico_falhou" };');
+       return [recusa > 0, generico > 0, recusa < generico];
+     })(),
+     [true, true, true]);
+
+  // EXAUSTIVIDADE: motivo novo no servidor sem frase própria cai no `return`
+  // final e recebe, calado, o recado de "confira o endereço" — que é
+  // justamente o conselho errado para tudo o que não é `nao_encontrado`.
+  eq('P43 CRÍTICO: TODO motivo que o servidor sabe produzir tem frase própria — um motivo novo sem frase cairia no caso final e mandaria conferir um endereço que está certo, calado',
+     (() => {
+       const uniao = /export type MotivoSemMapa =([^;]+);/.exec(geo43)[1];
+       const motivos = (uniao.match(/"([a-z_]+)"/g) ?? []).map((s) => s.replace(/"/g, ""));
+       const frases = motivos.map((m) => END43.avisoDoEndereco(m));
+       return [motivos.sort(), new Set(frases).size, motivos.length];
+     })(),
+     [['nao_encontrado', 'sem_provedor', 'servico_falhou'], 3, 3]);
+
+  // E o conselho de cada frase é o que a pessoa deve fazer NAQUELE caso —
+  // mandar conferir o texto quando o serviço é que recusou faz a pessoa
+  // corrigir o que está certo, e martelar o serviço enquanto corrige.
+  eq('P43: só a frase do "não achei" manda mexer no endereço; as outras duas dizem explicitamente que NÃO é o texto',
+     [/Incluir bairro e cidade/.test(END43.avisoDoEndereco("nao_encontrado")),
+      /Incluir bairro e cidade/.test(END43.avisoDoEndereco("servico_falhou")),
+      /Incluir bairro e cidade/.test(END43.avisoDoEndereco("sem_provedor")),
+      /não é o texto do endereço/i.test(END43.avisoDoEndereco("servico_falhou")),
+      /não é o texto do endereço/i.test(END43.avisoDoEndereco("sem_provedor"))],
+     [true, false, false, true, true]);
+
+  // O tipo é declarado UMA vez, por quem o PRODUZ. Duas declarações da mesma
+  // união divergem em silêncio: um motivo novo no servidor deixaria a cópia
+  // mentindo, e o `tsc` não reclamaria porque as duas continuariam compatíveis.
+  eq('P43: `MotivoSemMapa` é declarado só no servidor — lib/endereco.ts o IMPORTA (e reexporta), em vez de manter uma segunda união escrita à mão',
+     (() => {
+       const end = fsP43.readFileSync('src/lib/endereco.ts', 'utf8');
+       return [(geo43.match(/export type MotivoSemMapa =/g) ?? []).length,
+               (end.match(/export type MotivoSemMapa =/g) ?? []).length,
+               /import type \{ MotivoSemMapa \} from "@\/lib\/geocodificar\.functions";/.test(end)];
+     })(),
+     [1, 0, true]);
 }
 
 // ── P57 — O CALENDÁRIO NUNCA LEU O DIA AGENDADO (14/09/2026) ──────────────

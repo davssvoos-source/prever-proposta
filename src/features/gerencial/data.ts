@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CARGOS_DE_CAMPO, ordenarResponsaveis } from "@/features/gerencial/tecnicos";
-import { geocodificarEndereco, type EnderecoResolvido } from "@/lib/geocodificar.functions";
+import { geocodificarEndereco, type RespostaDaGeocodificacao } from "@/lib/geocodificar.functions";
 
 /**
  * A ÚNICA GEOCODIFICAÇÃO DO SISTEMA — U84.
@@ -18,31 +18,34 @@ import { geocodificarEndereco, type EnderecoResolvido } from "@/lib/geocodificar
  * havia meses, de quatro lugares ao mesmo tempo. Do lado do servidor o
  * cabeçalho vale, e o ritmo mínimo entre chamadas tem onde morar.
  *
- * O CONTRATO DE QUEM CHAMA NÃO MUDOU: `{ lat, lng } | null`, com o `null`
- * significando "não achei ou não deu". O retorno é um SUPERCONJUNTO — traz
- * também o bairro/cidade/UF que o mapa devolveu, para quem quiser CONFERIR o
- * que foi achado em vez de confiar. As QUATRO telas que chamam isto imprimem
- * esses campos, e há censo de árvore sobre as quatro.
+ * O RETORNO TRAZ O MOTIVO (P43, U140). Era `{ lat, lng } | null`, e aquele
+ * `null` colapsava "o serviço respondeu e não achou" com "não consegui
+ * perguntar" e com "o serviço me recusou". As quatro telas diziam a mesma
+ * frase nos três casos — e a frase tinha de hesitar nos três, porque uma
+ * dela que afirmasse "o endereço não existe" durante um bloqueio seria a
+ * única do sistema a instruir a pessoa a MARTELAR o serviço que acabou de
+ * recusá-la (o bloqueio do Nominatim é por IP e cai sobre a operação
+ * inteira). Agora o motivo chega, e cada caso tem uma frase que diz uma
+ * coisa só — ver `avisoDoEndereco`, em lib/endereco.ts.
  *
- * O QUE ELA AINDA APAGA, E ESTÁ DECLARADO EM P43: o servidor distingue
- * `nao_encontrado` de `servico_falhou`, e este `null` colapsa os dois. Enquanto
- * colapsar, nenhuma das quatro telas pode afirmar que o endereço não existe —
- * o bloqueio do Nominatim é por IP e cai sobre a operação inteira.
+ * O sucesso é um SUPERCONJUNTO: traz também o bairro/cidade/UF que o mapa
+ * devolveu, para quem quiser CONFERIR o que foi achado em vez de confiar. As
+ * QUATRO telas que chamam isto imprimem esses campos, e há censo de árvore
+ * sobre as quatro.
  *
  * O RETORNO É O TIPO EXPORTADO PELO SERVIDOR, e não uma cópia da forma escrita
  * à mão aqui. Duas declarações da mesma forma divergem em silêncio: acrescentar
  * um campo no servidor deixaria esta assinatura mentindo, e o `tsc` não diria
  * nada porque as duas continuariam compatíveis.
  */
-export async function geocode(endereco: string): Promise<EnderecoResolvido | null> {
+export async function geocode(endereco: string): Promise<RespostaDaGeocodificacao> {
   try {
-    const r = await geocodificarEndereco({ data: { q: endereco } });
-    return r.ok ? r.endereco : null;
+    return await geocodificarEndereco({ data: { q: endereco } });
   } catch {
     // A função de servidor pode não estar publicada (janela de deploy) ou a
-    // rede pode ter caído. Nos dois casos o resultado é o mesmo que já era:
-    // não há coordenada, e quem chamou já sabe tratar `null`.
-    return null;
+    // rede pode ter caído. Nos dois casos não foi possível PERGUNTAR, que é
+    // exatamente `servico_falhou` — e não "o endereço não existe".
+    return { ok: false, motivo: "servico_falhou" };
   }
 }
 

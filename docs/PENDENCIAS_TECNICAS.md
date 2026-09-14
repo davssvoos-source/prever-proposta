@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **62 em aberto, 14 fechadas.**
+> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **61 em aberto, 15 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -46,7 +46,7 @@
 - [P40 — ALTO · A CARGA RETROATIVA da U82 foi adiada, e espera número (2026-09-05, U82)](#p40-alto-a-carga-retroativa-da-u82-foi-adiada-e-espera-número-2026-09-05-u82)
 - [P41 — MÉDIO · Turma vazia na semana em que o espelho repousa apaga a lista de apoio (2026-09-05, U82)](#p41-médio-turma-vazia-na-semana-em-que-o-espelho-repousa-apaga-a-lista-de-apoio-2026-09-05-u82)
 - [P42 — ~~MÉDIO~~ FECHADA EM PARTE (U140, 2026-09-14) · A janela de carregamento continua cega, e a grade anda junto (2026-09-08, U84)](#p42-médio-fechada-em-parte-u140-2026-09-14-a-janela-de-carregamento-continua-cega-e-a-grade-anda-junto-2026-09-08-u84)
-- [P43 — MÉDIO · A casca `geocode()` colapsa "não achei" e "o serviço recusou" (2026-09-08, U84)](#p43-médio-a-casca-geocode-colapsa-não-achei-e-o-serviço-recusou-2026-09-08-u84)
+- [P43 — ~~MÉDIO~~ FECHADA (U140, 2026-09-14) · A casca `geocode()` colapsa "não achei" e "o serviço recusou" (2026-09-08, U84)](#p43-médio-fechada-u140-2026-09-14-a-casca-geocode-colapsa-não-achei-e-o-serviço-recusou-2026-09-08-u84)
 - [P44 — ~~ALTO~~ **CONSERTADO** · `'prospecto'` tinha DOIS escritores, e os dois saíram (2026-09-08, U84)](#p44-alto-consertado-prospecto-tinha-dois-escritores-e-os-dois-saíram-2026-09-08-u84)
 - [P45 — BAIXO · O que a U84 mediu e deixou como está (2026-09-08)](#p45-baixo-o-que-a-u84-mediu-e-deixou-como-está-2026-09-08)
 - [P46 — A ESTIMATIVA DE DESLOCAMENTO: entrega adiada, com o desenho e os defeitos já apurados (2026-09-08, U84)](#p46-a-estimativa-de-deslocamento-entrega-adiada-com-o-desenho-e-os-defeitos-já-apurados-2026-09-08-u84)
@@ -1484,7 +1484,7 @@ pode ser de outra semana, sem ninguém ter trocado nada.
    foram corrigidos nesta rodada — a asserção CRÍTICA justificava-se por um
    buraco que ela não fecha.
 
-## P43 — MÉDIO · A casca `geocode()` colapsa "não achei" e "o serviço recusou" (2026-09-08, U84)
+## P43 — ~~MÉDIO~~ FECHADA (U140, 2026-09-14) · A casca `geocode()` colapsa "não achei" e "o serviço recusou" (2026-09-08, U84)
 
 `geocodificarEndereco` (servidor) **distingue** `nao_encontrado` de
 `servico_falhou`. A casca de `src/features/gerencial/data.ts` faz
@@ -1497,12 +1497,46 @@ existe" nesse momento é a única do sistema que **instrui a pessoa a martelar**
 serviço que acabou de recusá-la: ela corrige o endereço, clica de novo, corrige
 de novo, clica de novo.
 
-**O que foi feito nesta rodada, e o que não foi.** A frase parou de mentir: as
-quatro telas passaram a dizer que pode ser o texto **ou** o serviço, e que
-repetir na mesma hora não adianta. O que **não** foi feito é levar o motivo até
-a tela — isso muda o contrato de `geocode()` e as quatro chamadas. Enquanto não
-for feito, o servidor também não tem o ramo 401/403/429 que devolveria
-`sem_provedor`: pô-lo agora seria código sem leitor.
+**O que foi feito na rodada da U84.** A frase parou de mentir: as quatro telas
+passaram a dizer que pode ser o texto **ou** o serviço, e que repetir na mesma
+hora não adianta. O que **não** foi feito ali foi levar o motivo até a tela —
+isso muda o contrato de `geocode()` e as quatro chamadas.
+
+**FECHADA (U140, 2026-09-14).** O motivo chegou à tela, e o contrato mudou nas
+quatro chamadas: `geocode()` devolve a resposta INTEIRA do servidor
+(`RespostaDaGeocodificacao`) em vez de `{lat,lng} | null`. O `null` que
+colapsava os casos não existe mais.
+
+E o servidor ganhou o terceiro motivo, agora que há quem o leia: **`sem_provedor`**
+para 429 (ritmo estourado), 403 e 401 (identidade bloqueada). O ramo vem
+**antes** do `!r.ok` genérico — depois dele nunca executaria, porque recusa
+também é resposta não-ok, e os três voltariam a virar "falhou". É asserção de
+POSIÇÃO no verificador: um `grep` pelo ramo ficaria verde nas duas versões.
+
+São três frases, uma por motivo, em `src/lib/endereco.ts`:
+
+| motivo | o que aconteceu | o que a frase manda fazer |
+|---|---|---|
+| `nao_encontrado` | o serviço respondeu e não achou | incluir bairro e cidade |
+| `servico_falhou` | não deu para perguntar (rede, timeout) | tentar daqui a pouco — **não é o texto** |
+| `sem_provedor` | o serviço **recusou** (limite de uso) | esperar; se persistir em todas as telas, avisar o T.I. |
+
+As três começam pela mesma coisa, que é o inegociável da R242 — **o endereço
+está salvo** — e nenhuma afirma que o endereço não existe. O que mudou é a
+segunda metade: até aqui havia uma frase só, que precisava servir para os dois
+casos ao mesmo tempo e por isso hesitava nos dois ("pode ser o texto, pode ser
+o serviço"). Mandar conferir o endereço quando o serviço é que recusou faz a
+pessoa corrigir o que está certo — e martelar o serviço enquanto corrige.
+
+**A assinatura do caso grave saiu deste documento e entrou na tela.** A frase
+de `sem_provedor` diz que o limite é da **operação inteira, não deste
+cadastro**, e que se o Localizar continuar assim em todas as telas é para
+avisar o T.I. Era a única coisa que o sistema sabia e nunca dizia a quem
+estava olhando o sintoma.
+
+Exaustividade travada: o verificador lê a união de motivos **do servidor** e
+exige frase distinta para cada um. Um motivo novo sem frase própria cairia no
+caso final e receberia, calado, o conselho de "confira o endereço".
 
 **A assinatura do caso grave, para quem for diagnosticar.** Se o Nominatim banir
 a identidade (o bloqueio é por IP e vale para a operação inteira), o sintoma em

@@ -16,25 +16,63 @@
 // VisitaForm, NovaVisitaDialog) — e por isso corrigir o tom em uma só deixaria
 // as outras três mentindo.
 
+// O motivo vem de QUEM O PRODUZ (o servidor), e não de uma cópia escrita à
+// mão aqui: duas declarações da mesma forma divergem em silêncio, e o `tsc`
+// não reclamaria porque continuariam compatíveis. `import type` some na
+// compilação — nenhuma tela passa a carregar o módulo de servidor por isto.
+import type { MotivoSemMapa } from "@/lib/geocodificar.functions";
+export type { MotivoSemMapa };
+
 /** O que o campo de endereço pede — e a cidade está aí porque o mapa precisa dela. */
 export const DICA_DO_CAMPO_ENDERECO = "Rua, número, bairro, cidade";
 
 /**
- * O recado quando o mapa não acha o endereço.
+ * OS RECADOS DE QUANDO O MAPA NÃO DÁ COORDENADA (R242 + P43).
  *
- * Duas coisas, nesta ordem: (1) o endereço está salvo — é o que o Davi precisava
- * ler; (2) o que ajuda a achar, e por que insistir agora não ajuda. A casca
- * `geocode()` colapsa "não achei" e "o serviço recusou" no mesmo `null`
- * (o servidor distingue, a casca apaga), então a frase NÃO pode afirmar que o
- * endereço não existe: o bloqueio do Nominatim é por IP e cai sobre a operação
- * inteira, e "este endereço não existe" seria a única frase do sistema a
- * instruir a pessoa a martelar o serviço que acabou de bloqueá-la.
+ * Todos os três começam pela MESMA coisa, que é o que o Davi pediu na R242:
+ * **o endereço está salvo**. Nenhum deles afirma que o endereço não existe —
+ * isso o sistema não sabe, e dizer que sabe é o erro que a R242 proibiu.
+ *
+ * O que muda entre eles é a SEGUNDA metade: o que a pessoa faz agora. Até a
+ * P43 havia uma frase só, que precisava servir para os dois casos ao mesmo
+ * tempo e por isso hesitava nos dois ("pode ser o texto, pode ser o serviço").
+ * Com o motivo chegando do servidor, cada frase pode dizer uma coisa só — e a
+ * frase certa é a diferença entre corrigir um endereço que está certo e
+ * esperar cinco minutos.
  */
+/** O serviço RESPONDEU e não achou: o texto é o suspeito. */
 export const AVISO_ENDERECO_SEM_MAPA =
   "O endereço fica salvo assim mesmo — só não achei este ponto no mapa, então " +
-  "isto vai sem coordenada. Incluir bairro e cidade costuma resolver; se o " +
-  "texto já está certo, o serviço de mapas pode ter recusado agora, e repetir " +
-  "na mesma hora não adianta.";
+  "isto vai sem coordenada. Incluir bairro e cidade costuma resolver.";
+
+/** Não deu para PERGUNTAR — rede, timeout. Mexer no endereço não ajuda. */
+export const AVISO_MAPA_FORA_DO_AR =
+  "O endereço fica salvo assim mesmo — o que falhou foi a consulta ao serviço " +
+  "de mapas, então isto vai sem coordenada. Não é o texto do endereço: dá " +
+  "para tentar de novo daqui a pouco.";
+
+/**
+ * O serviço RECUSOU (429/403/401). É o único em que insistir piora — e o
+ * único que carrega a instrução de diagnóstico, porque o bloqueio do
+ * Nominatim é **por IP** e cai sobre a operação inteira: se o Localizar parou
+ * em todas as telas ao mesmo tempo e continua parado, isso é banimento da
+ * identidade, e a resposta é escrever à OSM — não mexer no endereço. Essa
+ * frase só existia no documento de dívida; agora ela aparece para quem está
+ * olhando o sintoma.
+ */
+export const AVISO_MAPA_RECUSOU =
+  "O endereço fica salvo assim mesmo — o serviço de mapas recusou a consulta " +
+  "agora (limite de uso), então isto vai sem coordenada. Repetir na mesma hora " +
+  "não adianta, e não é o texto do endereço. Se o Localizar continuar assim em " +
+  "todas as telas, avise o T.I.: o limite é da operação inteira, não deste " +
+  "cadastro.";
+
+/** A frase de cada motivo — uma função para as quatro telas não escolherem sozinhas. */
+export function avisoDoEndereco(motivo: MotivoSemMapa): string {
+  if (motivo === "servico_falhou") return AVISO_MAPA_FORA_DO_AR;
+  if (motivo === "sem_provedor") return AVISO_MAPA_RECUSOU;
+  return AVISO_ENDERECO_SEM_MAPA;
+}
 
 /**
  * O endereço está preenchido o bastante para salvar? É só ter texto — a

@@ -41,7 +41,7 @@ import { rotuloDoResponsavel } from "@/features/gerencial/tecnicos";
 import { FONT, card, botaoSelecao, goldButton, GOLD_GRAD } from "@/lib/ui";
 import { PRISMA, cinzas, misturar } from "@/lib/paleta";
 import { SeletorDeOpcao } from "@/components/SeletorDeOpcao";
-import { AVISO_ENDERECO_SEM_MAPA, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
+import { avisoDoEndereco, DICA_DO_CAMPO_ENDERECO, type MotivoSemMapa } from "@/lib/endereco";
 
 // A paleta local `L` (um segundo tema claro só desta tela) e o "vidro dourado"
 // dos campos no escuro SAÍRAM na U107 (R194): a tela passou a falar o design
@@ -125,6 +125,9 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [geoStatus, setGeoStatus] = useState<"idle" | "loading" | "ok" | "err">("idle");
+  // P43: POR QUE não deu. Esta tela escreve o recado nela mesma (as outras
+  // três usam toast), então precisa do motivo guardado até desenhar.
+  const [motivoSemMapa, setMotivoSemMapa] = useState<MotivoSemMapa | null>(null);
   /**
    * O QUE O MAPA ENTENDEU — U84.
    *
@@ -301,16 +304,22 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
     if (!endereco.trim()) return;
     setGeoStatus("loading");
     const r = await geocode(endereco.trim());
-    if (r) {
-      setLat(r.lat);
-      setLng(r.lng);
+    if (r.ok) {
+      setLat(r.endereco.lat);
+      setLng(r.endereco.lng);
       setResolvido(
-        r.display_name || [r.bairro, r.cidade, r.uf].filter(Boolean).join(", ") || null,
+        r.endereco.display_name
+          || [r.endereco.bairro, r.endereco.cidade, r.endereco.uf].filter(Boolean).join(", ")
+          || null,
       );
       setGeoStatus("ok");
+      setMotivoSemMapa(null);
     } else {
       setResolvido(null);
       setGeoStatus("err");
+      // P43: esta tela mostra o recado NA PRÓPRIA TELA (não em toast), então
+      // ela guarda o motivo para escolher a frase na hora de desenhar.
+      setMotivoSemMapa(r.motivo);
     }
   };
 
@@ -696,14 +705,13 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
                 Buscando localização...
               </p>
             )}
-            {/* A CASCA `geocode()` COLAPSA "não achei" e "o serviço recusou" no
-                mesmo `null` — o SERVIDOR distingue os dois (`nao_encontrado` ×
-                `servico_falhou`) e a casca de gerencial/data.ts apaga a
-                diferença. Enquanto ela apagar, esta frase NÃO PODE afirmar que
-                o endereço não existe: o bloqueio do Nominatim é por IP e cai
-                sobre a operação inteira, e "endereço não encontrado" é a única
-                frase do sistema que instrui a pessoa a martelar o serviço que
-                acabou de bloqueá-la. */}
+            {/* P43 (U140): a casca do `geocode()` PAROU de colapsar — o motivo
+                do servidor chega até aqui, e a frase é a daquele motivo. O que
+                nenhuma das três frases faz é afirmar que o endereço não
+                existe: durante um bloqueio (que é por IP e cai sobre a
+                operação inteira) essa seria a única frase do sistema a
+                instruir a pessoa a martelar o serviço que acabou de
+                recusá-la. Ver lib/endereco.ts. */}
             {geoStatus === "err" && (
               // R242: NÃO é vermelho, e a primeira coisa que a frase diz é que o
               // endereço está salvo. Vermelho ali dizia "recusei o seu endereço",
@@ -711,7 +719,7 @@ export function NovaVisitaTecnica({ tecnicoInicial = null, aoConcluir, aoVoltar,
               // local"). A coordenada é do mapa, é opcional e não bloqueia a
               // visita: a validação do formulário nunca olhou lat/lng.
               <p style={{ fontSize: 11, color: cz.textoSecundario, fontFamily: FONT, margin: "8px 0 0", lineHeight: 1.5 }}>
-                {AVISO_ENDERECO_SEM_MAPA}
+                {avisoDoEndereco(motivoSemMapa ?? "nao_encontrado")}
               </p>
             )}
             {/* O NOME DO LUGAR, NÃO A PALAVRA "OK". Duas coordenadas não são

@@ -33,7 +33,7 @@ import { FONT, card, etiqueta, botaoSelecao, goldButton } from "@/lib/ui";
 import { PRISMA, cinzas } from "@/lib/paleta";
 import { copiarTexto } from "@/lib/copiar";
 import { enderecoParaCopiar } from "./ficha";
-import { AVISO_ENDERECO_SEM_MAPA, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
+import { avisoDoEndereco, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
 
 /**
  * R207: os botões de COPIAR da ficha (e-mail, endereço). O texto copiado nasce
@@ -235,17 +235,21 @@ export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoCli
     setGeocodificando(true);
     try {
       const r = await geocode(endereco.trim());
-      if (r) {
-        setLat(r.lat);
-        setLng(r.lng);
+      if (r.ok) {
+        setLat(r.endereco.lat);
+        setLng(r.endereco.lng);
         setResolvido(
-          r.display_name || [r.bairro, r.cidade, r.uf].filter(Boolean).join(", ") || null,
+          r.endereco.display_name
+            || [r.endereco.bairro, r.endereco.cidade, r.endereco.uf].filter(Boolean).join(", ")
+            || null,
         );
         toast.success("Coordenadas encontradas — confira o lugar abaixo.");
       } else {
         setResolvido(null);
         // R242: não é erro — o endereço está salvo; o mapa é que não achou.
-        toast.warning(AVISO_ENDERECO_SEM_MAPA);
+        // P43: a frase depende do MOTIVO — mandar conferir o texto quando o
+        // serviço é que recusou faz a pessoa corrigir o que está certo.
+        toast.warning(avisoDoEndereco(r.motivo));
       }
     } finally {
       setGeocodificando(false);

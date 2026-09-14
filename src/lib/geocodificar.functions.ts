@@ -124,7 +124,25 @@ export interface EnderecoResolvido {
 
 export type RespostaDaGeocodificacao =
   | { ok: true; endereco: EnderecoResolvido }
-  | { ok: false; motivo: "nao_encontrado" | "servico_falhou" };
+  | { ok: false; motivo: MotivoSemMapa };
+
+/**
+ * POR QUE SÃO TRÊS E NÃO DOIS (P43).
+ *
+ * `nao_encontrado` é o serviço respondendo "não achei": o texto do endereço
+ * provavelmente está incompleto, e incluir bairro e cidade resolve.
+ *
+ * `servico_falhou` é não ter conseguido perguntar — rede, timeout, JSON
+ * quebrado. Não é o endereço, e mexer no texto não ajuda em nada.
+ *
+ * `sem_provedor` é o serviço RECUSANDO o pedido: 429 (passou do ritmo), 403
+ * ou 401 (identidade bloqueada). Este é o que precisava de nome próprio,
+ * porque é o único em que insistir PIORA — e porque o bloqueio do Nominatim
+ * é por IP e cai sobre a operação inteira. Uma frase dizendo "este endereço
+ * não existe" nesse momento seria a única do sistema a instruir a pessoa a
+ * martelar o serviço que acabou de recusá-la.
+ */
+export type MotivoSemMapa = "nao_encontrado" | "servico_falhou" | "sem_provedor";
 
 export const geocodificarEndereco = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -155,6 +173,13 @@ export const geocodificarEndereco = createServerFn({ method: "POST" })
           headers: { "User-Agent": USER_AGENT, "Accept-Language": "pt-BR" },
           signal: ctrl.signal,
         });
+        // P43: RECUSA tem nome próprio. 429 é o ritmo estourado, 403/401 é
+        // identidade bloqueada — nos três, tentar de novo agora piora. Vem
+        // ANTES do `!r.ok` genérico, senão os três caíam em "falhou" e a tela
+        // mandaria a pessoa conferir um endereço que está certo.
+        if (r.status === 429 || r.status === 403 || r.status === 401) {
+          return { ok: false, motivo: "sem_provedor" };
+        }
         if (!r.ok) return { ok: false, motivo: "servico_falhou" };
         const arr = (await r.json()) as Array<{
           lat: string;

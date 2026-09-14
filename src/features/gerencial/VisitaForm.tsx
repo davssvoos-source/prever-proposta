@@ -33,7 +33,7 @@ import {
 } from "./constants";
 import { geocode, useTecnicos, useVisitasGerencial } from "./data";
 import { useTheme } from "@/contexts/ThemeContext";
-import { AVISO_ENDERECO_SEM_MAPA, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
+import { avisoDoEndereco, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
 
 const L = {
   card: "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)",
@@ -152,15 +152,18 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
     setGeocoding(true);
     const g = await geocode(form.endereco);
     setGeocoding(false);
-    if (g) {
-      setCoords({ lat: g.lat, lng: g.lng });
+    if (g.ok) {
+      setCoords({ lat: g.endereco.lat, lng: g.endereco.lng });
       setResolvido(
-        g.display_name || [g.bairro, g.cidade, g.uf].filter(Boolean).join(", ") || null,
+        g.endereco.display_name
+          || [g.endereco.bairro, g.endereco.cidade, g.endereco.uf].filter(Boolean).join(", ")
+          || null,
       );
     } else {
       setResolvido(null);
       // R242: não é erro — o endereço está salvo; o mapa é que não achou.
-      toast.warning(AVISO_ENDERECO_SEM_MAPA);
+      // P43: a frase sai do MOTIVO que o servidor devolveu.
+      toast.warning(avisoDoEndereco(g.motivo));
     }
   }
 

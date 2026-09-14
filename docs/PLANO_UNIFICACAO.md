@@ -13311,7 +13311,48 @@ antigas da consulta conseguia alcançá-la. Depois do conserto, o card está na
 célula do dia 10, arrastável. A pendência dizia "falta a tela"; o que faltava
 era a tela **inteira** para essa atividade.
 
-**Números.** Verificador: **3.413 asserções**, 0 falharam (eram 3.359 no começo do dia — 54 nesta leva).
+**10. "Não achei" e "o serviço recusou" eram a mesma coisa (P43).** O servidor
+sempre distinguiu os motivos. A casca de `gerencial/data.ts` fazia
+`return r.ok ? r.endereco : null` e apagava a diferença **uma camada acima** —
+informação que existia, atravessava a rede e morria numa linha.
+
+O efeito é sutil e caro: com um motivo só, a frase tinha de servir para os dois
+casos, e por isso hesitava nos dois ("pode ser o texto, pode ser o serviço").
+Mandar conferir o endereço quando o serviço é que recusou faz a pessoa corrigir
+o que está certo — e martelar, enquanto corrige, o serviço que acabou de
+recusá-la. O bloqueio do Nominatim é **por IP** e cai sobre a operação inteira.
+
+O contrato de `geocode()` passou a ser a resposta INTEIRA do servidor, nas
+quatro chamadas. E o servidor ganhou o terceiro motivo agora que há quem o
+leia: `sem_provedor`, para 429 (ritmo estourado), 403 e 401 (identidade
+bloqueada). A U84 tinha recusado pô-lo antes — "seria código sem leitor" — e
+essa recusa estava certa: um ramo que ninguém lê é um ramo que ninguém mantém.
+
+O ramo da recusa vem **antes** do `!r.ok` genérico, e isso é asserção de
+POSIÇÃO, não de presença: depois dele o ramo nunca executaria, porque 429 e 403
+também são respostas não-ok — e um `grep` pelo ramo ficaria verde nas duas
+versões, provando um conserto que não funciona.
+
+Três frases, uma por motivo. As três começam pelo inegociável da R242 — **o
+endereço está salvo** — e nenhuma afirma que o endereço não existe. Só a do
+`nao_encontrado` manda mexer no texto; as outras duas dizem explicitamente que
+**não é o texto**. E a da recusa carrega a instrução de diagnóstico que até
+hoje só existia no documento de dívida: o limite é da **operação inteira, não
+deste cadastro**, e se o Localizar continuar assim em todas as telas é para
+avisar o T.I. Era a única coisa que o sistema sabia e nunca dizia a quem estava
+olhando o sintoma.
+
+Duas coisas o verificador cobrou de mim no caminho. A primeira: eu declarei
+`MotivoSemMapa` em DOIS arquivos — exatamente o que a casca do `geocode` proíbe
+por escrito no próprio comentário ("duas declarações da mesma forma divergem em
+silêncio, e o `tsc` não diria nada porque continuariam compatíveis"). Quem
+produz o motivo é o servidor; `lib/endereco.ts` o importa por `import type`, que
+some na compilação. A segunda é a asserção de exaustividade: ela lê a união de
+motivos **do servidor** e exige frase distinta para cada um — um motivo novo sem
+frase própria cairia no caso final e receberia, calado, o conselho de "confira o
+endereço", que é o conselho errado para tudo o que não é `nao_encontrado`.
+
+**Números.** Verificador: **3.418 asserções**, 0 falharam (eram 3.359 no começo do dia — 59 nesta leva).
 `tsc`: 0. Build completa. Migrations **U136, U137 e U139 rodadas pelo Davi** — nada pendente no banco.
 
 **O que falta do motor de orçamento:** `blockAutoItems.ts` (503 linhas) tem

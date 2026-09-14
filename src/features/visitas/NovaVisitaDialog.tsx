@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AVISO_ENDERECO_SEM_MAPA, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
+import { avisoDoEndereco, DICA_DO_CAMPO_ENDERECO } from "@/lib/endereco";
 
 // A CÓPIA INLINE DE `geocode` FOI APAGADA AQUI (U84) — era a segunda de quatro,
 // byte a byte igual à de features/gerencial/data.ts. Agora importa a única.
@@ -172,15 +172,18 @@ export function NovaVisitaDialog({ children }: { children?: React.ReactNode }) {
                   setLocalizando(true);
                   const g = await geocode(form.endereco.trim());
                   setLocalizando(false);
-                  if (g) {
-                    setCoords({ lat: g.lat, lng: g.lng });
+                  if (g.ok) {
+                    setCoords({ lat: g.endereco.lat, lng: g.endereco.lng });
                     setResolvido(
-                      g.display_name || [g.bairro, g.cidade, g.uf].filter(Boolean).join(", ") || null,
+                      g.endereco.display_name
+                        || [g.endereco.bairro, g.endereco.cidade, g.endereco.uf].filter(Boolean).join(", ")
+                        || null,
                     );
                   } else {
                     setResolvido(null);
                     // R242: não é erro — o endereço está salvo.
-                    toast.warning(AVISO_ENDERECO_SEM_MAPA);
+                    // P43: a frase sai do MOTIVO que o servidor devolveu.
+                    toast.warning(avisoDoEndereco(g.motivo));
                   }
                 }}
               >
