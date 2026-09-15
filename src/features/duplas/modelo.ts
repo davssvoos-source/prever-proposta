@@ -130,9 +130,13 @@ export function liderDaEquipe(
 /**
  * Os OUTROS da equipe da pessoa naquele instante — é esta que o apoio usa.
  *
- * NÃO olha papel: o líder não é condição para o automatismo. Atribuir o
- * chamado a um ajudante põe o líder e os demais como apoio, do mesmo jeito —
- * quem foi ao prédio foi a equipe, não o organograma dela.
+ * NÃO olha papel — e isto continua certo PARA ESTA PERGUNTA, que é "quem
+ * mais está nesta equipe agora". A programação e a grade a fazem assim.
+ *
+ * ATENÇÃO (R297, 15/09/2026): o APOIO AUTOMÁTICO da abertura deixou de sair
+ * daqui. Ele agora exige que o responsável seja o LÍDER — ver
+ * `apoioAutomatico`, logo abaixo. Chamar esta função para preencher apoio
+ * põe o líder como apoio de um ajudante, que é o que a R297 recusa.
  */
 export function parceirosNoInstante(
   membros: MembroDaEquipe[], pessoaId: string | null | undefined, quando: Date,
@@ -141,6 +145,42 @@ export function parceirosNoInstante(
   if (!eq) return [];
   return membrosNoInstante(membros, eq, quando)
     .filter((m) => m.pessoaId !== pessoaId)
+    .map((m) => m.pessoaId);
+}
+
+/**
+ * O APOIO AUTOMÁTICO DA ABERTURA (R297, 15/09/2026).
+ *
+ * Davi: "o apoio é preenchido automaticamente de acordo com a dupla do
+ * responsável (CASO O RESPONSAVEL QUE FOI INSERIDO SEJA LIDER DE ALGUMA
+ * DUPLA, CASO NAO SEJA LIDER, NÃO DEVE APARECER O APOIO AUTOMATICAMENTE)."
+ *
+ * REVISA A R285 num ponto, e o ponto é justamente o que `parceirosNoInstante`
+ * diz acima: lá o papel NÃO era condição ("quem foi ao prédio foi a equipe,
+ * não o organograma dela"). Aqui é.
+ *
+ * Por que a distinção faz sentido: o líder é quem RESPONDE pela equipe, e
+ * atribuir a ele é atribuir à turma. Atribuir a um ajudante é outra frase —
+ * é mandar aquela pessoa, e arrastar o líder junto como "apoio" inverteria a
+ * hierarquia sem ninguém ter pedido. Na dúvida, o sistema não inventa
+ * ninguém: campo vazio é uma pergunta, apoio errado é uma resposta falsa.
+ *
+ * As duas funções ficam. `parceirosNoInstante` responde "quem mais está nesta
+ * equipe" — pergunta que a programação e a grade continuam fazendo; esta
+ * responde "quem entra como apoio ao abrir o chamado".
+ */
+export function apoioAutomatico(
+  membros: MembroDaEquipe[], responsavelId: string | null | undefined, quando: Date,
+): string[] {
+  if (!responsavelId) return [];
+  const equipe = equipeDaPessoaNoInstante(membros, responsavelId, quando);
+  if (!equipe) return [];
+  // SÓ O LÍDER PUXA A EQUIPE. `liderDaEquipe` devolve null quando ninguém foi
+  // nomeado (ou quando há mais de um, o que o banco impede) — e nesse caso
+  // não há líder, logo não há automatismo.
+  if (liderDaEquipe(membros, equipe, quando) !== responsavelId) return [];
+  return membrosNoInstante(membros, equipe, quando)
+    .filter((m) => m.pessoaId !== responsavelId)
     .map((m) => m.pessoaId);
 }
 

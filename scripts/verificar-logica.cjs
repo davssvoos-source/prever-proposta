@@ -16594,8 +16594,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/responsavel_id: responsavelEfetivo,/.test(form93), /titulo: titulo\.trim\(\) \|\| tituloSugerido,/.test(form93),
       form93.indexOf('await criarSistema(') > 0 && form93.indexOf('await criarSistema(') < form93.indexOf('await abrirChamado(')],
      [true, true, true]);
-  eq('U93/R126: a proposta de responsável é DITA antes de gravar',
-     /Responsável proposto:/.test(form93), true);
+  // R297 (15/09/2026): o campo "Equipe de campo" saiu, e com ele a proposta
+  // de responsável — não há mais "primeiro da escala da equipe" a propor,
+  // porque a equipe agora VEM do responsável, não o contrário.
+  //
+  // O PRINCÍPIO DA R126 NÃO SAIU, trocou de sujeito: o que o sistema resolve
+  // sozinho aparece na tela ANTES de gravar. Hoje o que ele resolve sozinho é
+  // o APOIO, e ele aparece como chips com foto — quem lê "apoio: Lucas" e não
+  // quer, tira ali mesmo; ninguém descobre depois.
+  eq('U93/R126 → R297: o que o sistema resolve sozinho é DITO antes de gravar. O sujeito mudou (era o responsável proposto pela equipe, hoje é o APOIO puxado da liderança), e ele é editável na própria tela',
+     [/Responsável proposto:/.test(form93),
+      /const apoiosEfetivos = apoios \?\? apoioSugerido;/.test(form93),
+      /aria-label=\{`Tirar \$\{nomeDeTecnico\(id\)\} do apoio`\}/.test(form93)],
+     [false, true, true]);
 
   // ── Os documentos (regra 7) ─────────────────────────────────────────────
   const prod93 = fs93.readFileSync('docs/PRODUTO.md', 'utf8');
@@ -22710,6 +22721,123 @@ assincronas.push(async () => {
      [true, true]);
 }
 
+// ── R297 — QUEM VAI, E O APOIO PELA LIDERANÇA (15/09/2026) ────────────────
+//
+// Davi: "O usuário seleciona o técnico responsável, e o apoio é preenchido
+// automaticamente de acordo com a dupla do responsável (CASO O RESPONSAVEL QUE
+// FOI INSERIDO SEJA LIDER DE ALGUMA DUPLA, CASO NAO SEJA LIDER, NÃO DEVE
+// APARECER O APOIO AUTOMATICAMENTE)."
+{
+  const D297 = carregar('src/features/duplas/modelo.ts');
+  const fs297 = require('fs');
+  const form297 = soCodigo(fs297.readFileSync('src/features/chamados/FormularioChamadoTecnico.tsx', 'utf8'), 'js');
+  const dlg297 = fs297.readFileSync('src/features/chamados/NovoChamadoTecnicoDialog.tsx', 'utf8');
+  const campo297 = soCodigo(fs297.readFileSync('src/components/CampoComBusca.tsx', 'utf8'), 'js');
+  const u152 = fs297.readFileSync('supabase/migrations/20261009090000_u152_o_apoio_sai_da_lideranca.sql', 'utf8');
+  const u152sql = soCodigo(u152, "sql");
+
+  // ── a conta, na unidade ────────────────────────────────────────────────
+  const QUANDO = new Date(2026, 8, 15, 10, 0, 0);
+  const m = (equipeId, pessoaId, papel) => ({
+    equipeId, pessoaId, papel, entrouEm: '2026-09-01T00:00:00Z', saiuEm: null,
+  });
+  const TRIO = [m('E1', 'lider', 'lider'), m('E1', 'a1', 'ajudante'), m('E1', 'a2', 'ajudante')];
+
+  eq('R297 CRÍTICO: o apoio automático SÓ existe quando o responsável é o LÍDER da equipe dele. O ajudante não puxa ninguém — atribuir a ele é mandar AQUELA pessoa, e arrastar o líder junto como "apoio" inverteria a hierarquia sem ninguém ter pedido',
+     [D297.apoioAutomatico(TRIO, "lider", QUANDO).sort(),
+      D297.apoioAutomatico(TRIO, "a1", QUANDO),
+      D297.apoioAutomatico(TRIO, "a2", QUANDO)],
+     [['a1', 'a2'], [], []]);
+
+  eq('R297: o apoio é PLURAL — equipe de três põe DOIS apoios. Davi: "Caso na equipe do lider tenha mais de um apoio, insira automaticamente mais de um apoio"',
+     D297.apoioAutomatico(TRIO, "lider", QUANDO).length, 2);
+
+  eq('R297 CRÍTICO: equipe SEM líder nomeado não puxa apoio para ninguém — e este é o estado de HOJE (o backfill da U142 trouxe todos como ajudante, porque `duplas_escala` não tinha o conceito). É a regra funcionando, não um defeito',
+     (() => {
+       const semLider = [m('E1', 'p1', 'ajudante'), m('E1', 'p2', 'ajudante')];
+       return [D297.apoioAutomatico(semLider, "p1", QUANDO), D297.apoioAutomatico(semLider, "p2", QUANDO)];
+     })(),
+     [[], []]);
+
+  eq('R297: sem responsável, sem equipe e fora da faixa de vigência não há apoio — as três ausências devolvem vazio em vez de explodir, porque chamado sem responsável é o caso mais comum da fila',
+     [D297.apoioAutomatico(TRIO, null, QUANDO),
+      D297.apoioAutomatico(TRIO, "estranho", QUANDO),
+      D297.apoioAutomatico(TRIO, "lider", new Date(2026, 7, 1))],
+     [[], [], []]);
+
+  // A função ANTIGA fica, e responde outra pergunta. Se ela passar a olhar
+  // papel, a programação e a grade mudam de resposta sem ninguém pedir.
+  eq('R297: `parceirosNoInstante` NÃO mudou — ela responde "quem mais está nesta equipe", que é o que a programação e a grade perguntam. Duas perguntas, duas funções; unificá-las faria uma resposta certa virar errada em três telas',
+     [D297.parceirosNoInstante(TRIO, "a1", QUANDO).sort(),
+      D297.parceirosNoInstante(TRIO, "lider", QUANDO).sort()],
+     [['a2', 'lider'], ['a1', 'a2']]);
+
+  // ── a tela ─────────────────────────────────────────────────────────────
+  eq('R297 CRÍTICO: o campo "Equipe de campo" SAIU da abertura, e a equipe passou a ser SEMPRE a derivada do responsável. Perguntar as duas era pedir a mesma informação duas vezes',
+     // a CONSTRUÇÃO, não a palavra: "Equipe de campo" sobrevive em dois
+     // comentários — um cita a frase do Davi, o outro explica a remoção —, e
+     // `soCodigo` tira linha de `//`, não bloco `/* */`.
+     [/<label style=\{LABEL\}>Equipe de campo<\/label>/.test(form297),
+      /const equipeEscolhida = equipeDerivada \?\? "";/.test(form297),
+      /setEquipeId/.test(form297)],
+     [false, true, false]);
+
+  eq('R297: Responsável e Apoio LADO A LADO, e os dois com foto — na lista aberta e no que ficou escolhido. O `iconeDaOpcao` é a metade que faltava no CampoComBusca: ele já sabia desenhar a escolha FEITA, não os candidatos',
+     [/gridTemplateColumns: "1fr 1fr", gap: 10, alignItems: "start"/.test(form297),
+      /id="chamado-responsavel"/.test(form297),
+      /id="chamado-apoio"/.test(form297),
+      /iconeDaOpcao=\{\(o\) => foto\(o\.valor, o\.rotulo\)\}/.test(form297),
+      /iconeDaOpcao\?\.\(o\)/.test(campo297)],
+     [true, true, true, true, true]);
+
+  eq('R297 CRÍTICO: trocar o responsável DEVOLVE o apoio ao automático (`setApoios(null)`). Guardar a escolha antiga deixaria na tela a dupla de outra pessoa — e ninguém percebe um apoio que ficou',
+     /aoMudar=\{\(v\) => \{ setTecnicoId\(v \?\? ""\); setApoios\(null\); \}\}/.test(form297), true);
+
+  eq('R297: o apoio que a tela mostra é o que FICA GRAVADO — quem ela acrescentou entra, quem ela tirou sai. Mostrar um nome que não foi gravado é tão ruim quanto gravar um que não apareceu',
+     [/if \(apoios !== null\) \{/.test(form297),
+      /await adicionarApoio\(chamadoId, id\);/.test(form297),
+      /await removerApoio\(chamadoId, id\);/.test(form297)],
+     [true, true, true]);
+
+  // ── os textos que o Davi mandou tirar ──────────────────────────────────
+  eq('R297: as quatro notas da janela saíram — o subtítulo do diálogo, a de prazo da implantação, a sugestão de data pela prioridade e a de "sem data". FICA o aviso de que a data digitada NÃO será gravada: esse não é ruído, é o defeito que o religamento existe para não ter',
+     [/o número é gerado ao salvar/.test(dlg297),
+      /Implantação não tem prazo por prioridade/.test(form297),
+      /é a referência desta prioridade/.test(form297),
+      /Sem data, o chamado entra na fila/.test(form297),
+      /A data acima não será gravada sem equipe e sem duração/.test(form297)],
+     [false, false, false, false, true]);
+
+  // ── o banco ────────────────────────────────────────────────────────────
+  eq('R297 CRÍTICO (U152): a regra vale no BANCO, não só na tela. Quem ESCREVE o apoio é o gatilho `chamado_sincronizar_apoio` — deixá-lo lendo `parceiros_da_equipe` faria a tela mostrar campo vazio e o banco gravar a equipe inteira logo em seguida',
+     [/CREATE OR REPLACE FUNCTION public\.apoio_automatico\(_pessoa uuid, _quando timestamptz DEFAULT now\(\)\)/.test(u152sql),
+      /public\.lider_da_equipe\(public\.equipe_da_pessoa\(_pessoa, _quando\), _quando\) = _pessoa/.test(u152sql),
+      /FROM public\.apoio_automatico\(c\.responsavel_id, v_quando\)/.test(u152sql),
+      /FROM public\.parceiros_da_equipe\(c\.responsavel_id/.test(u152sql)],
+     [true, true, true, false]);
+
+  eq('U152 CRÍTICO: o corpo novo do gatilho preserva as DUAS travas que não são dele — a da U81 (`congelado_em IS NULL`, que impede apagar a turma que JÁ ESTEVE no prédio) e o `origem = dupla` (que deixa o apoio posto à mão em paz)',
+     [/AND a\.congelado_em IS NULL/.test(u152sql),
+      /AND a\.origem = 'dupla'/.test(u152sql),
+      // e o pré-voo ABORTA se o corpo vivo não for o que eu li
+      /não tem a trava da U81/.test(u152)],
+     [true, true, true]);
+
+  eq('U152: `parceiros_da_equipe` NÃO é reemitida — alterar a função compartilhada para servir a UM chamador é como uma resposta certa vira errada em três telas. Só o COMMENT dela muda, para dizer que o apoio deixou de sair dali',
+     [/CREATE OR REPLACE FUNCTION public\.parceiros_da_equipe/.test(u152sql),
+      /COMMENT ON FUNCTION public\.parceiros_da_equipe/.test(u152sql)],
+     [false, true]);
+
+  eq('U152: o portão prova os TRÊS casos — líder puxa, ajudante não puxa, e equipe sem líder não puxa para ninguém (que é o estado de hoje)',
+     [/PORTÃO 1 ok: responsável LÍDER/.test(u152),
+      /PORTÃO 2 ok: responsável AJUDANTE/.test(u152),
+      /PORTÃO 3 ok: equipe sem líder nomeado/.test(u152),
+      // e ele pega gente FORA de equipe: foi o EXCLUDE da U142 que derrubou
+      // o portão dela no SQL Editor, por usar uma pessoa real já backfillada
+      /WHERE m\.pessoa_id = p\.id AND m\.saiu_em IS NULL/.test(u152sql)],
+     [true, true, true, true]);
+}
+
 // ── R284 — "ATRASADO" NO CAMPO, A SEGUNDA METADE (15/09/2026) ─────────────
 //
 // A U147 rodou em 14/09 e tirou o prazo do campo. A regra tinha duas metades
@@ -23018,13 +23146,24 @@ assincronas.push(async () => {
       /AGENDAR PASSA A FAZER PARTE DE ABRIR/.test(u147)],
      [false, true, true]);
 
-  // Na TELA, a régua do SLA continua — mudou de PROMESSA para SUGESTÃO.
-  eq('R284: a tela de abertura ORIENTA em vez de prometer — a hora da prioridade vira sugestão de quando marcar, e a frase diz quem decide',
+  // Na TELA, a régua do SLA SAIU inteira (R297, 15/09/2026).
+  //
+  // A U147 tinha transformado a promessa em SUGESTÃO ("72h é a referência —
+  // sugere marcar até…"), e o Davi mandou remover a frase junto com as outras
+  // notas da janela. O que esta asserção guarda agora é o essencial: o prazo
+  // não voltou por nenhuma porta — nem como promessa, nem como sugestão, nem
+  // como conta viva sem leitor.
+  eq('R284/R297: a tela de abertura não fala mais de prazo NENHUM — a nota saiu por pedido do Davi, e a conta que a alimentava saiu junto. Conta sem leitor tem aparência de regra viva: o próximo leitor acharia que o SLA ainda governa algo aqui',
      [/é a referência desta prioridade/.test(form284),
       /Quem marca a data é você/.test(form284),
       /Prazo de atendimento: \$\{horasPrazo\}h/.test(form284),
-      /const sugestaoDeData = useMemo/.test(form284)],
-     [true, true, false, true]);
+      /const sugestaoDeData = useMemo/.test(form284),
+      // `soCodigo`: as duas menções que sobraram a `useSla()` são COMENTÁRIO —
+      // uma delas explica justamente por que a conta saiu. Ler a prosa aqui
+      // acusaria o conserto de ser o defeito, pela quinta vez este mês.
+      /useSla/.test(soCodigo(form284, "js")),
+      /Implantação não tem prazo por prioridade/.test(form284)],
+     [false, false, false, false, false, false]);
 }
 
 // ── A ESCALA POR SEMANA VIROU UMA VISTA (14/09/2026) ──────────────────────

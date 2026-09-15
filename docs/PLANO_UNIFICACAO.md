@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 175 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 176 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -178,6 +178,7 @@
 - [U149 — a barra do Operacional vira a barra da Início, e a lista ganha ordem (R296)](#u149-a-barra-do-operacional-vira-a-barra-da-início-e-a-lista-ganha-ordem-r296)
 - [U150 — o retorno é a mesma atividade (R286)](#u150-o-retorno-é-a-mesma-atividade-r286)
 - [U151 — o que a auditoria de início de sessão achou (R284 inteira, e três defeitos na U150 antes de o Davi rodar)](#u151-o-que-a-auditoria-de-início-de-sessão-achou-r284-inteira-e-três-defeitos-na-u150-antes-de-o-davi-rodar)
+- [U152 — na abertura pergunta-se QUEM, e o apoio vem da liderança (R297)](#u152-na-abertura-pergunta-se-quem-e-o-apoio-vem-da-liderança-r297)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -14398,3 +14399,134 @@ reconhecem uma à outra em vez de fingir que a outra não existe.
 
 **Números.** Verificador: **3.518 asserções, 0 falharam**. `tsc`: 0. `vite build` completa.
 Migration **U150 PENDENTE** — e agora com os três defeitos consertados.
+
+## U152 — na abertura pergunta-se QUEM, e o apoio vem da liderança (R297)
+
+**O pedido.** Davi, 15/09/2026: *"O usuário seleciona o técnico responsável, e
+o apoio é preenchido automaticamente de acordo com a dupla do responsável (CASO
+O RESPONSAVEL QUE FOI INSERIDO SEJA LIDER DE ALGUMA DUPLA, CASO NAO SEJA LIDER,
+NÃO DEVE APARECER O APOIO AUTOMATICAMENTE). E aí no caso você deverá remover o
+campo 'Equipe de campo', ficando somente Técnico Responsável e Apoio, lado a
+lado, com foto de perfil nos itens da lista e no que for inserido."*
+
+### Uma pergunta, não duas
+
+O formulário perguntava **a equipe** e **o técnico**. Em quase todo chamado a
+segunda resposta já determinava a primeira — o campo da equipe vinha PROPOSTO
+pela derivação do técnico desde a U47 — e ele existia para o caso raro de
+alguém sair com outra turma. Esse caso continua resolvível na programação, que
+é onde o bloco é movido; o que ele custava era uma pergunta a mais em CADA
+abertura.
+
+A equipe não sumiu do sistema: `agenda_campo.dupla_id` é NOT NULL e o EXCLUDE
+de sobreposição é por equipe. Ela sumiu da PERGUNTA — agora é sempre a do
+responsável.
+
+### O apoio, e a regra que REVISA a R285
+
+A R285 tinha decidido o contrário 24 horas antes, e a frase está escrita no
+próprio `parceirosNoInstante`: *"NÃO olha papel: o líder não é condição para o
+automatismo… quem foi ao prédio foi a equipe, não o organograma dela."*
+
+A R297 revisa exatamente essa metade, e a distinção que ela introduz é esta:
+**o líder é quem RESPONDE pela equipe**, e atribuir a ele é atribuir à turma.
+Atribuir a um ajudante é outra frase — é mandar aquela pessoa —, e arrastar o
+líder junto como "apoio" inverteria a hierarquia sem ninguém ter pedido.
+
+As duas funções FICAM, porque são duas perguntas. `parceirosNoInstante`
+responde "quem mais está nesta equipe", que é o que a programação e a grade
+perguntam; `apoioAutomatico` responde "quem entra como apoio ao abrir". Unificar
+as duas faria uma resposta certa virar errada em três telas.
+
+### A metade que quase ficou de fora: o banco
+
+A frase do Davi é sobre a janela, e a tela obedecer seria o conserto óbvio —
+**e errado**. Quem ESCREVE o apoio não é a tela: é o gatilho
+`chamado_sincronizar_apoio`, que roda no INSERT e a cada troca de responsável.
+Com só a tela mudada, ela mostraria campo vazio e o banco gravaria a equipe
+inteira meio segundo depois — a tela mentindo em silêncio.
+
+Então nasceu a **U152**, com a gêmea SQL da função pura. As duas existem porque
+as duas perguntas existem (a tela precisa MOSTRAR antes de gravar, o banco
+precisa GRAVAR); o que não pode é a conta divergir, e por isso ela é uma função
+NOMEADA dos dois lados, não um filtro escrito no meio de um UPDATE aqui e de um
+`useMemo` lá.
+
+O corpo do gatilho é o da U142 linha por linha, com UMA troca — a fonte do alvo
+—, e as duas travas que não são dele continuam onde estavam: a da U81
+(`congelado_em IS NULL`, que impede apagar a turma que JÁ ESTEVE no prédio) e o
+`origem = 'dupla'` (que deixa o apoio posto à mão em paz). O pré-voo ABORTA se
+o corpo vivo não trouxer a trava da U81 — se ele não for o que eu li,
+sobrescrevê-lo levaria a trava junto, calada.
+
+### O que a medição revelou, e muda o efeito prático da regra
+
+Fui ao banco antes de declarar pronto, e o resultado importa: **nenhuma das
+três equipes vivas tem líder nomeado.** Todos os cinco membros são `ajudante`.
+
+Não é defeito — é o backfill da U142 funcionando como escrito: ele trouxe todo
+mundo como ajudante porque `duplas_escala`, a fonte, **não tinha o conceito de
+líder**. Mas significa que, hoje, a R297 tem um efeito total: **nenhum chamado
+ganha apoio automático até alguém nomear líderes.**
+
+Isso mudou uma decisão de tela. A primeira versão dizia "Este técnico não
+lidera a equipe dele" — verdade, e inútil: apareceria para TODO técnico e se
+leria como defeito. São três ausências diferentes e cada uma pede uma frase:
+
+| situação | o que a tela diz |
+|---|---|
+| não está em equipe | "…sem equipe, o chamado entra na fila de programação." |
+| equipe sem líder nomeado | "…ainda não tem líder nomeado. **Nomeie um em Equipes** e o apoio passa a vir sozinho." |
+| a equipe tem líder, e é outro | "Quem lidera esta equipe é **Fulano** — o apoio só é puxado quando o responsável é o líder." |
+
+A do meio é a única com conserto de um clique, e é justamente a de todo mundo
+hoje. **Campo vazio sem motivo é o gestor perguntando "cadê?"; campo vazio com
+motivo é resposta.**
+
+### A foto, e o componente que já existia pela metade
+
+Davi pediu foto "nos itens da lista e no que for inserido". O `CampoComBusca` já
+sabia desenhar a segunda metade (`iconeEsquerda`, do painel de propriedades da
+U40) e não a primeira: a lista aberta mostrava só nomes.
+
+Ganhou `iconeDaOpcao`, prop nova e opcional — nenhum dos chamadores de hoje
+muda de aparência. Separada de `iconeEsquerda` de propósito: aquele representa
+a escolha FEITA e mora dentro do campo, este representa cada CANDIDATO e mora
+na lista. Um só serviria enquanto o desenho fosse o mesmo, e o primeiro caso em
+que não fosse obrigaria a inventar um parâmetro "onde estou" — que é como um
+componente compartilhado começa a decidir layout por adivinhação.
+
+### Os quatro textos, e o que se recusou a tirar junto
+
+Saíram o subtítulo do diálogo, a nota de prazo da implantação, a sugestão de
+data pela prioridade e o "Sem data, o chamado entra na fila". Com a nota de
+prazo foram `horasPrazo` e `sugestaoDeData` — eram as últimas leitoras de
+`useSla()` nesta tela, e conta sem leitor tem aparência de regra viva: o
+próximo leitor acharia que o SLA ainda governa algo aqui, quando a R284 já o
+aposentou do campo.
+
+**FICOU** o aviso de que a data digitada não será gravada sem equipe e sem
+duração. Ele parece da mesma família e não é: os outros três explicavam o
+mecanismo, este avisa de uma PERDA silenciosa — preencher a data, esquecer a
+duração, e a data sumir sem dizer nada. É o defeito que o religamento existe
+para não ter.
+
+### Conferido no navegador, com o banco de verdade
+
+Nomeei o André líder pela porta da U142, medi, e desfiz (o banco voltou aos
+cinco ajudantes):
+
+| responsável | apoio | frase |
+|---|---|---|
+| **André** (líder, equipe com Denner) | **Denner** | — |
+| **Lucas** (ajudante, equipe sem líder) | vazio | "ainda não tem líder nomeado…" |
+| **Davi de Matos** (sem equipe) | vazio | "…não está em nenhuma equipe" |
+
+E a lista aberta: sete opções, **todas com foto** — iniciais em degradê para
+quem não tem avatar, `<img>` para quem tem. Os rótulos da janela ficaram
+exatamente: Assunto · Detalhes · Prioridade · **Técnico responsável · Apoio** ·
+Data · Hora · Duração · Deslocamento.
+
+**Números.** Verificador: **3.532 asserções, 0 falharam**. `tsc`: 0. `vite build` completa.
+Migrations **U150 e U152 PENDENTES** — a U152 é a que faz o banco concordar com
+a tela nova.

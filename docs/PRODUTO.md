@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R296 (67)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R297 (68)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5391,6 +5391,7 @@ adaptado."
 > | **R294** | entregue (U144) |
 > | **R295** | eixos e card entregues (U148); os três botões, ditados |
 > | **R296** | entregue (U149) |
+> | **R297** | tela entregue (U152); falta rodar a migration **U152** — sem ela o banco ainda grava apoio para quem não é líder |
 >
 > O retrato ao vivo está em `docs/ESTADO_ATUAL.md`; esta tabela existe para
 > quem chega pelo PRODUTO e não passou por lá.
@@ -5465,6 +5466,13 @@ adaptado."
   clicar em remover da outra. E **o apoio do chamado passa a nascer da equipe do
   responsável**: atribuir o André, que lidera uma equipe com o Lucas, põe o
   Lucas como apoio — e quem cria, o gestor ou quem tem permissão ainda troca.
+
+  *Revista pela **R297** (15/09/2026) na metade do APOIO: ele passou a exigir
+  que o responsável seja o **LÍDER**. O exemplo acima continua valendo ao pé da
+  letra — o André LIDERA aquela equipe —, mas o caso simétrico mudou: atribuir
+  ao Lucas não põe mais o André como apoio. O resto da regra (a equipe por
+  instante, o pop-up que pergunta antes de mover, o líder com N ajudantes)
+  segue inteiro.*
 
 - **R286** — **O retorno é a MESMA atividade, com o número de idas na
   etiqueta.** Quando o técnico vai ao cliente e não resolve, o chamado NÃO se
@@ -5675,6 +5683,59 @@ adaptado."
   medido em 15/09: um botão com ela aberta, **zero** com ela recolhida, e a
   preferência fica gravada. Ele passou para a barra de ferramentas: **gesto de
   gestão não pode depender de um painel de leitura estar aberto.**
+
+- **R297** — **Na abertura do chamado técnico pergunta-se QUEM, não QUAL
+  EQUIPE — e o apoio vem da LIDERANÇA.** *(Davi, 15/09/2026: "O usuário
+  seleciona o técnico responsável, e o apoio é preenchido automaticamente de
+  acordo com a dupla do responsável (CASO O RESPONSAVEL QUE FOI INSERIDO SEJA
+  LIDER DE ALGUMA DUPLA, CASO NAO SEJA LIDER, NÃO DEVE APARECER O APOIO
+  AUTOMATICAMENTE). E aí no caso você deverá remover o campo 'Equipe de
+  campo', ficando somente Técnico Responsável e Apoio, lado a lado, com foto
+  de perfil nos itens da lista e no que for inserido. Caso na equipe do lider
+  tenha mais de um apoio, insira automaticamente mais de um apoio".)*
+
+  **O campo "Equipe de campo" SAI.** A equipe continua existindo — o
+  `agenda_campo.dupla_id` é NOT NULL e o EXCLUDE de sobreposição é por equipe
+  —, mas passa a ser sempre a do responsável. Perguntar as duas coisas era
+  pedir a mesma informação duas vezes: em quase todo chamado a equipe já saía
+  do técnico, e o campo existia para o caso raro de alguém sair com outra
+  turma — que continua resolvível na programação, onde o bloco é movido.
+  **Revisa a R126** na metade em que "a equipe vem PRIMEIRO".
+
+  **O apoio é PLURAL e vem do LÍDER.** Equipe de três grava dois apoios. Se o
+  responsável **não** é o líder da equipe dele, o apoio **não** é preenchido —
+  e o campo vazio explica por quê, com o conserto junto quando há um.
+
+  **Revisa a R285** exatamente onde ela dizia o contrário: lá o papel não era
+  condição ("quem foi ao prédio foi a equipe, não o organograma dela"). A
+  distinção que a R297 introduz: **o líder é quem RESPONDE pela equipe**, e
+  atribuir a ele é atribuir à turma; atribuir a um ajudante é outra frase — é
+  mandar aquela pessoa —, e arrastar o líder junto como "apoio" inverteria a
+  hierarquia sem ninguém ter pedido. Na dúvida o sistema não inventa ninguém:
+  **campo vazio é uma pergunta, apoio errado é uma resposta falsa.**
+
+  **A regra vale no BANCO, não só na tela** (U152). Quem escreve o apoio é o
+  gatilho `chamado_sincronizar_apoio`, e deixá-lo como estava faria a tela
+  mostrar campo vazio e o banco gravar a equipe inteira logo em seguida. A
+  função `parceiros_da_equipe` **não** mudou — ela responde "quem mais está
+  nesta equipe", pergunta que a programação e a grade continuam fazendo; o que
+  nasceu foi `apoio_automatico`, que é a da liderança.
+
+  **CONSEQUÊNCIA MEDIDA, e ela é imediata:** em 15/09/2026 **nenhuma das três
+  equipes vivas tem líder nomeado** — o backfill da U142 trouxe todo mundo
+  como `ajudante`, porque `duplas_escala` não tinha o conceito. Enquanto isso
+  não mudar, **nenhum chamado ganha apoio automático**. Isto é a regra
+  funcionando, não um defeito; nomear o líder é um clique por equipe, na
+  janela Equipes, e a tela de abertura diz isso a quem esbarrar no campo vazio.
+
+  **As notas da janela saem** (mesmo pedido): *"Equipe técnica · o número é
+  gerado ao salvar…"*, *"Implantação não tem prazo por prioridade…"* e
+  equivalentes — inclusive a sugestão de data pela `chamado_sla`, que a U147
+  tinha transformado de promessa em sugestão —, e *"Sem data, o chamado entra
+  na fila «aguardando programação»"*. **Fica** o aviso de que a data digitada
+  NÃO será gravada sem equipe e sem duração: esse não é ruído, é o defeito que
+  o religamento existe para não ter. **Revisa a R284** na parte em que a tela
+  de abertura orientava pelo SLA.
 
   **"Poucos botões" mudou a FORMA, não só o tamanho:** os quatro botões de
   eixo (R295) viraram **uma pílula com menu** — quatro botões lado a lado é a

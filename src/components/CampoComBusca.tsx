@@ -51,6 +51,18 @@ interface Props {
    * pessoa, não um glifo genérico igual para todo mundo.
    */
   iconeEsquerda?: (escolhida: OpcaoBusca | null) => ReactNode;
+  /**
+   * Ícone/avatar de CADA OPÇÃO da lista aberta (R297, 15/09/2026: "com foto
+   * de perfil nos itens da lista e no que for inserido").
+   *
+   * É prop separada de `iconeEsquerda` de propósito: aquele representa a
+   * escolha FEITA e mora dentro do campo; este representa cada CANDIDATO e
+   * mora na lista. Um só serviria para os dois só enquanto o desenho fosse o
+   * mesmo, e o primeiro caso em que não fosse obrigaria a inventar um
+   * parâmetro "onde estou" — que é como um componente compartilhado começa a
+   * decidir layout por adivinhação.
+   */
+  iconeDaOpcao?: (o: OpcaoBusca) => ReactNode;
 }
 
 const TETO = 60;
@@ -58,7 +70,7 @@ const TETO = 60;
 export function CampoComBusca({
   opcoes, valor, aoMudar, vazio = "— não definido —",
   limpavel = true, placeholder = "Digite para buscar…", compacto = false, id,
-  iconeEsquerda,
+  iconeEsquerda, iconeDaOpcao,
 }: Props) {
   const { isLight } = useTheme();
   const [aberto, setAberto] = useState(false);
@@ -245,6 +257,7 @@ export function CampoComBusca({
                     fontFamily: FONT, fontSize: 13.5, fontWeight: atual ? 600 : 500,
                   }}
                 >
+                  {iconeDaOpcao?.(o)}
                   <span style={{
                     flex: 1, minWidth: 0, overflow: "hidden",
                     textOverflow: "ellipsis", whiteSpace: "nowrap",

@@ -65,9 +65,9 @@ export function NovoChamadoTecnicoDialog({ aberto, aoFechar, aoCriar }: Props) {
             <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 15.5, color: textPrimary }}>
               Novo chamado técnico
             </div>
-            <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary }}>
-              Equipe técnica · o número é gerado ao salvar. Com equipe, dia e duração, o horário já entra na agenda.
-            </div>
+            {/* R297: o subtítulo saiu. Ele explicava o mecanismo ("o número é
+                gerado ao salvar") para quem só quer abrir o chamado — e o
+                formulário abaixo já diz, no rodapé, para onde o chamado vai. */}
           </div>
           <button
             onClick={aoFechar}

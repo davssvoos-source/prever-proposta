@@ -8,14 +8,18 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-15** · última regra: **R296** · último diário:
-**U151** · verificador: **3.518 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-15** · última regra: **R297** · último diário:
+**U152** · verificador: **3.532 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
-Banco — **Pendente: U150**
-(`20261008090000_u150_o_retorno_e_a_mesma_atividade.sql` — o retorno como ida
-nova na MESMA atividade, R286; a faixa "Retornos pendentes" e o botão
-"Retorno" no card só sobem depois dela). Rodadas em 13/09/2026, nesta ordem:
+Banco — **Pendentes: U150 e U152**, nesta ordem.
+**U150** (`20261008090000_u150_o_retorno_e_a_mesma_atividade.sql`) — o retorno
+como ida nova na MESMA atividade (R286); a faixa "Retornos pendentes" e o
+botão "Retorno" no card só sobem depois dela.
+**U152** (`20261009090000_u152_o_apoio_sai_da_lideranca.sql`) — o apoio
+automático passa a exigir que o responsável seja LÍDER (R297). **A tela já
+obedece**: enquanto esta não rodar, a janela de abertura mostra campo de apoio
+vazio e o gatilho grava a equipe inteira logo depois. Rodadas em 13/09/2026, nesta ordem:
 U131, U132, U134 e **U136** — esta última na segunda tentativa, e a data é a
 que o diário da própria entrega registra. Em 14/09/2026: U137, U139,
 **U142**, **U143**, **U144** e **U147**.
@@ -47,6 +51,7 @@ Ler isto antes de prometer qualquer coisa a alguém.
 | R294 | operacional cria atividade, não executa chamado de campo | **no ar** (U144) |
 | R295 | o quadro do Painel Operacional por estado/status/equipe/dia, e o card com a data que o estado pede | **no ar** (U148) — faltam os três botões do card |
 | R296 | a barra do Operacional na régua da Início: indicadores recolhíveis, poucos controles, e ordem na lista | **no ar** (U149) |
+| R297 | na abertura pergunta-se QUEM (a equipe sai); o apoio vem da LIDERANÇA, plural, com foto | tela **no ar** (U152) — **falta rodar a migration U152**, sem ela o banco grava apoio para quem não é líder |
 
 Fim de entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
@@ -84,7 +89,7 @@ técnica de campo é o **Vinicius**.
      pontas, a folha do gestor, a chegada por localização (etapa 3).
 5. `docs/PLANO_V0.1.md` — o plano por fases e as perguntas Q1–Q23 com as
    respostas anotadas.
-6. `docs/PRODUTO.md` — TODAS as regras (R1–R296). Não se lê de ponta a ponta:
+6. `docs/PRODUTO.md` — TODAS as regras (R1–R297). Não se lê de ponta a ponta:
    consulta-se pela regra citada no código. O número cresce a cada entrega —
    navegue pelo **sumário do topo**, não por este contador.
 7. `docs/manual/README.md` — o manual por segmento; ler o do segmento em que
@@ -166,7 +171,8 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U146 | **o técnico de campo fica com três tipos** (R283). `operacional` saiu do campo (era oferecida e nunca virava demanda de dupla) e `vistoria` mudou de natureza — virou atividade INTERNA do gestor, que é onde a validação dele é registrada (R156). Medido antes: zero chamados de campo com esses tipos, logo sem migration |
 | U147 | **o campo perde o prazo automático** (R284) e a escala por semana vira uma VISTA. Os dois ramos do SLA saíram do gatilho; o prazo da obra fica, porque é espelho de uma data que alguém marcou. E a ponta solta da R285: **sete telas** ainda liam `duplas_escala`, congelada desde a U142 — `useEscala()` passou a materializar a forma a partir de `equipe_membros`, e nenhuma das sete mudou uma linha. Migration **U147 (rodada em 14/09)** |
 | U150 | **o retorno é a MESMA atividade** (R286)
-| U151 | **a auditoria de início de sessão, e o que ela achou.** TRÊS defeitos na U150 **antes** de o Davi rodar: o CHECK novo travava o botão "tire o feito" da grade (e a U78 manda justamente por ele), a porta carimbava a ida mais NOVA em vez da mais antiga (um retorno marcado para quinta virava "aconteceu"), e o portão provava o cancelamento por um caminho que o app não tem — era esse disfarce que escondia o primeiro. E a **segunda metade da R284**, que ninguém tinha implementado: "atrasado" no campo virou a DATA MARCADA vencida. Enquanto saía do prazo, a coluna "Atrasados" ficou presa em ZERO depois da U147. Sem migration nova | — a decisão que o Davi me pediu para tomar. Quase nada precisou nascer: `agenda_campo` já é uma linha por IDA desde a U78, e faltava só COMO a ida terminou. O contador é espelho recontado por gatilho, e ida cancelada não conta. Dois defeitos meus achados antes de rodar: `COALESCE(NEW.x, OLD.x)` estoura no ramo de DELETE (`NEW` é record não atribuído, não nulo), e os dois CENSOS acusaram a função por carimbar `cumprido_em` fora das portas da U78 — ela passou a delegar. Migration **U150 (pendente)** |
+| U151 | **a auditoria de início de sessão, e o que ela achou.**
+| U152 | **na abertura pergunta-se QUEM** (R297). O campo "Equipe de campo" saiu — ela passou a ser sempre a do responsável —, e Responsável + Apoio ficaram lado a lado, com foto na lista e no escolhido. O apoio é PLURAL e só vem quando o responsável é o **LÍDER**, o que **revisa a R285** (que dizia "o líder não é condição"). A metade que quase ficou de fora é o BANCO: quem escreve apoio é o gatilho, e com só a tela mudada ela mostraria campo vazio e o banco gravaria a equipe meio segundo depois. **Medido:** nenhuma das três equipes tem líder nomeado hoje (o backfill da U142 trouxe todos como ajudante), então o apoio não nasce para ninguém até alguém nomear — e a tela diz isso, com o conserto junto. Migration **U152 (pendente)** | TRÊS defeitos na U150 **antes** de o Davi rodar: o CHECK novo travava o botão "tire o feito" da grade (e a U78 manda justamente por ele), a porta carimbava a ida mais NOVA em vez da mais antiga (um retorno marcado para quinta virava "aconteceu"), e o portão provava o cancelamento por um caminho que o app não tem — era esse disfarce que escondia o primeiro. E a **segunda metade da R284**, que ninguém tinha implementado: "atrasado" no campo virou a DATA MARCADA vencida. Enquanto saía do prazo, a coluna "Atrasados" ficou presa em ZERO depois da U147. Sem migration nova | — a decisão que o Davi me pediu para tomar. Quase nada precisou nascer: `agenda_campo` já é uma linha por IDA desde a U78, e faltava só COMO a ida terminou. O contador é espelho recontado por gatilho, e ida cancelada não conta. Dois defeitos meus achados antes de rodar: `COALESCE(NEW.x, OLD.x)` estoura no ramo de DELETE (`NEW` é record não atribuído, não nulo), e os dois CENSOS acusaram a função por carimbar `cumprido_em` fora das portas da U78 — ela passou a delegar. Migration **U150 (pendente)** |
 | U149 | **a barra do Operacional vira a barra da Início** (R296). A régua saiu MEDIDA na tela ao lado — pílula 40/raio 11, botão quadrado 42/raio 12 —, e o Operacional tinha 28px ao lado de pílulas de ~26: dois pisos na mesma linha, que é o que o Davi descreveu. Os quatro botões de eixo viraram UMA pílula com menu e o alternador virou UM botão com o destino. Nasceu a ORDEM da lista (`ordenarCampo`), que a tela nunca teve — e que a R284 tornou urgente, porque `ordenarChamados` pesa por prazo e o campo não tem mais prazo. Sem migration |
 | U148 | **o quadro do Painel Operacional ganha eixo** (R295): estado (o padrão da R76), status, equipe e dia da semana, com a conta em `colunasDoQuadro` — lógica pura, a tela só pinta. O card passou a dizer tipo de demanda, equipe e a data que o ESTADO pede, com RÓTULO ("Agendado"/"Começou"/"Feito"), porque "14/09 08:00" sozinho não distingue "vai começar" de "começou". **Medindo no navegador**: a mesma fila contava 1 card num eixo e 3 no outro — só o eixo de estado excluía cancelado. Passou a ser regra única, travada por asserção de TOTAL, não de coluna. Sem migration |
 

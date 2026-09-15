@@ -43,7 +43,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Building2, Plus, Search } from "lucide-react";
+import { AlertTriangle, Building2, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { card, rotuloDeSecao } from "@/lib/ui";
@@ -54,12 +54,14 @@ import { useClientes } from "@/features/clientes/data";
 import {
   useInventario, criarSistema, TIPOS_SISTEMA_OFERECIDOS, TIPO_SISTEMA_LABEL, type TipoSistema,
 } from "@/features/clientes/inventario";
-import { abrirChamado, useSla } from "@/features/chamados/data";
+import { abrirChamado, adicionarApoio, removerApoio } from "@/features/chamados/data";
 import { montarChecklistPreventiva } from "@/features/chamados/checklist";
-import { useDuplas, useEscala } from "@/features/duplas/data";
+import { useDuplas, useEscala, useMembrosDeEquipe } from "@/features/duplas/data";
 import {
-  composicaoDaDupla, duplaDaPessoaNaSemana, montarEscala, rotuloDaComposicao,
+  apoioAutomatico, composicaoDaDupla, duplaDaPessoaNaSemana, liderDaEquipe, montarEscala,
 } from "@/features/duplas/modelo";
+import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
+import { AvatarCirculo } from "@/components/PessoaComFoto";
 import { useBlocosDaSemana, useMarcarBloco, sqlstateDoErro } from "@/features/programacao/data";
 import {
   blocosDaEquipeNaSemana, classeDoErro, dataDoDia, duracaoTexto, horaTexto,
@@ -94,7 +96,6 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
   const { isLight } = useTheme();
   const { data: clientes = [] } = useClientes();
   const { data: tecnicos = [] } = useTecnicos();
-  const { data: sla = {} } = useSla();
 
   const [tipo, setTipo] = useState<ChamadoTipo>(
     tipoInicial && (tiposDaNatureza("campo") as string[]).includes(tipoInicial) ? tipoInicial : "corretiva",
@@ -114,11 +115,15 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
   // 09:00 é `CAMPO_ABRE_MIN`: a equipe SAI às 09h, então este default já passa
   // no `v_inicio - v_desloc < 540` da jornada. Não é um chute — é a política.
   const [hora, setHora] = useState("09:00");
-  // `null` = "ainda não mexi" (vale a derivação do técnico); `""` = "escolhi NÃO
-  // agendar". Um estado só, com `""` fazendo os dois papéis, tornava impossível
-  // desmarcar a equipe: apagar caía de volta na derivação, e o formulário
-  // discutia com quem o preenche.
-  const [equipeId, setEquipeId] = useState<string | null>(null);
+  /**
+   * R297 (15/09/2026): o APOIO. `null` = "não mexi, vale o automático"; um
+   * array = a escolha da pessoa, inclusive vazia.
+   *
+   * O mesmo idioma que a equipe usava antes de sair daqui, e pelo mesmo
+   * motivo: com um estado só, esvaziar a lista caía de volta na sugestão e o
+   * formulário discutia com quem o preenche.
+   */
+  const [apoios, setApoios] = useState<string[] | null>(null);
   // A DURAÇÃO ABRE VAZIA E É OBRIGATÓRIA PARA AGENDAR. Não existe duração de
   // serviço em lugar nenhum do repositório, e `useSla()` responde outra
   // pergunta (PRAZO de atendimento: "até quando alguém tem de ir"). Um default
@@ -133,6 +138,8 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
   const { data: sistemas = [] } = useInventario(clienteId ?? undefined);
   const { data: duplas = [] } = useDuplas();
   const { data: escala = montarEscala([], []) } = useEscala();
+  // R285/U142: a composição VIVA, por instante — é dela que sai o líder.
+  const { data: membrosDeEquipe = [] } = useMembrosDeEquipe();
   const { data: blocosDaSemana = [] } = useBlocosDaSemana(data);
   const marcarBloco = useMarcarBloco();
   const cliente = clientes.find((c) => c.id === clienteId) ?? null;
@@ -196,14 +203,21 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
     return d ? referenciaSemanal(d) : referenciaSemanal(new Date());
   }, [data]);
 
-  const equipesDaSemana = useMemo(
-    () => duplas
-      .map((d) => ({ dupla: d, membros: composicaoDaDupla(d.id, semanaDoDia, escala) }))
-      .filter((x) => x.membros.length > 0),
-    [duplas, semanaDoDia, escala],
-  );
   const nomeDeTecnico = (id: string) =>
-    (tecnicos as any[]).find((t) => t.id === id)?.nome ?? "Técnico";
+    (tecnicos as any[]).find((t) => t.id === id)?.nome
+    ?? membrosDeEquipe.find((m) => m.pessoaId === id)?.nome
+    ?? "Técnico";
+  const pessoaDe = (id: string) => {
+    const t = (tecnicos as any[]).find((x) => x.id === id);
+    return t ? { nome: t.nome as string, avatar_url: (t.avatar_url ?? null) as string | null } : undefined;
+  };
+  const opcoesDeTecnico: OpcaoBusca[] = useMemo(
+    () => (tecnicos as any[]).map((t) => ({ valor: t.id as string, rotulo: t.nome as string })),
+    [tecnicos],
+  );
+  const foto = (id: string, nome: string) => (
+    <AvatarCirculo id={id} nome={nome} pessoa={pessoaDe(id)} tamanho={18} />
+  );
 
   /**
    * A equipe DERIVADA do técnico escolhido, na semana do dia de destino — é a
@@ -215,7 +229,18 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
     () => duplaDaPessoaNaSemana(tecnicoId || null, semanaDoDia, escala),
     [tecnicoId, semanaDoDia, escala],
   );
-  const equipeEscolhida = equipeId ?? equipeDerivada ?? "";
+  /**
+   * R297: A EQUIPE DEIXOU DE SER PERGUNTA. Ela continua existindo — o
+   * `agenda_campo.dupla_id` é NOT NULL e o EXCLUDE de sobreposição é por
+   * equipe —, mas agora é sempre a do responsável. Davi: "você deverá remover
+   * o campo Equipe de campo, ficando somente Técnico Responsável e Apoio".
+   *
+   * Perguntar as duas coisas era pedir a mesma informação duas vezes: em
+   * quase todo chamado a equipe saía do técnico, e o campo existia para o
+   * caso raro de alguém sair com outra turma — que continua resolvível na
+   * programação, onde o bloco é movido.
+   */
+  const equipeEscolhida = equipeDerivada ?? "";
 
   /**
    * R126 — o RESPONSÁVEL EFETIVO: o técnico, ou o primeiro da escala da equipe
@@ -227,6 +252,45 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
     [equipeEscolhida, semanaDoDia, escala],
   );
   const responsavelEfetivo = responsavelProposto(tecnicoId || null, composicaoEscolhida);
+
+  /**
+   * R297 — O APOIO, PELA LIDERANÇA.
+   *
+   * Davi: "o apoio é preenchido automaticamente de acordo com a dupla do
+   * responsável (CASO O RESPONSAVEL QUE FOI INSERIDO SEJA LIDER DE ALGUMA
+   * DUPLA, CASO NAO SEJA LIDER, NÃO DEVE APARECER O APOIO AUTOMATICAMENTE)."
+   *
+   * O INSTANTE é o do atendimento quando ele já tem dia e hora, e AGORA
+   * quando ainda não tem — a mesma escolha que `instante_da_equipe` faz no
+   * banco. Sem isso, marcar para a semana que vem traria a composição de
+   * hoje, e a troca de equipe combinada para segunda não apareceria.
+   */
+  const instanteDaEquipe = useMemo(() => {
+    const d = dataDoDia(data);
+    if (!d) return new Date();
+    const [h, m] = (hora || "09:00").split(":").map(Number);
+    d.setHours(h || 0, m || 0, 0, 0);
+    return d;
+  }, [data, hora]);
+  const apoioSugerido = useMemo(
+    () => apoioAutomatico(membrosDeEquipe, tecnicoId || null, instanteDaEquipe),
+    [membrosDeEquipe, tecnicoId, instanteDaEquipe],
+  );
+  const apoiosEfetivos = apoios ?? apoioSugerido;
+  /**
+   * Quem lidera a equipe do responsável — só para EXPLICAR o campo vazio.
+   *
+   * São três ausências diferentes, e uma frase só para as três faria a mais
+   * comum de hoje parecer defeito: nenhuma equipe tem líder ainda, porque o
+   * backfill da U142 trouxe todo mundo como ajudante (`duplas_escala` não
+   * tinha o conceito). Dizer "não lidera a equipe dele" a TODO técnico seria
+   * verdade e inútil; dizer "ainda não tem líder nomeado" é a mesma verdade
+   * com o conserto junto.
+   */
+  const liderDaEquipeAtual = useMemo(
+    () => (equipeDerivada ? liderDaEquipe(membrosDeEquipe, equipeDerivada, instanteDaEquipe) : null),
+    [equipeDerivada, membrosDeEquipe, instanteDaEquipe],
+  );
 
   /** O que a equipe escolhida já tem naquela semana — substitui a prévia antiga,
    *  que consultava `chamados` por responsável e não enxergava nem OS de fora
@@ -248,19 +312,10 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
     [equipeEscolhida, data, blocosDaSemana, deslocamentoMin],
   );
 
-  // R284 (U147): o número da `chamado_sla` continua valendo como RÉGUA —
-  // urgente 4h, alta 24h, normal 72h —, e o que ele deixou de ser é uma
-  // promessa que o banco gravava sozinho. Aqui ele vira a SUGESTÃO de para
-  // quando marcar: "urgente costuma ir em 4h — sugerido 15/09 às 10:00".
-  // Sugestão que a pessoa lê e decide é diferente de prazo que nasce calado e
-  // pinta card de vermelho sem ninguém ter prometido nada.
-  const horasPrazo = sla[prioridade] ?? null;
-  const sugestaoDeData = useMemo(() => {
-    if (horasPrazo == null) return null;
-    const d = new Date();
-    d.setHours(d.getHours() + horasPrazo);
-    return d;
-  }, [horasPrazo]);
+  // R297: a sugestão de data pela `chamado_sla` SAIU junto com a nota que a
+  // mostrava. Ela era a última leitora de `useSla()` nesta tela, e uma conta
+  // sem leitor tem aparência de regra viva — o próximo leitor acharia que o
+  // SLA ainda governa algo aqui, quando a R284 já o aposentou do campo.
 
   // R126: a sugestão de título — o sistema (existente ou o que vai ser criado)
   // vence o cliente. Vira o placeholder E o valor gravado quando o campo fica
@@ -330,6 +385,28 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
         prioridade,
         responsavel_id: responsavelEfetivo,
       });
+      // R297 — O APOIO QUE A TELA MOSTRA É O QUE FICA GRAVADO.
+      //
+      // O gatilho `chamado_sincronizar_apoio` já escreveu a turma do líder
+      // (origem "dupla") no INSERT. O que falta é a vontade de quem abriu:
+      // quem ela ACRESCENTOU entra como manual, e quem ela TIROU sai. Sem
+      // esta reconciliação o formulário mentiria nos dois sentidos — mostrar
+      // um nome que não foi gravado é tão ruim quanto gravar um que não
+      // apareceu.
+      //
+      // Depois do chamado existir, e não antes: `chamado_apoios.chamado_id` é
+      // FK, e não há linha para apontar enquanto o chamado não nasce.
+      if (apoios !== null) {
+        const dever = new Set(apoios);
+        const jaPosto = new Set(apoioSugerido);
+        for (const id of apoios) {
+          if (!jaPosto.has(id)) await adicionarApoio(chamadoId, id);
+        }
+        for (const id of apoioSugerido) {
+          if (!dever.has(id)) await removerApoio(chamadoId, id);
+        }
+      }
+
       // Preventiva já nasce com o roteiro de verificação dos sistemas
       if (tipo === "preventiva") {
         const alvos = sistemaFinal ? sistemas.filter((s) => s.id === sistemaFinal) : sistemas.filter((s) => s.ativo);
@@ -565,62 +642,102 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
               );
             })}
           </div>
-          <div style={{ ...NOTA, marginTop: 8 }}>
-            {tipo === "implantacao"
-              ? "Implantação não tem prazo por prioridade: o prazo é o fim previsto do período da obra (R120)."
-              : horasPrazo == null
-                ? "Sem referência de tempo para esta prioridade — marque a data abaixo."
-                : `${horasPrazo}h é a referência desta prioridade — sugere marcar até ${sugestaoDeData?.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}. Quem marca a data é você.`}
-          </div>
+          {/* R297: a nota de prazo SAIU. Davi mandou remover "Implantação não
+              tem prazo por prioridade…" e equivalentes. Ela explicava um
+              número que a R284 já tinha aposentado: depois da U147 o campo não
+              tem prazo, e a prioridade orienta a data que a pessoa escolhe —
+              coisa que os quatro botões acima já dizem sozinhos. */}
         </div>
       </div>
 
       {/* Responsável e agenda */}
       <div style={CARD}>
         <span style={SEC}>Responsável e agenda</span>
-        {/* A EQUIPE, e não o técnico, é quem se compromete com a janela.
-            `agenda_campo.dupla_id` é NOT NULL e o EXCLUDE de sobreposição é por
-            equipe — a equipe sai JUNTA, no mesmo carro. O campo vem proposto
-            pela derivação do técnico (U47/U76) e continua editável. R126: a
-            equipe vem PRIMEIRO, porque é ela que o Vinicius escolhe na maioria
-            dos chamados — o técnico solo é a exceção. */}
-        <div>
-          <label style={LABEL}>Equipe de campo</label>
-          <select
-            style={INPUT}
-            value={equipeEscolhida}
-            onChange={(e) => setEquipeId(e.target.value)}
-          >
-            <option value="">— sem equipe: técnico solo, ou “aguardando programação” —</option>
-            {equipesDaSemana.map(({ dupla, membros }) => (
-              <option key={dupla.id} value={dupla.id}>
-                {rotuloDaComposicao(dupla, membros, nomeDeTecnico)}
-              </option>
-            ))}
-          </select>
-          {tecnicoId && !equipeDerivada && (
-            <div style={{ ...NOTA, marginTop: 6 }}>
-              Este técnico não está escalado em nenhuma equipe na semana deste dia. Escolha a equipe acima,
-              ou lance a escala em Operacional Técnica → Equipes.
-            </div>
-          )}
-        </div>
-        <div>
-          <label style={LABEL}>Técnico responsável</label>
-          <select style={INPUT} value={tecnicoId} onChange={(e) => setTecnicoId(e.target.value)}>
-            <option value="">{equipeEscolhida ? "O primeiro da escala da equipe" : "Definir depois"}</option>
-            {tecnicos.map((t: any) => (
-              <option key={t.id} value={t.id}>{t.nome}</option>
-            ))}
-          </select>
-          {/* R126: a proposta é DITA antes de gravar. Quem lê "responsável:
-              Breno" e não quer, troca acima — ninguém descobre depois. */}
-          {!tecnicoId && responsavelEfetivo && (
-            <div style={{ ...NOTA, marginTop: 6 }}>
-              Responsável proposto: <b style={{ color: textPrimary, fontWeight: 600 }}>{nomeDeTecnico(responsavelEfetivo)}</b>
-              {" "}(primeiro da escala desta equipe) — escolha outro acima se for o caso.
-            </div>
-          )}
+        {/* R297 — QUEM VAI, e não QUAL EQUIPE. O campo "Equipe de campo" saiu:
+            a equipe continua existindo (o `agenda_campo.dupla_id` é NOT NULL e o
+            EXCLUDE de sobreposição é por equipe), mas é sempre a do responsável.
+            Perguntar as duas era pedir a mesma informação duas vezes.
+
+            OS DOIS LADO A LADO porque são UMA pergunta: quem sai neste
+            atendimento. Separados em duas linhas, o apoio parecia um assunto
+            à parte — e é ele que muda sozinho quando o responsável muda. */}
+        <div className="dupla-campo" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignItems: "start" }}>
+          <div style={{ minWidth: 0 }}>
+            <label style={LABEL}>Técnico responsável</label>
+            <CampoComBusca
+              id="chamado-responsavel"
+              opcoes={opcoesDeTecnico}
+              valor={tecnicoId || null}
+              // trocar o responsável DEVOLVE o apoio ao automático. Guardar a
+              // escolha antiga deixaria na tela a dupla de outra pessoa, que é
+              // pior do que recalcular: ninguém percebe um apoio que ficou.
+              aoMudar={(v) => { setTecnicoId(v ?? ""); setApoios(null); }}
+              vazio="— definir depois —"
+              placeholder="Quem responde"
+              iconeEsquerda={(esc) => (esc ? foto(esc.valor, esc.rotulo) : null)}
+              iconeDaOpcao={(o) => foto(o.valor, o.rotulo)}
+            />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <label style={LABEL}>Apoio</label>
+            {apoiosEfetivos.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+                {apoiosEfetivos.map((id) => (
+                  <span
+                    key={id}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "100%",
+                      height: 30, padding: "0 6px 0 4px", borderRadius: 15,
+                      background: isLight ? "#ffffff" : "rgba(255,255,255,0.05)",
+                      border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                      fontFamily: "var(--fonte)", fontSize: 12, color: textPrimary,
+                    }}
+                  >
+                    {foto(id, nomeDeTecnico(id))}
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {nomeDeTecnico(id)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setApoios(apoiosEfetivos.filter((x) => x !== id))}
+                      aria-label={`Tirar ${nomeDeTecnico(id)} do apoio`}
+                      title="Tirar do apoio"
+                      style={{
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        width: 18, height: 18, borderRadius: 9, flexShrink: 0, cursor: "pointer",
+                        background: "transparent", border: "none", color: textSecondary, padding: 0,
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <CampoComBusca
+              id="chamado-apoio"
+              compacto
+              opcoes={opcoesDeTecnico.filter((o) => o.valor !== tecnicoId && !apoiosEfetivos.includes(o.valor))}
+              valor={null}
+              limpavel={false}
+              aoMudar={(v) => { if (v) setApoios([...apoiosEfetivos, v]); }}
+              vazio={apoiosEfetivos.length > 0 ? "+ mais alguém" : "— sem apoio —"}
+              placeholder="Quem vai junto"
+              iconeDaOpcao={(o) => foto(o.valor, o.rotulo)}
+            />
+            {/* A FRASE SÓ APARECE QUANDO EXPLICA UMA AUSÊNCIA. Campo vazio sem
+                motivo é o gestor perguntando "cadê?"; campo vazio com motivo é
+                resposta. */}
+            {tecnicoId && apoios === null && apoioSugerido.length === 0 && (
+              <div style={{ ...NOTA, marginTop: 6 }}>
+                {!equipeDerivada
+                  ? "Este técnico não está em nenhuma equipe — sem equipe, o chamado entra na fila de programação."
+                  : liderDaEquipeAtual === null
+                    ? "A equipe dele ainda não tem líder nomeado. Nomeie um em Equipes e o apoio passa a vir sozinho."
+                    : `Quem lidera esta equipe é ${nomeDeTecnico(liderDaEquipeAtual)} — o apoio só é puxado quando o responsável é o líder.`}
+              </div>
+            )}
+          </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
@@ -728,16 +845,19 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
           ? (marcarBloco.isPending ? "Marcando…" : "Marcar horário")
           : ocupado ? "Abrindo…" : "Abrir chamado"}
       </button>
-      {/* A LINHA QUE DIZ PARA ONDE O CHAMADO VAI. Sem ela, preencher a data e
-          esquecer a equipe faria a data desaparecer em silêncio — que é
-          exatamente o defeito que este religamento existe para não ter. */}
-      {!criado && (
+      {/* A LINHA QUE DIZ PARA ONDE O CHAMADO VAI — e ela agora só fala quando
+          tem o que dizer de NOVO. Davi mandou tirar "Sem data, o chamado entra
+          na fila «aguardando programação»": é o estado normal de quem ainda
+          não agendou, e anunciá-lo em toda abertura é ruído.
+
+          O que FICA é o aviso de que a data digitada NÃO vai ser gravada —
+          esse não é ruído, é o defeito que este religamento existe para não
+          ter: preencher a data, esquecer a duração, e a data sumir calada. */}
+      {!criado && (vaiAgendar || !!data) && (
         <div style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, textAlign: "center" }}>
           {vaiAgendar
             ? `Vai para a agenda: ${data} às ${hora}, ${duracaoTexto((servicoMin ?? 0) + deslocamentoMin)} da equipe.`
-            : data
-              ? "Sem equipe ou sem duração, o chamado entra na fila “aguardando programação” — a data escolhida aqui não é gravada."
-              : "Sem data, o chamado entra na fila “aguardando programação”."}
+            : "A data acima não será gravada sem equipe e sem duração — o chamado entra na fila de programação."}
         </div>
       )}
     </div>
