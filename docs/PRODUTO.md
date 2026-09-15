@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R295 (66)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R296 (67)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5342,6 +5342,7 @@ adaptado."
 > | **R291**–**R293** | ditadas |
 > | **R294** | entregue (U144) |
 > | **R295** | eixos e card entregues (U148); os três botões, ditados |
+> | **R296** | entregue (U149) |
 >
 > O retrato ao vivo está em `docs/ESTADO_ATUAL.md`; esta tabela existe para
 > quem chega pelo PRODUTO e não passou por lá.
@@ -5568,3 +5569,42 @@ adaptado."
 
   **Os três botões (Concluir / Retorno / Cancelar)** que ele pediu no mesmo
   parágrafo ainda **não** estão no card.
+
+- **R296** — **A barra do Painel Operacional é a barra da Início: os
+  indicadores recolhem, e a lista tem ordem.** *(Davi, 14/09/2026: "ele
+  deverá ter a opção de recolher ou aparecer igual ao do INICIO. Além disso,
+  os filtros e botão de ordem deverão ser igual ao do INICIO, onde é compacto,
+  poucos botões porém bem objetivos e eficientes".)*
+
+  **A régua saiu MEDIDA na Início, não escolhida:** pílula de filtro **40px,
+  raio 11**; botão quadrado **42×42, raio 12**; tudo numa linha só. O
+  Operacional tinha botões de 28px ao lado de pílulas que resolviam em ~26 pelo
+  padding — dois pisos na mesma linha, que é literalmente o que o Davi viu:
+  *"os botões e campos desalinhados"*. A medida do botão quadrado mora numa
+  função (`BOTAO_DA_BARRA`), porque escrever o número em cada botão é como a
+  tela chegou a ter três alturas na mesma linha.
+
+  **A faixa de indicadores recolhe e FICA recolhida** (R175, agora também
+  aqui), com chave própria no navegador: são duas telas e duas rotinas, e
+  recolher numa não pode recolher na outra. **Recolher limpa o KPI ativo** —
+  os quadrados são controles de filtro (R125), e esconder o controle deixando
+  o filtro ligado é o defeito que a U94 consertou no calendário.
+
+  **"Poucos botões" mudou a FORMA, não só o tamanho:** os quatro botões de
+  eixo (R295) viraram **uma pílula com menu** — quatro botões lado a lado é a
+  barra dizendo que os quatro modos pesam igual, e `estado` é o padrão, não um
+  entre quatro; e o alternador de dois botões virou **um** botão que mostra o
+  DESTINO, como na Início e em `/chamados`. Três telas, um gesto.
+
+  **A ordem, que a tela nunca teve.** A lista vinha na ordem em que o banco
+  devolveu — e desde a R284 isso deixou de ser detalhe: `ordenarChamados` pesa
+  por PRAZO, e o campo não tem mais prazo, então a fila inteira empata. As
+  opções **não** são as da Início (metade das de lá é por prazo, e oferecer uma
+  ordem que não muda nada é o que ensina a desconfiar dos outros controles):
+  **data agendada** ↑↓, **prioridade**, **cliente**, **abertura** ↑↓, com
+  `data agendada ↑` de padrão. **Sem data vai para o fim nas DUAS direções** —
+  inverter a ordem não pode promover o vazio ao topo, que é o lugar mais caro
+  da tela; quem procura os sem data tem a coluna "Sem data" do quadro (R295).
+  A ordem escolhida é aplicada **por cima** da ordem inteligente que já existia
+  (`sort` é estável), então o empate cai na urgência — ou, no histórico, na
+  mais recente.

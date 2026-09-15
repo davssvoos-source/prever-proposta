@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 172 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 173 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -175,6 +175,7 @@
 - [A ponta solta da R285, achada por acaso](#a-ponta-solta-da-r285-achada-por-acaso)
 - [A quarta vez do mesmo erro, e a ferramenta que faltava](#a-quarta-vez-do-mesmo-erro-e-a-ferramenta-que-faltava)
 - [U148 — o quadro do Painel Operacional ganha eixo, e o card ganha o que o Davi listou (R295)](#u148-o-quadro-do-painel-operacional-ganha-eixo-e-o-card-ganha-o-que-o-davi-listou-r295)
+- [U149 — a barra do Operacional vira a barra da Início, e a lista ganha ordem (R296)](#u149-a-barra-do-operacional-vira-a-barra-da-início-e-a-lista-ganha-ordem-r296)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -14003,3 +14004,99 @@ novo, conferir o último do `PRODUTO.md`.**
 
 **Números.** Verificador: **3.481 asserções, 0 falharam**. `tsc`: 0. Sem
 migration nova.
+
+## U149 — a barra do Operacional vira a barra da Início, e a lista ganha ordem (R296)
+
+**O pedido.** Davi, 14/09/2026: *"ele deverá ter a opção de recolher ou
+aparecer igual ao do INICIO. Além disso, os filtros e botão de ordem deverão
+ser igual ao do INICIO, onde é compacto, poucos botões porém bem objetivos e
+eficientes."* E, sobre a tela toda: *"eu vejo que o painel que abre está
+totalmente foram de ordem, os botões e campos desalinhados, titulos sem estar
+no padrão."*
+
+### Medi a Início antes de escolher qualquer número
+
+"Igual ao do INÍCIO" é uma régua, não um adjetivo — e a régua estava na tela
+ao lado. Medido no navegador: **pílula de filtro 40px, raio 11; botão quadrado
+42×42, raio 12**, tudo numa linha só.
+
+O Operacional estava assim: alternador, seletor de eixo e "+" em **28px**; as
+pílulas das lentes **sem altura nenhuma**, resolvendo em ~26 pelo padding. Dois
+pisos na mesma linha. Não é sutileza de designer: é literalmente o que o Davi
+descreveu, e estava lá para quem medisse.
+
+A medida do botão quadrado foi para uma função (`BOTAO_DA_BARRA`) em vez de ser
+escrita em cada botão. **Escrever o número quatro vezes é exatamente como uma
+tela chega a ter três alturas na mesma linha** — o quarto botão nasce copiado do
+terceiro, que já estava errado.
+
+### "Poucos botões" mudou a FORMA, não só o tamanho
+
+Dois controles trocaram de tipo:
+
+- **Os quatro botões de eixo (R295) viraram uma pílula com menu.** Quatro
+  botões lado a lado é a barra dizendo que os quatro modos pesam igual — e
+  `estado` é o PADRÃO da R76, não um entre quatro. No menu, cada eixo leva a
+  nota do que ele responde: "Estado" e "Status" são a mesma palavra em
+  português para quem não escreveu o código, e escolher no escuro é escolher
+  errado uma vez e nunca mais voltar ali. Desmarcar devolve ao `estado`, porque
+  o quadro não tem como não ter eixo.
+- **O alternador de dois botões virou um**, mostrando o DESTINO — como na
+  Início e em `/chamados`. Três telas, um gesto.
+
+### A ordem, que a tela nunca teve
+
+A lista saía na ordem em que o banco devolveu. Isso já era ruim e **a R284
+piorou**: `ordenarChamados` pesa por PRAZO, e o campo não tem mais prazo — hoje
+a fila inteira empata no peso 3, e a ordem passa a ser o que o Postgres quiser
+naquela consulta.
+
+**Não reusei o `ORDENACOES` da Início.** Metade daquelas opções é por prazo:
+aqui seriam controle morto — o usuário escolhe, nada muda, e é assim que se
+aprende a desconfiar dos outros controles. As ordens do campo saíram do que o
+campo TEM: data agendada ↑↓, prioridade, cliente, abertura ↑↓.
+
+Três decisões dentro de `ordenarCampo`, todas travadas por asserção:
+
+1. **Sem data vai para o fim nas DUAS direções.** Inverter a ordem não pode
+   promover o vazio ao topo — "sem data" não é uma data extrema, é ausência, e
+   o topo da lista é o lugar mais caro da tela. Quem procura os sem data tem a
+   coluna "Sem data" do quadro, que existe para isso (R295).
+2. **A data seca entra como 00:00 do dia.** `data_agendada` sem hora não pode
+   ser ignorada: o chamado marcado para amanhã sumiria do topo por não ter
+   horário combinado. (Mostrar essa hora no card, isso não — é a outra metade
+   da mesma regra, na R295.)
+3. **A prioridade desempata pela data.** Duas urgentes sem critério sairiam
+   numa ordem que muda sozinha entre duas visitas à tela.
+
+E a composição: **a ordem escolhida é aplicada POR CIMA da ordem inteligente**,
+não no lugar dela. `sort` em JS é estável, então o empate na ordem escolhida cai
+na de antes — duas atividades no mesmo dia saem por urgência (em aberto) ou pela
+mais recente (histórico). Duas regras boas pelo preço de uma, porque a
+linguagem garante a estabilidade.
+
+### Uma bagunça minha, achada na releitura
+
+Ao inserir `momentoDoCard` na U148, meti a função ENTRE um bloco de
+documentação e a função que ele documentava. Sobraram dois JSDoc colados, o
+primeiro sem dono — e o dono era a R76, a regra que define as quatro colunas de
+sempre. Comentário órfão é pior que comentário ausente: o próximo leitor atribui
+aquele texto à função errada. O bloco voltou para junto de `colunasDoQuadro`.
+
+### Conferido no navegador, não no código
+
+Os oito controles da barra em **uma linha de 42px**: pílulas 40/raio 11, botões
+42/raio 12. O menu de ordenar abre com as seis opções e as notas, "Prioridade"
+grava em `prever-operacional-ordem` e o rótulo da barra passa a dizer
+"Prioridade". A pílula "Colunas: Estado" abre com os quatro eixos e suas notas,
+e trocar para Equipe redesenha o quadro com as três equipes vazias mais "Sem
+equipe". Recolher os indicadores: 3 gráficos → 0, e o título da lista sobe de
+y=397 para y=31.
+
+**O que ainda NÃO entrou** desta leva do Painel Operacional: a faixa "Retornos
+pendentes" (espera a R286 no banco), a faixa "Na rua agora" com as viaturas, os
+três botões no card, e a vista Agenda com o mapa de calor (R289). A estrutura
+inteira foi para o Davi como mockup antes do código, que é o método desta casa.
+
+**Números.** Verificador: **3.491 asserções, 0 falharam**. `tsc`: 0. `vite
+build` completa. Sem migration nova.

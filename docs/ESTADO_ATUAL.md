@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-15** · última regra: **R295** · último diário:
-**U148** · verificador: **3.481 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-15** · última regra: **R296** · último diário:
+**U149** · verificador: **3.491 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
 Banco — **Pendente: U147**
@@ -44,6 +44,7 @@ Ler isto antes de prometer qualquer coisa a alguém.
 | R293 | baixa de equipamento gera UMA atividade para o Gilleno | ditada |
 | R294 | operacional cria atividade, não executa chamado de campo | **no ar** (U144) |
 | R295 | o quadro do Painel Operacional por estado/status/equipe/dia, e o card com a data que o estado pede | **no ar** (U148) — faltam os três botões do card |
+| R296 | a barra do Operacional na régua da Início: indicadores recolhíveis, poucos controles, e ordem na lista | **no ar** (U149) |
 
 Fim de entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
@@ -81,7 +82,7 @@ técnica de campo é o **Vinicius**.
      pontas, a folha do gestor, a chegada por localização (etapa 3).
 5. `docs/PLANO_V0.1.md` — o plano por fases e as perguntas Q1–Q23 com as
    respostas anotadas.
-6. `docs/PRODUTO.md` — TODAS as regras (R1–R295). Não se lê de ponta a ponta:
+6. `docs/PRODUTO.md` — TODAS as regras (R1–R296). Não se lê de ponta a ponta:
    consulta-se pela regra citada no código. O número cresce a cada entrega —
    navegue pelo **sumário do topo**, não por este contador.
 7. `docs/manual/README.md` — o manual por segmento; ler o do segmento em que
@@ -160,6 +161,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U145 | **a tela das equipes perde o eixo da semana** (R285). Saíram o seletor, a herança e o modo "Escalar"; entraram dois gestos diretos e o líder. Medir a tela achou um **técnico desativado (Denner) ocupando vaga** — a tela resolvia nome pela mesma lista que usa para oferecer, e quem saiu da empresa não resolve por lá. Sem migration |
 | U146 | **o técnico de campo fica com três tipos** (R283). `operacional` saiu do campo (era oferecida e nunca virava demanda de dupla) e `vistoria` mudou de natureza — virou atividade INTERNA do gestor, que é onde a validação dele é registrada (R156). Medido antes: zero chamados de campo com esses tipos, logo sem migration |
 | U147 | **o campo perde o prazo automático** (R284) e a escala por semana vira uma VISTA. Os dois ramos do SLA saíram do gatilho; o prazo da obra fica, porque é espelho de uma data que alguém marcou. E a ponta solta da R285: **sete telas** ainda liam `duplas_escala`, congelada desde a U142 — `useEscala()` passou a materializar a forma a partir de `equipe_membros`, e nenhuma das sete mudou uma linha. Migration **U147 (rodada em 14/09)** |
+| U149 | **a barra do Operacional vira a barra da Início** (R296). A régua saiu MEDIDA na tela ao lado — pílula 40/raio 11, botão quadrado 42/raio 12 —, e o Operacional tinha 28px ao lado de pílulas de ~26: dois pisos na mesma linha, que é o que o Davi descreveu. Os quatro botões de eixo viraram UMA pílula com menu e o alternador virou UM botão com o destino. Nasceu a ORDEM da lista (`ordenarCampo`), que a tela nunca teve — e que a R284 tornou urgente, porque `ordenarChamados` pesa por prazo e o campo não tem mais prazo. Sem migration |
 | U148 | **o quadro do Painel Operacional ganha eixo** (R295): estado (o padrão da R76), status, equipe e dia da semana, com a conta em `colunasDoQuadro` — lógica pura, a tela só pinta. O card passou a dizer tipo de demanda, equipe e a data que o ESTADO pede, com RÓTULO ("Agendado"/"Começou"/"Feito"), porque "14/09 08:00" sozinho não distingue "vai começar" de "começou". **Medindo no navegador**: a mesma fila contava 1 card num eixo e 3 no outro — só o eixo de estado excluía cancelado. Passou a ser regra única, travada por asserção de TOTAL, não de coluna. Sem migration |
 
 ## 4. Banco: migrations

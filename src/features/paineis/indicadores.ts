@@ -347,18 +347,6 @@ export function chamadosDaLente<T extends ChamadoParaIndicador>(
 }
 
 /**
- * As colunas do KANBAN do Painel Operacional (R76).
- *
- * Davi, 2026-08-22: "Não agendados · Agendados · Atrasados · Concluídos. O
- * status cancelado não tem necessidade de aparecer."
- *
- * Elas NÃO são o campo `status` — são a leitura operacional dele cruzada com
- * agendamento e prazo. "Atrasado" não existe como status no banco (é
- * `situacaoPrazo`), e "não agendado" é a ausência de `data_hora_agendada`.
- * Derivar aqui, numa função só, é o que impede a tela de reimplementar essa
- * conta e discordar do resto do painel.
- */
-/**
  * O MOMENTO QUE O CARD MOSTRA (R295, 14/09/2026).
  *
  * Davi: "Data e Horário Agendado (caso esteja pendente dar inicio) / Data e
@@ -426,6 +414,20 @@ export const EIXO_LABEL: Record<EixoDoQuadro, string> = {
   dia: "Dia da semana",
 };
 
+/**
+ * O que cada eixo responde. Vai no menu, junto do nome.
+ *
+ * Rótulo sozinho não distingue "Estado" de "Status" — são a mesma palavra em
+ * português para quem não escreveu o código, e escolher no escuro é escolher
+ * errado uma vez e nunca mais voltar ali.
+ */
+export const EIXO_NOTA: Record<EixoDoQuadro, string> = {
+  estado: "Não agendados · Agendados · Atrasados · Concluídos",
+  status: "O status cru, como está no chamado",
+  equipe: "Uma coluna por equipe de campo, mais quem está sem equipe",
+  dia: "A semana desenhada, mais a pilha sem data",
+};
+
 export interface ColunaDoQuadro<T> {
   /** chave estável — serve de `key` e de alvo de filtro */
   chave: string;
@@ -434,7 +436,112 @@ export interface ColunaDoQuadro<T> {
 }
 
 /**
+ * A ORDEM DA LISTA DO PAINEL OPERACIONAL (R296, 14/09/2026).
+ *
+ * Davi: "os filtros e botão de ordem deverão ser igual ao do INICIO, onde é
+ * compacto, poucos botões porém bem objetivos e eficientes."
+ *
+ * IGUAL AO DA INÍCIO É O GESTO, NÃO A LISTA. O `ORDENACOES` de lá é metade
+ * por PRAZO, e a R284 tirou o prazo do chamado de campo: aquelas opções aqui
+ * seriam controle morto — escolher e nada mudar é o que ensina a desconfiar
+ * dos outros controles. O que o campo tem é DATA AGENDADA, e é por ela que a
+ * fila do Vinicius se lê.
+ */
+export interface OrdemDeCampo {
+  valor: string;
+  label: string;
+  nota: string;
+}
+
+export const ORDENS_DE_CAMPO: OrdemDeCampo[] = [
+  { valor: "agendada:asc",  label: "Data agendada (crescente)",  nota: "O próximo primeiro; sem data no fim" },
+  { valor: "agendada:desc", label: "Data agendada (decrescente)", nota: "O mais distante primeiro" },
+  { valor: "prioridade",    label: "Prioridade",                  nota: "Urgente primeiro" },
+  { valor: "cliente",       label: "Cliente",                     nota: "A → Z; sem cliente por último" },
+  { valor: "abertura:desc", label: "Abertura (mais novo)",        nota: "O pedido mais recente primeiro" },
+  { valor: "abertura:asc",  label: "Abertura (mais antigo)",      nota: "O pedido mais antigo primeiro" },
+];
+
+/** O padrão: o que vem primeiro é o que acontece primeiro. */
+export const ORDEM_DE_CAMPO_PADRAO = "agendada:asc";
+
+const PESO_PRIORIDADE: Record<string, number> = {
+  urgente: 0, alta: 1, normal: 2, baixa: 3,
+};
+
+/**
+ * Ordena uma fila de campo. NÃO muda o array recebido.
+ *
+ * SEM DATA VAI PARA O FIM NAS DUAS DIREÇÕES. Inverter a ordem não pode
+ * promover o vazio ao topo: "sem data" não é uma data extrema, é ausência —
+ * e o topo da lista é o lugar mais caro da tela. Quem procura os sem data
+ * tem a coluna "Sem data" do quadro, que existe para isso (R295).
+ */
+export function ordenarCampo<T extends {
+  data_hora_agendada?: string | null;
+  data_agendada?: string | null;
+  prioridade?: string | null;
+  created_at?: string | null;
+}>(chamados: T[], valor: string, nomeDoCliente?: (c: T) => string | null): T[] {
+  const quando = (c: T) => c.data_hora_agendada ?? (c.data_agendada ? `${c.data_agendada}T00:00:00` : null);
+  const texto = (c: T) => (nomeDoCliente ? nomeDoCliente(c) : null);
+  const fila = [...chamados];
+
+  switch (valor) {
+    case "agendada:asc":
+    case "agendada:desc": {
+      const desc = valor.endsWith("desc");
+      return fila.sort((a, b) => {
+        const x = quando(a); const y = quando(b);
+        if (!x && !y) return 0;
+        if (!x) return 1;   // sem data no fim
+        if (!y) return -1;  // …nas DUAS direções
+        return desc ? y.localeCompare(x) : x.localeCompare(y);
+      });
+    }
+    case "prioridade":
+      return fila.sort((a, b) => {
+        const pa = PESO_PRIORIDADE[a.prioridade ?? "normal"] ?? 2;
+        const pb = PESO_PRIORIDADE[b.prioridade ?? "normal"] ?? 2;
+        if (pa !== pb) return pa - pb;
+        // empate na prioridade: quem acontece antes ganha. Sem isto, duas
+        // urgentes ficam na ordem em que o banco devolveu, que muda sozinha.
+        const x = quando(a); const y = quando(b);
+        if (!x && !y) return 0;
+        if (!x) return 1;
+        if (!y) return -1;
+        return x.localeCompare(y);
+      });
+    case "cliente":
+      return fila.sort((a, b) => {
+        const x = texto(a); const y = texto(b);
+        if (!x && !y) return 0;
+        if (!x) return 1;
+        if (!y) return -1;
+        return x.localeCompare(y, "pt-BR", { sensitivity: "base" });
+      });
+    case "abertura:asc":
+    case "abertura:desc": {
+      const desc = valor.endsWith("desc");
+      return fila.sort((a, b) => {
+        const x = a.created_at ?? ""; const y = b.created_at ?? "";
+        return desc ? y.localeCompare(x) : x.localeCompare(y);
+      });
+    }
+    default:
+      return fila;
+  }
+}
+
+/**
  * As colunas do quadro, por eixo.
+ *
+ * O EIXO DE SEMPRE é o `estado`, e é a R76 quem o define — Davi,
+ * 2026-08-22: "Não agendados · Agendados · Atrasados · Concluídos. O status
+ * cancelado não tem necessidade de aparecer." Essas quatro NÃO são o campo
+ * `status`: são a leitura operacional dele cruzada com agendamento e prazo.
+ * "Atrasado" não existe como status no banco (é `situacaoPrazo`), e "não
+ * agendado" é a ausência de `data_hora_agendada`.
  *
  * Recebe os RESOLVEDORES em vez de consultar — `equipeDoChamado` e
  * `diaDoChamado` são funções que a tela injeta. É o que faz esta conta ser

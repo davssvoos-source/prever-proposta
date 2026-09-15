@@ -46,13 +46,13 @@
 // equipe.
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   PieChart, Pie, Cell, Tooltip as RTooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend,
 } from "recharts";
-import { Users, LayoutGrid, List, Plus } from "lucide-react";
+import { Users, LayoutGrid, List, Plus, ChevronsDownUp, ChevronsUpDown, ArrowUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { guardaDeTela, destinoNegado, usePermissoes } from "@/features/gerencial/permissoes";
 import { useUserCargo, useTecnicos, useVeFinanceiro } from "@/features/gerencial/data";
@@ -62,6 +62,7 @@ import { NovoChamadoTecnicoDialog } from "@/features/chamados/NovoChamadoTecnico
 import { moeda, useCobrancasDaCompetencia } from "@/features/chamados/cobranca";
 import { useApoiosDeTodos } from "@/features/home/data";
 import { TabelaAtividades } from "@/features/home/TabelaAtividades";
+import { MenuFiltro } from "@/features/home/MenuFiltro";
 // `lugarNoCalendario`: a MESMA conta do calendário decide em que DIA o card
 // cai no eixo por dia do quadro (P57). Duas contas fariam as duas telas
 // discordarem sobre a mesma atividade — que foi exatamente o defeito da P57.
@@ -90,7 +91,8 @@ import {
   abertosPorCliente, abertosPorTipo, ordenarChamados, ordenarHistorico,
   chamadosDaLente, LENTE_ORDEM, LENTE_LABEL, type LenteLista,
   agruparPorColuna, COLUNA_OP_ORDEM, COLUNA_OP_LABEL, type ColunaOperacional,
-  colunasDoQuadro, EIXO_LABEL, momentoDoCard, type EixoDoQuadro,
+  colunasDoQuadro, EIXO_LABEL, EIXO_NOTA, momentoDoCard, type EixoDoQuadro,
+  ORDENS_DE_CAMPO, ORDEM_DE_CAMPO_PADRAO, ordenarCampo,
   implantacoesEmAndamento, totalACobrar, moedaCurta,
 } from "@/features/paineis/indicadores";
 import { PainelBase, type AtalhoPainel } from "@/features/paineis/PainelBase";
@@ -148,6 +150,34 @@ const TETO_OBRAS = 8;
 
 /** Teto da tabela — o mesmo da Início. */
 const TETO_TABELA = 200;
+
+/**
+ * R296: a medida do botão quadrado da barra, MEDIDA na Início — 42×42, raio
+ * 12. Num lugar só porque são quatro botões: escrever o número quatro vezes
+ * é como a tela acaba com três alturas na mesma linha, que foi o defeito.
+ */
+function BOTAO_DA_BARRA(isLight: boolean, cor: string): CSSProperties {
+  return {
+    width: 42, height: 42, borderRadius: 12, padding: 0, flexShrink: 0, cursor: "pointer",
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+    background: isLight ? "#ffffff" : "#1b1b1b",
+    color: cor,
+  };
+}
+
+/**
+ * R296: a faixa de indicadores nasce ABERTA e a preferência fica gravada.
+ *
+ * Chave PRÓPRIA, separada da `prever-home-painel` da Início: são duas telas
+ * com duas rotinas, e quem recolhe os gráficos aqui pode querer os de lá.
+ * Compartilhar a chave faria uma tela decidir pela outra em silêncio.
+ */
+const CHAVE_PAINEL_OP = "prever-operacional-painel";
+
+/** R296: a ordem escolhida também é preferência — quem ordena por cliente
+ *  ordena por cliente todo dia. */
+const CHAVE_ORDEM_OP = "prever-operacional-ordem";
 
 /**
  * O ORÇAMENTO DE LARGURA — a conta que o verificador refaz.
@@ -261,6 +291,23 @@ function PainelOperacional() {
   // (R76) e continua o padrão — a R76 recusou o status CRU como única
   // leitura, e continua certa; o que o Davi pediu foi acrescentar modos.
   const [eixoDoQuadro, setEixoDoQuadro] = useState<EixoDoQuadro>("estado");
+  // R296: a faixa de indicadores RECOLHE, e fica recolhida — o mesmo
+  // mecanismo que a R175 deu à Início. Chave própria: recolher aqui não
+  // pode recolher lá, são duas telas e duas rotinas.
+  const [painelAberto, setPainelAberto] = useState(() => {
+    try { return localStorage.getItem(CHAVE_PAINEL_OP) !== "fechado"; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(CHAVE_PAINEL_OP, painelAberto ? "aberto" : "fechado"); } catch { /* modo privado */ }
+  }, [painelAberto]);
+  // R296: a ordem da lista. Antes não havia nenhuma — a fila vinha na ordem
+  // em que o banco devolveu, que muda sozinha entre duas visitas à tela.
+  const [ordem, setOrdem] = useState<string>(() => {
+    try { return localStorage.getItem(CHAVE_ORDEM_OP) ?? ORDEM_DE_CAMPO_PADRAO; } catch { return ORDEM_DE_CAMPO_PADRAO; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(CHAVE_ORDEM_OP, ordem); } catch { /* modo privado */ }
+  }, [ordem]);
 
   // nomes dos clientes para o gráfico por cliente — só id/nome
   const { data: clientes = [] } = useQuery({
@@ -464,11 +511,19 @@ function PainelOperacional() {
   // não tem urgência depois de encerrado. Ordem: em aberto por urgência de
   // prazo; histórico pelo mais recente.
   const listaChamados = useMemo(() => {
-    if (kpiAtivo === "aguardando_conferencia") return ordenarHistorico(chamadosDoKpi(kpiAtivo, chamados, agora));
-    if (kpiAtivo) return ordenarChamados(chamadosDoKpi(kpiAtivo, chamados, agora), agora);
-    const daLente = chamadosDaLente(lente, chamados, agora);
-    return lente === "abertos" ? ordenarChamados(daLente, agora) : ordenarHistorico(daLente);
-  }, [kpiAtivo, lente, chamados, agora]);
+    const base = kpiAtivo === "aguardando_conferencia"
+      ? ordenarHistorico(chamadosDoKpi(kpiAtivo, chamados, agora))
+      : kpiAtivo
+        ? ordenarChamados(chamadosDoKpi(kpiAtivo, chamados, agora), agora)
+        : lente === "abertos"
+          ? ordenarChamados(chamadosDaLente(lente, chamados, agora), agora)
+          : ordenarHistorico(chamadosDaLente(lente, chamados, agora));
+    // R296 — a ordem ESCOLHIDA, por cima da ordem inteligente. `sort` é
+    // estável: o empate na escolhida cai na de antes, então duas atividades
+    // no mesmo dia saem por urgência (em aberto) ou pela mais recente
+    // (histórico), em vez de na ordem em que o banco devolveu.
+    return ordenarCampo(base as any[], ordem, (c: any) => (c.cliente_id ? nomeCliente.get(c.cliente_id) ?? null : null)) as typeof base;
+  }, [kpiAtivo, lente, chamados, agora, ordem, nomeCliente]);
 
   /** As contagens dos chips saem da MESMA função que a lista usa. */
   const contagemLente = useMemo(
@@ -786,6 +841,7 @@ function PainelOperacional() {
           somam 1116 ≤ 1134 (o orçamento lá em cima); abaixo disso quebra a
           coluna da direita — e é ela que quebra, não as faixas, porque quebrar
           as faixas descolaria as alturas dos dois painéis altos. */}
+      {painelAberto && (
       <div style={{ display: "flex", gap: GAP, alignItems: "stretch", flexWrap: "wrap" }}>
         {/* R68/R125 — quem está pedindo mais. Só clientes COM chamado aberto
             entram — é o Map de `abertosPorCliente` que garante isso, sem
@@ -1109,8 +1165,9 @@ function PainelOperacional() {
             obra, com a altura das duas faixas. */}
         <PainelObras />
       </div>
+      )}
 
-      {semDados && (
+      {semDados && painelAberto && (
         <div style={{
           ...card(isLight), borderRadius: 16, padding: "12px 16px", textAlign: "center",
           fontFamily: FONT, fontSize: 12.5, color: textSecondary,
@@ -1128,81 +1185,25 @@ function PainelOperacional() {
           }}>
             Chamados técnicos
           </h2>
-          {/* R76 — o alternador. O quadro é uma segunda LEITURA da mesma
-              fila, não outro conteúdo: as quatro colunas cobrem tudo o que
-              as lentes cobrem, de uma vez. */}
-          <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-            {([["lista", List, "Lista"], ["kanban", LayoutGrid, "Quadro"]] as const).map(([v, Icone, rotulo]) => {
-              const ativa = visao === v;
-              return (
-                <button
-                  key={v}
-                  onClick={() => { setVisao(v); if (v === "kanban") setKpiAtivo(null); }}
-                  aria-pressed={ativa}
-                  title={rotulo}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                    height: 28, padding: "0 10px", borderRadius: 14, cursor: "pointer",
-                    border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
-                    background: ativa ? GRAD_PRIMARIA : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-                    color: ativa ? SOBRE_PRIMARIA : textPrimary,
-                    fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
-                  }}
-                >
-                  <Icone size={13} />
-                  {rotulo}
-                </button>
-              );
-            })}
-          </div>
+          {/* R296 — o eixo do quadro numa PÍLULA com menu, não em quatro
+              botões. Quatro botões lado a lado é a barra dizendo que os quatro
+              modos pesam igual; o `estado` é o padrão da R76, e os outros três
+              são lentes que se procura. Só no quadro — na lista seria controle
+              inerte, e controle inerte é pior que controle ausente.
 
-          {/* R295: POR QUE EIXO o quadro separa as colunas. Só aparece no
-              quadro — na lista ele não teria o que fazer, e controle inerte é
-              pior que controle ausente. `estado` continua sendo o padrão: a
-              R76 decidiu contra o status cru como ÚNICA leitura, e o Davi
-              pediu para ACRESCENTAR modos, não para trocar. */}
+              Desmarcar no menu devolve ao `estado`: o quadro não tem como não
+              ter eixo, e voltar ao padrão é a leitura certa do gesto. */}
           {visao === "kanban" && (
-            <div style={{ display: "flex", gap: 4, flexShrink: 0, flexWrap: "wrap" }}>
-              {(["estado", "status", "equipe", "dia"] as EixoDoQuadro[]).map((e) => {
-                const ativo = eixoDoQuadro === e;
-                return (
-                  <button
-                    key={e}
-                    onClick={() => setEixoDoQuadro(e)}
-                    aria-pressed={ativo}
-                    title={`Separar as colunas por ${EIXO_LABEL[e].toLowerCase()}`}
-                    style={{
-                      height: 28, padding: "0 10px", borderRadius: 14, cursor: "pointer",
-                      border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
-                      background: ativo ? GRAD_PRIMARIA : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-                      color: ativo ? SOBRE_PRIMARIA : textSecondary,
-                      fontFamily: FONT, fontWeight: 600, fontSize: 11.5, whiteSpace: "nowrap",
-                    }}
-                  >
-                    {EIXO_LABEL[e]}
-                  </button>
-                );
-              })}
-            </div>
+            <MenuFiltro
+              rotulo="Colunas"
+              larguraMenu={260}
+              opcoes={(["estado", "status", "equipe", "dia"] as EixoDoQuadro[]).map((e) => ({
+                valor: e, label: EIXO_LABEL[e], nota: EIXO_NOTA[e],
+              }))}
+              selecionados={[eixoDoQuadro]}
+              onMudar={(v) => setEixoDoQuadro((v[0] as EixoDoQuadro) ?? "estado")}
+            />
           )}
-          {/* R126 — o "+": abre chamado técnico sem sair da tela. Ao lado do
-              alternador, como na Início (R91). Some para quem não pode abrir
-              chamado (a matriz de permissões manda; botão para porta trancada
-              é armadilha). */}
-          {podeVer("chamados.novo") !== false && (
-            <button
-              onClick={() => setNovoAberto(true)}
-              title="Abrir chamado técnico"
-              aria-label="Abrir chamado técnico"
-              style={{
-                ...goldButton(), width: 28, height: 28, borderRadius: 14, padding: 0, flexShrink: 0,
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-              }}
-            >
-              <Plus size={15} />
-            </button>
-          )}
-
           {/* R73 — as três lentes. Sem elas, chamado ENCERRADO não tinha onde
               ser visto no sistema inteiro: esta tela listava só o que está em
               aberto, o Painel de chamados idem, e a Início poda encerrado com
@@ -1219,11 +1220,16 @@ function PainelOperacional() {
                   onClick={() => { setKpiAtivo(null); setLente(l); }}
                   aria-pressed={ativa}
                   style={{
-                    padding: "5px 11px", borderRadius: 999, flexShrink: 0, cursor: "pointer",
+                    // R296: 40px e raio 11 — a medida MEDIDA na barra da Início,
+                    // onde as pílulas de filtro têm exatamente isso. Antes eram
+                    // ~26px pelo padding, ao lado de botões de 28: dois pisos na
+                    // mesma linha, que foi o que o Davi viu como "desalinhados".
+                    display: "inline-flex", alignItems: "center",
+                    height: 40, padding: "0 13px", borderRadius: 11, flexShrink: 0, cursor: "pointer",
                     border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
                     background: ativa ? GRAD_PRIMARIA : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
                     color: ativa ? SOBRE_PRIMARIA : textPrimary,
-                    fontFamily: FONT, fontWeight: 600, fontSize: 11.5, whiteSpace: "nowrap",
+                    fontFamily: FONT, fontWeight: 600, fontSize: 12.5, whiteSpace: "nowrap",
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -1254,15 +1260,106 @@ function PainelOperacional() {
               </button>
             </span>
           )}
-          <button
-            onClick={() => navigate({ to: "/chamados/painel" })}
-            style={{
-              marginLeft: "auto", background: "transparent", border: "none", cursor: "pointer",
-              color: gold, fontFamily: FONT, fontWeight: 600, fontSize: 11.5, padding: 0,
-            }}
-          >
-            Ver todos os chamados →
-          </button>
+          {/* R296 — O GRUPO DA DIREITA, na ordem da Início: o que a ordem está
+              fazendo, ordenar, recolher, trocar de vista, criar. Todos 42×42,
+              a medida de lá. Um bloco só, encostado à direita por `marginLeft:
+              auto`, em vez de cinco controles espalhados pela linha. */}
+          <div style={{
+            marginLeft: "auto", display: "flex", alignItems: "center", gap: 8,
+            flexShrink: 0, flexWrap: "wrap",
+          }}>
+            <button
+              onClick={() => navigate({ to: "/chamados/painel" })}
+              style={{
+                background: "transparent", border: "none", cursor: "pointer",
+                color: gold, fontFamily: FONT, fontWeight: 600, fontSize: 11.5, padding: 0,
+              }}
+            >
+              Ver todos os chamados →
+            </button>
+
+            {/* o rótulo da ordem EM VIGOR. A Início o tem pelo mesmo motivo: a
+                ordem padrão é uma que ninguém escolheu, e uma lista ordenada
+                por critério invisível parece ordenada por nada. */}
+            {visao === "lista" && (
+              <span
+                className="so-desktop"
+                aria-live="polite"
+                style={{ fontFamily: FONT, fontSize: 11.5, whiteSpace: "nowrap", color: textSecondary }}
+              >
+                {ORDENS_DE_CAMPO.find((o) => o.valor === ordem)?.label ?? ""}
+              </span>
+            )}
+
+            {/* R296 — ORDENAR. A tela nunca teve: a lista vinha na ordem em que
+                o banco devolveu, que muda sozinha. As opções NÃO são as da
+                Início: metade das de lá é por PRAZO, e a R284 tirou o prazo do
+                chamado de campo (ver ORDENS_DE_CAMPO). */}
+            {visao === "lista" && (
+              <MenuFiltro
+                rotulo="Ordenar"
+                icone={ArrowUpDown}
+                larguraMenu={270}
+                opcoes={ORDENS_DE_CAMPO.map((o) => ({ valor: o.valor, label: o.label, nota: o.nota }))}
+                selecionados={[ordem]}
+                onMudar={(v) => setOrdem(v[0] ?? ORDEM_DE_CAMPO_PADRAO)}
+              />
+            )}
+
+            {/* R296 — o recolher da faixa de indicadores. Fica NESTA barra, e
+                não junto dos gráficos, pelo mesmo motivo da Início: é daqui que
+                se trabalha, e o botão tem de estar onde a mão já está.
+
+                RECOLHER LIMPA O KPI ATIVO, de propósito. Os quadrados são
+                controles de filtro (R125) — esconder o controle deixando o
+                filtro ligado é o defeito que a U94 consertou no calendário: a
+                lista recortada por um controle que não está mais na tela. */}
+            <button
+              onClick={() => setPainelAberto((v) => { if (v) setKpiAtivo(null); return !v; })}
+              aria-pressed={!painelAberto}
+              title={painelAberto ? "Recolher os indicadores" : "Mostrar os indicadores"}
+              aria-label={painelAberto ? "Recolher a faixa de indicadores" : "Mostrar a faixa de indicadores"}
+              style={BOTAO_DA_BARRA(isLight, textPrimary)}
+            >
+              {painelAberto ? <ChevronsDownUp size={17} /> : <ChevronsUpDown size={17} />}
+            </button>
+
+            {/* R76/R296 — o alternador, agora UM botão que mostra o DESTINO,
+                como na Início e em /chamados. O quadro é uma segunda LEITURA da
+                mesma fila, não outro conteúdo.
+
+                Ir para o quadro LIMPA o KPI: lente e KPI recortam subconjuntos
+                de "em aberto" e esvaziariam colunas que têm chamado. */}
+            <button
+              onClick={() => setVisao((v) => {
+                const proximo = v === "lista" ? "kanban" : "lista";
+                if (proximo === "kanban") setKpiAtivo(null);
+                return proximo;
+              })}
+              title={visao === "lista" ? "Ver como quadro" : "Ver como lista"}
+              aria-label={visao === "lista" ? "Ver como quadro" : "Ver como lista"}
+              style={BOTAO_DA_BARRA(isLight, textPrimary)}
+            >
+              {visao === "lista" ? <LayoutGrid size={17} /> : <List size={17} />}
+            </button>
+
+            {/* R126 — o "+": abre chamado técnico sem sair da tela, como na
+                Início (R91). Some para quem não pode abrir chamado (a matriz de
+                permissões manda; botão para porta trancada é armadilha). */}
+            {podeVer("chamados.novo") !== false && (
+              <button
+                onClick={() => setNovoAberto(true)}
+                title="Abrir chamado técnico"
+                aria-label="Abrir chamado técnico"
+                style={{
+                  ...goldButton(), width: 42, height: 42, borderRadius: 12, padding: 0, flexShrink: 0,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <Plus size={17} />
+              </button>
+            )}
+          </div>
         </div>
 
         {visao === "kanban" ? (

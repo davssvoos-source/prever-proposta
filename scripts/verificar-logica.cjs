@@ -4104,8 +4104,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /Mostrando: <strong/.test(op2), true);
   // R73 trocou o `kpiAtivo ?? "abertos"` pela LENTE: a lista tem três
   // recortes agora. A garantia é a mesma — o KPI abre exatamente o que conta.
+  // R296 (14/09/2026): `listaChamados` virou uma expressão só, para a ordem
+  // ESCOLHIDA ser aplicada por cima de todos os ramos. O que esta asserção
+  // guarda é o mesmo: o KPI abre a lista pela MESMA função que o conta.
   eq('clicar num KPI abre a lista daquele KPI, pela mesma função que o conta',
-     /if \(kpiAtivo\) return ordenarChamados\(chamadosDoKpi\(kpiAtivo, chamados, agora\), agora\);/.test(op2),
+     /: kpiAtivo\s*\n\s*\? ordenarChamados\(chamadosDoKpi\(kpiAtivo, chamados, agora\), agora\)/.test(op2),
      true);
   eq('um `agora` só por render — KPIs, indicadores, histograma e ordenação da lista concordam sobre o momento',
      /const agora = useMemo\(\(\) => new Date\(\), \[chamados\]\);/.test(op2), true);
@@ -4713,8 +4716,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        IND4.COLUNA_OP_ORDEM.flatMap((k) => q[k].map((x) => x.id)).includes('6'), false);
   }
 
-  eq('a tela oferece o alternador lista/quadro',
-     /setVisao\(v\); if \(v === "kanban"\) setKpiAtivo\(null\);/.test(op7), true);
+  // R296: o alternador virou UM botão que mostra o destino, como na Início e
+  // em /chamados. O que a asserção guarda continua sendo o essencial: ir para
+  // o QUADRO limpa o KPI — lente e KPI recortam subconjuntos de "em aberto" e
+  // esvaziariam colunas que têm chamado.
+  eq('a tela oferece o alternador lista/quadro, e ir para o quadro LIMPA o recorte do KPI',
+     /const proximo = v === "lista" \? "kanban" : "lista";[\s\S]{0,90}if \(proximo === "kanban"\) setKpiAtivo\(null\);/.test(op7),
+     true);
   eq('as lentes só aparecem na LISTA — no quadro elas esvaziariam colunas (as três recortam subconjuntos de "em aberto")',
      /\{visao === "lista" && \(\s*\n\s*<div className="trilho-x"/.test(op7), true);
   // R295 (14/09/2026): o quadro ganhou EIXO. As quatro colunas fixas viraram
@@ -16446,7 +16454,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('U93/R125: na tela, número e lista do tile saem da MESMA função, e a lista de concluídos ordena por HISTÓRICO (prazo não tem urgência depois de encerrado)',
      [/chamadosDoKpi\("aguardando_conferencia", chamados as any\[\], agora\)\.length/.test(pop93),
       /setKpiAtivo\(kpiAtivo === "aguardando_conferencia" \? null : "aguardando_conferencia"\)/.test(pop93),
-      /if \(kpiAtivo === "aguardando_conferencia"\) return ordenarHistorico\(chamadosDoKpi\(kpiAtivo, chamados, agora\)\);/.test(pop93)],
+      /kpiAtivo === "aguardando_conferencia"\s*\n\s*\? ordenarHistorico\(chamadosDoKpi\(kpiAtivo, chamados, agora\)\)/.test(pop93)],
      [true, true, true]);
   eq('U93/R125: a consulta de chamados TRAZ faturamento_status — sem a coluna o recorte não conta ninguém, e o tile diria zero',
      /faturamento_status/.test(fs93.readFileSync('src/features/chamados/data.ts', 'utf8').match(/const CAMPOS_BASE =[\s\S]*?;/)[0]), true);
@@ -22483,6 +22491,98 @@ assincronas.push(async () => {
      [[], 4]);
 }
 
+// ── R296 — A BARRA DO OPERACIONAL É A BARRA DA INÍCIO (14/09/2026) ────────
+//
+// Davi: "ele deverá ter a opção de recolher ou aparecer igual ao do INICIO.
+// Além disso, os filtros e botão de ordem deverão ser igual ao do INICIO,
+// onde é compacto, poucos botões porém bem objetivos e eficientes."
+{
+  const IO = carregar('src/features/paineis/indicadores.ts');
+  const op8 = require('fs').readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  const home8 = require('fs').readFileSync('src/features/home/MenuFiltro.tsx', 'utf8');
+
+  // A RÉGUA. Não é gosto: os controles estavam em 28px ao lado de chips que
+  // resolviam em ~26 pelo padding, e foi isso que o Davi viu como "os botões e
+  // campos desalinhados". A medida saiu MEDIDA na Início — pílula 40/raio 11,
+  // botão quadrado 42/raio 12 —, não escolhida.
+  eq('R296 CRÍTICO: os botões quadrados da barra saem de UMA função (BOTAO_DA_BARRA), na medida da Início — 42×42, raio 12. Escrever o número em cada botão é exatamente como a tela acabou com três alturas na mesma linha',
+     [/function BOTAO_DA_BARRA\(isLight: boolean, cor: string\): CSSProperties/.test(op8),
+      /width: 42, height: 42, borderRadius: 12,/.test(op8),
+      (op8.match(/style=\{BOTAO_DA_BARRA\(isLight, textPrimary\)\}/g) || []).length,
+      /width: 42, height: 42, borderRadius: 12, padding: 0, flexShrink: 0,\n\s*display: "inline-flex"/.test(op8)],
+     [true, true, 2, true]);
+
+  eq('R296: as pílulas das lentes têm 40px e raio 11 — a MESMA medida das pílulas de filtro da Início, e nunca mais a altura que sobra do padding',
+     [/height: 40, padding: "0 13px", borderRadius: 11, flexShrink: 0, cursor: "pointer",/.test(op8),
+      /width: 42, height: 42, borderRadius: 12, flexShrink: 0,/.test(home8)],
+     [true, true]);
+
+  // A FORMA, não só a medida: quatro botões de eixo diziam que os quatro modos
+  // pesam igual, e o `estado` é o padrão da R76.
+  eq('R296: o eixo do quadro é UMA pílula com menu (MenuFiltro), não quatro botões — e desmarcar devolve ao `estado`, porque o quadro não tem como não ter eixo',
+     [/rotulo="Colunas"/.test(op8),
+      /setEixoDoQuadro\(\(v\[0\] as EixoDoQuadro\) \?\? "estado"\)/.test(op8),
+      /nota: EIXO_NOTA\[e\]/.test(op8),
+      Object.keys(IO.EIXO_NOTA).sort()],
+     [true, true, true, ['dia', 'equipe', 'estado', 'status']]);
+
+  // A ORDEM. A tela nunca teve — e desde a R284 isso deixou de ser detalhe:
+  // `ordenarChamados` pesa por PRAZO, e o campo não tem mais prazo, então a
+  // fila inteira empata no peso 3 e sai como o banco quiser.
+  eq('R296 CRÍTICO: as ordens do campo NÃO são as da Início — metade das de lá é por PRAZO, e a R284 tirou o prazo do chamado de campo. Oferecer uma ordem que não muda nada é o que ensina a desconfiar dos outros controles',
+     [IO.ORDENS_DE_CAMPO.map((o) => o.valor),
+      IO.ORDENS_DE_CAMPO.some((o) => /prazo/i.test(o.valor + o.label)),
+      IO.ORDEM_DE_CAMPO_PADRAO],
+     [['agendada:asc', 'agendada:desc', 'prioridade', 'cliente', 'abertura:desc', 'abertura:asc'], false, 'agendada:asc']);
+
+  eq('R296 CRÍTICO: sem data vai para o FIM nas DUAS direções — inverter a ordem não pode promover o vazio ao topo, que é o lugar mais caro da tela. Quem procura os sem data tem a coluna "Sem data" do quadro (R295)',
+     (() => {
+      const f = [{ id: 'sem' }, { id: 'a', data_hora_agendada: '2026-09-20T08:00:00' }, { id: 'b', data_hora_agendada: '2026-09-16T08:00:00' }];
+      return [IO.ordenarCampo(f, 'agendada:asc').map((c) => c.id),
+              IO.ordenarCampo(f, 'agendada:desc').map((c) => c.id)];
+     })(),
+     [['b', 'a', 'sem'], ['a', 'b', 'sem']]);
+
+  eq('R296: `ordenarCampo` NÃO muda o array recebido — a lista da tela é memoizada e um sort no lugar corromperia a fonte para os outros recortes',
+     (() => {
+      const f = [{ id: 'z', data_hora_agendada: '2026-09-20T08:00:00' }, { id: 'a', data_hora_agendada: '2026-09-16T08:00:00' }];
+      IO.ordenarCampo(f, 'agendada:asc');
+      return f.map((c) => c.id);
+     })(),
+     ['z', 'a']);
+
+  eq('R296: a data SECA (`data_agendada`, sem hora) entra na ordem como 00:00 do dia — não é ignorada nem jogada para o fim, senão o chamado marcado para amanhã sumiria do topo por não ter horário combinado',
+     (() => {
+      const f = [{ id: 'comHora', data_hora_agendada: '2026-09-16T14:00:00' }, { id: 'seca', data_agendada: '2026-09-16' }];
+      return IO.ordenarCampo(f, 'agendada:asc').map((c) => c.id);
+     })(),
+     ['seca', 'comHora']);
+
+  eq('R296: a prioridade desempata pela DATA, não pela ordem do banco — duas urgentes sem critério sairiam numa ordem que muda sozinha entre duas visitas à tela',
+     (() => {
+      const f = [
+        { id: 'u2', prioridade: 'urgente', data_hora_agendada: '2026-09-20T08:00:00' },
+        { id: 'normal', prioridade: 'normal', data_hora_agendada: '2026-09-15T08:00:00' },
+        { id: 'u1', prioridade: 'urgente', data_hora_agendada: '2026-09-16T08:00:00' },
+      ];
+      return IO.ordenarCampo(f, 'prioridade').map((c) => c.id);
+     })(),
+     ['u1', 'u2', 'normal']);
+
+  // A COMPOSIÇÃO: a ordem escolhida por cima da ordem inteligente, e não no
+  // lugar dela. `sort` em JS é estável, então o empate cai na de antes.
+  eq('R296: a ordem escolhida é aplicada POR CIMA da ordem inteligente (urgência em aberto, mais recente no histórico) — `sort` é estável, e o empate na escolhida cai na ordem que já fazia sentido, não na do banco',
+     /return ordenarCampo\(base as any\[\], ordem, \(c: any\) =>/.test(op8), true);
+
+  // O RECOLHER, e a regra que veio junto.
+  eq('R296: a faixa de indicadores recolhe e FICA recolhida (chave própria, não a da Início: são duas telas e duas rotinas), e recolher LIMPA o KPI ativo — esconder o controle deixando o filtro ligado foi o defeito que a U94 consertou no calendário',
+     [/const CHAVE_PAINEL_OP = "prever-operacional-painel";/.test(op8),
+      /setPainelAberto\(\(v\) => \{ if \(v\) setKpiAtivo\(null\); return !v; \}\)/.test(op8),
+      /\{painelAberto && \(/.test(op8),
+      /const CHAVE_ORDEM_OP = "prever-operacional-ordem";/.test(op8)],
+     [true, true, true, true]);
+}
+
 // ── R295 — O QUADRO GANHA EIXO (14/09/2026) ───────────────────────────────
 //
 // Davi: "O Kanban deve ter visualização por STATUS, por EQUIPE, e por DIA DA
@@ -22567,7 +22667,7 @@ assincronas.push(async () => {
   eq('R295: o seletor de eixo só aparece no QUADRO (na lista seria controle inerte), e o eixo por dia usa `lugarNoCalendario` — a mesma conta do calendário, para as duas telas não discordarem sobre em que dia a atividade cai (foi o P57)',
      [/\{visao === "kanban" && \(/.test(op7q),
       /lugarNoCalendario\(c\)\.quando/.test(op7q),
-      /setEixoDoQuadro\(e\)/.test(op7q),
+      /setEixoDoQuadro\(\(v\[0\] as EixoDoQuadro\) \?\? "estado"\)/.test(op7q),
       /TIPO_LABEL\[c\.tipo as ChamadoTipo\]/.test(op7q)],
      [true, true, true, true]);
 }

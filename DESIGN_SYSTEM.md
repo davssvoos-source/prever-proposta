@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 53 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 54 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -43,6 +43,7 @@
   - [6.23 A tela da atividade — documento à esquerda, ficha à direita (v19 — 2026-09-08, R234–R239)](#623-a-tela-da-atividade-documento-à-esquerda-ficha-à-direita-v19-2026-09-08-r234r239)
   - [6.24 Os dois quadros — o realce do "A seguir" e o quadro do Comercial (v21 — 2026-09-10, R248/R252)](#624-os-dois-quadros-o-realce-do-a-seguir-e-o-quadro-do-comercial-v21-2026-09-10-r248r252)
   - [6.25 A barra de plantão — faixa contínua por cima de uma grade de dias (v22 — 2026-09-11, R254)](#625-a-barra-de-plantão-faixa-contínua-por-cima-de-uma-grade-de-dias-v22-2026-09-11-r254)
+  - [6.26 A barra de ferramentas de uma tela de fila (v23 — 2026-09-14, R296)](#626-a-barra-de-ferramentas-de-uma-tela-de-fila-v23-2026-09-14-r296)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
 - [9. Visualização de dados](#9-visualização-de-dados)
@@ -1376,6 +1377,54 @@ podem discordar porque saem da mesma fonte.
 **O realce de "selecionada"** é o vocabulário da R248: `inset 0 0 0 2px` na cor
 saturada, nunca `outline` — contorno com deslocamento sai para fora e o trilho
 que rola de lado o corta.
+
+### 6.26 A barra de ferramentas de uma tela de fila (v23 — 2026-09-14, R296)
+
+A linha que fica entre o título e a lista, com filtros, ordenação e os botões
+de vista. A Início a definiu; o Painel Operacional passou a segui-la. **Os
+números são medidos, não escolhidos** — quem escrever a terceira tela de fila
+copia daqui, não mede de novo:
+
+| peça | medida | raio |
+|---|---|---|
+| pílula de filtro / lente (com texto) | altura **40** | **11** |
+| botão quadrado só com ícone | **42 × 42** | **12** |
+| ícone dentro do botão quadrado | **17** | — |
+| espaço entre controles | **8** | — |
+
+```tsx
+// a medida do botão quadrado mora numa FUNÇÃO, nunca repetida por botão
+function BOTAO_DA_BARRA(isLight: boolean, cor: string): CSSProperties {
+  return {
+    width: 42, height: 42, borderRadius: 12, padding: 0, flexShrink: 0, cursor: "pointer",
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+    background: isLight ? "#ffffff" : "#1b1b1b",
+    color: cor,
+  };
+}
+```
+
+**Por que numa função.** O Painel Operacional tinha o número escrito em cada
+botão e chegou a **três alturas na mesma linha** — 28 nos botões, ~26 nas
+pílulas (que não declaravam altura e resolviam pelo padding), 42 no que veio
+do componente compartilhado. O quarto botão nasce copiado do terceiro, que já
+estava errado. *(Davi, 14/09/2026: "os botões e campos desalinhados".)*
+
+**Pílula com texto NUNCA sem altura.** `padding: "5px 11px"` resolve na altura
+que a fonte daquele dia produzir, e muda quando o `fontSize` muda. Declare
+`height` e centre com `display: inline-flex; align-items: center`.
+
+**A ordem dos controles, da esquerda para a direita:** o recorte (lentes,
+filtros) fica com o conteúdo, à esquerda; o grupo de ferramentas vai encostado
+à direita por `marginLeft: "auto"`, com o rótulo do estado em vigor antes dos
+botões — *"Prioridade"* ao lado do botão de ordenar, para a lista nunca estar
+ordenada por um critério que ela não diz.
+
+**Modo com muitos valores vira MENU, não fileira de botões.** Quatro botões
+lado a lado dizem que os quatro pesam igual; quando um é o padrão e os outros
+são lentes que se procura, é uma pílula com `MenuFiltro` — e cada opção leva
+uma **nota**, porque rótulo sozinho não distingue "Estado" de "Status".
 
 ## 7. Arquitetura de tema
 
