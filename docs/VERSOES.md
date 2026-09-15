@@ -9,6 +9,14 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+> **Depois da v0.0.12 — entregue e ainda NÃO empacotado (14/09/2026).**
+> As entregas **U141 a U147** vieram DEPOIS do pacote abaixo e não estão nele:
+> o checklist que parou de clicar na linha de baixo (R281), a equipe valendo do
+> instante da troca com líder (R285), a chave `atividades.nova` que consertou o
+> bug do Erik (R294), os três tipos do campo com a vistoria virando atividade
+> interna (R283) e o campo sem prazo automático (R284). O próximo pacote é que
+> as leva. **A U147 precisa ser rodada antes dele.**
+
 ## v0.0.12 — 2026-09-14 (U130–U140) · **nenhuma migration pendente** (U131, U132 e U134 rodadas em 13/09; U136, U137 e U139 em 14/09)
 
 > Três semanas de entrega num pacote só. O servidor está na **v0.0.7**: ele

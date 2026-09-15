@@ -312,9 +312,17 @@ use-o para abrir **toda** seção de conteúdo.
 | Altura de input | 50–52px |
 | Altura de botão secundário | 44–48px |
 | Ícone de botão circular | 40×40px (ícone 18px) |
+| **Alvo no dedo** (`@media (pointer: coarse)`) | **40px de altura, e o PASSO ≥ 40px** (R281) |
 | Padding de card | `16–20px` vertical, `16–18px` horizontal |
 | Gap entre cards | 12–16px |
 | Gap interno (lista) | 8–10px |
+
+**O alvo no dedo é sobre o PASSO, não só sobre a altura** (R281, 14/09/2026).
+Dois alvos de 40px só não se tocam se a distância entre eles também for 40 —
+e um alvo maior que o passo rouba o clique do vizinho **sem aparecer**. Foi o
+que aconteceu no checklist: um pseudo-elemento invisível de 49px numa linha de
+22px fazia dez dos dezenove pixels de cada item pertencerem ao item de baixo.
+A primeira `@media (pointer: coarse)` do `styles.css` nasceu daí.
 
 **Transição global** (dá o efeito de troca suave de tema):
 
@@ -1172,7 +1180,9 @@ competiria com o texto escuro sobre branco.
   `3px 0`, `min-height 1.55em`; lista e checklist recuam 30px à esquerda e o
   **marcador** (`.editor-marcador`, `contenteditable=false`, `position:
   absolute`) mora nesse recuo: a caixa `.checklist-check` 19px (a mesma do
-  texto de leitura, Uiverse) ou o `.lista-ponto` 6px dourado. Item marcado
+  texto de leitura, Uiverse — **no ponteiro fino ela vale exatamente os
+  próprios 19px; o disco de 49px do hover saiu na R281**) ou o `.lista-ponto`
+  6px dourado. Item marcado
   (`[data-marcado="1"]`): riscado, opacidade 0,7, caixa com o traço dourado e
   o "pop" de escala 1,14 (o mesmo CSS do `.checklist-input:checked`, escrito
   para o atributo; `prefers-reduced-motion` tira o pop).
@@ -1481,6 +1491,21 @@ Todos abaixo foram bugs de produção — verifique cada um antes de entregar.
     Varredura:
     ```bash
     npx vite build 2>&1 | grep -i "invalid token"
+    ```
+
+13. **Pseudo-elemento invisível que continua recebendo ponteiro.**
+    `opacity: 0` **esconde, não desliga**: só `display:none`,
+    `visibility:hidden` ou `pointer-events:none` tiram um elemento do teste de
+    ponteiro. Um `:before` decorativo maior que a linha vira uma área clicável
+    maior que a linha — e, como a caixa do checklist tem `translate3d` (contexto
+    de empilhamento), quem ganha a disputa é o item de BAIXO, por ordem do DOM.
+    MEDIDO na R281 (14/09/2026): disco de 49×49 sobre caixa de 19×19 num passo
+    de ~22px, **dez dos dezenove pixels visíveis de cada item pertencendo ao
+    vizinho**. O sintoma que chegou foi "quero clicar na de cima e ele clica na
+    de baixo"; no editor da Descrição o `mouseDown` alternava o bloco errado.
+    Varredura:
+    ```bash
+    grep -rn "opacity: 0" src/styles.css | grep -v "pointer-events"
     ```
 
 12. **Estilo de rótulo espalhado em `<p>` sem zerar a margem de cima.** `<p>`

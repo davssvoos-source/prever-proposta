@@ -80,8 +80,9 @@ técnica de campo é o **Vinicius**.
      pontas, a folha do gestor, a chegada por localização (etapa 3).
 5. `docs/PLANO_V0.1.md` — o plano por fases e as perguntas Q1–Q23 com as
    respostas anotadas.
-6. `docs/PRODUTO.md` — TODAS as regras (R1–R173). Não se lê de ponta a ponta:
-   consulta-se pela regra citada no código.
+6. `docs/PRODUTO.md` — TODAS as regras (R1–R294). Não se lê de ponta a ponta:
+   consulta-se pela regra citada no código. O número cresce a cada entrega —
+   navegue pelo **sumário do topo**, não por este contador.
 7. `docs/manual/README.md` — o manual por segmento; ler o do segmento em que
    se vai trabalhar. Para interface, a **skill de designer**
    (`.claude/skills/designer/SKILL.md`) é o método, e o
@@ -93,7 +94,7 @@ técnica de campo é o **Vinicius**.
    (R229): a versão é o que muda no servidor; a migration é o que muda no
    banco; os dois andam juntos.
 
-## 3. Onde estamos (04/09/2026)
+## 3. Onde estamos (14/09/2026)
 
 **Fases do plano** (`PLANO_V0.1.md` §6): A (dashboard da Operacional
 Técnica) e B (o "+") entregues na U93; o núcleo da H (a estrutura das
@@ -151,7 +152,13 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U135 | **a revisão de margem das telas novas** (R275), com o Davi já tendo rodado as três migrations. O **chip de estado das viaturas** passou a ser a `etiqueta()` do design system — o que eu tinha inventado media **4,45:1** no tema claro, abaixo do piso de 4,5 (agora 4,99 a 5,71); a **aba Viaturas** ganhou grade própria (`.viaturas-colunas`, 360px de formulário \| o resto) porque a do painel de usuários deixava o cadastro com 669px de sobra e a folha rolando dentro de 427px; os **dois km viraram uma coluna** ("100.431 → 100.500") e os cabeçalhos encurtaram; os espaçamentos voltaram para a **régua da R239** (10 e 14 não existem). De quebra, o placeholder do km na tela do carro que está com outro técnico mostrava "0". **Teste funcional pendente** — exige o login do Davi, e o fluxo do técnico exige conta de técnico. Sem migration nova |
 | U136 | **o km sai das viaturas** (R276). Horas depois de a U134 entrar no ar e de registrarmos a primeira viagem de verdade, o Davi tirou a quilometragem do sistema — "já é controlado no ERP" —, e o que a viagem responde passou a ser **com quem estava o carro, quando e para onde**. Saíram seis funções puras, o campo da tela, três colunas da folha, um KPI, quatro colunas do banco e um CHECK; **bipar virou um toque**. As três portas mudaram de assinatura, então a migration as DERRUBA pela assinatura exata antes de recriar (duas vivas seriam uma sobrecarga que o PostgREST escolheria sozinho). A correção da gestão mudou de assunto: agora ela **encerra a viagem deixada aberta**, com rastro. Revoga a R268; muda o "assumir" da R269 e a folha da R272. Migration **U136 (pendente — o registro de viagem só volta a funcionar depois dela)** |
 | U138 | **a primeira leva da revisão completa** (R277–R280). A tela de entrada **deixa de cadastrar**: conta nasce por convite (R59), e a **U137** troca as 28 policies de `USING (true)` pelo crachá `eh_do_time` — conta ativa e aprovada; o censo de policies frouxas do verificador **ficou vazio**, e desativar usuário deixou de ser cosmético. O **baseline do `tsc` foi de 57 a ZERO**: 53 dos 57 eram quatro colunas faltando no `types.ts`, e os 4 que sobraram eram defeito de verdade. **R278**: a S1 fechou os buckets em 20/08 e duas telas seguiram gravando URL morta em `foto_fachada_url` — 24 dias de dado ruim; nasceu `lib/foto-storage.ts` e as linhas velhas voltam a mostrar a foto sem migration. **R279**: o TOTAL MENSAL da proposta somava "Sob consulta" como zero e o .docx saía com número menor do que a proposta vale. O gerador de sumários estava cego havia 34 entregas (U103–U136 fora do mapa, e o `--check` verde por cima). O manifesto do APK ganhou localização e NFC; o App Link espera o domínio (**R280**: o sistema sai da Lovable). Migration **U137 (pendente)** |
-| U140 | **os cinco itens que não dependiam do Davi**, tirados do painel da revisão. **P20**: analisar a cobrança FECHAVA o caminho de aprovar — o chamado saía da fila do financeiro com dinheiro dentro; virou `podeDecidirCobranca` e a migration **U139** destravou a porta do banco (a U80 já media esses presos e chamava-os de "invisíveis para toda a operação", mas só consertou a contagem). **R155**: a fila de validação do gestor ganha faixa na Início — o sinal existia e ninguém lia; o primeiro desenho contava sobre o recorte filtrado e sumia no preset padrão. **Cobranças na ficha do cliente**, atrás do mesmo portão dos Contratos. **S10**: os quatro cabeçalhos baratos entram, e o caminho foi finalmente exercitado antes de publicar (função pura + o build node-server levantado localmente); a CSP e os assets ficam para a R280. **O motor de orçamento entra no verificador**: as fórmulas da planilha viram prova (switch, fontes, nobreak, baterias, zonas do alarme, canais da guarita). Migration **U139 (rodada em 14/09)** |
+| U140 | **os cinco itens que não dependiam do Davi**, tirados do painel da revisão. **P20**: analisar a cobrança FECHAVA o caminho de aprovar — o chamado saía da fila do financeiro com dinheiro dentro; virou `podeDecidirCobranca` e a migration **U139** destravou a porta do banco (a U80 já media esses presos e chamava-os de "invisíveis para toda a operação", mas só consertou a contagem). **R155**: a fila de validação do gestor ganha faixa na Início — o sinal existia e ninguém lia; o primeiro desenho contava sobre o recorte filtrado e sumia no preset padrão. **Cobranças na ficha do cliente**, atrás do mesmo portão dos Contratos. **S10**: os quatro cabeçalhos baratos entram, e o caminho foi finalmente exercitado antes de publicar (função pura + o build node-server levantado localmente); a CSP e os assets ficam para a R280. **O motor de orçamento entra no verificador**: as fórmulas da planilha viram prova (switch, fontes, nobreak, baterias, zonas do alarme, canais da guarita). Migration **U139 (rodada em 14/09)** || U141 | **o checklist parou de clicar na linha de baixo** (R281). O disco amarelo do hover media **49×49 numa caixa de 19×19**, e `opacity: 0` não tira um elemento do teste de ponteiro: cada item reivindicava 49px num passo de ~22px, e **dez dos dezenove pixels da caixa visível pertenciam ao item de baixo**. No editor não parava no hover — o `mouseDown` alternava o bloco errado. O disco saiu (a R174 já proibia brilho decorativo); no dedo a linha cresce para 40px. Sem migration |
+| U142 | **a equipe passa a valer do INSTANTE da troca** (R285). A composição virou faixa `[entrou, saiu)` em `equipe_membros`; duas regras viraram garantia declarativa pelo btree_gist (uma pessoa numa equipe só; uma equipe com um líder só), e é a primeira delas que produz o pop-up de mover. O backfill **não inventa líder** — `duplas_escala.ordem` é "só exibição", e promovê-la inventaria dado que ninguém digitou. Migration **U142 (rodada em 14/09)** |
+| U143 | **a conferência que a U142 não conseguiu imprimir**, e as nove decisões da leva do Vinicius (R286–R294). O portão da U142 usava uma pessoa REAL, já backfillada, e colidia com a composição de verdade — o erro era a prova de que a regra funciona. Quase "consertei" o `0001-01-01` do backfill: é o **marco zero** que a U76 criou de propósito, e apagá-lo faria um chamado com data retroativa perder a equipe em silêncio. Migration **U143 (rodada em 14/09)** |
+| U144 | **criar atividade deixa de ser a mesma chave de abrir chamado** (R294). O pop-up da Início sempre criou `natureza: interno`, mas era travado por `chamados.novo` — e quem não tinha a chave recebia a tela do técnico ("o chamado chega a você pela programação"). Para o OPERACIONAL isso é porta trancada com a placa errada, e foi o que o Erik encontrou. Nasceu `atividades.nova`; o operacional saiu de `CARGOS_DE_CAMPO`. Migration **U144 (rodada em 14/09)** |
+| U145 | **a tela das equipes perde o eixo da semana** (R285). Saíram o seletor, a herança e o modo "Escalar"; entraram dois gestos diretos e o líder. Medir a tela achou um **técnico desativado (Denner) ocupando vaga** — a tela resolvia nome pela mesma lista que usa para oferecer, e quem saiu da empresa não resolve por lá. Sem migration |
+| U146 | **o técnico de campo fica com três tipos** (R283). `operacional` saiu do campo (era oferecida e nunca virava demanda de dupla) e `vistoria` mudou de natureza — virou atividade INTERNA do gestor, que é onde a validação dele é registrada (R156). Medido antes: zero chamados de campo com esses tipos, logo sem migration |
+| U147 | **o campo perde o prazo automático** (R284) e a escala por semana vira uma VISTA. Os dois ramos do SLA saíram do gatilho; o prazo da obra fica, porque é espelho de uma data que alguém marcou. E a ponta solta da R285: **sete telas** ainda liam `duplas_escala`, congelada desde a U142 — `useEscala()` passou a materializar a forma a partir de `equipe_membros`, e nenhuma das sete mudou uma linha. Migration **U147 (pendente)** |
 
 ## 4. Banco: migrations
 
@@ -159,7 +166,25 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **U139** (`20261003090000_u139_analisado_volta_a_ser_decidivel.sql`, rodada
+- **U147** (`20261007090000_u147_o_campo_nao_tem_prazo.sql`, **PENDENTE**)
+  — tira do gatilho `chamado_preencher()` os dois ramos que davam prazo de SLA
+  ao chamado de campo (R284). O prazo da IMPLANTAÇÃO fica: é o espelho de
+  `implantacao_fim`, uma data que alguém marcou (R120). O pré-voo ABORTA se o
+  corpo vivo não for o da U89 — substituir uma versão não lida levaria o
+  espelho junto. Não apaga prazo nenhum que já exista.
+- **U144** (`20261006090000_u144_atividade_nao_e_chamado_de_campo.sql`, rodada
+  em 14/09/2026) — semeia a chave `atividades.nova` em `permissoes_tela`
+  (R294). `ON CONFLICT DO NOTHING`: escolha do Davi na matriz vence a semente.
+- **U143** (`20261005090000_u143_conferencia_da_u142.sql`, rodada em
+  14/09/2026) — **não muda schema**: imprime a conferência que a U142 não
+  conseguiu mostrar e roda o portão corrigido (só com gente fora de equipe).
+  O `entrou_em = 0001-01-01` das linhas do backfill é o **marco zero** da U76
+  e é ESPERADO: sem ele, um chamado com data retroativa perderia a equipe.
+- **U142** (`20261004090000_u142_equipe_por_instante.sql`, rodada em
+  14/09/2026) — `equipe_membros` com faixa `entrou_em`/`saiu_em`, as duas
+  restrições de exclusão (uma pessoa numa equipe só; um líder por equipe), o
+  backfill da composição e as portas de escrita (R285). O portão dela falhou
+  por usar uma pessoa real e foi DESARMADO depois; as provas estão na U143.- **U139** (`20261003090000_u139_analisado_volta_a_ser_decidivel.sql`, rodada
   em 14/09/2026) — o chamado ANALISADO volta a ser decidível (P20). Reemite
   `concluir_chamado_com_cobranca` com o corpo da U80 byte a byte e UMA linha
   trocada: o gate passa de `<> 'a_analisar'` para
@@ -375,7 +400,7 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   linha do tempo, por isso não entrou de carona) e o que os fluxos da área
   técnica pedirem.
 
-## 5. Decisões recentes que mudam o rumo (04/09/2026)
+## 5. Decisões recentes que mudam o rumo (14/09/2026)
 
 Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
 
@@ -462,7 +487,7 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   menções** na Início: botão fixo, menções de comentário e de descrição, a
   atividade abre no meio da tela, "Responder aqui" vira comentário com menção
   (decisão a rever se o Davi quiser), reações por emoji (lista fechada, tabela
-  própria). Pendência: **rodar a U117**.
+  própria). A migration U117 rodou em 08/09/2026.
 - **R218–R220** — na ficha, visitas técnicas entram na **mesma lista** das
   atividades (o card Histórico de visitas saiu) e as colunas terminam na mesma
   linha; o sistema ganhou o **pacote para Windows Server** (`npm run
@@ -487,8 +512,14 @@ Das 23 perguntas do plano, ficam duas:
    próximo passo**: destrava C (validação, R155/R162) — a B2 (Início do
    técnico) foi entregue na U132, e o que resta dela são os fluxos —,
    H.1 (mini-calendário e a visita que trava a agenda, R172), a tela da data
-   agendada (R168), a proposta em duas atividades (R170) e a revisão da lista
-   de tipos do chamado de campo (`TIPOS_DA_NATUREZA.campo`, R156).
+   agendada (R168) e a proposta em duas atividades (R170). **A revisão da
+   lista de tipos do campo JÁ FOI FEITA** (R283/U146, 14/09/2026): corretiva,
+   preventiva e implantação — a vistoria virou atividade interna do gestor, o
+   que era a consequência que a R156 deixava em aberto. E parte dos fluxos já
+   está ditada: R282 (a corretiva com dois textos), R284 (o campo sem prazo),
+   R286 (o retorno na mesma atividade), R292 (a preventiva por blocos) — o que
+   falta dele são os campos de cada um, e a IMPLANTAÇÃO inteira, que ele disse
+   que vamos falar "em breve".
 2. **A relação tipo de atividade → impacto operacional**, para automatizar
    (hoje é escolha de quem cria, R142/R169).
 3. **Os documentos exportados do ERP com os equipamentos por cliente** (Fase
@@ -496,8 +527,10 @@ Das 23 perguntas do plano, ficam duas:
    Lopes, desenvolvedor do QAP ERP; só quando o sistema estiver redondo). Em
    08/09/2026 ele repetiu: o botão de forçar sincronismo com o QAP fica "para
    mais pra frente" (P63). E, à noite, a R237: equipamento entra no cliente
-   **só pelo QAP** — o **mecanismo dos removidos** no Administrativo › Catálogo
-   (a lista e o checklist) ele "estrutura em breve".
+   **só pelo QAP**. O **mecanismo dos removidos** foi DITADO em 14/09 na
+   **R293**: a baixa gera UMA atividade interna para o Gilleno por atendimento,
+   com a lista do que saiu e o título "Movimentação de equipamentos no QAP".
+   Falta implementar — não falta mais decidir.
 4. **A leitura da proposta aprovada (PDF) pela IA** para criar as atividades
    da implantação (R148, H.6).
 5. **Para onde o app Android aponta** (12/09/2026) — proposto: continuar na
@@ -530,7 +563,7 @@ Das 23 perguntas do plano, ficam duas:
 | Vinicius | gestor da equipe técnica de campo; valida o executado e lança cobrança | admin |
 | Rubia | supervisora do atendimento da Portaria Remota; abre e gerencia chamados (R158) | sac |
 | Erik, Nicholas | T.I. | operacional (R244) |
-| Gilleno | Controle Patrimonial (opera o QAP ERP) | sac (R265 — o Davi troca ANTES de rodar a U132) |
+| Gilleno | Controle Patrimonial (opera o QAP ERP) | sac (R265 — trocado em 13/09/2026) |
 | Breno e os líderes das duplas | técnicos de campo | tecnico |
 | Lopes | desenvolvedor do QAP ERP (externo) — a integração, quando chegar a hora | — |
 

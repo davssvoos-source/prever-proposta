@@ -98,7 +98,7 @@ Regras que não se negociam:
   nível de módulo não vê tema — vire função `(isLight)`.
 - **Token novo no `:root` nasce com par em `[data-theme="light"]`** (o
   verificador trava isto).
-- Leia a lista de anti-padrões do `DESIGN_SYSTEM.md` §8: são nove bugs reais
+- Leia a lista de anti-padrões do `DESIGN_SYSTEM.md` §8: são todos bugs reais
   de produção, cada um com o `grep` que o encontra.
 
 ## 5. Os gatilhos do Davi

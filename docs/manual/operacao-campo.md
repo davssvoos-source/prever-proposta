@@ -13,7 +13,7 @@
 - [Programação e painéis](#programação-e-painéis)
 - [O dashboard da Operacional Técnica — as três perguntas do Vinicius (R124–R126, U93)](#o-dashboard-da-operacional-técnica-as-três-perguntas-do-vinicius-r124r126-u93)
 - [O calendário tem duas visões — Mensal e Semanal (R133, U94)](#o-calendário-tem-duas-visões-mensal-e-semanal-r133-u94)
-- [Equipe de campo: a composição tem SEMANA (R96/R97, U76)](#equipe-de-campo-a-composição-tem-semana-r96r97-u76)
+- [Equipe de campo: a composição vale do INSTANTE da troca (R285, U142)](#equipe-de-campo-a-composição-vale-do-instante-da-troca-r285-u142)
 - [A programação por BLOCO DE TEMPO (R99/R100/R101/R102 — U78/U79)](#a-programação-por-bloco-de-tempo-r99r100r101r102-u78u79)
 - [Os indicadores de campo — o que cada número responde](#os-indicadores-de-campo-o-que-cada-número-responde)
 - [Anti-práticas](#anti-práticas)
@@ -24,7 +24,7 @@
 - [Entrar como apoio: a porta de quem não edita (R255, 2026-09-11)](#entrar-como-apoio-a-porta-de-quem-não-edita-r255-2026-09-11)
 - [Quem foi ao prédio: o apoio que já aconteceu (R107/R108, U81)](#quem-foi-ao-prédio-o-apoio-que-já-aconteceu-r107r108-u81)
 - [Encerrar um chamado passa a perguntar pelas visitas (R109/R110/R111, U82)](#encerrar-um-chamado-passa-a-perguntar-pelas-visitas-r109r110r111-u82)
-- [Vistoria: um tipo de chamado, e ele NÃO é a visita técnica comercial (R112, U83)](#vistoria-um-tipo-de-chamado-e-ele-não-é-a-visita-técnica-comercial-r112-u83)
+- [Vistoria: atividade INTERNA do gestor, e ela NÃO é a visita técnica comercial (R283, U146)](#vistoria-atividade-interna-do-gestor-e-ela-não-é-a-visita-técnica-comercial-r283-u146)
 - [Trocar a data no formulário move a grade junto (U84)](#trocar-a-data-no-formulário-move-a-grade-junto-u84)
 - [O que o mapa entendeu (e por que ler)](#o-que-o-mapa-entendeu-e-por-que-ler)
 - [Trocar o endereço do cliente apaga a coordenada (U84)](#trocar-o-endereço-do-cliente-apaga-a-coordenada-u84)
@@ -376,7 +376,7 @@ sozinho se o banco recusar (só responsável ou gestor alteram). O que tem
 Concluído e cancelado não se arrastam. Arrastar é gesto de mouse — no
 celular a data muda pelo painel.
 
-## Equipe de campo: a composição tem SEMANA (R96/R97, U76)
+## Equipe de campo: a composição vale do INSTANTE da troca (R285, U142)
 
 **"Equipe" sem adjetivo é DEPARTAMENTO** (técnica, T.I., comercial, controle
 patrimonial, outras — R80). A turma que sai na rua é **"equipe de campo"**,
@@ -384,11 +384,32 @@ sempre com o adjetivo. No banco a tabela continua `duplas` e a escala é
 `duplas_escala`: renomear tabela leva os gatilhos mas não reescreve o corpo
 deles nem renomeia constraints, e a palavra já está ocupada desde a U71.
 
-**Quem sai com quem é uma série, não um cadastro.** Cada semana tem a sua
-composição; a semana que ninguém lançou **herda a última lançada antes dela**.
-Isso é o que faz o passado parar de mudar: até a U76, mover alguém de equipe
-reescrevia em silêncio as 12 semanas do gráfico do painel, porque a equipe de
-cada atividade era resolvida pela composição de hoje.
+**Quem sai com quem é uma série, não um cadastro** — e desde 14/09/2026
+(R285) a unidade dessa série é o **instante**, não a semana. Cada passagem por
+uma equipe é uma faixa: *fulano entrou tal hora, saiu tal outra (ou ainda não
+saiu)*. Trocar alguém vale **daquele momento em diante**, e o que já passou
+fica como estava.
+
+*(Até a U76, mover alguém de equipe reescrevia em silêncio as 12 semanas do
+gráfico do painel. A U76 consertou isso com a semana como unidade; a R285
+terminou o serviço, porque com a semana uma troca feita na quarta ainda
+reescrevia a segunda e a terça — e o Vinicius troca no meio da semana.)*
+
+**A equipe tem LÍDER e quantos ajudantes forem precisos.** O líder é quem o
+sistema propõe como responsável quando alguém escolhe a equipe. Ele **não**
+governa o apoio automático: o apoio continua sendo "todos os outros da
+equipe", com ou sem líder nomeado. Equipe sem líder funciona igual.
+
+**Onde se monta:** Painel Operacional › botão **Equipes**. O pop-up mostra a
+composição de AGORA — sem seletor de semana, sem setas e sem "Escalar". Dois
+gestos: o **+** da equipe põe alguém, e os botões da linha nomeiam líder ou
+tiram. Quem já está em outra equipe **aparece na lista**, com o nome dela ao
+lado, e o sistema pergunta antes de mover — a pergunta diz DE ONDE, porque
+"mover o Lucas?" sem dizer de onde faz aceitar sem saber o que se desfaz.
+
+Quem está na equipe e foi **desativado** aparece marcado, para poder ser
+tirado: a composição é histórico, e histórico tem gente que não trabalha mais
+aqui.
 
 Três consequências que valem saber de cor:
 
@@ -972,7 +993,7 @@ SELECT count(*) AS encerrados_sem_resposta
    AND c.status IN ('concluido','cancelado');
 ```
 
-## Vistoria: um tipo de chamado, e ele NÃO é a visita técnica comercial (R112, U83)
+## Vistoria: atividade INTERNA do gestor, e ela NÃO é a visita técnica comercial (R283, U146)
 
 ### As duas coisas que se chamavam parecido
 
@@ -981,12 +1002,22 @@ jeito, e o sistema agora separa as duas por NOME:
 
 | O que é | Como se chama no sistema | Onde vive |
 |---|---|---|
-| Ir ao cliente **só para olhar** — medir, conferir instalação de terceiro, avaliar o que vai ser preciso, laudo | tipo **Vistoria** de chamado de campo | fila de chamados, programação da equipe técnica |
+| Ir ao cliente **só para olhar** — medir, conferir instalação de terceiro, avaliar o que vai ser preciso, laudo; e o gestor indo **conferir o trabalho já feito** | tipo **Vistoria**, atividade INTERNA | Início do gestor, junto com o resto do que ele faz |
 | A **visita comercial** de proposta — levantar o escopo para orçar | "visita técnica", tipo **Prospecção** | `/gerencial`, tela da visita, funil da proposta |
 
-**Se você está abrindo um chamado de CAMPO, o que você quer é "Vistoria".** Se
-o que você quer é marcar a visita para fazer um orçamento, isso não é um
-chamado de campo: é o fluxo comercial, e ele começa em `/gerencial`.
+**A vistoria MUDOU DE LADO em 14/09/2026 (R283).** Ela não é mais um tipo de
+chamado de campo: virou **atividade interna do gestor**. Quem a cria é o
+Vinicius, pelo "+" da Início, como cria qualquer outra atividade — e ela **não
+entra na programação** nem ocupa a agenda da equipe de campo.
+
+Ela não morreu, e o motivo importa: **é nela que a validação do gestor fica
+registrada** (R156 — "a vistoria É a validação"). Tirá-la do sistema deixaria
+o Vinicius sem onde registrar a conferência do trabalho dos técnicos.
+
+O técnico de campo, desde a R283, tem **três tipos e só três**: corretiva,
+preventiva e implantação. Se o que você quer é marcar a visita para fazer um
+orçamento, isso não é nem uma coisa nem outra: é o fluxo comercial, e ele
+começa em `/gerencial`.
 
 Esse é o motivo de o rótulo ser uma palavra só. "Visita técnica" já era o nome
 do outro fluxo, e duas coisas diferentes com o mesmo nome na mesma lista é

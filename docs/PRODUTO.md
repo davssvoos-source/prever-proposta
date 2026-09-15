@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-11 (R258). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-14 (R294). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -126,15 +126,16 @@ trilhos juntos.
 
 | Trilho | Vira | Tipos | Executor | Ciclo |
 |---|---|---|---|---|
-| **Técnica (campo)** | `ordens_servico` | corretiva · preventiva · **operacional** (R5 — ex.: entrega de controle remoto) · implantação | duplas de campo | aberta → agendada → em atendimento → executada → fechada |
+| **Técnica (campo)** | `ordens_servico` | corretiva · preventiva · implantação (**R283** — são três e só três) | equipes de campo | aberta → agendada → em atendimento → executada → fechada |
 | **T.I** | `demandas` (equipe ti) | melhoria · corretiva · implantação · operacional | Erik, Nicholas | não iniciada → em andamento → (stand-by) → concluída |
-| **Controle Patrimonial** | `demandas` (equipe patrimonio) | **pedido de compra** (R6 — tipo novo) · operacional | Gilleno | idem demandas |
+| **Controle Patrimonial** | `demandas` (equipe patrimonio) | operacional (o **pedido de compra** da R6 foi revogado pela **R140**) | Gilleno | idem demandas |
 | **Comercial (proposta)** | `visitas_tecnicas` | pedido de proposta | técnico de orçamento agenda/executa; comercial aprova e envia | ver §5 |
 
-- **R5**: a OS de campo ganha o tipo `operacional` — entrega de controle
-  remoto, cadastros, tarefas de campo que não são conserto nem rotina.
-  (Hoje o CHECK aceita corretiva/preventiva/implantacao; muda na implementação.)
-- **R6**: `demandas` ganha o tipo `pedido_compra`.
+- ~~**R5**: a OS de campo ganha o tipo `operacional`~~ — **revista pela R283**
+  (14/09/2026): `operacional` saiu do CAMPO. O tipo continua existindo na
+  natureza INTERNA, que é onde ele sempre foi executado de verdade.
+- ~~**R6**: `demandas` ganha o tipo `pedido_compra`~~ — **revogada pela R140**:
+  o pedido de compra saiu do vocabulário inteiro.
 - Todo chamado guarda **quem abriu, quando, por qual canal** e, quando houver,
   o **cliente** e o **equipamento envolvido**.
 
@@ -267,6 +268,11 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   **proposta** é o **cliente**. Visita aprovada não significa cliente.
 - **R5** — Chamado de campo tem o tipo **operacional** (ex.: entrega de
   controle remoto), além de corretiva, preventiva e implantação.
+
+  *Revista pela **R283** (14/09/2026): `operacional` SAIU do campo — o técnico
+  de campo tem três tipos e só três (corretiva, preventiva, implantação). O
+  tipo continua existindo na natureza INTERNA, que é onde ele sempre foi
+  executado de verdade.*
 - **R6** — O Controle Patrimonial usa o perfil de técnico; o chamado dele é o
   **pedido de compra**.
 - **R7** — O perfil do técnico tem **3 abas**: Home (cards das visitas e
@@ -381,7 +387,8 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   registrar peça), **preventiva** (checklist com fotos) e **implantação**
   (upload da proposta aprovada → a IA lê o escopo e gera tasks com
   responsáveis → o gestor confirma ou edita cada uma antes de enviar).
-  **Operacional** e **pedido de compra** seguem existindo (R5, R6).
+  **Operacional** segue existindo nas demandas INTERNAS (R5, revista pela
+  R283); o **pedido de compra** saiu do vocabulário inteiro (R140).
 
 - **R25** — **O chamado entra por três portas.** WhatsApp do SAC, WhatsApp da
   Portaria Remota (6 pessoas dividindo um Business) e o campo **Abrir chamado**,
@@ -462,8 +469,11 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
    quem responde pelo financeiro** (admin e comercial) — SAC abre e acompanha,
    Patrimônio cota, compra e recebe. Se a alçada for outra (ex.: Patrimônio
    aprova até certo valor), é um IF na RPC `decidir_pedido_compra`.
-7. Chamado **operacional** de campo tem SLA? (proposta: usa o padrão "normal",
-   72h, editável no os_sla.)
+7. ~~Chamado **operacional** de campo tem SLA?~~ → **morta em 14/09/2026, por
+   dois lados.** A **R283** tirou `operacional` do campo (o técnico de campo
+   tem três tipos), e a **R284** tirou o prazo dos três que sobraram: o SLA de
+   `chamado_sla` deixou de reger o campo, e quem orienta a data agendada é a
+   prioridade.
 8. A **ordenação** da lista do SAC (recentes / prazo / prioridade / cliente /
    última atualização) — está bom esse conjunto?
 
@@ -777,6 +787,13 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   mostra a **foto de quem comentou** (mesma regra de sempre: cor por ID, não
   por nome). *(Davi, 2026-08-21.)*
 
+  *Revista pela **R281** (14/09/2026) em UM ponto: o **disco amarelo do hover**
+  saiu. Ele media 49×49 numa caixa de 19×19 e roubava o clique do item vizinho
+  — dez dos dezenove pixels de um item pertenciam ao de baixo. O hover continua
+  respondendo pelo traço dourado do SVG e a marcação mantém o "pop" da R53; no
+  dedo a linha cresce para 40px. A geometria de mrhyddenn era de um botão
+  isolado, não de uma lista de linhas de 22px.*
+
 - **R51** — No mapa da página Clientes, cada bairro mostra o **próprio nome**
   escrito dentro do polígono (no centro geométrico da forma, não numa média
   simples de vértice — importa para os bairros de formato em L). Fonte
@@ -882,6 +899,11 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   número de carga embaixo de cada dia. A agenda passou a agrupar **por
   dupla**: duas linhas separadas ("Breno 3", "André 2") diriam 3 e 2 sobre um
   trabalho que as duas pessoas fizeram juntas. *(Davi, 2026-08-22.)*
+
+  *Revista pela **R283** (14/09/2026): esta lista e a da ABERTURA de um chamado
+  de campo passaram a ser a MESMA — `TIPOS_DEMANDA_CAMPO` é derivada de
+  `TIPOS_DA_NATUREZA.campo`. "Operacional" saiu das duas, e com ele o parêntese
+  desta regra que explicava a diferença.*
 
 - **R58** — No **Painel Operacional**:
   - os **4 atalhos "Ir para"** (Calendário, Programação, Painel de chamados,
@@ -1662,6 +1684,12 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   *(U76. Primeiro passo da absorção do Gestor OS — a base sobre a qual a
   programação semanal do Vinicius é construída.)*
 
+  *Revista pela **R285** (14/09/2026): a unidade deixou de ser a SEMANA ISO e
+  passou a ser o INSTANTE — cada passagem é uma faixa `[entrou, saiu)` em
+  `equipe_membros` (U142), e a herança de semana não existe mais. O que ESTA
+  regra conquistou continua de pé, e é justamente por isso que a troca passou a
+  valer do instante: o passado não muda sozinho.*
+
 - **R97** — **A equipe de campo tem veículo.** Uma viatura por equipe, texto
   livre (placa, apelido, o que a operação usar). Entra no compartilhamento do
   dia e na programação: quem lê "Equipe 1 · Saveiro" no WhatsApp sabe quem
@@ -1705,6 +1733,12 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   *(U77. Fecha o Passo 1 da absorção do Gestor OS: as colunas `membro_a`/
   `membro_b` saíram do banco, e a escala é a única fonte de "quem sai com
   quem".)*
+
+  *Revista pela **R285** (14/09/2026): quem já está em outra equipe **passou a
+  ser oferecido**, com o nome da equipe ao lado e uma pergunta antes de mover.
+  Esconder a pessoa evitava o erro tirando a escolha; perguntar a mantém. E a
+  tela desta regra saiu inteira — o pop-up não tem mais seletor de semana,
+  botão Escalar, herança nem "Não sai nesta semana" (U145).*
 
 - **R99** — **A atividade em campo é um BLOCO DE AGENDA, não o chamado.** Um
   chamado pode ter **vários** blocos, e um bloco pode **não ter chamado nenhum**.
@@ -1913,6 +1947,11 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   serviço executado, o painel recusa concluir e manda para o painel do chamado —
   o relatório de atendimento imprime esses dois campos.
   *(U80.)*
+
+  *Revista pela **R291** (14/09/2026, DITADA e ainda não implementada): a
+  competência da primeira parcela deixa de sair de `finalizada_em` — quem lança
+  escolhe o MÊS em que a cobrança começa. Até a entrega, o que vale é o que
+  está escrito acima.*
 
 - **R105** — **A programação de um dia se compartilha em texto, e o texto
   esconde o que a tela esconde.** Um toque copia (ou abre o WhatsApp com) o dia
@@ -2161,6 +2200,17 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   oferecida no seletor de chamado novo de campo, no painel do chamado, no
   diálogo de nova atividade, no filtro da programação e na classificação por
   IA. *(U83.)*
+
+  *Revista pela **R283** (14/09/2026): a vistoria saiu do CAMPO e virou
+  atividade INTERNA do gestor — ela não entra mais na programação (R57) nem no
+  seletor de chamado de campo. Continua sendo a validação (R156); o que mudou
+  foi a natureza dela.*
+
+  *E revista pela **R284** (14/09/2026) na segunda metade: `chamado_sla` deixa
+  de reger o campo. O chamado de campo não tem prazo — quem orienta a data
+  agendada é a PRIORIDADE, e quem agenda é gente. A implantação é a exceção, e
+  o prazo dela fica: ele nunca veio do SLA, é o espelho de `implantacao_fim`,
+  uma data que uma pessoa marcou ao planejar a obra (R120).*
 
 - **R113** — **Quando o sistema adivinha o tipo, a tela e o registro dizem a
   mesma coisa.** Um chamado interno aberto sem tipo escolhido tem o tipo
@@ -2633,6 +2683,11 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   em `agenda_campo`, então a obra continua sendo programada dia a dia como
   qualquer chamado. *(U89.)*
 
+  *Confirmada pela **R284** (14/09/2026): quando o prazo por SLA saiu do campo,
+  o da OBRA ficou — e ficou por esta regra. Ele não é calculado pelo sistema: é
+  o espelho de uma data que alguém escolheu. A R284 derruba "o número que o
+  sistema inventa", não "a data que alguém marcou".*
+
 - **R121** — **Conferir e fechar decide a cobrança, e "fechar" passa a fechar
   de verdade.** Até a U90, o botão *Conferir e fechar* do detalhe do chamado
   fazia um UPDATE que não tocava em `faturamento_status` — e como a caixa de
@@ -2860,6 +2915,11 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   for implantação, data do agendamento, enfim, ele terá a opção de abrir um
   chamado técnico!")*
 
+  *Revista pela **R285** (14/09/2026): a composição vale por INSTANTE, não por
+  semana, e a equipe passou a ter LÍDER — é ele o responsável proposto, em vez
+  de "o primeiro da escala". Equipe sem líder nomeado não propõe ninguém, que é
+  mais honesto que propor por ordem de clique.*
+
 - **R127** — **O técnico de campo tem TRÊS atividades, cada uma com fluxo
   próprio: manutenção corretiva, manutenção preventiva e implantação.** A
   corretiva parte de um **problema relatado** e tem SLA; a preventiva parte
@@ -2873,6 +2933,11 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   Corretiva, manutenção preventiva e implantação. Cada item tem um fluxo
   próprio. A Manutenção preventiva vai depender dos sistemas cadastrados em
   cada cliente.")*
+
+  *Completada pela **R283** (14/09/2026): os três tipos passaram a ser os
+  ÚNICOS do campo. `operacional` e `vistoria` saíram de
+  `TIPOS_DA_NATUREZA.campo`, e a reconciliação com a R112 que esta regra
+  deixava em aberto foi feita — a vistoria virou atividade interna do gestor.*
 
 - **R128** — **A página do cliente é o centro de tudo o que se refere ao
   cliente.** Quatro coisas de origens diferentes moram nela, e a origem é
@@ -3101,6 +3166,11 @@ trabalho".
   à área técnica**: o chamado do técnico de campo continua com o fluxo de campo
   até o Davi ditar a estrutura dele. *(Davi: "Tipos de demanda e suas
   características (NÃO SE APLICA PARA A ÁREA TÉCNICA)".)*
+
+  *Revista pela **R283** (14/09/2026): são **SETE**. A **Vistoria** entrou na
+  primeira pergunta quando deixou de ser chamado de campo e virou atividade
+  interna do gestor — é por ela que o Vinicius registra a validação (R156), e
+  tirá-la da pergunta o deixaria sem como criá-la.*
 
 - **R138** — **A criação começa com DUAS perguntas — qual o tipo de demanda e
   quem é o responsável — e são elas que decidem o formulário.** O pop-up da
@@ -3334,6 +3404,11 @@ trabalho".
   ou seja, quais campos serão necessários para cada um desses tipos de
   demanda. Mas a demanda 'Operacional' não tem para a equipe técnica".)*
 
+  *Consequência **cumprida pela R283** (14/09/2026): `TIPOS_DA_NATUREZA.campo`
+  passou a ter três tipos e a vistoria foi para a natureza INTERNA. A tese desta
+  regra não mudou — a vistoria continua sendo a validação do gestor; o que mudou
+  é que ela deixou de ocupar a agenda da equipe de campo.*
+
 - **R157** — **O regime dos equipamentos é o do contrato do condomínio; as
   exceções constam no contrato — não há regime por equipamento no sistema.**
   Cada condomínio tem um contrato e todos os equipamentos estão sob aquele
@@ -3427,6 +3502,13 @@ trabalho".
   usuário com a chave** — SAC, comercial e admin. Fecha a **Q11**. *(Davi,
   04/09/2026: "O Técnico de campo não pode abrir chamado sozinho, vamos manter
   assim por enquanto.")*
+
+  *Revista pela **R294** (14/09/2026): as duas perguntas do "+" da Início
+  passaram a ser guardadas pela chave própria **`atividades.nova`** — criar
+  ATIVIDADE interna não é ABRIR CHAMADO DE CAMPO, e confundir as duas dava ao
+  cargo OPERACIONAL a tela do técnico. `chamados.novo` continua guardando a
+  triagem `/chamados/novo`. O que ESTA regra diz continua valendo para quem ela
+  descreve: o técnico de campo não abre chamado, e o "+" dele é o plantão.*
 
 - **R164** — **Os valores da visita — custo, venda, markup, mensalidades —
   são só de admin e comercial.** `/visita/$id/pagamento` ganha a guarda de
@@ -4006,6 +4088,13 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   esquema de Problema e Diagnostico (1, 2), deve ser somente para manutenções
   corretivas (Tipo de demanda).")*
 
+  *Revista pela **R282** (14/09/2026, DITADA e ainda não implementada): a
+  corretiva passa a ter **Problema apresentado** e **Solução** — `diagnostico` e
+  `servico_executado` viram um campo só, cada um dos dois com o seu espaço de
+  fotos. O Diagnóstico não morre de significado, morre de SEPARAÇÃO: o técnico
+  digita a causa e o conserto uma vez, não duas. Até a entrega, o que vale é o
+  que está escrito acima.*
+
 - **R214** — **A Proposta Comercial expande no próprio "+" da Início, como os
   outros tipos de demanda.** Respondidas as duas perguntas (R138) com o tipo
   Proposta Comercial, o pop-up cresce e mostra o formulário inteiro da visita —
@@ -4197,6 +4286,12 @@ v0.0.2." As regras desta seção são o conteúdo da v0.0.2 (migration U119).
   atividade agendada, não deve ter prazo […] caso seja re-agendada, deve
   aparecer 'Re-agendado 2x, 3x…' […] uma notificação diariamente às 08h das
   atividades agendadas para o dia.")*
+
+  *Revista pela **R284** (14/09/2026): no CAMPO deixa de haver prazo, agendado
+  ou não — a exceção desta regra some ali porque a regra passa a ser geral.
+  Quem orienta a data é a PRIORIDADE, e "Atrasado" no campo passa a significar
+  "a data agendada já passou". A contagem de remarcações continua intacta: é
+  ela que registra que a data mudou.*
 
 - **R226** — **Equipamentos removidos e instalados pela atividade — só com
   cliente único.** O card "Equipamentos envolvidos" vira dois, quando a
@@ -4505,6 +4600,12 @@ adaptado."
   atividades de todos, na página INICIO. O Perfil de usuário TECNICA na verdade
   quem usará são os técnicos de campo então ainda vamos decidir as telas nas
   quais eles têm acesso, mas isso eu consigo alterar direto no sistema.")*
+
+  *Revista pela **R294** (14/09/2026): o operacional SAIU da lista de
+  responsáveis por visita técnica e por chamado de campo — `CARGOS_DE_CAMPO`
+  passou a ser técnico + admin. O que ele cria e executa é **atividade
+  interna**, inclusive corretiva e preventiva internas. O resto desta regra
+  (as telas dele, não ser gestor, ver todas as atividades) continua valendo.*
 
 - **R245** — **O chat não perde mensagem, e a caixa dele funciona.** Quatro
   coisas:
@@ -5225,10 +5326,24 @@ adaptado."
   mecanismo".)* Revisa a R50/R53 em UM ponto: a geometria original de mrhyddenn
   (Uiverse.io) era de um botão isolado, não de uma lista de linhas de 22px.
 
-> **As R282–R285 foram DITADAS em 14/09/2026 e ainda NÃO estão
-> implementadas.** Elas descrevem o destino, não o código de hoje. Cada uma
-> nomeia a regra que derruba — e a regra derrubada continua valendo até a
-> entrega que a substitui.
+> **A LEVA DO VINICIUS (14/09/2026) — leia o estado de cada uma antes de
+> prometer qualquer coisa.** Regra ditada descreve o DESTINO, não o código de
+> hoje, e a regra derrubada continua valendo até a entrega que a substitui.
+>
+> | regra | estado |
+> |---|---|
+> | **R281** | entregue (U141) |
+> | **R282** | ditada |
+> | **R283** | entregue (U146) |
+> | **R284** | código pronto; falta rodar a migration **U147** |
+> | **R285** | entregue (U142 no banco, U145 na tela) |
+> | **R286**–**R289** | ditadas |
+> | **R290** | confirma o código — nada mudou, e a regra amarrou os três lugares |
+> | **R291**–**R293** | ditadas |
+> | **R294** | entregue (U144) |
+>
+> O retrato ao vivo está em `docs/ESTADO_ATUAL.md`; esta tabela existe para
+> quem chega pelo PRODUTO e não passou por lá.
 
 - **R282** — **A corretiva tem DOIS textos: o problema e a solução.** O
   "Problema apresentado" é o relato de quem abriu; a **"Solução"** é um campo

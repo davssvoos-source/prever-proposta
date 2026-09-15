@@ -84,6 +84,23 @@ Oferecer antes do CHECK aceitar é um `23514` na cara do técnico.
 Estão completas em `docs/manual/banco-e-migrations.md` §Cicatrizes. As que
 mais mordem:
 
+- **`EXCLUDE USING gist` com `uuid` exige `SET LOCAL search_path = public,
+  extensions;` no bloco do DDL.** O opclass vem do btree_gist, que no Supabase
+  mora no schema `extensions`, e a resolução acontece pelo search_path NO
+  MOMENTO do comando: sem a linha, o DDL morre com *"data type uuid has no
+  default operator class for access method gist"* — **mesmo com a extensão
+  instalada**, e um pré-voo que só olha `pg_extension` passa verde. (U78 sabia;
+  a U142 esqueceu e abortou no editor do Davi.)
+- **`is_gestor()` sem argumento NÃO EXISTE.** A única assinatura é
+  `is_gestor(_user_id uuid)`. Chamar sem argumento levanta 42883 no meio do
+  DDL, e o erro só aparece quando alguém aperta Run. **Pré-voo por assinatura
+  exata** (`to_regprocedure('public.is_gestor(uuid)')`) é o que transforma isso
+  numa linha de aborto: `to_regclass` responde por tabela, `to_regprocedure`
+  com os tipos escritos responde por função.
+- **Portão não pode tocar dado real.** O da U142 pegava o primeiro perfil por
+  id — uma pessoa que o backfill já tinha posto numa equipe — e colidia com a
+  composição de verdade. Teste que escolhe a vítima por `LIMIT 1` escolhe
+  errado no dia em que a tabela tem conteúdo.
 - `REVOKE` de coluna atinge o admin junto e quebra `select *` — visibilidade
   fina é policy ou view.
 - `AFTER UPDATE OF <coluna>` dispara pela **presença** da coluna no `SET`,
