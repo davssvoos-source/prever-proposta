@@ -32,15 +32,25 @@ lá antes de virar código**, e as importantes viram asserção permanente em
 |---|---|---|---|
 | **admin** | Davi, Vinicius | desktop | vê e pode tudo; NUNCA entra na matriz de permissões (regra de sistema) |
 | **comercial** | — | desktop | funil de proposta + gestão (compartilha a barra do admin) |
-| **sac** | — | desktop | coordena chamados, agenda visitas (R1: o SAC é gestor) |
-| **operacional** | Nicholas, Erik | desktop e celular | vê todas as atividades de todos; Início, Calendário, Clientes e Perfil; responde por visita e chamado de campo; não é gestor (R244) |
+| **sac** | Rubia, Gilleno | desktop | coordena chamados, agenda visitas (R1: o SAC é gestor) |
+| **operacional** | Nicholas, Erik | desktop e celular | vê todas as atividades de todos; Início, Calendário, Clientes e Perfil; **cria e executa atividade INTERNA** (`atividades.nova`); não responde por visita técnica nem por chamado de campo; não é gestor (R244/R294) |
 | **tecnico** | Breno e os líderes das duplas | **celular** | executa em campo; só o líder da dupla tem conta (R14); as telas dele o Davi ajusta na matriz (R244) |
 
-O Controle Patrimonial (Gilleno) usou perfil de técnico (R6) até a R265 — passa
-a `sac`, porque quem trabalha em atividade `interno` não tem cargo técnico
-(R264). T.I. e Controle Patrimonial
-trabalham nas atividades de natureza `interno`; a equipe da atividade é a das
-pessoas nela (R139) — não se escolhe, e o sprint saiu (R141). A **Rubia**
+*Revista pela **R294** (14/09/2026): o cargo `operacional` saiu de
+`CARGOS_DE_CAMPO` — a lista hoje tem só `tecnico` e `admin` (U144). Ele não
+aparece mais como responsável de visita técnica nem de chamado de campo; o que
+ele cria e executa é **atividade interna** — demanda operacional, melhoria,
+proposta comercial e também corretiva e preventiva INTERNAS —, pela chave
+`atividades.nova`. É a mesma razão que tirou o Controle Patrimonial do cargo
+técnico (R264): quem trabalha em atividade `interno` não é cargo de campo. O
+que NÃO mudou: ele continua vendo todas as atividades de todos, continua com
+Início, Calendário, Clientes e Perfil, e continua **não** sendo gestor (R244).*
+
+O Controle Patrimonial (Gilleno) usou perfil de técnico (R6) até a R265: desde
+12/09/2026 ele é **sac**, porque quem trabalha em atividade `interno` não tem
+cargo técnico (R264). T.I. e Controle Patrimonial trabalham nas atividades de
+natureza `interno`; a equipe da atividade é a das pessoas nela (R139) — não se
+escolhe, e o sprint saiu (R141). A **Rubia**
 (supervisora do atendimento da Portaria Remota) é **sac**: abre e gerencia os
 chamados técnicos (R158). O técnico de campo **não abre chamado** sozinho
 (R163); o "+" da Início, para ele, é a porta do plantão.

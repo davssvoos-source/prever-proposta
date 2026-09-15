@@ -42,6 +42,9 @@ export interface ChamadoParaIndicador {
   cliente_id?: string | null;
   responsavel_id?: string | null;
   prazo_limite?: string | null;
+  /** R284: a data MARCADA é o que define atraso no campo (ver `atrasadoNoCampo`) */
+  data_hora_agendada?: string | null;
+  data_agendada?: string | null;
   created_at: string;
   iniciada_em?: string | null;
   finalizada_em?: string | null;
@@ -51,10 +54,72 @@ export interface ChamadoParaIndicador {
   faturamento_status?: string | null;
 }
 
+/**
+ * ATRASADO NO CAMPO (R284, 14/09/2026).
+ *
+ * Davi: "Atrasado" no campo passa a significar "a data agendada já passou e
+ * não foi feito".
+ *
+ * ISTO É UMA REGRESSÃO CONSERTADA, não uma melhoria. A U147 tirou o prazo
+ * automático do campo; enquanto o atraso continuou saindo de
+ * `situacaoPrazo(prazo_limite, …)`, a coluna "Atrasados" do quadro e o
+ * quadrado do KPI ficaram presos em ZERO — nenhum chamado de campo nasce
+ * mais com prazo. Um chamado marcado para a terça passada aparecia em
+ * "Agendados", que é precisamente o que a coluna existe para denunciar.
+ *
+ * A IMPLANTAÇÃO É A EXCEÇÃO, e ela não é arbitrária: o prazo da obra NÃO
+ * vem de SLA, é o espelho de `implantacao_fim` — uma data que uma pessoa
+ * escolheu ao planejar (R120/R89), e que a U147 preservou de propósito.
+ *
+ * "NÃO FOI FEITO" É "NÃO ENCERRADO", ao pé da letra da regra. Um chamado em
+ * andamento cuja data marcada venceu CONTA como atrasado: a equipe começou
+ * na segunda e não terminou até quinta é atraso, e esconder isso atrás do
+ * status repetiria o defeito que a regra veio corrigir. É também o que o
+ * `situacaoPrazo` já fazia — a mudança é a FONTE da data, não quem conta.
+ */
+/**
+ * A DATA MARCADA de um chamado, seja ela qual for.
+ *
+ * O campo usa `data_hora_agendada` (U119) e a atividade interna usa a data
+ * SECA `data_agendada` (U99). Quem pergunta "tem dia marcado?" não quer
+ * saber de qual coluna veio — e enquanto cada lugar respondia isso à mão, o
+ * quadro chegou a pôr em "Não agendados" um card que mostrava "Agendado
+ * 16/09" no próprio corpo.
+ *
+ * A data seca vale até o FIM do dia: ela não tem hora, e tratá-la como
+ * 00:00 faria a visita de hoje nascer vencida.
+ */
+export function dataMarcada(c: {
+  data_hora_agendada?: string | null;
+  data_agendada?: string | null;
+}): string | null {
+  return c.data_hora_agendada ?? (c.data_agendada ? `${c.data_agendada}T23:59:59` : null);
+}
+
+export function atrasadoNoCampo(
+  c: {
+    status?: string | null;
+    tipo?: string | null;
+    prazo_limite?: string | null;
+    data_hora_agendada?: string | null;
+    data_agendada?: string | null;
+  },
+  agora: Date = new Date(),
+): boolean {
+  if (c.status === "concluido" || c.status === "cancelado") return false;
+  if (c.tipo === "implantacao") {
+    return situacaoPrazo(c.prazo_limite ?? null, c.status ?? null, agora) === "estourado";
+  }
+  const marcado = dataMarcada(c);
+  // SEM DATA NÃO É ATRASO: é "não agendado", que é outra coluna e outro
+  // problema — o de ninguém ter marcado ainda.
+  if (!marcado) return false;
+  return new Date(marcado).getTime() <= agora.getTime();
+}
 export interface Indicadores {
   /** em aberto agora */
   abertos: number;
-  /** em aberto e com prazo já vencido */
+  /** R284: em aberto e com a DATA MARCADA já vencida (implantação: prazo) */
   atrasados: number;
   /** em aberto sem ninguém responsável — trabalho que ninguém pegou */
   semResponsavel: number;
@@ -152,7 +217,7 @@ export function chamadosDoKpi<T extends ChamadoParaIndicador>(
     case "abertos": return abertos;
     case "sem_responsavel": return abertos.filter((c) => !c.responsavel_id);
     case "urgentes": return abertos.filter((c) => c.prioridade === "urgente");
-    case "atrasados": return abertos.filter((c) => situacaoPrazo(c.prazo_limite, c.status, agora) === "estourado");
+    case "atrasados": return abertos.filter((c) => atrasadoNoCampo(c, agora));
     case "aguardando_conferencia": return aguardandoConferencia(chamados);
   }
 }
@@ -364,6 +429,13 @@ export interface MomentoDoCard {
   rotulo: string;
   inicio: string | null;
   fim: string | null;
+  /**
+   * A fonte tinha HORA? A data seca (`data_agendada`) não tem, e `inicio`
+   * traz `T00:00:00` só para o agrupamento e a ordenação funcionarem. Sem
+   * este sinal a tela imprime "16/09 00:00" — o horário inventado que esta
+   * mesma regra proíbe duas linhas acima.
+   */
+  temHora: boolean;
 }
 
 export function momentoDoCard(c: {
@@ -380,9 +452,10 @@ export function momentoDoCard(c: {
       rotulo: "Feito",
       inicio: c.iniciada_em ?? null,
       fim: c.finalizada_em ?? c.concluida_em ?? null,
+      temHora: true,
     };
   }
-  if (c.iniciada_em) return { rotulo: "Começou", inicio: c.iniciada_em, fim: null };
+  if (c.iniciada_em) return { rotulo: "Começou", inicio: c.iniciada_em, fim: null, temHora: true };
   // ainda não começou: a data MARCADA, com hora quando existe. A data seca
   // (`data_agendada`) não tem hora para mostrar, e inventar uma faria o card
   // prometer um horário que ninguém combinou.
@@ -390,6 +463,7 @@ export function momentoDoCard(c: {
     rotulo: "Agendado",
     inicio: c.data_hora_agendada ?? (c.data_agendada ? `${c.data_agendada}T00:00:00` : null),
     fim: null,
+    temHora: !!c.data_hora_agendada,
   };
 }
 
@@ -764,6 +838,10 @@ export const COLUNA_OP_LABEL: Record<ColunaOperacional, string> = {
  *      atrás de uma data, que é exatamente o que a coluna existe para
  *      denunciar;
  *   4. tem data marcada → agendado; não tem → não agendado.
+ *
+ * R284 (15/09/2026): o degrau 3 passou a usar `atrasadoNoCampo` — a data
+ * MARCADA vencida, e não mais o prazo. Enquanto ele saía de `prazo_limite`,
+ * esta coluna ficou vazia para sempre depois da U147.
  */
 export function colunaOperacional(
   c: ChamadoParaIndicador & { data_hora_agendada?: string | null },
@@ -771,8 +849,10 @@ export function colunaOperacional(
 ): ColunaOperacional | null {
   if (c.status === "cancelado") return null;
   if (c.status === "concluido") return "concluido";
-  if (situacaoPrazo(c.prazo_limite, c.status, agora) === "estourado") return "atrasado";
-  return c.data_hora_agendada ? "agendado" : "nao_agendado";
+  if (atrasadoNoCampo(c, agora)) return "atrasado";
+  // a MESMA pergunta do degrau 3, pela MESMA função: o que conta como "ter
+  // data" não pode mudar entre um degrau e o seguinte.
+  return dataMarcada(c) ? "agendado" : "nao_agendado";
 }
 
 /** Os chamados de campo agrupados nas quatro colunas, na ordem de leitura. */

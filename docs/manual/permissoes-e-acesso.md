@@ -20,7 +20,27 @@ o mesmo (ver a consulta `is-admin` em `gerencial.tsx`).
 Cargos: `admin`, `comercial`, `sac`, `tecnico`, `operacional` (ver `visao-geral.md`).
 O **operacional** (R244, U127) vê tudo e não é gestor: não entra em `is_gestor()`
 nem em `useIsGerente`; abre Início, Calendário, Clientes e Perfil (semente da
-U127) e pode ser responsável por visita e chamado (`CARGOS_DE_CAMPO`, R241/R244).
+U127) e **cria atividade pelo "+" da Início** (chave `atividades.nova`,
+R294/U144).
+
+Responsável por **visita técnica** e por **chamado de campo** é outro conjunto,
+e ele não é linha da matriz: é a constante `CARGOS_DE_CAMPO` em
+`src/features/gerencial/tecnicos.ts`, hoje **`["tecnico", "admin"]`** — e só ela,
+porque a consulta de responsáveis (`fetchTecnicos`, `features/gerencial/data.ts`)
+filtra `.in("cargo", CARGOS_DE_CAMPO)`. A lista é UMA de propósito: a grade da
+programação, o painel Operacional e a lista de agendar saem dela, e um cargo que
+pudesse receber visita sem entrar nela teria visita no banco e em nenhuma agenda
+— o pior defeito, o que faz a tela mentir calada. O **admin** está lá porque na
+Prever é quem faz a visita quando a equipe está cheia (R241); tirá-lo tiraria o
+Davi e o Vinicius das listas sem ninguém pedir.
+
+*Revista pela **R294** (14/09/2026): o cargo **operacional saiu** de
+`CARGOS_DE_CAMPO` — "quem não tem cargo TÉCNICO não é da Equipe Técnica e não vai
+a campo" —, e o que ele executa passou a ser **atividade interna**, inclusive
+corretiva e preventiva internas. NÃO mudou o lugar do admin (R241), nem o resto
+da R244: as telas dele, ver todas as atividades e não ser gestor continuam como
+estavam.*
+
 Um cargo novo toca CINCO lugares no banco — o enum `app_role`, os CHECKs de
 `profiles.cargo` e `permissoes_tela.cargo`, o `WHERE` de `salvar_permissoes` e a
 lista de `handle_new_user` — e a semente da matriz; a U127 é o modelo.
@@ -34,6 +54,14 @@ lista de `handle_new_user` — e a semente da matriz; a U127 é o modelo.
   configura na tela de Permissões. **Linha ausente = vale o padrão do
   catálogo** — a matriz não tranca por omissão.
 - **Admin NUNCA entra na matriz** — regra de sistema, passa por fora.
+- **Chave de CAPACIDADE** (`capacidade: true`, R294/U144): liga um **gesto**
+  dentro de uma tela que já existe, em vez de abrir rota — `atividades.nova` é o
+  pop-up do "+" da Início, e a `rota` dela é a da própria Início. Na matriz ela é
+  uma chave como outra qualquer (o admin liga e desliga por cargo); o que muda é
+  que ela sai das duas varreduras que contam **páginas** — "toda chave com rota
+  própria é lida por uma guarda" e "o operacional abre quatro telas e nada mais"
+  —, e sai **pela marca, não pelo nome**: exceção nominal envelhece calada, e a
+  capacidade seguinte entraria sem ninguém perceber.
 - Telas obrigatórias (`dashboard`, `perfil`) não são bloqueáveis nem de
   propósito (perfil é por onde se sai do app).
 - Chave de tela é **gravada no banco**: renomear uma chave invalida as linhas
@@ -141,7 +169,7 @@ das linhas + a semente efetiva absorve o DELETE (modelo: U30).
 ## Sobreaviso (chave `sobreaviso`, U86)
 
 **Ver é de todo mundo que trabalha aqui; editar é de gestor.** A chave
-`sobreaviso` nasce liberada para os três papéis da matriz (técnico, comercial,
+`sobreaviso` nasceu liberada para os três papéis da matriz (técnico, comercial,
 SAC), e a *policy* de leitura exige que quem pergunta tenha em `profiles` uma
 linha **ativa** e **não pendente de aprovação**. A leitura é ampla de propósito:
 a escala é **cobertura, não dinheiro** — a valoração das horas continua atrás de
@@ -170,6 +198,13 @@ mesmo teste de dois eixos está escrito dentro delas.
 > por papel e **não olha `ativo`**. Um ex-funcionário com login vivo continua
 > sendo gestor para o sistema inteiro — é o `AND EXISTS (… p.ativo …)` desta
 > policy que o barra *aqui*, e só aqui. Está registrado como **P51**.
+
+*Revista pela **R264**/U132 (12/09/2026): o cargo **técnico perdeu a chave de
+tela** — o app dele são três telas (Início, Calendário, Perfil), e a U132 gravou
+`('sobreaviso', 'tecnico', false)`. NÃO mudou a *policy*: a leitura continua
+ampla para quem tem a chave, pelo mesmo motivo (cobertura não é dinheiro), e o
+par que escreve continua sendo vínculo + `is_gestor()`. O **operacional** nunca
+esteve nesta chave: o padrão do quarto papel é fechado (R244).*
 
 **Lembre da fronteira real:** `permissoes_tela` esconde o **item de menu**.
 Quem impede escrita é a *policy*, e só ela — todo usuário fala com o Postgres
@@ -248,3 +283,13 @@ morreu). `historico` e `chamados.importar` saíram do catálogo (R165/R167;
 a U99 apagou as linhas). As exceções que restam (`dashboard` e `perfil` são
 "sempre"; `clientes.novo`/`clientes.migrar` são redirects) estão listadas
 no próprio verificador.
+
+*Revista pela **R294**/U144 (14/09/2026): `chamados.novo` continua sendo a chave
+da **triagem de campo**, mas deixou de trancar o **formulário interno** — o
+pop-up do "+" da Início sempre criou `natureza: "interno"` e nunca abriu chamado,
+e agora pergunta por `atividades.nova`. Eram duas perguntas numa chave só: quem
+não tinha `chamados.novo` recebia a tela "o chamado chega a você pela
+programação", certa para o técnico e porta trancada com a placa errada para o
+operacional, que trabalha na sede e cria as próprias atividades. NÃO mudou a
+R163: o técnico continua sem abrir chamado, e por isso `atividades.nova` também
+nasce fechada para ele.*

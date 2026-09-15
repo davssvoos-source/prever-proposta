@@ -456,26 +456,35 @@ existe para evitar, por outro caminho.
 
 ### Onde se mexe nisso (R98)
 
-O pop-up **Equipes de campo**, no Painel Operacional Técnica. Ele tem um
-**seletor de semana no topo**, e é ele que manda em tudo abaixo.
+*Revista pela **R285** (14/09/2026): o seletor de semana, a herança da semana
+anterior e o botão "Escalar" foram APAGADOS da tela (U145) — a janela mostra a
+composição de AGORA, e cada gesto vale do instante em que acontece. O que NÃO
+mudou: é aqui, e só aqui, que se mexe em quem sai com quem.*
 
-Duas coisas separadas na mesma janela, porque têm prazos diferentes:
+O pop-up **Equipes de campo** abre pelo **Painel Operacional**, no botão
+**Equipes** do cabeçalho do gráfico "Atividades por equipe" — o botão que
+cadastra equipe mora na peça que mostra equipes.
 
-- o **cadastro** — nome e veículo — vale até alguém mudar;
-- a **escala** (botão **Escalar**) — quem sai naquela semana — vale para aquela
-  semana e só.
+Duas coisas separadas na mesma janela, porque duram tempos diferentes:
 
-Enquanto as duas eram o mesmo formulário (os dois `<select>` "Técnico" e
-"Parceiro"), trocar a composição reescrevia o passado. A tela diz sempre de
-onde veio o que mostra: *escala desta semana* × *herdada de 2026-S32* ×
-*escala de sempre*.
+- o **cadastro** — nome e veículo da equipe — vale até alguém mudar;
+- a **composição** — quem está nela — vale **do momento da troca em diante**.
+  Os dias já vividos ficam com quem realmente foi.
 
-A composição é uma **lista**, não dois campos — a equipe de campo pode ter
-três. Quem já está em outra equipe **naquela semana** não aparece nas opções, e
-**mover alguém pergunta antes**: a RPC vai com `_mover: false`, o banco recusa
-nomeando a outra equipe, e a tela só repete depois do "sim".
+A equipe tem **um líder e quantos ajudantes forem precisos**. São dois gestos:
+o **+** da equipe põe alguém, e os botões da linha nomeiam líder ou tiram da
+equipe. Ninguém redigita a equipe inteira para trocar uma pessoa — era isso que
+o modo "Escalar" obrigava a fazer.
 
-Equipe sem ninguém grava, e o botão assume: **"Não sai nesta semana"**.
+**Quem já está em outra equipe aparece na lista**, com o nome dela ao lado, e
+**o sistema pergunta antes de mover**: a pergunta diz DE ONDE, e a troca só
+acontece se quem está mexendo confirmar. Esconder o técnico ocupado era o jeito
+antigo (R98) e obrigava a ir desfazer a outra equipe primeiro; perguntar resolve
+no mesmo gesto — e dizer de onde evita o "sim" dado sem saber o que se desfaz.
+
+Equipe sem líder nomeado funciona igual. O líder é só quem o sistema propõe
+como responsável ao escolher a equipe; o apoio automático continua sendo
+"todos os OUTROS da equipe", com ou sem líder.
 
 ### Anti-práticas específicas da escala
 
@@ -1039,19 +1048,31 @@ O corte é pelo que a equipe **vai fazer lá**, não pelo motivo de ir:
 
 ### O que a Vistoria muda na sua rotina — e o que não muda
 
-**Ela entra na programação.** Aparece no filtro "tipo de demanda" da
-programação da equipe técnica, junto com corretiva, preventiva e implantação,
-porque ela ocupa uma janela de uma dupla num dia como qualquer atendimento.
+*Revista pela **R283** (14/09/2026): a vistoria deixou de ser tipo de chamado
+de campo e virou atividade INTERNA do gestor. O que NÃO mudou: continua sendo
+nela que a validação do gestor fica registrada (R156).*
 
-**A cor dela é laranja** no cartão da grade e no chip do chamado.
+**Ela NÃO entra na programação.** O filtro "tipo de demanda" da programação da
+equipe técnica oferece três tipos e só três — corretiva, preventiva e
+implantação. A vistoria vive na **Início do Vinicius**, junto com as outras
+atividades internas dele, e não ocupa janela de equipe nenhuma em dia nenhum.
 
-**O prazo é o mesmo.** O prazo de atendimento do campo sai da **prioridade**, e
-só dela — uma vistoria "normal" tem exatamente o mesmo prazo de uma corretiva
-"normal". A vistoria não é mais nem menos urgente por ser vistoria: ela é
-urgente pelo que a motivou. Se precisar de prazo curto, suba a **prioridade**.
+Essa é a mudança de rotina, e o lado prático dela é este: marcar uma vistoria
+não tira mais capacidade da equipe de campo. Se da vistoria sair serviço, o
+serviço vira **outro chamado** — esse sim de campo, esse sim na programação.
 
-**No fechamento ela conta como manutenção**, não como instalação — vistoria não
-é obra.
+**E prazo deixou de ser assunto do campo.** Desde 14/09/2026 (R284, migration
+U147) nenhum chamado de campo recebe prazo: não nasce com prazo e não ganha um
+ao escalar a prioridade. Quem agenda é gente — o SAC ou o gestor —, e a
+**prioridade é o que orienta essa escolha**: baixa, alta e urgente mudam a data
+que a pessoa marca, em vez de um número que o sistema calculava sozinho e que
+nenhuma decisão consultava. **"Atrasado" no campo passou a significar "a data
+agendada já passou e não foi feito"** (implantado em 15/09/2026, U151).
+
+A **implantação** é a única que mantém prazo, e não é exceção de verdade: ali o
+prazo é o **espelho de `implantacao_fim`**, o fim previsto que alguém escolheu
+ao planejar a obra (R120). A R284 derrubou o número que o sistema inventava,
+não a data que uma pessoa marcou.
 
 ### Enquanto o tipo não aparecer no seletor
 
@@ -1261,9 +1282,12 @@ está declarado como dívida.
 - **não dispara cobrança na conclusão** — parcelada ou como acréscimo mensal ao
   contrato. É a segunda metade da Fase 4 e ainda não existe;
 - **mudar a prioridade de uma implantação não mexe mais no prazo dela.** Isso é
-  intencional: quem manda no prazo da obra é o fim previsto. Em corretiva,
-  preventiva e nos demais tipos, escalar a prioridade continua apertando o
-  prazo como sempre.
+  intencional: quem manda no prazo da obra é o fim previsto. *Revista pela
+  **R284** (14/09/2026, migration U147): isso passou a valer para o campo
+  INTEIRO — nenhum tipo de campo recebe prazo por prioridade, nem corretiva nem
+  preventiva, nem ao nascer nem ao escalar. O que NÃO mudou é o prazo da obra:
+  ele continua sendo o espelho do fim previsto. A prioridade orienta a DATA que
+  quem agenda escolhe.*
 
 
 ## Conferir e fechar agora decide a cobrança (R121, U90)

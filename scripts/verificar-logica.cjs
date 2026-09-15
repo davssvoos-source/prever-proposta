@@ -4023,7 +4023,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const lote = [
       ch({ id: 'a', responsavel_id: null, prioridade: 'normal', prazo_limite: null }),
       ch({ id: 'b', responsavel_id: 'tec-1', prioridade: 'urgente', prazo_limite: null }),
-      ch({ id: 'c', responsavel_id: 'tec-1', prioridade: 'normal', prazo_limite: '2026-08-01T10:00:00Z' }),
+      // R284 (15/09/2026): atraso no campo é a DATA MARCADA vencida, não mais
+      // o prazo. Este continua sendo o único atrasado do lote — mudou a fonte.
+      ch({ id: 'c', responsavel_id: 'tec-1', prioridade: 'normal', data_hora_agendada: '2026-08-01T10:00:00Z' }),
       ch({ id: 'd', status: 'concluido' }),
     ];
     eq('chamadosDoKpi abertos: os 3 em aberto — o concluído fica de fora',
@@ -4032,8 +4034,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        IND2.chamadosDoKpi('sem_responsavel', lote, agoraK).map((x) => x.id), ['a']);
     eq('chamadosDoKpi urgentes: só a prioridade urgente',
        IND2.chamadosDoKpi('urgentes', lote, agoraK).map((x) => x.id), ['b']);
-    eq('chamadosDoKpi atrasados: só o prazo no passado',
+    eq('R284: chamadosDoKpi atrasados: só a DATA MARCADA no passado. Enquanto isto saía de `prazo_limite`, o quadrado ficou preso em ZERO depois da U147 — nenhum chamado de campo nasce mais com prazo',
        IND2.chamadosDoKpi('atrasados', lote, agoraK).map((x) => x.id), ['c']);
+    eq('R284 CRÍTICO: prazo vencido SOZINHO não atrasa mais um chamado de campo — é a metade da regra que ninguém tinha implementado, e é o que mantinha a coluna viva por engano nos chamados velhos',
+       IND2.chamadosDoKpi('atrasados', [
+         ch({ id: 'velho', prazo_limite: '2026-08-01T10:00:00Z', data_hora_agendada: null }),
+       ], agoraK).map((x) => x.id), []);
 
     // ── CRÍTICO: os 4 quadrados de KPI e a lista que abrem contam da MESMA função ──
     const indK = IND2.calcularIndicadores(lote, agoraK);
@@ -4689,16 +4695,32 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('concluído é destino final — não importa se o prazo estourou no caminho',
      IND4.colunaOperacional(c({ status: 'concluido', prazo_limite: '2026-08-01T00:00:00Z' }), agoraK),
      'concluido');
-  eq('CRÍTICO: ATRASADO vence AGENDADO — um chamado marcado para terça que venceu continua vencido, e deixar a data escondê-lo é o oposto do que a coluna existe para denunciar',
-     IND4.colunaOperacional(
-       c({ prazo_limite: '2026-08-20T00:00:00Z', data_hora_agendada: '2026-08-25T00:00:00Z' }), agoraK),
+  eq('R284 CRÍTICO: ATRASADO vence AGENDADO — um chamado marcado para terça que venceu continua vencido, e deixar a data escondê-lo é o oposto do que a coluna existe para denunciar. A FONTE mudou (data marcada, não prazo); o que a coluna denuncia, não',
+     IND4.colunaOperacional(c({ data_hora_agendada: '2026-08-20T00:00:00Z' }), agoraK),
      'atrasado');
-  eq('com data marcada e no prazo → Agendados',
-     IND4.colunaOperacional(c({ prazo_limite: '2026-08-30T00:00:00Z', data_hora_agendada: '2026-08-25T00:00:00Z' }), agoraK),
+  eq('com data marcada no FUTURO → Agendados',
+     IND4.colunaOperacional(c({ data_hora_agendada: '2026-08-25T00:00:00Z' }), agoraK),
      'agendado');
   eq('sem data marcada → Não agendados', IND4.colunaOperacional(c({}), agoraK), 'nao_agendado');
-  eq('sem prazo não é atraso — quem não tem prazo não pode estar atrasado',
-     IND4.colunaOperacional(c({ prazo_limite: null }), agoraK), 'nao_agendado');
+
+  // ── R284: a regressão que a U147 abriu, e as duas metades dela ──────────
+  // A U147 tirou o prazo do campo. Enquanto o atraso continuou saindo de
+  // `situacaoPrazo(prazo_limite, …)`, a coluna ficou VAZIA PARA SEMPRE: nenhum
+  // chamado de campo nasce mais com prazo. Estas quatro travam as duas
+  // metades — a que passou a valer e a que deixou de valer.
+  eq('R284 CRÍTICO: PRAZO VENCIDO sozinho não atrasa mais — se atrasasse, a régua velha continuaria viva nos chamados anteriores à U147 e o quadro teria duas definições de atraso ao mesmo tempo',
+     IND4.colunaOperacional(c({ prazo_limite: '2026-08-01T00:00:00Z' }), agoraK), 'nao_agendado');
+  eq('R284 CRÍTICO: a IMPLANTAÇÃO continua atrasando pelo PRAZO — ele não vem de SLA, é o espelho de `implantacao_fim`, uma data que alguém escolheu ao planejar a obra (R120/R89), e a U147 o preservou de propósito',
+     [IND4.colunaOperacional(c({ tipo: 'implantacao', prazo_limite: '2026-08-01T00:00:00Z' }), agoraK),
+      IND4.colunaOperacional(c({ tipo: 'implantacao', prazo_limite: '2026-09-30T00:00:00Z' }), agoraK)],
+     ['atrasado', 'nao_agendado']);
+  eq('R284: a data SECA vale até o FIM do dia — cobrar às 12h uma visita marcada para hoje seria a tela apressando quem trabalha (a mesma régua da R286)',
+     [IND4.colunaOperacional(c({ data_agendada: '2026-08-22' }), agoraK),
+      IND4.colunaOperacional(c({ data_agendada: '2026-08-21' }), agoraK)],
+     ['agendado', 'atrasado']);
+  eq('R284: "não foi feito" é "não encerrado", ao pé da letra — a equipe que começou na segunda e não terminou até quinta ESTÁ atrasada, e esconder isso atrás do status repetiria o defeito que a regra veio corrigir',
+     IND4.colunaOperacional(c({ status: 'em_andamento', data_hora_agendada: '2026-08-20T00:00:00Z' }), agoraK),
+     'atrasado');
 
   {
     const lote = [
@@ -5063,8 +5085,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /A Lovable FICA, por enquanto/.test(ob2) && /NÃO é para agora/.test(ob2), true);
   eq('a faxina pós-Lovable (AGENTS.md, .lovable/, .env fora do repo) é passo EXPLÍCITO e posterior — não se "arruma" antes de sair',
      /pós-saída/.test(ob2) && /asserções\s+sobre isso devem ser invertidas juntas/.test(ob2), true);
+  // `\s+` no lugar do espaço: o parágrafo foi reescrito em 15/09 (a saída da
+  // Lovable virou DECISÃO, R280) e "ficam" caiu no fim de uma linha. É a quarta
+  // vez que um regex meu não tolera a quebra de linha do markdown — o texto
+  // guardado é o mesmo, só mudou onde o parágrafo quebra.
   eq('CRÍTICO: o CLAUDE.md avisa para NÃO "arrumar" .env/AGENTS.md/.lovable enquanto a Lovable estiver ativa — foi assim que o app caiu duas vezes',
-     /ficam como estão/.test(fs51.readFileSync('CLAUDE.md', 'utf8')), true);
+     /ficam\s+como estão/.test(fs51.readFileSync('CLAUDE.md', 'utf8')), true);
 }
 
 // ── U70: o fim de linha é LF, e isso viaja no clone ────────────────────────
@@ -13704,7 +13730,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // (+2 ocorrências na revisão do mesmo dia: o pré-voo por assinatura exata
        // que a U142 ganhou depois de abortar no SQL Editor cita `is_gestor(uuid)`
        // duas vezes — no `to_regprocedure` e na mensagem do aborto.)
-       [true, false, 38, 163, 55]);
+       //
+       // U150 (+1 arquivo, +1 ocorrência, +0 policy): o §1.1 REEMITE
+       // `agenda_campo_cumprir` para que tirar o "feito" desfaça o resultado da
+       // ida — e o corpo dela, copiado da U78 instrução por instrução, traz o
+       // braço de gestor para bloco sem chamado. O ALCANCE DA P51 NÃO CRESCEU:
+       // é a MESMA decisão de acesso da U78, reescrita noutro arquivo, como
+       // aconteceu na U136. Nenhuma policy nova — a escrita de `agenda_campo`
+       // continua não existindo pela tabela (U78 §4).
+       [true, false, 39, 164, 55]);
   }
 }
 
@@ -18324,12 +18358,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // regra 7
   const prod106 = ler106('docs/PRODUTO.md');
-  eq('U106 (regra 7): R192–R193 existem, a última atualização aponta para a R193, os manuais não anunciam mais o Mapa, a U106 está no diário e no ESTADO como pendente',
+  // 15/09/2026 — ESTE PINO ERA O ANTI-PADRÃO QUE O CLAUDE.md NOMEIA: ele exigia
+  // que o ESTADO chamasse a U106 de "pendente". A U106 rodou em 07/09, o
+  // retrato foi corrigido, e a asserção ficou vermelha — acusando o CONSERTO de
+  // ser o defeito. Pino descreve ARQUIVO, nunca estado do banco: o que se pode
+  // exigir é que a migration EXISTA e que o ESTADO a MENCIONE, não em que
+  // estado ela está.
+  eq('U106 (regra 7): R192–R193 existem, a última atualização aponta para a R193, os manuais não anunciam mais o Mapa, e a U106 está no diário, no ESTADO e no disco',
      [['R192', 'R193'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod106)),
       Number((prod106.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 193,
       /`MAP` Mapa/.test(ler106('docs/manual/codigos-de-erro.md')), /Prospecção, Mapa, Clientes/.test(ler106('docs/manual/comercial.md')),
-      /^## U106 /m.test(ler106('docs/PLANO_UNIFICACAO.md')), /U106[^\n]*pendente/i.test(ler106('docs/ESTADO_ATUAL.md'))],
-     [true, true, false, false, true, true]);
+      /^## U106 /m.test(ler106('docs/PLANO_UNIFICACAO.md')),
+      /U106/.test(ler106('docs/ESTADO_ATUAL.md')),
+      require('fs').existsSync('supabase/migrations/20260917090000_u106_mapa_sai.sql')],
+     [true, true, false, false, true, true, true]);
 }
 
 // ── U107 — a Nova Visita Técnica numa tela só (R194) ─────────────────────────
@@ -19590,7 +19632,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const nad119 = ler119('src/features/home/NovaAtividadeDialog.tsx');
   eq('R225 CRÍTICO: soltar em Agendado pede o dia (AgendarDialog); mover grava patchDoMovimento; o Configurador tem Agendar em toda natureza e esconde Prazo quando agendada; o "+" nasce agendado (e apaga o prazo); o sino tem o ícone das 08h',
      [/if \(para === "agendado"\) \{\s*\n\s*setAgendando\(a\);/.test(dash119), /<AgendarDialog/.test(dash119), /patchDoMovimento\(a\.coluna, para\)/.test(dash119),
-      /\{!agendada && \(\s*\n\s*<Grupo rotulo="Prazo"/.test(pc119), /rotulo=\{agendada \? "Agendada para" : "Agendar"\}/.test(pc119), /campo: "data_agendada", patch: \{ data_agendada: e\.target\.value \|\| null \}/.test(pc119),
+      // R284 (15/09/2026) APERTOU este portão: além de esconder o Prazo quando
+      // agendada (R225), ele some no CAMPO sempre — "no campo nunca há prazo,
+      // agendado ou não". A implantação fica de fora do input pelo mesmo teste,
+      // e de propósito: o prazo dela é ESPELHO de `implantacao_fim` (R120), e um
+      // campo editável que o gatilho reescreve é pior que campo ausente.
+      /\{!agendada && chamado\.natureza !== "campo" && \(\s*\n\s*<Grupo rotulo="Prazo"/.test(pc119), /rotulo=\{agendada \? "Agendada para" : "Agendar"\}/.test(pc119), /campo: "data_agendada", patch: \{ data_agendada: e\.target\.value \|\| null \}/.test(pc119),
       /data_agendada: agendarPara \|\| null,/.test(nad119), /prazo_limite: prazo && !agendarPara \? dataParaPrazo\(prazo\) : null,/.test(nad119),
       /case 'agenda_hoje':/.test(ler119('src/components/NotificationPanel.tsx'))],
      [true, true, true, true, true, true, true, true, true]);
@@ -22592,7 +22639,7 @@ assincronas.push(async () => {
   eq('U150 CRÍTICO: no ramo de DELETE o gatilho NÃO lê `NEW` — em plpgsql `NEW` num DELETE é record não atribuído, e `COALESCE(NEW.x, OLD.x)` estoura ANTES de avaliar o segundo braço. O portão apaga um bloco de propósito para provar',
      [/IF TG_OP = 'DELETE' THEN\s*\n\s*PERFORM public\.recontar_retornos\(OLD\.chamado_id\);/.test(u150sql),
       /COALESCE\(NEW\.chamado_id, OLD\.chamado_id\)/.test(u150sql),
-      /DELETE FROM public\.agenda_campo WHERE id = v_bloco;/.test(u150sql)],
+      /DELETE FROM public\.agenda_campo WHERE id = v_novo;/.test(u150sql)],
      [true, false, true]);
 
   eq('U150: o bloco que muda de chamado reconta os DOIS — recontar só o novo deixaria o antigo com um retorno a mais para sempre, e ninguém olharia porque o número continua plausível',
@@ -22608,6 +22655,50 @@ assincronas.push(async () => {
       /SET resultado\s+= 'retorno',\s*\n\s*resultado_nota = v_nota,/.test(u150sql)],
      [true, true, true, true]);
 
+  // ── OS TRÊS DEFEITOS DE 15/09/2026, ACHADOS ANTES DE O DAVI RODAR ──────
+  // Nenhum dos três tinha pino. É exatamente assim que eles nasceram.
+
+  eq('U150 CRÍTICO: o CHECK `resultado só depois da visita` TRAVAVA o botão "tire o feito" da grade — `agenda_campo_cumprir(id,false)` zera `cumprido_em` e passaria a violar o CHECK num bloco com retorno. A porta foi REEMITIDA para desfazer o resultado junto, e é a ÚNICA saída: a U78 recusa cancelar bloco cumprido e manda por esse botão',
+     [/CREATE OR REPLACE FUNCTION public\.agenda_campo_cumprir\(_id uuid, _feito boolean DEFAULT true\)/.test(u150sql),
+      /resultado      = CASE WHEN _feito THEN resultado      ELSE NULL END,/.test(u150sql),
+      /resultado_nota = CASE WHEN _feito THEN resultado_nota ELSE NULL END/.test(u150sql),
+      /PERFORM public\.agenda_campo_cumprir\(v_velho, false\);/.test(u150sql)],
+     [true, true, true, true]);
+
+  // O PORQUÊ DE ESTAR NO `SET` E NÃO NUM GATILHO BEFORE, travado por escrito:
+  // `UPDATE OF col` no Postgres casa as colunas ESCRITAS NO COMANDO, não as
+  // que um BEFORE alterou. Com um BEFORE, o AFTER do §2 não acordaria e o
+  // contador ficaria em 1 com a ida sem resultado.
+  eq('U150 CRÍTICO: `resultado` entra no SET mesmo quando `_feito` é verdadeiro (escrevendo-se sobre si mesmo). É isso que faz o gatilho `AFTER … UPDATE OF … resultado` acordar nos DOIS sentidos — um gatilho BEFORE não serviria, porque `UPDATE OF` casa a coluna escrita no COMANDO, não a que o BEFORE alterou',
+     /SET cumprido_em    = CASE WHEN _feito THEN COALESCE\(cumprido_em, now\(\)\) ELSE NULL END,\s*\n\s*resultado      = CASE WHEN _feito/.test(u150sql),
+     true);
+
+  eq('U150 CRÍTICO: a ida corrente é a MAIS ANTIGA pendente — `ORDER BY a.dia, a.inicio_min, a.id`, a mesma do estágio 1 de `agenda_campo_espelhar` e de `agenda_campo_afirmar`. Com `DESC`, a visita de terça sem baixa e o retorno já marcado para quinta faziam a QUINTA ser carimbada: uma visita que não aconteceu virava "Retornado 1x"',
+     [/AND a\.cancelado_em IS NULL\s*\n\s*ORDER BY a\.dia, a\.inicio_min, a\.id\s*\n\s*LIMIT 1;/.test(u150sql),
+      /ORDER BY a\.dia DESC/.test(u150sql),
+      // e o portão prova com DOIS blocos abertos, que é o cenário do defeito
+      /current_date \+ 400[\s\S]{0,120}RETURNING id INTO v_velho;[\s\S]{0,200}current_date \+ 401[\s\S]{0,120}RETURNING id INTO v_novo;/.test(u150sql),
+      /a porta carimbou a ida FUTURA/.test(u150sql)],
+     [true, false, true, true]);
+
+  // O portão passou a EXERCITAR a porta da grade em vez de fabricar estado com
+  // UPDATE cru. Isto se mede em CÓDIGO, não na prosa: quatro chamadas à porta
+  // (uma dentro da função, três no portão) e nenhum vestígio da variável do
+  // passo antigo, que era o que fingia ser caminho do app.
+  eq('U150 CRÍTICO: o portão EXERCITA a porta da grade — quatro chamadas a `agenda_campo_cumprir`, incluindo o destique — em vez de fabricar o estado com UPDATE cru. Era o disfarce do passo antigo que escondia o defeito do CHECK',
+     [(u150sql.match(/PERFORM public\.agenda_campo_cumprir\(/g) || []).length,
+      /v_bloco/.test(u150sql.slice(u150sql.indexOf('DO $u150portao$')))],
+     [4, false]);
+
+  // O DESFAZER é COMENTÁRIO por natureza — é um roteiro para uma pessoa
+  // executar à mão. Pinar a prosa dele É pinar a entrega, e por isso esta
+  // asserção lê o texto CRU de propósito (não o `soCodigo`). Sem esta linha,
+  // desfazer a U150 apagaria `resultado` com a porta ainda escrevendo nela, e
+  // o "tire o feito" quebraria ao contrário.
+  eq('U150 CRÍTICO: o DESFAZER manda devolver `agenda_campo_cumprir` ao corpo da U78 ANTES de apagar as colunas — sem essa ordem, desfazer quebra o mesmo botão que esta migration existiu para destravar',
+     /devolva `agenda_campo_cumprir` ao corpo da U78[\s\S]{0,200}Só depois apague as colunas/.test(u150),
+     true);
+
   eq('U150: a porta abre para quem usa a tela; a FERRAMENTA do gatilho (que reescreve o espelho de qualquer chamado) fica fechada',
      [/GRANT  EXECUTE ON FUNCTION public\.chamado_registrar_retorno\(uuid, text\) TO authenticated, service_role;/.test(u150sql),
       /REVOKE EXECUTE ON FUNCTION public\.recontar_retornos\(uuid\) FROM PUBLIC, anon, authenticated;/.test(u150sql)],
@@ -22617,6 +22708,69 @@ assincronas.push(async () => {
      [/IF v_status IN \('concluido', 'cancelado'\) THEN/.test(u150sql),
       /Marque a ida na programação antes de registrar o retorno dela/.test(u150sql)],
      [true, true]);
+}
+
+// ── R284 — "ATRASADO" NO CAMPO, A SEGUNDA METADE (15/09/2026) ─────────────
+//
+// A U147 rodou em 14/09 e tirou o prazo do campo. A regra tinha duas metades
+// e só a primeira foi implementada: *"'Atrasado' no campo passa a significar
+// 'a data agendada já passou e não foi feito'"* ficou por fazer, e o sistema
+// continuou perguntando ao `prazo_limite` — que ninguém preenche mais.
+{
+  const IA = carregar('src/features/paineis/indicadores.ts');
+  const pc284 = require('fs').readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+  const pc284js = soCodigo(pc284, "js");
+  const op284 = soCodigo(require('fs').readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8'), 'js');
+  const ind284 = soCodigo(require('fs').readFileSync('src/features/paineis/indicadores.ts', 'utf8'), 'js');
+
+  // A INVARIANTE que o defeito violava: o painel e o quadro têm de responder
+  // a MESMA pergunta com a MESMA conta. Enquanto o painel perguntava ao prazo
+  // e o quadro também, os dois estavam errados juntos — o que é justamente
+  // como um defeito destes sobrevive a uma revisão.
+  eq('R284 CRÍTICO: a etiqueta "Atrasado" do painel do chamado usa a MESMA função pura do quadro (`atrasadoNoCampo`) quando a natureza é campo. Duas contas para "está atrasado?" é como a etiqueta passa a discordar da coluna de onde o card veio',
+     [/atrasadoNoCampo\(chamado as any\)/.test(pc284js),
+      /import \{ atrasadoNoCampo \} from "@\/features\/paineis\/indicadores";/.test(pc284js),
+      // fora do campo o prazo continua sendo o prazo: a atividade interna não
+      // perdeu o dela, e trocar as duas seria consertar demais
+      /: situacaoPrazo\(chamado\.prazo_limite, chamado\.status\) === "estourado";/.test(pc284js)],
+     [true, true, true]);
+
+  eq('R284 CRÍTICO: o painel NÃO oferece mais um campo Prazo editável em chamado de CAMPO — a U147 parou de preencher `prazo_limite`, e um input ali deixaria alguém criar À MÃO o número que a regra aboliu',
+     /\{!agendada && chamado\.natureza !== "campo" && \(/.test(pc284js), true);
+
+  // A régua nova, exercitada na unidade.
+  eq('R284: `atrasadoNoCampo` — a data marcada vencida atrasa; a futura não; SEM data não é atraso (é "não agendado", outra coluna e outro problema); e encerrado nunca atrasa',
+     (() => {
+       const agora = new Date(2026, 8, 15, 12, 0, 0);
+       const a = (o) => IA.atrasadoNoCampo({ status: "aberto", ...o }, agora);
+       return [
+         a({ data_hora_agendada: "2026-09-10T08:00:00" }),
+         a({ data_hora_agendada: "2026-09-20T08:00:00" }),
+         a({}),
+         a({ status: "concluido", data_hora_agendada: "2026-09-10T08:00:00" }),
+         a({ status: "cancelado", data_hora_agendada: "2026-09-10T08:00:00" }),
+         a({ prazo_limite: "2026-09-01T08:00:00" }),
+       ];
+     })(),
+     [true, false, false, false, false, false]);
+
+  eq('R284 CRÍTICO: "tem data marcada?" tem UMA resposta (`dataMarcada`) — enquanto o degrau do atraso lia a data seca e o degrau seguinte não, o mesmo chamado caía em "Não agendados" com o card mostrando "Agendado 16/09" no próprio corpo',
+     [IA.dataMarcada({ data_hora_agendada: "2026-09-16T08:00:00" }),
+      IA.dataMarcada({ data_agendada: "2026-09-16" }),
+      IA.dataMarcada({}),
+      // e os DOIS degraus chamam a mesma função, no fonte
+      /return dataMarcada\(c\) \? "agendado" : "nao_agendado";/.test(ind284),
+      /const marcado = dataMarcada\(c\);/.test(ind284)],
+     ["2026-09-16T08:00:00", "2026-09-16T23:59:59", null, true, true]);
+
+  // R295, a promessa que a tela quebrava.
+  eq('R295 CRÍTICO: o card não imprime horário na data SECA. `momentoDoCard` devolve `T00:00:00` para a ORDENAÇÃO funcionar, e sem o sinal `temHora` a tela imprimia "16/09 00:00" — exatamente o horário inventado que a regra proíbe, e que o comentário da própria função promete não fazer',
+     [IA.momentoDoCard({ status: "aberto", data_agendada: "2026-09-16" }).temHora,
+      IA.momentoDoCard({ status: "aberto", data_hora_agendada: "2026-09-16T08:00:00" }).temHora,
+      IA.momentoDoCard({ status: "concluido", iniciada_em: "2026-09-16T08:00:00" }).temHora,
+      // e a TELA obedece: o `hour`/`minute` está sob condição, nas DUAS datas
+      (op284.match(/momento\.temHora\s*\n\s*\? \{ day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" \}/g) || []).length],
+     [false, true, true, 2]);
 }
 
 // ── R296 — A BARRA DO OPERACIONAL É A BARRA DA INÍCIO (14/09/2026) ────────
@@ -22638,7 +22792,13 @@ assincronas.push(async () => {
       /width: 42, height: 42, borderRadius: 12,/.test(op8),
       (op8.match(/style=\{BOTAO_DA_BARRA\(isLight, textPrimary\)\}/g) || []).length,
       /width: 42, height: 42, borderRadius: 12, padding: 0, flexShrink: 0,\n\s*display: "inline-flex"/.test(op8)],
-     [true, true, 2, true]);
+     // 3 (era 2) desde 15/09/2026: a porta das EQUIPES entrou na barra. Ela
+     // morava no cabeçalho do gráfico "Atividades por equipe" — que é
+     // justamente o que esta mesma regra passou a esconder —, e com a faixa
+     // recolhida NÃO HAVIA porta nenhuma para a janela de equipes. Medido: 1
+     // botão com a faixa aberta, ZERO com ela recolhida, e a preferência fica
+     // gravada. Gesto de gestão não pode depender de um painel de leitura.
+     [true, true, 3, true]);
 
   eq('R296: as pílulas das lentes têm 40px e raio 11 — a MESMA medida das pílulas de filtro da Início, e nunca mais a altura que sobra do padding',
      [/height: 40, padding: "0 13px", borderRadius: 11, flexShrink: 0, cursor: "pointer",/.test(op8),

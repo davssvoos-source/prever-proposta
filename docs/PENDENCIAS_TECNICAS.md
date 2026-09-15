@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **60 em aberto, 16 fechadas.**
+> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **59 em aberto, 17 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -23,7 +23,7 @@
 - [P17 — O técnico não abre a tela da grade, e o gate dele nunca rodou (2026-09-01, U79)](#p17-o-técnico-não-abre-a-tela-da-grade-e-o-gate-dele-nunca-rodou-2026-09-01-u79)
 - [P18 — ~~CRÍTICO · A linha do tempo entrega o valor em reais a TODO autenticado~~ FECHADA (S4, 2026-09-03)](#p18-crítico-a-linha-do-tempo-entrega-o-valor-em-reais-a-todo-autenticado-fechada-s4-2026-09-03)
 - [P19 — RESOLVIDO em 2026-09-10 pela U88 · O DELETE de `aprovar_chamado_financeiro` comia o avulso vinculado (2026-09-01, U80)](#p19-resolvido-em-2026-09-10-pela-u88-o-delete-de-aprovarchamadofinanceiro-comia-o-avulso-vinculado-2026-09-01-u80)
-- [P20 — MÉDIO · `em_conferencia` é um buraco negro: o chamado sai de toda fila sem ninguém aprovar (2026-09-01, U80)](#p20-médio-emconferencia-é-um-buraco-negro-o-chamado-sai-de-toda-fila-sem-ninguém-aprovar-2026-09-01-u80)
+- [P20 — ~~MÉDIO~~ FECHADA EM PARTE (U139/U140, 2026-09-14) · `em_conferencia` é um buraco negro: o chamado sai de toda fila sem ninguém aprovar (2026-09-01, U80)](#p20-médio-fechada-em-parte-u139u140-2026-09-14-emconferencia-é-um-buraco-negro-o-chamado-sai-de-toda-fila-sem-ninguém-aprovar-2026-09-01-u80)
 - [P21 — ~~MÉDIO~~ FECHADA EM PARTE (U140, 2026-09-14) · Duas telas discordam sobre a data da parcela: `setMonth` pula fevereiro (2026-09-01, U80)](#p21-médio-fechada-em-parte-u140-2026-09-14-duas-telas-discordam-sobre-a-data-da-parcela-setmonth-pula-fevereiro-2026-09-01-u80)
 - [P22 — ALTO · O catálogo de preço é público, e isto é R12 CONTRA R13 (2026-09-03, S4)](#p22-alto-o-catálogo-de-preço-é-público-e-isto-é-r12-contra-r13-2026-09-03-s4)
 - [P23 — MÉDIO · O SAC lê o orçamento da visita, por deriva silenciosa da U6a (2026-09-03, S4)](#p23-médio-o-sac-lê-o-orçamento-da-visita-por-deriva-silenciosa-da-u6a-2026-09-03-s4)
@@ -651,34 +651,88 @@ uma linha faltando. O conserto de verdade mexe na decisão de
 `faturamento_status` (contar as cobranças vivas, e não só as que este INSERT
 acabou de criar), e isso é motor, não auditoria de valor.
 
-## P20 — MÉDIO · `em_conferencia` é um buraco negro: o chamado sai de toda fila sem ninguém aprovar (2026-09-01, U80)
+## P20 — ~~MÉDIO~~ FECHADA EM PARTE (U139/U140, 2026-09-14) · `em_conferencia` é um buraco negro: o chamado sai de toda fila sem ninguém aprovar (2026-09-01, U80)
 
 `src/lib/cobranca.functions.ts:327` grava `faturamento_status = 'em_conferencia'`
 ao fim da análise, sob a RLS do próprio usuário — e passa, porque
 `chamados_update` é `pode_editar_chamado`, que começa por `is_gestor`. A tela
 invalida `["chamado", id]` e refaz o fetch com o valor novo. Aí, em cadeia:
 
-- `DetalheCampo.tsx:965` — o botão "Ajustar" de cada item exige `a_analisar` → **some**;
-- `DetalheCampo.tsx:1095` — "Aprovar cobrança" exige `a_analisar` → **some, exatamente depois da análise que existe para habilitá-lo**;
-- `DetalheCampo.tsx:1120` — o card de Conferência exige `a_analisar` → **some**;
-- `src/features/atividades/modelo.ts:485-486` e o alerta diário (U13:139) filtram `a_analisar` → o chamado **sai da fila** e **para de gerar aviso**.
+- ~~`DetalheCampo.tsx:965` — o botão "Ajustar" de cada item exige `a_analisar` → **some**;~~
+- ~~`DetalheCampo.tsx:1095` — "Aprovar cobrança" exige `a_analisar` → **some, exatamente depois da análise que existe para habilitá-lo**;~~
+- ~~`DetalheCampo.tsx:1120` — o card de Conferência exige `a_analisar` → **some**;~~
+- ~~`src/features/atividades/modelo.ts:485-486` e~~ o alerta diário (U13:139) filtram
+  `a_analisar` → ~~o chamado **sai da fila** e~~ **para de gerar aviso**. ← **é esta
+  metade que continua de pé, e é ela que mantém a P20 aberta.**
 
 Sobra "Reanalisar", que reescreve `em_conferencia` de novo. **Nenhum caminho no
-repo devolve o chamado a `a_analisar`.** Um chamado analisado e não aprovado fica
+repo devolve o chamado a `a_analisar`.** ~~Um chamado analisado e não aprovado fica
 invisível para toda a operação, com a cobrança nunca gerada. É dinheiro que some
-da fila em silêncio.
+da fila em silêncio.~~ (A frase em negrito continua verdadeira e deixou de
+importar: `em_conferencia` virou um lugar de onde se decide, então não é mais
+preciso voltar de lá.)
 
 **O que a U80 fez:** o selo do cartão trata `em_conferencia` como **A conferir**,
 junto com `a_analisar` — o cartão é a primeira superfície que volta a mostrá-los,
 e a linha 113 da conferência da migration conta quantos estão parados assim hoje.
-Isso **não conserta** o defeito: os três botões continuam sumindo, e o motor
+Isso **não conserta** o defeito: ~~os três botões continuam sumindo~~, e o motor
 aceitaria a aprovação (`aprovar_chamado_financeiro` não checa `faturamento_status`
-— só `status = 'concluido'`). É só a visibilidade dos botões que está errada.
+— só `status = 'concluido'`). ~~É só a visibilidade dos botões que está errada.~~
 
 **O conserto de verdade** é decidir se `em_conferencia` deve existir: ou os três
 gates passam a aceitar `a_analisar` **ou** `em_conferencia`, ou a análise para de
-escrever o valor (e a coluna volta a ter quatro estados). A segunda é mais limpa;
-nenhum consumidor lê `em_conferencia` para nada.
+escrever o valor (e a coluna volta a ter quatro estados). ~~A segunda é mais limpa;
+nenhum consumidor lê `em_conferencia` para nada.~~
+
+**A DECISÃO VOLTOU (U139 e U140, 2026-09-14).** Ganhou a PRIMEIRA saída, não a
+segunda que este parágrafo recomendava. A regra virou uma pergunta só,
+`podeDecidirCobranca` (`src/features/chamados/cobranca.ts:46`): `a_analisar` é onde
+o chamado nasce, `em_conferencia` é onde a I.A. o deixa, e os dois querem dizer a
+mesma coisa — **ninguém decidiu ainda**.
+
+- **O motor (U139, migration rodada em 2026-09-14).** O gate de
+  `concluir_chamado_com_cobranca` era `faturamento_status <> 'a_analisar'`
+  (u80:390) e passou a `NOT IN ('a_analisar', 'em_conferencia')`. **A trava da
+  duplicata não afrouxou**: ela passou a PROTEGER os três estados decididos
+  (`aprovada`, `faturada`, `sem_cobranca`) em vez de EXIGIR um — a mesma intenção,
+  escrita do jeito certo. O cadeado `FOR UPDATE` continua inteiro.
+- **A tela (U140).** Os três gates de `DetalheCampo.tsx` (hoje :1076, :1240 e
+  :1277) e o sinal `aConferir` de `modelo.ts:703` perguntam à função em vez de
+  comparar com o literal. Não sobrou nenhum `a_analisar` cru fora de `cobranca.ts`.
+
+**A segunda saída foi recusada com motivo, e o motivo desmente o que está escrito
+acima.** Apagar `em_conferencia` parecia mais limpo aqui porque se acreditava que
+*"nenhum consumidor lê `em_conferencia` para nada"*. É falso: o estado é informação
+de verdade — diz que a I.A. já analisou — e dois módulos dependem dela.
+
+**"É só a visibilidade dos botões que está errada" também era falso quando foi
+escrito**, e essa é a parte cara do registro: a porta da U80 checava
+`faturamento_status` na linha 390 dela própria. O conserto teve de mexer no MOTOR,
+não só na tela — quem lesse esta pendência confiando naquela frase teria orçado uma
+tarde de front-end e descoberto uma migration no meio do caminho.
+
+**O QUE MANTÉM A P20 ABERTA: o alerta diário continua cego.**
+`alertas_chamado_faturamento` (u13:127-150), que o cron
+`alertas-chamado-faturamento` dispara de segunda a sexta (`0 12 * * 1-5`, u7:964),
+ainda filtra `c.faturamento_status = 'a_analisar'` sozinho — e **nenhuma migration
+posterior recria essa função**: a U139 recriou `concluir_chamado_com_cobranca`, e
+só ela. Então o chamado analisado e não decidido hoje **aparece** na tela, no
+cartão e na fila do gestor, mas **não cutuca ninguém**. O empurrão existe
+justamente para quem NÃO está com a tela aberta, e é exatamente ele que ficou para
+trás.
+
+O conserto é uma linha, gêmea do gate que a U139 já escreveu:
+
+```sql
+-- em u13:139
+AND c.faturamento_status IN ('a_analisar', 'em_conferencia')
+```
+
+**A lição da U80 vale mais que o conserto.** O item 113 da conferência dela já
+contava esses chamados e os chamava de *"invisíveis para toda a operação"*. Ela
+consertou a CONTAGEM — os painéis passaram a somá-los como pendentes — e deixou a
+DECISÃO trancada por dez dias. **Medir um sintoma não conserta a causa**, e uma
+conferência que mede sem destravar deixa a dívida com cara de resolvida.
 
 ## P21 — ~~MÉDIO~~ FECHADA EM PARTE (U140, 2026-09-14) · Duas telas discordam sobre a data da parcela: `setMonth` pula fevereiro (2026-09-01, U80)
 

@@ -105,6 +105,10 @@ import {
   prazoParaData, dataParaPrazo, situacaoPrazo,
   type ChamadoPrioridade, type ChamadoTipo, type ImpactoOperacional, type Natureza,
 } from "@/lib/chamado-status";
+// R284: a conta do atraso do CAMPO mora em lógica pura, e é a MESMA que o
+// quadro do Painel Operacional usa — duas contas para "está atrasado?" é como a
+// etiqueta desta tela passa a discordar da coluna de onde o card veio.
+import { atrasadoNoCampo } from "@/features/paineis/indicadores";
 import { EQUIPE_LABEL, equipeCores, equipesDePessoas, type Equipe } from "@/lib/equipes";
 import { AgendaDoChamado } from "@/features/programacao/AgendaDoChamado";
 import { especieDoApoio } from "@/features/programacao/modelo";
@@ -871,9 +875,15 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
   const info = chamado ? chamadoStatusInfo(chamado.status) : null;
   const tipo = (chamado?.tipo ?? null) as ChamadoTipo | null;
   const prio = (chamado?.prioridade ?? null) as ChamadoPrioridade | null;
-  const atrasado = chamado
-    ? situacaoPrazo(chamado.prazo_limite, chamado.status) === "estourado"
-    : false;
+  // R284 (15/09/2026): no CAMPO, atrasado é a DATA MARCADA vencida — e a
+  // conta é a MESMA do quadro (`atrasadoNoCampo`), senão a etiqueta desta
+  // tela discorda da coluna de onde o card veio. Fora do campo, o prazo
+  // continua sendo o prazo: a atividade interna não perdeu o dela.
+  const atrasado = !chamado
+    ? false
+    : chamado.natureza === "campo"
+      ? atrasadoNoCampo(chamado as any)
+      : situacaoPrazo(chamado.prazo_limite, chamado.status) === "estourado";
   // R225 (U119): agendada = dia marcado e ainda não começou — e agendada NÃO tem prazo
   const agendada = !!chamado && !!(chamado.data_agendada || chamado.data_hora_agendada)
     && (chamado.status === "aberto" || chamado.status === "agendado");
@@ -1012,8 +1022,16 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                     aoMudar={(v) => salvar.mutate({ campo: "impacto_operacional", patch: { impacto_operacional: (v ?? null) as ImpactoOperacional | null } })}
                   />
                 )}
-                {/* R225: agendada NÃO tem prazo — o grupo Prazo dá lugar ao dia marcado */}
-                {!agendada && (
+                {/* R225: agendada NÃO tem prazo — o grupo Prazo dá lugar ao dia
+                    marcado. E R284: no CAMPO nunca há prazo, agendado ou não —
+                    a regra revisou a R225 nesse ponto.
+
+                    A IMPLANTAÇÃO É A EXCEÇÃO e ela fica de FORA do input do
+                    mesmo jeito: o prazo da obra existe, mas é ESPELHO de
+                    `implantacao_fim` (R120/R89) — o gatilho o reescreve. Um
+                    campo editável ali seria um valor que "volta sozinho", que é
+                    pior do que campo ausente. */}
+                {!agendada && chamado.natureza !== "campo" && (
                 <Grupo rotulo="Prazo" estado={estados.prazo_limite}>
                   <input
                     type="date"

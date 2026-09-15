@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-14 (R294). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-14 (R296). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -68,16 +68,26 @@ responde "de quem é a fila"**. Equipes nunca viram papel.
 | Vinicius | **Admin** | Técnica (coordenação) |
 | Atendentes do SAC | **SAC** | — |
 | Time comercial | **Comercial** | Comercial |
-| Gilleno | **Técnico** | Controle Patrimonial |
-| Nicholas | **Técnico** | T.I |
-| Erik | **Técnico** | T.I |
+| Gilleno | **SAC** *(era Técnico; R265)* | Controle Patrimonial |
+| Nicholas | **Operacional** *(era Técnico; R244/R294)* | T.I |
+| Erik | **Operacional** *(era Técnico; R244/R294)* | T.I |
 | Breno | **Técnico** | Técnica (líder de dupla) |
 | Líderes das duplas de campo | **Técnico** | Técnica |
 
 - **Gestor não é técnico**: gestor coordena, planeja e programa as atividades
   dos outros (R1).
-- **Controle Patrimonial (Gilleno) usa o perfil de técnico** (R6): a fila dele
-  são os chamados de "pedido de compra". Sem perfil especial.
+- ~~**Controle Patrimonial (Gilleno) usa o perfil de técnico** (R6)~~ —
+  **revisto pela R265** (12/09/2026): ele passou a **SAC**. O critério do app
+  do técnico é o CARGO, e o Gilleno não vai a campo; deixá-lo como técnico o
+  punha na escala de sobreaviso e na programação de campo. O "pedido de
+  compra" que era a fila dele também saiu (R141/U96); o que ele recebe hoje é
+  **atividade interna** — inclusive a de baixa de equipamento que a **R293**
+  cria por atendimento.
+
+- **Nicholas e Erik são OPERACIONAL** (R244), e a **R294** fechou o que isso
+  quer dizer: eles criam e executam **atividade interna** — inclusive
+  corretiva e preventiva INTERNAS —, e **não executam chamado de campo**.
+  Saíram da lista de responsáveis por chamado de campo e por visita técnica.
 - A **equipe** (`profiles.equipe`: ti, patrimonio, tecnica, sac,
   monitoramento, comercial, outras) continua sendo atributo, definindo para
   qual fila as demandas vão. *(Lista atualizada pela R81 — audiovisual e
@@ -1325,6 +1335,20 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   recortam para "em aberto" e esvaziariam colunas.
   *(Davi, 2026-08-22.)*
 
+  *Revista pela **R284** (14/09/2026) numa palavra: **a coluna fica, a conta
+  muda**. Na corretiva e na preventiva não há mais prazo, e "atrasado" passa
+  a ser "a data agendada já venceu e não foi feito". Na **implantação** o
+  prazo continua, porque ali ele é o espelho de `implantacao_fim` (R89/R120),
+  uma data que alguém escolheu — e "prazo vencido" segue valendo. A
+  precedência "atrasado vence agendado" continua inteira, e agora com o
+  mesmo exemplo: o chamado marcado para terça que venceu.*
+
+  *Consequência que só apareceu em 15/09, e vale registrar: enquanto o
+  código continuou perguntando ao prazo, a coluna "Atrasados" ficou VAZIA*
+  *para sempre — a U147 parou de preencher `prazo_limite`, e nenhum chamado
+  de campo nasce mais com um. Regra ditada só vira regra quando o código a
+  implementa; entregar metade dela é deixar a tela mentindo sem avisar.*
+
 - **R77** — Trinta **chamados fictícios** de teste para o dashboard poder ser
   visto cheio. São de campo/equipe técnica, nos quatro tipos, e
   majoritariamente **em aberto** — as 227 OS importadas são todas concluídas,
@@ -1764,6 +1788,15 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   agenda, cumprir não.
   *(U78. Fase 1, Passo 1.2 da absorção do Gestor OS.)*
 
+  *Revista pela **R286** (14/09/2026) **na parte do retorno**, e só nela: ele
+  deixou de ser DERIVADO DA ORDEM. A ordem não distingue "foi e resolveu" de
+  "foi e não resolveu", e conta a ida CANCELADA — em que ninguém pisou no
+  prédio. Por isso a ida passou a gravar COMO terminou (`agenda_campo.
+  resultado` e `resultado_nota`, U150), e o contador `chamados.retornos`
+  reconta dali por gatilho. **O bloco continua MAGRO**: as duas colunas novas
+  não aparecem nele — "o que se tentou" é lido na LINHA DO TEMPO do chamado,
+  exatamente para não engordar um retângulo de 40px que ninguém leria.*
+
 - **R100** — **A jornada é de 9 horas, e a primeira delas é reservada: sobram
   8 horas de campo.** A primeira hora não é folga — é carregar o carro, pegar
   peça, ver a ordem do dia. A equipe **sai às 09:00**, e por isso a primeira
@@ -1984,6 +2017,13 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   triângulo de alerta **é** a voz certa, ao contrário da faixa de migração: ali
   não há nada errado, aqui há.
   *(U80.)*
+
+  *O NOME COLIDE com a faixa homônima do Painel Operacional (**R286**,
+  14/09/2026), e os critérios são DIFERENTES: lá exige-se `retornos > 0` — a
+  equipe disse que foi e não resolveu —, aqui basta ter tido visita e não ter
+  nada à frente. As duas ficam, e a R286 **não** revisa esta: a da programação
+  é a varredura de quem monta a semana, a do Operacional é a fila de decisão do
+  gestor. Quem mexer numa não mexe na outra.*
 
 - **R107** — **Marcar a visita como feita NÃO apaga mais o registro de quem a
   fez.** Davi, 02/09: *"Se o retorno cai para outra semana, sem problemas nós
@@ -2938,6 +2978,13 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   ÚNICOS do campo. `operacional` e `vistoria` saíram de
   `TIPOS_DA_NATUREZA.campo`, e a reconciliação com a R112 que esta regra
   deixava em aberto foi feita — a vistoria virou atividade interna do gestor.*
+
+  *E revista pela **R284** (14/09/2026) num ponto: **a corretiva não tem mais
+  SLA.** O prazo automático saiu dos três tipos de campo (U147, rodada em
+  14/09) — quem decide a data é quem agenda, e a prioridade é o que orienta
+  essa escolha. O que distingue a corretiva continua sendo o **problema
+  relatado**, não o prazo. O prazo da IMPLANTAÇÃO fica, porque não vem de
+  SLA: é o espelho de `implantacao_fim` (R120).*
 
 - **R128** — **A página do cliente é o centro de tudo o que se refere ao
   cliente.** Quatro coisas de origens diferentes moram nela, e a origem é
@@ -5335,7 +5382,7 @@ adaptado."
 > | **R281** | entregue (U141) |
 > | **R282** | ditada |
 > | **R283** | entregue (U146) |
-> | **R284** | código pronto; falta rodar a migration **U147** |
+> | **R284** | entregue (U147 no banco em 14/09; a segunda metade — "atrasado" é a data marcada vencida — na U151, 15/09) |
 > | **R285** | entregue (U142 no banco, U145 na tela) |
 > | **R286** | banco pronto; falta rodar a migration **U150** — a faixa e o botão vêm depois dela |
 > | **R287**–**R289** | ditadas |
@@ -5453,6 +5500,14 @@ adaptado."
   **Ida CANCELADA não conta.** Ninguém foi ao prédio — e um "Retornado 3x"
   que inclui uma visita que não aconteceu é exatamente o número que faz o
   gestor perder a confiança na etiqueta.
+
+  **ATENÇÃO AO NOME, QUE COLIDE.** A seção "Retornos pendentes" da
+  **programação** já existe desde a R106, e o critério dela é OUTRO: "teve a
+  visita, continua aberto e não tem nada marcado à frente" — ela não exige
+  que ninguém tenha dito que não resolveu. As duas convivem, e de propósito:
+  a da programação é a varredura de quem monta a semana; a do **Painel
+  Operacional**, abaixo, é a fila de decisão do gestor e exige `retornos > 0`.
+  **A R286 não revisa a R106** — quem mexer numa não mexe na outra.
 
   **"Retorno pendente" é o que espera decisão do gestor**, e não tudo o que
   já retornou alguma vez: foi, não resolveu, e **ninguém remarcou**. O
@@ -5614,6 +5669,12 @@ adaptado."
   recolher numa não pode recolher na outra. **Recolher limpa o KPI ativo** —
   os quadrados são controles de filtro (R125), e esconder o controle deixando
   o filtro ligado é o defeito que a U94 consertou no calendário.
+
+  **E o que se recolhe não pode levar uma PORTA junto.** O botão "Equipes"
+  morava no cabeçalho do gráfico "Atividades por equipe", dentro da faixa —
+  medido em 15/09: um botão com ela aberta, **zero** com ela recolhida, e a
+  preferência fica gravada. Ele passou para a barra de ferramentas: **gesto de
+  gestão não pode depender de um painel de leitura estar aberto.**
 
   **"Poucos botões" mudou a FORMA, não só o tamanho:** os quatro botões de
   eixo (R295) viraram **uma pílula com menu** — quatro botões lado a lado é a

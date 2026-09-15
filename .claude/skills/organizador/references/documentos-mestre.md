@@ -47,6 +47,12 @@ não investigar de novo". Fechou? O título ganha `~~GRAVIDADE~~ FECHADA (Uxx)`
 e um parágrafo "Fechada:" — o histórico fica, porque quando o defeito voltar
 o caminho já está escrito.
 **Não entra:** decisão de produto pendente (é Q, no plano).
+**Também mora aqui:** a seção `## S — Segurança: achados aceitos, não
+corrigidos (2026-08-20)`, com os achados **S4–S11** da auditoria de
+cibersegurança — risco que se decidiu correr, não defeito à espera de
+conserto; por isso não tem P nem gravidade. O `docs/manual/seguranca.md`
+resume os dois que mais pesam para decisões futuras e aponta para cá: a
+lista viva é esta.
 
 ### `docs/PLANO_V0.1.md` — o plano
 
@@ -55,7 +61,16 @@ e dependências, as perguntas Q-série **anotadas com a resposta** (`→
 **Respondida em DD/MM (Rnnn):** …`), os riscos, o acompanhamento (checklist).
 **Não entra:** o que já virou regra (cite) ou diário.
 
-### `docs/CONTEXTO_OPERACAO_TECNICA.md` · `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md` — o que o Davi ditou
+### Os três `docs/CONTEXTO_*.md` — o que o Davi ditou
+
+São `CONTEXTO_OPERACAO_TECNICA.md` (quem é quem, as três atividades, o
+cliente como centro), `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (os tipos, a matriz
+de campos, D1–D9, Q18–Q22) e `CONTEXTO_VIATURAS.md` (13/09/2026: a etiqueta
+NFC, o trecho como unidade, a folha do gestor — D1–D11, as Q24–Q27 já
+respondidas no mesmo dia, e o §7 com o mapa do que a U134 construiu no
+código). O terceiro é o que mais se esquece: quem procurar
+decisão sobre viagem, viatura ou chegada por localização em qualquer outro
+documento não acha.
 
 **Entra:** o texto do Davi **na íntegra** (transcrito, não resumido), a
 leitura estruturada (matriz, glossário), as decisões D-série onde o texto
@@ -107,12 +122,44 @@ nova entra no mapa do `CLAUDE.md` e no `ESTADO_ATUAL.md`.
 | **R** | regra de produto | PRODUTO | sequencial; a última está na linha "Última atualização" |
 | **U** | entrega (diário) | PLANO_UNIFICACAO | sequencial; sufixo `b` para complemento da mesma entrega (U97b) |
 | **P** | dívida técnica | PENDENCIAS | sequencial |
-| **Q** | pergunta ao Davi | PLANO_V0.1 §4 (Q1–Q10, Q23), REVISAO (Q11–Q17), CONTEXTO_ESTRUTURA §6 (Q18–Q22) | sequencial global |
-| **D** | decisão minha onde o texto admitia duas leituras | CONTEXTO_* | por documento (D1–D9) |
-| **S** | auditoria de segurança | PLANO_UNIFICACAO (S1, S4) e manual/seguranca | sequencial |
+| **Q** | pergunta ao Davi | PLANO_V0.1 §4 (Q1–Q10, Q23), REVISAO (Q11–Q17), CONTEXTO_ESTRUTURA §6 (Q18–Q22), CONTEXTO_VIATURAS §6 (Q24–Q27) | sequencial global |
+| **D** | decisão minha onde o texto admitia duas leituras | CONTEXTO_* | recomeça em cada documento: ESTRUTURA vai até D9, VIATURAS até D11 |
+| **S** (achado) | risco de segurança aceito, não corrigido | PENDENCIAS, seção `## S` (S4–S11); resumo em manual/seguranca | lista fechada: a auditoria foi em 20/08/2026 |
+| **S** (migration) | entrega de segurança — a migration e a entrada dela no diário | PLANO_UNIFICACAO (S1, S1b, S2, S3, S4) + `supabase/migrations/*_sN_*.sql` | sequencial; sufixo `b` para o conserto da mesma (S1b) |
 
 Ao criar item novo de uma série: `grep -c` para achar o último número —
 nunca chute.
+
+### Duas séries S, e elas já colidiram
+
+O mesmo **S4** nomeia duas coisas diferentes, e as duas continuam vivas no
+texto:
+
+- **S4 (achado)** — "`profiles` SELECT é `USING(true)`": e-mail e telefone de
+  todo funcionário legíveis por qualquer autenticado. Mora na seção `## S` do
+  PENDENCIAS. O conserto certo (uma view com as colunas públicas + RLS)
+  continua em aberto — o REVOKE de coluna foi tentado na S1 e desfeito na
+  S1b, porque no Supabase todo logado é o mesmo role `authenticated`.
+- **S4 (migration)** — "Auditoria de valor: quem consegue ler dinheiro, e isso
+  bate com a R13", de 03/09/2026: a entrada `## S4` no diário e o arquivo
+  `supabase/migrations/20260903180000_s4_auditoria_de_valor.sql`. É dela que
+  falam a P18 (que ela fechou), a P22, a P23 e a P24.
+
+Na prática o texto separa as duas pelo verbo — a migration **faz** ("a S4
+fecha", "a S4 recusou"), o achado **é** um estado que continua lá —, mas isso
+é sorte, não método. E não é caso único: o **S2** colide igual (o post-mortem
+"App fora do ar", 20/08/2026, × a migration "Apoio deixa de ser
+auto-serviço", 01/09/2026).
+
+**A correção proposta — e o que ela NÃO faz.** Não renumera o passado: há
+dezenas de citações "a S4…" no diário, nas pendências e no manual, e trocar o
+número deixaria todas mentindo — o custo cairia inteiro em quem lê depois. O
+que muda é daqui para frente: (1) ao citar, **qualifique** — *S4 (migration)*
+ou *S4 (achado)*; (2) **não batize uma S nova.** A P18 promete uma "S5" para
+o dia em que sobrar linha antiga com cifra, e o achado S5 já existe: seria a
+terceira colisão. Migration de segurança é entrega como qualquer outra —
+nasce com o número da U que a entrega, e a letra S fica reservada à lista
+fechada de achados de 20/08/2026.
 
 ## 3. Modelo de documento novo
 

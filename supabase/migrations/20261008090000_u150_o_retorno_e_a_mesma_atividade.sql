@@ -48,6 +48,11 @@
 -- 3. NÃO conta bloco CANCELADO. Ida desmarcada não é ida — ninguém foi ao
 --    prédio, e um "Retornado 3x" que inclui uma visita que não aconteceu é
 --    exatamente o número que faz o gestor perder a confiança na etiqueta.
+--    DITO COM HONESTIDADE: com o §1.1, esse par (`resultado` preenchido +
+--    `cancelado_em`) é hoje INALCANÇÁVEL pelo aplicativo — o destique limpa
+--    o resultado antes de qualquer cancelamento, e a U78 recusa cancelar um
+--    bloco cumprido. O filtro fica como defesa contra uma porta FUTURA, não
+--    porque alguém o alcance hoje; o §5 passo 7 o exercita declarando isso.
 --
 -- IDEMPOTENTE: ADD COLUMN IF NOT EXISTS, DROP CONSTRAINT IF EXISTS antes de
 -- cada ADD, CREATE OR REPLACE nas funções, DROP TRIGGER IF EXISTS antes do
@@ -111,6 +116,86 @@ ALTER TABLE public.agenda_campo ADD  CONSTRAINT agenda_campo_resultado_so_cumpri
 CREATE INDEX IF NOT EXISTS agenda_campo_retorno_idx
   ON public.agenda_campo (chamado_id)
   WHERE resultado = 'retorno' AND cancelado_em IS NULL;
+
+-- ── §1.1  A PORTA DA U78 APRENDE A DESFAZER ───────────────────────────────
+--
+-- O CHECK acima TRAVA UM BOTÃO QUE JÁ EXISTE, e é preciso dizer isto por
+-- extenso porque a armadilha é silenciosa:
+--
+--   `agenda_campo_cumprir(_id, false)` é o "tire o feito" da grade
+--   (`FormularioDoBloco.tsx`), e ele zera `cumprido_em`. Com
+--   `resultado = 'retorno'` gravado, zerar `cumprido_em` viola
+--   `agenda_campo_resultado_so_cumprido` — e o gestor recebe
+--   "violates check constraint" na cara.
+--
+-- E não há desvio: a U78 RECUSA cancelar um bloco cumprido e manda
+-- explicitamente por esse botão ("tire o 'feito' do bloco primeiro e
+-- desmarque depois"). Ou seja, o CHECK sozinho fecharia a única saída.
+--
+-- A correção é a porta aprender que DESFAZER O CARIMBO DESFAZ O RESULTADO.
+-- Faz sentido fora do banco também: "esta visita não aconteceu" e "esta
+-- visita aconteceu e não resolveu" não podem ser verdade ao mesmo tempo.
+--
+-- POR QUE NO `SET`, E NÃO NUM GATILHO `BEFORE`. O gatilho do §2 é
+-- `AFTER … UPDATE OF chamado_id, resultado, cancelado_em`, e no Postgres o
+-- `UPDATE OF` casa as colunas ESCRITAS NO COMANDO — não as que um gatilho
+-- BEFORE alterou depois. Com um BEFORE, o comando continuaria dizendo só
+-- `SET cumprido_em = …`, o AFTER não acordaria, e `chamados.retornos`
+-- ficaria em 1 com a ida sem resultado: o espelho divergente que o §2
+-- existe para impedir.
+--
+-- O corpo abaixo é o da U78 §6.3, instrução por instrução — as três recusas
+-- e o porquê de cada uma estão lá, e não se copiam para cá para não nascer
+-- uma segunda versão do mesmo raciocínio. O que muda é só o UPDATE final.
+CREATE OR REPLACE FUNCTION public.agenda_campo_cumprir(_id uuid, _feito boolean DEFAULT true)
+RETURNS boolean
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = public
+AS $u150z$
+DECLARE v_chamado uuid; v_cancelado timestamptz;
+BEGIN
+  -- NULL EXPLÍCITO NÃO É "DESMARQUE" (U78 §6.3).
+  _feito := COALESCE(_feito, true);
+
+  SELECT a.chamado_id, a.cancelado_em INTO v_chamado, v_cancelado
+    FROM public.agenda_campo a WHERE a.id = _id;
+  IF NOT FOUND THEN RETURN false; END IF;
+
+  IF v_chamado IS NOT NULL AND auth.uid() IS NOT NULL
+     AND NOT public.pode_editar_chamado(v_chamado) THEN
+    RAISE EXCEPTION 'Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF v_chamado IS NULL AND auth.uid() IS NOT NULL AND NOT public.is_gestor(auth.uid()) THEN
+    RAISE EXCEPTION 'Só quem responde pela operação dá baixa em serviço fora do sistema.'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF _feito AND v_cancelado IS NOT NULL THEN
+    RAISE EXCEPTION 'Este bloco está desmarcado — não dá para dar baixa em atendimento que foi cancelado. Remarque-o primeiro, se ele aconteceu.'
+      USING ERRCODE = '55000';
+  END IF;
+
+  -- O ÚNICO PONTO QUE MUDA EM RELAÇÃO À U78: tirar o "feito" tira junto o
+  -- resultado da ida. `resultado` entra no SET inclusive quando `_feito` é
+  -- verdadeiro (escrevendo-se sobre si mesmo) — é isso que garante que o
+  -- gatilho `UPDATE OF … resultado` do §2 acorde nos dois sentidos.
+  UPDATE public.agenda_campo
+     SET cumprido_em    = CASE WHEN _feito THEN COALESCE(cumprido_em, now()) ELSE NULL END,
+         resultado      = CASE WHEN _feito THEN resultado      ELSE NULL END,
+         resultado_nota = CASE WHEN _feito THEN resultado_nota ELSE NULL END
+   WHERE id = _id
+     AND (cumprido_em IS DISTINCT FROM (CASE WHEN _feito THEN COALESCE(cumprido_em, now()) ELSE NULL END)
+          -- cinto: hoje o CHECK impede resultado com cumprido_em nulo, mas se
+          -- algum dia esse par existir, o destique tem de limpá-lo mesmo
+          -- quando o carimbo já estava vazio.
+          OR (NOT _feito AND resultado IS NOT NULL));
+  RETURN true;
+END;
+$u150z$;
+-- SEM GRANT NOVO: `CREATE OR REPLACE FUNCTION` PRESERVA os privilégios, e o
+-- `GRANT … TO authenticated` da U79 continua valendo. Repetir o GRANT aqui
+-- seria a segunda fonte da mesma permissão.
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- §2  O CONTADOR, QUE NUNCA É ESCRITO À MÃO
@@ -231,12 +316,22 @@ BEGIN
   -- resolveu" não tem sujeito. A recusa é explícita porque o silêncio aqui
   -- seria pior: o gestor clicaria "Retorno", nada aconteceria, e ele acharia
   -- que registrou.
+  --
+  -- E É A MAIS ANTIGA — `ORDER BY` CRESCENTE, como o estágio 1 de
+  -- `agenda_campo_espelhar` e como `agenda_campo_afirmar`. Vários blocos
+  -- pendentes no mesmo chamado é estado normal (a visita de terça sem baixa
+  -- e o retorno já marcado para quinta), e o DESC carimbava a QUINTA: uma
+  -- visita que não aconteceu virava "Retornado 1x", a de terça ficava
+  -- pendente para sempre, e o espelho continuava apontando para terça.
+  --
+  -- NÃO se filtra `a.dia <= current_date` aqui: "não carimbar ida que ainda
+  -- não chegou" é outra decisão, e ela mudaria o significado da porta.
   SELECT a.id INTO v_bloco
     FROM public.agenda_campo a
    WHERE a.chamado_id = _chamado
      AND a.cumprido_em IS NULL
      AND a.cancelado_em IS NULL
-   ORDER BY a.dia DESC, a.inicio_min DESC
+   ORDER BY a.dia, a.inicio_min, a.id
    LIMIT 1;
 
   IF v_bloco IS NULL THEN
@@ -331,7 +426,19 @@ WITH conferencia AS (
               WHERE a.chamado_id = c.id AND a.resultado = 'retorno' AND a.cancelado_em IS NULL)),
          '0'
   UNION ALL
-  SELECT 10, 'idas já registradas como retorno (hoje é zero — a coluna acabou de nascer)',
+  SELECT 10, 'a porta da grade aprendeu a desfazer (§1.1) — sem isto o CHECK trava o botão "tire o feito"',
+         (SELECT CASE WHEN pg_get_functiondef('public.agenda_campo_cumprir(uuid,boolean)'::regprocedure)
+                        LIKE '%resultado      = CASE WHEN _feito THEN resultado%'
+                      THEN 'sim' ELSE 'NÃO' END),
+         'sim'
+  UNION ALL
+  SELECT 11, 'a porta do retorno escolhe a ida mais ANTIGA (o DESC carimbava uma visita futura)',
+         (SELECT CASE WHEN pg_get_functiondef('public.chamado_registrar_retorno(uuid,text)'::regprocedure)
+                        LIKE '%ORDER BY a.dia, a.inicio_min, a.id%'
+                      THEN 'sim' ELSE 'NÃO' END),
+         'sim'
+  UNION ALL
+  SELECT 12, 'idas já registradas como retorno (hoje é zero — a coluna acabou de nascer)',
          (SELECT count(*)::text FROM public.agenda_campo WHERE resultado = 'retorno'),
          '(leia)'
 )
@@ -352,9 +459,13 @@ DO $u150portao$
 DECLARE
   v_chamado uuid;
   v_dupla   uuid;
-  v_bloco   uuid;
+  v_velho   uuid;
+  v_novo    uuid;
   v_n       integer;
   v_erro    text;
+  v_res     text;
+  v_nota    text;
+  v_carimbo timestamptz;
 BEGIN
   SELECT id INTO v_dupla FROM public.duplas LIMIT 1;
   IF v_dupla IS NULL THEN
@@ -376,16 +487,34 @@ BEGIN
     RAISE NOTICE 'PORTÃO 1 ok: sem ida aberta, a porta recusa — "%"', v_erro;
   END;
 
-  -- 2) com a ida marcada, o retorno é registrado e o espelho conta 1
+  -- 2) DOIS blocos abertos, e o retorno tem de cair no MAIS ANTIGO.
+  --
+  --    Este é o cenário que pegou o defeito: a visita de terça ainda sem
+  --    baixa e o retorno já marcado para quinta. Com a ordenação errada
+  --    (`dia DESC`), clicar "Retorno" na terça carimbava a QUINTA como
+  --    acontecida — uma visita futura virava "Retornado 1x", e a de terça
+  --    ficava pendente para sempre.
   INSERT INTO public.agenda_campo (chamado_id, dupla_id, dia, inicio_min, servico_min)
   VALUES (v_chamado, v_dupla, current_date + 400, 9 * 60, 60)
-  RETURNING id INTO v_bloco;
+  RETURNING id INTO v_velho;
+  INSERT INTO public.agenda_campo (chamado_id, dupla_id, dia, inicio_min, servico_min)
+  VALUES (v_chamado, v_dupla, current_date + 401, 9 * 60, 60)
+  RETURNING id INTO v_novo;
 
   v_n := public.chamado_registrar_retorno(v_chamado, 'trocou a fonte, o problema voltou');
   IF v_n <> 1 THEN
     RAISE EXCEPTION 'PORTÃO FALHOU: depois de um retorno o contador diz % (esperado 1).', v_n;
   END IF;
-  RAISE NOTICE 'PORTÃO 2 ok: uma ida sem resolver → "Retornado 1x".';
+
+  SELECT cumprido_em INTO v_carimbo FROM public.agenda_campo WHERE id = v_velho;
+  IF v_carimbo IS NULL THEN
+    RAISE EXCEPTION 'PORTÃO FALHOU: a porta não carimbou a ida MAIS ANTIGA.';
+  END IF;
+  SELECT cumprido_em INTO v_carimbo FROM public.agenda_campo WHERE id = v_novo;
+  IF v_carimbo IS NOT NULL THEN
+    RAISE EXCEPTION 'PORTÃO FALHOU: a porta carimbou a ida FUTURA — uma visita que não aconteceu virou retorno.';
+  END IF;
+  RAISE NOTICE 'PORTÃO 2 ok: o retorno cai na ida mais ANTIGA; a futura continua pendente.';
 
   -- 3) o que se tentou foi para a LINHA DO TEMPO, não só para o bloco
   IF NOT EXISTS (
@@ -397,23 +526,29 @@ BEGIN
   END IF;
   RAISE NOTICE 'PORTÃO 3 ok: "o que se tentou" está na linha do tempo.';
 
-  -- 4) cancelar a ida DESCONTA: ninguém foi ao prédio
-  UPDATE public.agenda_campo SET cancelado_em = now() WHERE id = v_bloco;
+  -- 4) TIRAR O "FEITO" pela porta da grade tem de FUNCIONAR, e desfazer o
+  --    resultado junto.
+  --
+  --    É o passo que faltava e que deixou o defeito nascer: sem ele, o CHECK
+  --    do §1 travava o botão "tire o feito" de qualquer bloco que tivesse
+  --    retorno registrado — e esse é o ÚNICO caminho que a U78 oferece para
+  --    desmarcar um bloco cumprido. A queda do contador é parte da prova: é
+  --    ela que mostra que o gatilho do §2 acordou.
+  PERFORM public.agenda_campo_cumprir(v_velho, false);
+  SELECT cumprido_em, resultado, resultado_nota INTO v_carimbo, v_res, v_nota
+    FROM public.agenda_campo WHERE id = v_velho;
+  IF v_carimbo IS NOT NULL OR v_res IS NOT NULL OR v_nota IS NOT NULL THEN
+    RAISE EXCEPTION 'PORTÃO FALHOU: tirar o feito não limpou a ida (carimbo=%, resultado=%, nota=%).', v_carimbo, v_res, v_nota;
+  END IF;
   SELECT retornos INTO v_n FROM public.chamados WHERE id = v_chamado;
   IF v_n <> 0 THEN
-    RAISE EXCEPTION 'PORTÃO FALHOU: bloco cancelado continua contando como retorno (contador = %).', v_n;
+    RAISE EXCEPTION 'PORTÃO FALHOU: tirar o feito não descontou o retorno (contador = %) — o gatilho do §2 não acordou.', v_n;
   END IF;
-  RAISE NOTICE 'PORTÃO 4 ok: ida cancelada não conta como retorno.';
+  RAISE NOTICE 'PORTÃO 4 ok: "tirar o feito" funciona e desfaz o resultado junto.';
 
-  -- 5) o CHECK recusa resultado sem visita. Num bloco NOVO, e não
-  --    ressuscitando o cancelado: desfazer um cancelamento por UPDATE cru é um
-  --    gesto que a U78 não autoriza, e o portão não pode ensinar caminho torto.
-  INSERT INTO public.agenda_campo (chamado_id, dupla_id, dia, inicio_min, servico_min)
-  VALUES (v_chamado, v_dupla, current_date + 401, 9 * 60, 60)
-  RETURNING id INTO v_bloco;
-
+  -- 5) o CHECK recusa resultado sem visita (no bloco que continua pendente)
   BEGIN
-    UPDATE public.agenda_campo SET resultado = 'retorno' WHERE id = v_bloco;
+    UPDATE public.agenda_campo SET resultado = 'retorno' WHERE id = v_novo;
     RAISE EXCEPTION 'PORTÃO FALHOU: aceitou resultado numa ida que não aconteceu.';
   EXCEPTION WHEN check_violation THEN
     RAISE NOTICE 'PORTÃO 5 ok: resultado sem visita é recusado pelo CHECK.';
@@ -423,18 +558,42 @@ BEGIN
   --    forma óbvia do gatilho (um COALESCE) estouraria com "record new is not
   --    assigned yet" — sem este passo, o defeito só apareceria no dia em que
   --    alguém apagasse uma ida, meses depois.
-  UPDATE public.agenda_campo SET cumprido_em = now(), resultado = 'retorno' WHERE id = v_bloco;
+  PERFORM public.agenda_campo_cumprir(v_novo, true);
+  UPDATE public.agenda_campo SET resultado = 'retorno' WHERE id = v_novo;
   SELECT retornos INTO v_n FROM public.chamados WHERE id = v_chamado;
   IF v_n <> 1 THEN
     RAISE EXCEPTION 'PORTÃO FALHOU: o segundo retorno não foi contado (contador = %).', v_n;
   END IF;
 
-  DELETE FROM public.agenda_campo WHERE id = v_bloco;
+  DELETE FROM public.agenda_campo WHERE id = v_novo;
   SELECT retornos INTO v_n FROM public.chamados WHERE id = v_chamado;
   IF v_n <> 0 THEN
     RAISE EXCEPTION 'PORTÃO FALHOU: apagar a ida não descontou o retorno (contador = %).', v_n;
   END IF;
   RAISE NOTICE 'PORTÃO 6 ok: apagar uma ida reconta (o ramo em que NEW não existe).';
+
+  -- 7) O FILTRO `cancelado_em IS NULL` DO §2, e a verdade sobre ele.
+  --
+  --    O UPDATE abaixo é CRU DE PROPÓSITO, e a declaração faz parte do teste:
+  --    `cumprido_em` + `cancelado_em` preenchidos ao mesmo tempo é um estado
+  --    que NENHUMA porta da U78 produz — ela recusa pelos dois lados —, e com
+  --    o §1.1 acima o destique limpa o resultado antes de qualquer
+  --    cancelamento. Ou seja: hoje o par `resultado` + `cancelado_em` é
+  --    INALCANÇÁVEL pelo aplicativo.
+  --
+  --    O filtro fica assim mesmo, e o portão o exercita assim mesmo, por uma
+  --    razão só: ele defende contra uma porta FUTURA que cancele um bloco
+  --    cumprido. O que não se pode é deixar o portão fingir que prova um
+  --    caminho do app — era isso que o passo 4 antigo fazia, e foi esse
+  --    disfarce que escondeu o defeito do CHECK.
+  PERFORM public.agenda_campo_cumprir(v_velho, true);
+  UPDATE public.agenda_campo SET resultado = 'retorno' WHERE id = v_velho;
+  UPDATE public.agenda_campo SET cancelado_em = now() WHERE id = v_velho;
+  SELECT retornos INTO v_n FROM public.chamados WHERE id = v_chamado;
+  IF v_n <> 0 THEN
+    RAISE EXCEPTION 'PORTÃO FALHOU: bloco cancelado continua contando como retorno (contador = %).', v_n;
+  END IF;
+  RAISE NOTICE 'PORTÃO 7 ok: o filtro defensivo de cancelado desconta (estado que hoje só um UPDATE cru alcança).';
 
   RAISE NOTICE 'PORTÃO COMPLETO. Nada disto foi gravado (ROLLBACK a seguir).';
 END
@@ -445,6 +604,16 @@ ROLLBACK;
 -- ═══════════════════════════════════════════════════════════════════════════
 -- §6  DESFAZER (só se precisar)
 --
+-- A PRIMEIRA LINHA É A QUE NINGUÉM LEMBRARIA, e sem ela o desfazer quebra o
+-- sistema ao contrário: o §1.1 reemitiu `agenda_campo_cumprir` com
+-- `resultado` e `resultado_nota` no SET. Se as colunas forem apagadas com a
+-- função assim, o botão "tire o feito" da grade passa a estourar com
+-- "column resultado does not exist" — o mesmo botão que esta migration
+-- existiu para destravar.
+--
+--   -- 1º: devolva `agenda_campo_cumprir` ao corpo da U78 §6.3
+--   --     (`20260901090000_u78_grade_da_programacao.sql`, linhas 1569–1618),
+--   --     que não menciona `resultado`. Só depois apague as colunas.
 --   DROP TRIGGER IF EXISTS trg_contar_retornos ON public.agenda_campo;
 --   DROP FUNCTION IF EXISTS public.contar_retornos();
 --   DROP FUNCTION IF EXISTS public.chamado_registrar_retorno(uuid, text);

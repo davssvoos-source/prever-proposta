@@ -9,15 +9,22 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
-> **Depois da v0.0.12 — entregue e ainda NÃO empacotado (14/09/2026).**
-> As entregas **U141 a U147** vieram DEPOIS do pacote abaixo e não estão nele:
+> **Depois da v0.0.12 — entregue e ainda NÃO empacotado (15/09/2026).**
+> As entregas **U141 a U151** vieram DEPOIS do pacote abaixo e não estão nele:
 > o checklist que parou de clicar na linha de baixo (R281), a equipe valendo do
 > instante da troca com líder (R285), a chave `atividades.nova` que consertou o
 > bug do Erik (R294), os três tipos do campo com a vistoria virando atividade
-> interna (R283) e o campo sem prazo automático (R284). O próximo pacote é que
-> as leva. **A U147 precisa ser rodada antes dele.**
+> interna (R283), o campo sem prazo automático (R284, U147), o quadro por eixo
+> e o card do Painel Operacional (R295, U148), a barra do Operacional na régua
+> da Início (R296, U149), o retorno como ida nova na MESMA atividade (R286,
+> U150) e o "atrasado" do campo passando a significar a data marcada vencida
+> (R284, U151). O próximo pacote é que as leva.
+>
+> **A única migration que falta rodar antes dele é a U150** (o retorno na mesma
+> atividade). A U142, a U143, a U144 e a U147 já foram rodadas pelo Davi em
+> 14/09/2026 — inclusive a U147, que tirou o SLA do gatilho do campo.
 
-## v0.0.12 — 2026-09-14 (U130–U140) · **nenhuma migration pendente** (U131, U132 e U134 rodadas em 13/09; U136, U137 e U139 em 14/09)
+## v0.0.12 — 2026-09-14 (U130–U140) · **nenhuma migration pendente** (U131, U132, U134 e U136 rodadas em 13/09; U137 e U139 em 14/09)
 
 > Três semanas de entrega num pacote só. O servidor está na **v0.0.7**: ele
 > recebe de uma vez a v0.0.8 até esta. Todas as migrations de que este pacote

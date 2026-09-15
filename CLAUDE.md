@@ -14,10 +14,18 @@ TypeScript + TanStack Start (SSR), Supabase, deploy pela **Lovable**: push em
 reescreva histórico** (force push/rebase/amend em commit já enviado corrompe
 o histórico do lado dela).
 
-Sair da Lovable é uma possibilidade FUTURA, não um plano em andamento: o
-passo a passo está guardado em `ONBOARDING.md` §6. Até lá, nada de "arrumar"
-o que existe por causa dela — `.env` versionado, `AGENTS.md` e `.lovable/`
-ficam como estão. Existe, desde a U118, um **segundo alvo do mesmo código**: o
+**Sair da Lovable está DECIDIDO** (R280, Davi em 13/09/2026: *"de antemão eu
+te digo que não vou manter na lovable. Nós temos DDNS, pagamos host, temos
+dominio e tudo"*) — host próprio, domínio próprio, e quem conduz é o Nicholas
+da T.I. O que ainda não há é DATA. Enquanto não houver, ela continua sendo
+quem publica, e a regra de operação não muda: **nada de "arrumar" o que
+existe por causa dela** — `.env` versionado, `AGENTS.md` e `.lovable/` ficam
+como estão. Decisão tomada não é migração feita, e mexer antes da hora
+derruba o deploy de hoje por uma mudança que ninguém pediu ainda. O passo a
+passo está em `ONBOARDING.md` §6; o que o Davi ainda deve é para onde o APK
+aponta (`docs/ESTADO_ATUAL.md` §7).
+
+Existe, desde a U118, um **segundo alvo do mesmo código**: o
 pacote para **Windows Server** (`npm run build:windows` → `dist-windows/`, com
 o instalador de porta configurável e o serviço — `docs/manual/hospedagem-windows.md`,
 R220). Ele pode rodar em paralelo à Lovable apontando para o mesmo Supabase.
@@ -166,9 +174,9 @@ ordem ler o resto.
 | `docs/ESTADO_ATUAL.md` | ONDE ESTAMOS: última regra e diário, migrations rodadas e pendentes, decisões recentes, perguntas abertas, o que o Davi vai mandar, quem é quem, a ordem de leitura — atualizado a cada entrega (passo 7) |
 | `docs/VERSOES.md` | o que entrou em cada VERSÃO instalada no servidor (R229) e a migration que ela exige; a versão mora em `package.json` = `src/lib/versao.ts` (o verificador compara) e vai em `VERSAO.txt` no pacote |
 | `docs/CONTEXTO_OPERACAO_TECNICA.md` | o contexto da operação técnica DITADO PELO DAVI (quem é quem, as três atividades, cliente como centro, QAP só lido, validação do gestor) — leia antes de mexer em campo/técnica |
-| `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md` | a estrutura das atividades DITADA PELO DAVI (os seis tipos e a matriz de campos, as duas perguntas da criação, equipe das pessoas, impacto operacional, grupos de clientes, o que saiu: pedido de compra e sprint) — leia antes de mexer em atividade/chamado interno, no pop-up de criação ou na ficha do cliente |
+| `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md` | a estrutura das atividades DITADA PELO DAVI (os sete tipos e a matriz de campos, as duas perguntas da criação, equipe das pessoas, impacto operacional, grupos de clientes, o que saiu: pedido de compra e sprint) — leia antes de mexer em atividade/chamado interno, no pop-up de criação ou na ficha do cliente |
 | `docs/CONTEXTO_VIATURAS.md` | o controle das viaturas DITADO PELO DAVI (etiqueta NFC com endereço, o trecho como unidade, assumir a viatura do colega, cadastro e folha na aba Viaturas do Administrativo, chegada por localização) — **sem km desde a R276**: a viagem mapeia quem, quando e onde; quilometragem é do QAP ERP. Leia antes de mexer em viatura, viagem ou na tela `/viatura` |
-| `docs/PLANO_V0.1.md` | o plano de ação rumo à v0.1: fases A–G, inventário do que já existe, perguntas em aberto |
+| `docs/PLANO_V0.1.md` | o plano de ação rumo à v0.1: fases A–H, inventário do que já existe, perguntas em aberto |
 | `docs/REVISAO_2026-09-03.md` | a revisão tela a tela (veredito por rota, achados transversais, perguntas Q11–Q17) |
 | `docs/PRODUTO.md` | TODAS as regras de produto (R-série) |
 | `docs/PLANO_UNIFICACAO.md` | diário de implementação (U-série) |
@@ -176,7 +184,7 @@ ordem ler o resto.
 | `DESIGN_SYSTEM.md` | tokens, temas, anti-padrões §8 |
 | `docs/PENDENCIAS_TECNICAS.md` | defeitos conhecidos e não corrigidos |
 | `docs/manual/` | manual por segmento (atualizar junto com regra nova) |
-| `scripts/verificar-logica.cjs` | as ~2900 asserções — leia um bloco recente antes de escrever |
+| `scripts/verificar-logica.cjs` | as ~3500 asserções — leia um bloco recente antes de escrever |
 | `src/lib/paleta.ts`, `src/lib/ui.ts` | cor e superfície — nunca hex solto em tela |
 | `.claude/skills/designer/` | a SKILL de designer UI/UX (SKILL.md + 3 referências): briefing antes do código, inventário do que já existe, estados/acessibilidade, roteiro de análise de tela. Carrega sozinha em tarefa de interface; invoca-se por `/designer` |
 | `.claude/skills/organizador/` | a SKILL de organização e planejamento: onde mora cada fato (documentos mestre), os quatro rituais (início de sessão · pedido do Davi · durante · fim de entrega), estratégias de leitura por sumário e de escrita que dura. Carrega em toda sessão; `/organizador` |

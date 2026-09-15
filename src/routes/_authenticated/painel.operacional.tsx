@@ -1085,20 +1085,12 @@ function PainelOperacional() {
                       {semDuplaNaJanela} fora de equipe
                     </span>
                   )}
-                  <button
-                    onClick={() => setDuplasAberto(true)}
-                    className="hover-suave"
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 5,
-                      height: 24, padding: "0 9px", borderRadius: 12, flexShrink: 0,
-                      background: "transparent", cursor: "pointer", color: gold,
-                      border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-                      fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-                    }}
-                  >
-                    <Users size={11} />
-                    Equipes
-                  </button>
+                  {/* R296 (15/09/2026): o botão "Equipes" SAIU daqui e foi para a
+                      barra de ferramentas. Ele era a ÚNICA porta da janela de
+                      equipes, e o recolher da faixa de indicadores o levava junto
+                      — medido: 1 com a faixa aberta, ZERO com ela recolhida, e a
+                      preferência fica gravada. O que continua aqui é o aviso de
+                      quem está fora de equipe: isso é leitura do gráfico. */}
                 </span>
               }
             />
@@ -1306,6 +1298,19 @@ function PainelOperacional() {
               />
             )}
 
+            {/* R296 (15/09/2026) — a porta das EQUIPES. Ela mora na barra, e não
+                no cabeçalho de um gráfico, por um motivo medido: o recolher desta
+                mesma regra escondia a única porta que havia. Montar equipe é
+                gesto de gestão, e gesto de gestão não pode depender de um painel
+                de leitura estar aberto. */}
+            <button
+              onClick={() => setDuplasAberto(true)}
+              title="Equipes de campo"
+              aria-label="Abrir as equipes de campo"
+              style={BOTAO_DA_BARRA(isLight, textPrimary)}
+            >
+              <Users size={17} />
+            </button>
             {/* R296 — o recolher da faixa de indicadores. Fica NESTA barra, e
                 não junto dos gráficos, pelo mesmo motivo da Início: é daqui que
                 se trabalha, e o botão tem de estar onde a mão já está.
@@ -1476,13 +1481,19 @@ function PainelOperacional() {
                             )}
                             {momento.inicio && (
                               <span style={{ whiteSpace: "nowrap", marginLeft: "auto" }}>
+                                {/* R295: a data SECA não ganha horário inventado. O
+                                    `T00:00:00` que `momentoDoCard` devolve existe para
+                                    a ordenação; imprimir "00:00" seria o card prometendo
+                                    uma hora que ninguém combinou. */}
                                 {momento.rotulo}{" "}
-                                {new Date(momento.inicio).toLocaleString("pt-BR", {
-                                  day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                                })}
-                                {momento.fim && ` → ${new Date(momento.fim).toLocaleString("pt-BR", {
-                                  day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                                })}`}
+                                {new Date(momento.inicio).toLocaleString("pt-BR",
+                                  momento.temHora
+                                    ? { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }
+                                    : { day: "2-digit", month: "2-digit" })}
+                                {momento.fim && ` → ${new Date(momento.fim).toLocaleString("pt-BR",
+                                  momento.temHora
+                                    ? { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }
+                                    : { day: "2-digit", month: "2-digit" })}`}
                               </span>
                             )}
                           </div>
