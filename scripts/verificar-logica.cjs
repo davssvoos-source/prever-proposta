@@ -22448,6 +22448,55 @@ assincronas.push(async () => {
      [[], 4]);
 }
 
+// ── R290 — O TETO DE PARCELAS MORA EM TRÊS LUGARES (14/09/2026) ───────────
+//
+// Davi, 14/09/2026, perguntado se o "1x a 12x" valia para tudo: "Só para
+// manutenção, só para este adicional de venda de equipamentos no caso de
+// manutenções para atuais clientes."
+//
+// A resposta CONFIRMA o que o código já fazia — instalação até 60 (R120/R121,
+// a obra é cobrada em parcelas que entram no fechamento), manutenção até 12.
+// Nada mudou, e é por isso que este bloco existe: o número está em TRÊS
+// lugares que precisam concordar, e não havia nada amarrando os três.
+//
+//   · src/lib/periodos.ts        — PARCELAS_MAXIMAS, a constante
+//   · src/features/programacao/modelo.ts — o gêmeo puro, que valida na tela
+//   · a RPC concluir_chamado_com_cobranca — quem RECUSA de verdade
+//
+// Três cópias de um número é onde a divergência nasce: baixar o teto na tela
+// e esquecer a porta faz a tela prometer o que o banco recusa; baixar na porta
+// e esquecer a tela faz a pessoa digitar 13 e descobrir depois de salvar.
+{
+  const fsR290 = require('fs');
+  const PER290 = carregar('src/lib/periodos.ts');
+  const PROG290 = carregar('src/features/programacao/modelo.ts');
+
+  eq('R290 CRÍTICO: os TRÊS lugares que guardam o teto de parcelas concordam — a constante, o gêmeo puro da tela e a RPC que recusa. Baixar um e esquecer os outros faz a tela prometer o que o banco nega, ou o contrário',
+     (() => {
+       const gemeo = fsR290.readFileSync('src/features/programacao/modelo.ts', 'utf8');
+       const rpc = fsR290.readFileSync('supabase/migrations/20261003090000_u139_analisado_volta_a_ser_decidivel.sql', 'utf8');
+       return [PER290.PARCELAS_MAXIMAS.instalacao, PER290.PARCELAS_MAXIMAS.manutencao,
+               /const teto = c\.tipoServico === "instalacao" \? 60 : 12;/.test(gemeo),
+               /CASE WHEN v_tipo = 'instalacao' THEN 60 ELSE 12 END/.test(rpc)];
+     })(),
+     [60, 12, true, true]);
+
+  // E o gêmeo RECUSA nos dois lados do corte, para o teto não ser decorativo.
+  eq('R290: a validação da tela recusa 13 numa manutenção e 61 numa instalação, e aceita 12 e 60 — o teto é limite, não sugestão',
+     (() => {
+       const c = (tipoServico, parcelas) => ({
+         tipoServico, parcelas, valorTotal: 1200, clienteId: "c1", descricao: "x",
+       });
+       // a guarda FICA: sem ela, um nome de função errado daria
+       // `undefined === null` e o teste passaria verde sobre nada
+       if (!PROG290.erroDoLancamento) return "sem erroDoLancamento";
+       const erro = (t, n) => PROG290.erroDoLancamento(c(t, n));
+       return [erro("manutencao", 12) === null, erro("manutencao", 13) !== null,
+               erro("instalacao", 60) === null, erro("instalacao", 61) !== null];
+     })(),
+     [true, true, true, true]);
+}
+
 // ── R283 — O TÉCNICO DE CAMPO TEM TRÊS TIPOS (14/09/2026) ─────────────────
 //
 // Davi: "Os técnicos de campo têm os 3 tipos de demanda: Manutenção

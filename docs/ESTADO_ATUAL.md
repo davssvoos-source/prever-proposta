@@ -9,30 +9,41 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-14** · última regra: **R294** · último diário:
-**U146** · verificador: **3.463 asserções, 0 falharam** · `tsc`: **0** (o
-baseline de 57 erros foi a ZERO na U138) · migrations rodadas até a **U139**
-(U131, U132 e U134 em 13/09/2026, nesta ordem; U136, U137 e U139 em
-14/09/2026) · **nenhuma migration pendente** ·
-**versão no servidor: v0.0.7**
-(192.168.10.182); **o pacote gerado é a v0.0.12** (14/09/2026), e ele sobe de
-uma vez o que a v0.0.8 até a v0.0.11 já tinham entregue — o que entrou em cada
-versão está em `docs/VERSOES.md`. **Nenhuma migration pendente**: as seis de
-que a v0.0.12 depende (U131, U132, U134, U136, U137, U139) já rodaram.
-**A U142 RODOU em 14/09/2026** — a tabela, as duas garantias, o backfill e as
-funções estão no banco. O portão dela falhou (usava uma pessoa real, já
-backfillada) e por isso a conferência nunca apareceu: **PENDENTES a U143 e a U144** (a U144 semeia a chave `atividades.nova`, que
-conserta o bug do Erik: criar atividade deixa de ser a mesma chave de abrir
-chamado de campo — R294). A U143
-(`20261005090000_u143_conferencia_da_u142.sql`), que não muda schema — só
-imprime a conferência da U142 e roda o portão corrigido.
+**U146** · verificador: **3.465 asserções, 0 falharam** · `tsc`: **0** (o
+baseline de 57 erros foi a ZERO na U138).
 
-As **R282–R294** estão DITADAS; a U142 implementa a metade de banco da R285.
-**As R282–R285 estão DITADAS e ainda NÃO implementadas** (14/09/2026 — a leva
-do Vinicius: a corretiva com dois textos, a vistoria virando atividade
-interna, o campo sem prazo, a equipe valendo do momento da troca). Fim de
-entrega:
+**Banco: nenhuma migration pendente.** Rodadas em 13/09/2026, nesta ordem:
+U131, U132 e U134. Em 14/09/2026: U136, U137, U139, **U142**, **U143** e
+**U144**.
+
+**Servidor: v0.0.7** (192.168.10.182). O pacote gerado é a **v0.0.12**
+(14/09/2026) — o que entrou em cada versão está em `docs/VERSOES.md`.
+**Atenção:** as entregas de 14/09 listadas abaixo (U141–U146) são POSTERIORES
+a esse pacote e não estão nele. O próximo pacote é que as leva.
+
+### A leva do Vinicius (14/09/2026) — o que está de pé e o que ainda é só regra
+
+Ler isto antes de prometer qualquer coisa a alguém.
+
+| regra | o quê | estado |
+|---|---|---|
+| R281 | o checklist não clica na linha de baixo | **no ar** (U141) |
+| R282 | corretiva com dois textos (Problema · Solução) | ditada |
+| R283 | o campo tem três tipos; vistoria vira interna | **no ar** (U146) |
+| R284 | o campo não tem prazo; a prioridade orienta a data | ditada |
+| R285 | a equipe vale do instante da troca; líder + N ajudantes | **no ar** (U142 + U145) |
+| R286 | o retorno é a mesma atividade, com etiqueta | ditada |
+| R287 | duração estimada ao abrir o chamado | ditada |
+| R288 | indisponível recusa; deslocamento ocupa a agenda | ditada |
+| R289 | mapa de calor por equipe (por técnico quando solo) | ditada |
+| R290 | 1x a 12x é da manutenção; obra segue em 60x | **já era assim** — a regra confirma e amarra os três lugares |
+| R291 | quem lança escolhe o mês da cobrança | ditada |
+| R292 | preventiva: uma atividade, roteiro de todos os blocos | ditada |
+| R293 | baixa de equipamento gera UMA atividade para o Gilleno | ditada |
+| R294 | operacional cria atividade, não executa chamado de campo | **no ar** (U144) |
+
+Fim de entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
-
 ---
 
 ## 1. O sistema em um parágrafo
