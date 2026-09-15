@@ -113,8 +113,12 @@ a sidebar é recolhível (`src/lib/sidebar-recolhida.ts`):
 - Início · Calendário · Clientes · Prospecção
 - **Operacional** (`/painel/operacional`) — indicadores de campo NA entrada
 - **Comercial** (`/gerencial`) — a própria lista de visitas/propostas (R32)
-- **Administrativo** (`/painel/administrativo`) — abas Usuários · Permissões ·
-  APIs, com Catálogo e Fechamentos como atalhos (R131; na prática, só admin)
+- **Gestão Técnica** (`/gestao-tecnica`) — a mesa do gestor da equipe de campo:
+  indicadores, fila de decisão (aguardando retorno · aguardando cobrança),
+  Equipes, Fechamentos e o Plantão (R299/R300; chamava-se "Sobreaviso")
+- **Administrativo** (`/painel/administrativo`) — pílulas Usuários · Permissões ·
+  APIs · Viaturas · Equipamentos, uma aba de cada vez na largura toda (R298;
+  na prática, só admin — Fechamentos foi para a Gestão Técnica)
 - Perfil
 
 **Barra inferior (celular)** — 5 vagas: Início · Calendário · Clientes ·

@@ -71,7 +71,7 @@ const CAMPOS_VISITA =
 
 export interface Sessao {
   userId: string | null;
-  cargo: "tecnico" | "sac" | "comercial" | "admin" | "operacional" | null;
+  cargo: "tecnico" | "sac" | "comercial" | "admin" | "operacional" | "gestor" | null;
 }
 
 /** Papel e id numa consulta só — o layout já busca o perfil sob outra chave. */
@@ -85,7 +85,7 @@ export function useSessao() {
       const { data } = await supabase
         .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
       const c = (data as any)?.cargo as string | undefined;
-      const cargo = c === "tecnico" || c === "sac" || c === "comercial" || c === "admin" || c === "operacional" ? c : null;
+      const cargo = c === "tecnico" || c === "sac" || c === "comercial" || c === "admin" || c === "operacional" || c === "gestor" ? c : null;
       return { userId: user.id, cargo };
     },
   });

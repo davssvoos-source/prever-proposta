@@ -8,33 +8,88 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-15** · última regra: **R297** · último diário:
-**U152** · verificador: **3.536 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-15** · última regra: **R304** · último diário:
+**U154** · verificador: **3.577 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
-Banco — **Pendentes: U150 e U152**, nesta ordem.
-**U150** (`20261008090000_u150_o_retorno_e_a_mesma_atividade.sql`) — o retorno
-como ida nova na MESMA atividade (R286); a faixa "Retornos pendentes" e o
-botão "Retorno" no card só sobem depois dela.
-**U152** (`20261009090000_u152_o_apoio_sai_da_lideranca.sql`) — o apoio
-automático passa a exigir que o responsável seja LÍDER (R297). **A tela já
-obedece**: enquanto esta não rodar, a janela de abertura mostra campo de apoio
-vazio e o gatilho grava a equipe inteira logo depois. Rodadas em 13/09/2026, nesta ordem:
-U131, U132, U134 e **U136** — esta última na segunda tentativa, e a data é a
-que o diário da própria entrega registra. Em 14/09/2026: U137, U139,
-**U142**, **U143**, **U144** e **U147**.
+Banco — **Pendentes: U153 e U154**, nesta ordem.
+**U153** (`20261010090000_u153_todos_os_chamados_sai.sql`) — apaga a chave
+`chamados.painel` da matriz (R301: a tela "Todos os chamados" saiu; a rota
+redireciona para a Operacional). Inofensiva se demorar: sobra uma linha órfã.
+**U154** (`20261011090000_u154_o_cargo_gestor.sql`) — o cargo **GESTOR** (R304):
+enum, os dois CHECKs, `salvar_permissoes`, `handle_new_user`, `is_gestor`,
+`pode_ver_financeiro` e a semente da quinta coluna. Aborta se a U153 não tiver
+rodado. **Depois dela**, o Davi troca o cargo do Vinicius para Gestor na aba
+Usuários — a migration não faz isso (não sabe o e-mail de ninguém). Sem a U154
+ninguém consegue RECEBER o cargo (o CHECK recusa); nada quebra.
 
-**Servidor: v0.0.7** (192.168.10.182). O pacote gerado é a **v1.0.1**
-(15/09/2026, `dist-windows/Prever-1.0.1.zip`) — o que entrou em cada versão
-está em `docs/VERSOES.md`. Ele leva **tudo** de U141 a U152: nada de 14 e
-15/09 ficou de fora.
+**U150 e U152 RODADAS em 15/09/2026** (conferido no banco: `chamados.retornos`,
+`agenda_campo.resultado`, `apoio_automatico(uuid, timestamptz)` existem). Rodadas
+em 13/09: U131, U132, U134 e **U136**; em 14/09: U137, U139, **U142**, **U143**,
+**U144** e **U147**.
 
-**O pacote PODE ser instalado antes de rodar as migrations.** Conferido antes
-de empacotar: nenhuma consulta do app pede as colunas novas
-(`chamados.retornos`, `agenda_campo.resultado`) e nenhuma tela chama as RPCs
-novas. Sem a U150 e a U152 o que falta é COMPORTAMENTO, não tela — o apoio
-automático continua ignorando quem é líder, e o retorno não tem onde ser
-registrado.
+**Servidor: v0.0.7** (192.168.10.182:5555 · grupoprever.ddns.net:5555). O último
+pacote gerado é a **v1.0.1** (`dist-windows/Prever-1.0.1.zip`); a **v1.0.2** foi
+para o `main` (a Lovable publica) e o pacote Windows dela sai quando o Davi pedir
+— o que entrou em cada versão está em `docs/VERSOES.md`.
+
+**A v1.0.2 PODE subir antes de rodar as migrations.** Sem a U153 sobra uma linha
+órfã na matriz; sem a U154 o cargo gestor não existe no banco — o app já o aceita
+nos tipos e na matriz, e nada quebra. A fila "Aguardando retorno" da Gestão
+Técnica lê `chamados.retornos` (U150, rodada).
+
+### A revisão sistêmica (15/09/2026) — v1.0.2: o que está de pé e o que espera o Davi
+
+**O contexto.** O app entrou em **uso oficial** em 15/09/2026 (servidor da
+empresa + DDNS; a Lovable só para ver rápido). O Davi abriu *"uma série de
+alterações […] uma revisão detalhada e sistêmica de tudo o que temos hoje"* e
+ditou seis frentes (R298–R303) e, no meio delas, o cargo Gestor (R304). Tudo o
+que não depende dele está de pé; o que depende está listado abaixo.
+
+**O que está de pé** (medido no navegador a 1366×768, dev server):
+- **Gestão Técnica** (`/gestao-tecnica`): h1 22/700 no gutter de 24; pílula
+  Fechamentos 40/raio 11 e os dois quadrados 42/raio 12 alinhados pelo centro;
+  o dashboard (`DashboardOperacional`) na largura da coluna; os rótulos de seção
+  12/700 `.16em`; o calendário do plantão SEM rolagem lateral (`scrollWidth` =
+  `clientWidth` = 1074) — antes estourava. `/sobreaviso?mes=&dia=&visao=`
+  chega em `/gestao-tecnica` com a mesma busca.
+- **Operacional Técnica**: abre no quadro por dia (Seg–Sáb), HOJE em `#F8C811`
+  com `aria-current="date"`, os outros dias em texto primário; sem o "Ver todos";
+  `prever-operacional-{visao,eixo,lente}` gravados; o botão de ações 26×26 a 9px
+  da borda direita e 10 da base do card; o pop-up abre no `<body>` com z 200 e
+  três itens (Re-agendar · Desmarcar — desabilitado quando o chamado não tem
+  data · Cancelar em vermelho); o passo de cancelar exige motivo (botão
+  desabilitado vazio); Escape fecha. **Um defeito medido e corrigido:** o React
+  esvazia `e.currentTarget` ao fim do handler e o pop-up recebia âncora `null`
+  (`.closest` de null no console) — a âncora é capturada antes do updater.
+- **Administrativo** e **Comercial**: implementados por dois agentes em paralelo,
+  cada um revisado por um cético e corrigido (ver U153 no diário). O ticket
+  médio NÃO entrou: o valor da proposta não é gravado em coluna nenhuma.
+
+**O que espera o Davi:**
+1. Rodar **U153** e **U154**, nesta ordem, e trocar o cargo do **Vinicius** para
+   Gestor na aba Usuários (R304).
+2. **Ticket médio** (R302): qual valor é o ticket — mensal recorrente,
+   implantação, por forma de pagamento? Precisa de coluna nova + gravação na hora
+   de gerar a proposta; até lá o dashboard tem quatro KPIs.
+3. Os **dados do passado** das propostas (ele disse que vai passar à mão):
+   entram como linhas de `visitas_tecnicas` com `proposta_enviada_em` e
+   `servicos_propostos`, por migration.
+4. **Convites pendentes que já entraram** (P75): marcar como aceito quando o
+   GoTrue disser "already registered"? Decisão de produto.
+5. **`SITE_URL` no servidor Windows** (P76): sem ela, o e-mail de convite (e o
+   Reenviar) leva à Lovable. Conferir com o T.I. antes de tirar a Lovable.
+6. **Quem é avisado** (P73): as listas de destinatários do banco não conhecem o
+   gestor — importa no dia em que o Vinicius deixar de ser Admin.
+7. **A hospedagem** — a orientação para validar com o T.I.: sair da Lovable é
+   fácil (`ONBOARDING.md` §6; o passo zero é confirmar que o projeto Supabase é
+   da empresa, em supabase.com). Sair do **Supabase** NÃO é "tirar uma
+   hospedagem": o app depende de auth (38 arquivos), 31 RPCs, 2 buckets, realtime
+   (6 arquivos), 3 Edge Functions e pg_cron (9 migrations). O caminho que preserva
+   o código é **auto-hospedar o Supabase** (Docker) no servidor da empresa;
+   reescrever para Postgres puro são meses. **Backup**: no Supabase gerido, o plano
+   Pro tem PITR; auto-hospedado, `pg_dump` diário + WAL pelo T.I. — os dois
+   caminhos precisam de teste de RESTAURAÇÃO, não só de cópia.
 
 ### A leva do Vinicius (14/09/2026) — o que está de pé e o que ainda é só regra
 
@@ -47,7 +102,7 @@ Ler isto antes de prometer qualquer coisa a alguém.
 | R283 | o campo tem três tipos; vistoria vira interna | **no ar** (U146) |
 | R284 | o campo não tem prazo; a prioridade orienta a data, e "atrasado" é a DATA MARCADA vencida | **no ar** (U147 no banco, U151 na tela) |
 | R285 | a equipe vale do instante da troca; líder + N ajudantes | **no ar** (U142 + U145) |
-| R286 | o retorno é a MESMA atividade, com "Retornado Nx" na etiqueta | banco e lógica prontos (U150) — **falta rodar a migration**; a faixa e o botão vêm depois dela |
+| R286 | o retorno é a MESMA atividade, com "Retornado Nx" na etiqueta | **no ar** (U150 rodada em 15/09) — a fila "Aguardando retorno" está na Gestão Técnica (R300); o botão "Retorno" no card do técnico ainda não |
 | R287 | duração estimada ao abrir o chamado | ditada |
 | R288 | indisponível recusa; deslocamento ocupa a agenda | ditada |
 | R289 | mapa de calor por equipe (por técnico quando solo) | ditada |
@@ -56,9 +111,16 @@ Ler isto antes de prometer qualquer coisa a alguém.
 | R292 | preventiva: uma atividade, roteiro de todos os blocos | ditada |
 | R293 | baixa de equipamento gera UMA atividade para o Gilleno | ditada |
 | R294 | operacional cria atividade, não executa chamado de campo | **no ar** (U144) |
-| R295 | o quadro do Painel Operacional por estado/status/equipe/dia, e o card com a data que o estado pede | **no ar** (U148) — faltam os três botões do card |
+| R295 | o quadro do Painel Operacional por estado/status/equipe/dia, e o card com a data que o estado pede | **no ar** (U148) — os três botões viraram o botão de ações do card (R301) |
 | R296 | a barra do Operacional na régua da Início: indicadores recolhíveis, poucos controles, e ordem na lista | **no ar** (U149) |
-| R297 | na abertura pergunta-se QUEM (a equipe sai); o apoio vem da LIDERANÇA, plural, com foto | tela **no ar** (U152) — **falta rodar a migration U152**, sem ela o banco grava apoio para quem não é líder |
+| R297 | na abertura pergunta-se QUEM (a equipe sai); o apoio vem da LIDERANÇA, plural, com foto | **no ar** (U152 rodada em 15/09) |
+| R298 | Administrativo: sem textos e sem KPIs, pílulas na régua, convites compactos com Reenviar | **no ar** (U153) |
+| R299 | "Sobreaviso" → GESTÃO TÉCNICA: dashboard, Equipes e Fechamentos moram lá; a chave `sobreaviso` fica; `/sobreaviso` redireciona com a busca | **no ar** (U153) |
+| R300 | na Gestão Técnica, indicadores → fila de decisão (retorno · cobrança) → plantão recolhível; o calendário cabe na tela | **no ar** (U153) |
+| R301 | Operacional = a fila: quadro por dia como padrão, preferências no navegador, hoje dourado, botão de ações no card; "Todos os chamados" saiu | **no ar** (U153) — **falta rodar a U153** (a linha órfã da matriz) |
+| R302 | Comercial: dashboard (período · serviço · funil · KPIs), filtro de Tipo de serviço, sem Clientes | **no ar** (U153) — o KPI **ticket médio** espera uma coluna e a decisão do Davi (qual valor) |
+| R303 | títulos, tamanhos, cores e famílias das páginas principais numa escala só | **no ar** (U153) — ver a seção da revisão sistêmica |
+| R304 | o cargo GESTOR (hoje o Vinicius): gestor, vê valores, não administra | tela **no ar** (U154) — **falta rodar a U154** e trocar o cargo do Vinicius na aba Usuários |
 
 Fim de entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
@@ -96,7 +158,7 @@ técnica de campo é o **Vinicius**.
      pontas, a folha do gestor, a chegada por localização (etapa 3).
 5. `docs/PLANO_V0.1.md` — o plano por fases e as perguntas Q1–Q23 com as
    respostas anotadas.
-6. `docs/PRODUTO.md` — TODAS as regras (R1–R297). Não se lê de ponta a ponta:
+6. `docs/PRODUTO.md` — TODAS as regras (R1–R304). Não se lê de ponta a ponta:
    consulta-se pela regra citada no código. O número cresce a cada entrega —
    navegue pelo **sumário do topo**, não por este contador.
 7. `docs/manual/README.md` — o manual por segmento; ler o do segmento em que
@@ -110,7 +172,7 @@ técnica de campo é o **Vinicius**.
    (R229): a versão é o que muda no servidor; a migration é o que muda no
    banco; os dois andam juntos.
 
-## 3. Onde estamos (14/09/2026)
+## 3. Onde estamos (15/09/2026)
 
 **Fases do plano** (`PLANO_V0.1.md` §6): A (dashboard da Operacional
 Técnica) e B (o "+") entregues na U93; o núcleo da H (a estrutura das

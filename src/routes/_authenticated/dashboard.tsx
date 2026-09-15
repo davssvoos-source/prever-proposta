@@ -134,7 +134,8 @@ function InicioDoGestor() {
   const s = sessao ?? { userId: null, cargo: null };
   // quem enxerga a casa inteira — e por isso ganha o filtro por pessoa. O
   // operacional entra (R244: "consegue visualizar todas as atividades de todos")
-  const veTodos = s.cargo === "admin" || s.cargo === "comercial" || s.cargo === "sac" || s.cargo === "operacional";
+  // R304: o gestor também — ele coordena a casa inteira.
+  const veTodos = s.cargo === "admin" || s.cargo === "comercial" || s.cargo === "sac" || s.cargo === "operacional" || s.cargo === "gestor";
 
   const [novaAberta, setNovaAberta] = useState(false);
   /** R175: gráficos, meta, indicadores e o campo de IA recolhidos (preferência) */

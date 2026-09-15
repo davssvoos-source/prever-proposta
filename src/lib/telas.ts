@@ -16,7 +16,9 @@
 // `sempre: true` marca o que não pode ser desmarcado. Perfil é o caso claro:
 // bloquear tiraria o botão de sair do app.
 
-export type PapelPermissao = "tecnico" | "comercial" | "sac" | "operacional";
+// R304 (15/09/2026): entra o GESTOR — quem manda na equipe técnica de campo
+// (hoje o Vinicius). Quinta coluna da matriz; o admin continua fora dela.
+export type PapelPermissao = "tecnico" | "comercial" | "sac" | "operacional" | "gestor";
 
 /**
  * Os quatro que aparecem na matriz. O admin tem tudo por regra de sistema.
@@ -33,6 +35,12 @@ export const PAPEIS: { chave: PapelPermissao; label: string }[] = [
   { chave: "comercial", label: "Comercial" },
   { chave: "sac", label: "SAC" },
   { chave: "operacional", label: "Operacional" },
+  // R304: o Gestor. Suas portas padrão são as da equipe técnica de campo
+  // (Início, Calendário, Clientes, Operacional Técnica, Gestão Técnica,
+  // abrir chamado, criar atividade, programação, Fechamentos, Equipamentos,
+  // Perfil); Administrativo, Comercial e Contratos nascem fechados. O Davi
+  // abre o que quiser aqui na matriz.
+  { chave: "gestor", label: "Gestor" },
 ];
 
 export interface Tela {
@@ -59,13 +67,17 @@ export interface Tela {
 
 const T = (
   chave: string, label: string, rota: string, grupo: string,
-  // [técnico, comercial, sac, operacional?] — o quarto é opcional e FECHADO
-  // por padrão (R244): o operacional só abre o que a regra dele lista
-  padrao: [boolean, boolean, boolean, boolean?],
+  // [técnico, comercial, sac, operacional?, gestor?] — o quarto e o quinto são
+  // opcionais e FECHADOS por padrão (R244, R304): o operacional e o gestor só
+  // abrem o que a regra de cada um lista
+  padrao: [boolean, boolean, boolean, boolean?, boolean?],
   extra: Partial<Tela> = {},
 ): Tela => ({
   chave, label, rota, grupo,
-  padrao: { tecnico: padrao[0], comercial: padrao[1], sac: padrao[2], operacional: padrao[3] ?? false },
+  padrao: {
+    tecnico: padrao[0], comercial: padrao[1], sac: padrao[2],
+    operacional: padrao[3] ?? false, gestor: padrao[4] ?? false,
+  },
   ...extra,
 });
 
@@ -74,8 +86,8 @@ const T = (
 // sempre se comportou, em vez de trancar todo mundo para fora.
 export const TELAS: Tela[] = [
   // ── Trabalho ──────────────────────────────────────────────────────────────
-  T("dashboard", "Início", "/dashboard", "Trabalho", [true, true, true, true], { sempre: true }),
-  T("calendario", "Calendário", "/calendario", "Trabalho", [true, true, true, true], {
+  T("dashboard", "Início", "/dashboard", "Trabalho", [true, true, true, true, true], { sempre: true }),
+  T("calendario", "Calendário", "/calendario", "Trabalho", [true, true, true, true, true], {
     nota: "o técnico vê só o que é dele, por RLS",
   }),
   // U86/R116. Os três nascem TRUE porque a LEITURA é de TODO MUNDO QUE
@@ -100,15 +112,22 @@ export const TELAS: Tela[] = [
   // e na última. A LEITURA da tabela continua aberta a ele pela policy (é o
   // que a Início dele usa para saber que é o plantonista); o que fechou foi
   // a TELA da grade, que é do Vinicius.
-  T("sobreaviso", "Sobreaviso", "/sobreaviso", "Trabalho", [false, true, true], {
-    nota: "a grade é do gestor (e gestor inclui o SAC); o técnico não abre a tela — a semana dele está na Início e no Perfil (R263)",
+  // R299 (15/09/2026): "Sobreaviso" virou "GESTÃO TÉCNICA" — a mesa do
+  // Vinicius: indicadores, equipes, fechamentos, retornos e cobranças a
+  // decidir, e o plantão. A CHAVE NÃO MUDA (é o que está gravado na matriz;
+  // renomear apagaria o que o admin configurou — o mesmo que a
+  // `painel.operacional` fez na R125). Mudam o rótulo e a rota; /sobreaviso
+  // redireciona preservando ?mes=&dia=, porque esse link o gestor manda
+  // para o celular.
+  T("sobreaviso", "Gestão Técnica", "/gestao-tecnica", "Trabalho", [false, true, true, false, true], {
+    nota: "a mesa do gestor da equipe de campo (e o SAC coordena o plantão); o técnico não abre a tela — a semana dele está na Início e no Perfil (R263)",
   }),
 
   // ── Chamados ──────────────────────────────────────────────────────────────
   // R31: a LISTA /chamados morreu — a Início entrega a fila. E os indicadores
   // de campo foram absorvidos pelo Painel Operacional. As duas chaves saíram
   // do catálogo; a U30 apaga as linhas delas no banco.
-  T("chamados.novo", "Abrir chamado", "/chamados/novo", "Chamados", [false, true, true]),
+  T("chamados.novo", "Abrir chamado", "/chamados/novo", "Chamados", [false, true, true, false, true]),
   // R294 (U144): CRIAR ATIVIDADE não é ABRIR CHAMADO DE CAMPO. O pop-up da
   // Início sempre criou `natureza: interno` — nunca abriu chamado —, mas era
   // travado por `chamados.novo`, a chave da triagem de CAMPO. Quem não tinha
@@ -116,12 +135,15 @@ export const TELAS: Tela[] = [
   // programação"), e para o OPERACIONAL, que trabalha na sede e cria as
   // próprias atividades, isso é porta trancada com a placa errada. Foi o que
   // o Erik encontrou.
-  T("atividades.nova", "Criar atividade (Início)", "/dashboard", "Trabalho", [false, true, true, true], {
+  T("atividades.nova", "Criar atividade (Início)", "/dashboard", "Trabalho", [false, true, true, true, true], {
     capacidade: true,
     nota: "o técnico não cria: para ele o chamado vem pela programação (R163)",
   }),
-  T("chamados.painel", "Painel de chamados", "/chamados/painel", "Chamados", [false, true, true]),
-  T("chamados.programacao", "Programação das duplas", "/chamados/programacao", "Chamados", [false, true, true]),
+  // R301 (15/09/2026): "chamados.painel" SAIU — Davi: "remova também a tela da
+  // página Todos os Chamados, pois na verdade, na tela 'Operacional Técnica'
+  // já deverão aparecer TODOS os chamados". A rota só redireciona para a
+  // Operacional; a U153 apaga as linhas dela na matriz.
+  T("chamados.programacao", "Programação das duplas", "/chamados/programacao", "Chamados", [false, true, true, false, true]),
   // R167/U99: "chamados.importar" SAIU — Davi (Q17): "não conheço essa tela,
   // pode deletar ela". A rota só redireciona; a U99 apaga as linhas no banco.
 
@@ -133,7 +155,7 @@ export const TELAS: Tela[] = [
   // invalidaria a linha de permissão de todo mundo (ver o comentário do tipo
   // `Tela`, acima). Só o rótulo mudou, e o painel passou a mostrar só a equipe
   // técnica: é o painel do Vinicius, não a fila de campo de todas as equipes.
-  T("painel.operacional", "Painel Operacional Técnica", "/painel/operacional", "Painéis", [false, true, true], {
+  T("painel.operacional", "Painel Operacional Técnica", "/painel/operacional", "Painéis", [false, true, true, false, true], {
     nota: "fila da equipe TÉCNICA — quem coordena entra por aqui (R26/R95)",
   }),
   // "painel.comercial" não é mais uma tela: o Painel Comercial FUNDIU com a
@@ -164,7 +186,7 @@ export const TELAS: Tela[] = [
   // ── Clientes ──────────────────────────────────────────────────────────────
   // U24: o Davi definiu quem vê a base — admin, comercial e SAC. O técnico
   // chega no cliente pelo chamado dele (detalhe não é gateado), não pela base.
-  T("clientes", "Clientes", "/clientes", "Clientes", [false, true, true, true]),
+  T("clientes", "Clientes", "/clientes", "Clientes", [false, true, true, true, true]),
   // R21: o app não cria nem consolida cliente. As chaves ficam no catálogo
   // (a semente do banco as tem, e o verificador compara os dois) mas negadas
   // para todos; as rotas redirecionam para /clientes.
@@ -182,12 +204,12 @@ export const TELAS: Tela[] = [
   T("contratos", "Contrato do cliente (novo e detalhe)", "/contratos", "Financeiro", [false, true, false], {
     nota: "R132: a lista saiu; abre-se pela ficha do cliente. R13: o SAC não vê valores",
   }),
-  T("fechamentos", "Fechamentos", "/fechamentos", "Financeiro", [false, true, false], {
+  T("fechamentos", "Fechamentos", "/fechamentos", "Financeiro", [false, true, false, false, true], {
     nota: "R13: o SAC não vê valores",
   }),
 
   // ── Conta ─────────────────────────────────────────────────────────────────
-  T("perfil", "Perfil", "/perfil", "Conta", [true, true, true, true], {
+  T("perfil", "Perfil", "/perfil", "Conta", [true, true, true, true, true], {
     sempre: true,
     nota: "é por onde se sai do app",
   }),
@@ -200,7 +222,7 @@ export const TELAS: Tela[] = [
   // excluí-la, e o catálogo do sistema virou "Equipamentos cadastrados", que
   // nasce das variações importadas do QAP. /admin redireciona para cá e a
   // U109 apaga a linha órfã da matriz.
-  T("equipamentos", "Equipamentos cadastrados", "/equipamentos", "Administração", [false, true, false], {
+  T("equipamentos", "Equipamentos cadastrados", "/equipamentos", "Administração", [false, true, false, false, true], {
     nota: "o catálogo: uma linha por variação (almoxarifado, nome, modelo, fabricante). Vai receber VALOR, e valor é de admin e comercial (R13/R164) — por isso o SAC não entra",
   }),
 ];

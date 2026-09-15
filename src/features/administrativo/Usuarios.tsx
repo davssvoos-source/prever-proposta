@@ -19,10 +19,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { UserPlus, Shield, Trash2, Mail, AlertTriangle, RotateCcw, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { enviarConvite } from "@/lib/convites.functions";
+import { enviarConvite, reenviarConvite } from "@/lib/convites.functions";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
-import { etiqueta } from "@/lib/ui";
+import { etiqueta, goldButton, rotuloDeSecao } from "@/lib/ui";
+import { PRISMA, cinzas } from "@/lib/paleta";
 import { EQUIPES, EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 
 const L = {
@@ -42,24 +43,47 @@ const L = {
   inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
 
-type CargoId = "tecnico" | "sac" | "comercial" | "admin" | "operacional";
+// R304 (15/09/2026): entra o GESTOR — quem manda na equipe técnica de campo
+// (hoje o Vinicius, que era admin por falta de um cargo que dissesse o que ele é)
+type CargoCfg = { label: string; color: string; desc: string };
+type CargoLight = { color: string; bg: string; border: string };
 
-const CARGO_LIGHT: Record<string, { color: string; bg: string; border: string }> = {
+// As cores do tema claro por cargo — chaveado por CargoId: um cargo novo em
+// CARGO_CONFIG sem par aqui não compila (as duas listas não desandam).
+const CARGO_LIGHT: Record<CargoId, CargoLight> = {
   tecnico:   { color: "#15803d", bg: "#dcfce7", border: "1px solid #bbf7d0" },
   sac:       { color: "#6d28d9", bg: "#ede9fe", border: "1px solid #ddd6fe" },
   comercial: { color: "#1d4ed8", bg: "#dbeafe", border: "1px solid #bfdbfe" },
   admin:     { color: "#A63E17", bg: "#fef3c7", border: "1px solid #fde68a" },
   operacional: { color: "#0369a1", bg: "#e0f2fe", border: "1px solid #bae6fd" },
+  // R304: o dourado da marca para quem manda no campo — o par vem de
+  // paleta.ts (PRISMA.amarelo), nenhum hex novo
+  gestor:    { color: PRISMA.amarelo.light, bg: PRISMA.amarelo.bg, border: `1px solid ${PRISMA.amarelo.border}` },
 };
 
-const CARGO_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
+// A ÚNICA lista de cargos da tela: o select de aprovar, os botões do convite e
+// os da edição iteram este mapa, e CargoId deriva dele. Enumerar à mão em outro
+// lugar foi o que deixou o SAC fora do select de aprovar por meses (o Gilleno
+// É SAC) — duas listas desandam; uma não.
+const CARGO_CONFIG = {
   tecnico:   { label: "Técnico",   color: "#2DD2A5", desc: "Executa o que está atribuído a ele (3 abas)" },
   sac:       { label: "SAC",       color: "#A78BFA", desc: "Gestor de chamados — abre e acompanha tudo, não vê valores" },
   comercial: { label: "Comercial", color: "#60A5FA", desc: "Gestor que vê valores: propostas, contratos e fechamentos" },
   admin:     { label: "Admin",     color: "#F17881", desc: "Acesso total + gerenciamento de usuários" },
   // R244 (Davi, 10/09/2026): vê todas as atividades; Início, Calendário, Clientes e Perfil
   operacional: { label: "Operacional", color: "#5CB7E5", desc: "Vê todas as atividades de todos; Início, Calendário, Clientes e Perfil" },
-};
+  // R304 (Davi, 15/09/2026): "Vou criar um novo cargo chamado Gestor, que
+  // atualmente o Vinicius quem faz este papel." Coordena, programa, escala,
+  // fecha e cobra; vê valores; não convida, não aprova, não altera permissões.
+  gestor:    { label: "Gestor",    color: PRISMA.amarelo.dark, desc: "Manda na equipe técnica de campo: coordena, programa, escala, fecha e cobra — vê valores, não é admin" },
+} satisfies Record<string, CargoCfg>;
+
+/** Os seis cargos, derivados do mapa — não há segunda lista para desandar. */
+type CargoId = keyof typeof CARGO_CONFIG;
+/** As entradas do mapa, tipadas, para quem desenha um botão ou uma opção por cargo. */
+const CARGOS = Object.entries(CARGO_CONFIG) as [CargoId, CargoCfg][];
+/** O cargo lido do banco é string; só os do mapa têm configuração (dado velho fica sem). */
+const ehCargo = (c: string): c is CargoId => Object.hasOwn(CARGO_CONFIG, c);
 
 type StaffUser = {
   id: string;
@@ -86,10 +110,16 @@ function iniciais(nome: string) {
   return (nome ?? "?").split(" ").slice(0, 2).map((p) => p[0]).join("").toUpperCase();
 }
 
+/** "15/09" — a data em que o convite saiu, na linha compacta (R298). */
+function dataDoConvite(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
 export function GestaoDeUsuarios() {
   const { isLight } = useTheme();
   const qc = useQueryClient();
   const enviarConviteFn = useServerFn(enviarConvite);
+  const reenviarConviteFn = useServerFn(reenviarConvite);
 
   const [showInvite, setShowInvite] = useState(false);
   const [inviteNome, setInviteNome] = useState("");
@@ -144,13 +174,10 @@ export function GestaoDeUsuarios() {
     display: "block",
   };
 
+  // R298: o rótulo de seção é o do design system (DS §6.2, 12/700 .16em) —
+  // era uma constante própria de 10/400, a única da tela fora da régua
   const SECTION_TITLE: CSSProperties = {
-    fontFamily: "var(--fonte)",
-    fontWeight: 400,
-    fontSize: 10,
-    color: isLight ? "rgba(0,0,0,0.45)" : "rgba(248,200,17,0.55)",
-    letterSpacing: "0.12em",
-    textTransform: "uppercase",
+    ...rotuloDeSecao(isLight),
     marginBottom: 12,
     marginTop: 24,
   };
@@ -212,7 +239,6 @@ export function GestaoDeUsuarios() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["solicitacoes-pendentes"] });
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
-      qc.invalidateQueries({ queryKey: ["painel-admin-numeros"] });
       setAprovarId(null);
       toast.success("Usuário aprovado com sucesso!");
     },
@@ -229,7 +255,6 @@ export function GestaoDeUsuarios() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["solicitacoes-pendentes"] });
-      qc.invalidateQueries({ queryKey: ["painel-admin-numeros"] });
       toast.success("Solicitação rejeitada.");
     },
     onError: () => toast.error("Erro ao rejeitar."),
@@ -249,6 +274,19 @@ export function GestaoDeUsuarios() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["convites-pendentes"] });
       toast.success("Convite cancelado.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // R298: REENVIAR o convite — a mesma linha de `convites`, o mesmo e-mail, um
+  // novo envio pelo GoTrue (server function `reenviarConvite`). Não é um
+  // convite novo: nada é inserido, e a lista não ganha um segundo card. A
+  // invalidação é só para a lista refletir um cancelamento feito em outra aba.
+  const reenviarConviteMutation = useMutation({
+    mutationFn: async (c: Convite) => await reenviarConviteFn({ data: { id: c.id } }),
+    onSuccess: (_r, c) => {
+      qc.invalidateQueries({ queryKey: ["convites-pendentes"] });
+      toast.success(`Convite reenviado para ${c.email}`);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -284,7 +322,6 @@ export function GestaoDeUsuarios() {
       qc.invalidateQueries({ queryKey: ["pessoas-ativas"] });
       qc.invalidateQueries({ queryKey: ["tecnicos-ativos"] });
       qc.invalidateQueries({ queryKey: ["perfis-ativos-nomes"] });
-      qc.invalidateQueries({ queryKey: ["painel-admin-numeros"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -315,7 +352,6 @@ export function GestaoDeUsuarios() {
       qc.invalidateQueries({ queryKey: ["bottomnav-cargo"] });
       qc.invalidateQueries({ queryKey: ["tecnicos-ativos"] });
       qc.invalidateQueries({ queryKey: ["perfis-ativos-nomes"] });
-      qc.invalidateQueries({ queryKey: ["painel-admin-numeros"] });
     },
     onError: (e: Error) => {
       console.error("[editCargo] mutation error:", e);
@@ -343,7 +379,6 @@ export function GestaoDeUsuarios() {
       toast.success("Usuário desativado");
       setDeleteConfirm(null);
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
-      qc.invalidateQueries({ queryKey: ["painel-admin-numeros"] });
     },
     onError: (e: Error) => {
       console.error("[deleteMutation] mutation error:", e);
@@ -369,7 +404,6 @@ export function GestaoDeUsuarios() {
     onSuccess: () => {
       toast.success("Usuário reativado");
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
-      qc.invalidateQueries({ queryKey: ["painel-admin-numeros"] });
     },
     onError: (e: Error) => {
       console.error("[reativarMutation] mutation error:", e);
@@ -380,37 +414,37 @@ export function GestaoDeUsuarios() {
   const ativos = usuarios.filter((u) => u.ativo !== false);
   const inativos = usuarios.filter((u) => u.ativo === false);
 
+  // a escala de cinza do tema (R186) — a linha compacta de convite e os botões
+  // dela saem daqui, não de hex solto
+  const cz = cinzas(isLight);
+  // qual convite está saindo agora — só esse diz "Enviando…"
+  const reenviandoId = reenviarConviteMutation.isPending ? reenviarConviteMutation.variables?.id ?? null : null;
+
   return (
     <div style={{ color: isLight ? L.text : "#F2F2F2" }}>
-      {/* Cabeçalho da seção: contagem e o botão de convidar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{
-            fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 15.5,
-            color: isLight ? L.text : "#fff",
-          }}>
-            Usuários
-          </div>
-          <div style={{
-            fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11.5,
-            color: isLight ? L.textMuted : "rgba(255,255,255,0.5)",
-          }}>
-            {ativos.length} ativo{ativos.length !== 1 ? "s" : ""}
-            {convitesPendentes.length > 0 && ` · ${convitesPendentes.length} convite${convitesPendentes.length !== 1 ? "s" : ""} pendente${convitesPendentes.length !== 1 ? "s" : ""}`}
-            {" · "}a equipe define de quem é a fila; o cargo define o que se vê
-          </div>
-        </div>
+      {/* Cabeçalho da seção: só o botão de convidar, à direita.
+        * R298 (Davi, 15/09/2026): a linha "N ativos · N convites pendentes · a
+        * equipe define de quem é a fila; o cargo define o que se vê" SAIU. As
+        * contagens já estão nos rótulos de cada seção logo abaixo ("Usuários
+        * Ativos (N)", "Convites Pendentes (N)"), e a regra que a frase
+        * resumia continua valendo e mora no cabeçalho deste arquivo e no
+        * diálogo de edição: equipe é ROTEAMENTO (de quem é a fila de
+        * demandas), cargo é PERMISSÃO (o que se vê).
+        * O título "Usuários" (15.5/700) também SAIU: repetia a pílula ativa da
+        * barra logo acima — é ela o rótulo da seção (o painel aponta
+        * aria-labelledby="adm-usuarios" para a pílula) — e 15.5 não está na
+        * escala de fonte. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, marginBottom: 6 }}>
+        {/* R298: a ação principal na régua da barra (DS §6.26 — altura 40,
+            raio 11), no dourado de ação do design system */}
         <button
           onClick={() => setShowInvite(true)}
           style={{
-            background: "linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A)",
-            border: "none", borderRadius: 12, padding: "10px 16px",
-            display: "flex", alignItems: "center", gap: 8,
-            color: "#0E0E0E", fontFamily: "var(--fonte)",
-            fontWeight: 600, fontSize: 12, cursor: "pointer",
+            ...goldButton(), height: 40, paddingInline: 14, borderRadius: 11, flexShrink: 0,
+            display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, whiteSpace: "nowrap",
           }}
         >
-          <UserPlus size={16} />
+          <UserPlus size={17} />
           Convidar
         </button>
       </div>
@@ -448,7 +482,7 @@ export function GestaoDeUsuarios() {
             <div>
               <label style={LABEL}>Cargo / Nível de acesso</label>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(Object.entries(CARGO_CONFIG) as [CargoId, typeof CARGO_CONFIG[string]][]).map(([id, cfg]) => {
+                {CARGOS.map(([id, cfg]) => {
                   const lightCfg = CARGO_LIGHT[id];
                   return (
                     <button
@@ -560,10 +594,15 @@ export function GestaoDeUsuarios() {
                           color: isLight ? L.text : "#FFFFFF", fontSize: 13, cursor: "pointer", outline: "none",
                         }}
                       >
-                        <option value="tecnico" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Técnico</option>
-                        <option value="comercial" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Comercial</option>
-                        <option value="operacional" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Operacional</option>
-                        <option value="admin" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Admin</option>
+                        {/* As opções saem do MESMO mapa dos botões de convite e
+                          * de edição (CARGOS) — a lista à mão que morava aqui
+                          * nunca teve o SAC (o Gilleno É SAC) e teria de lembrar
+                          * de cada cargo novo (R244 operacional, R304 gestor). */}
+                        {CARGOS.map(([id, cfg]) => (
+                          <option key={id} value={id} style={{ background: isLight ? cz.superficie : cz.pagina }}>
+                            {cfg.label}
+                          </option>
+                        ))}
                       </select>
                       <button
                         onClick={() => aprovarMutation.mutate({ userId: s.id, cargo: aprovarCargo })}
@@ -623,57 +662,96 @@ export function GestaoDeUsuarios() {
         </>
       )}
 
-      {/* Convites pendentes */}
+      {/* Convites pendentes — R298 (Davi, 15/09/2026): "torne a lista de
+        * convites pendentes mais compacta, ela está ocupando muito espaço na
+        * tela, ainda assim não deixe de respeitar margens, espaçamentos,
+        * tamanhos de fonte." Era um card de vidro (raio 18, padding 16) por
+        * convite; virou UMA LINHA de 44px: nome, e-mail, cargo e data à
+        * esquerda, Reenviar e Cancelar à direita. O chip de estado saiu —
+        * toda linha desta seção é pendente por definição (a consulta filtra
+        * `status = 'pendente'`), então ele só repetia o título. Os dois botões
+        * estão na régua de Editar/Desativar da lista de ativos, nesta mesma
+        * tela: 36 de altura, raio 10 (36 + 2×4 de paddingBlock = os 44 da
+        * linha). */}
       {convitesPendentes.length > 0 && (
         <>
           <div style={SECTION_TITLE}>Convites Pendentes ({convitesPendentes.length})</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
             {convitesPendentes.map((c) => (
-              <div key={c.id} style={{ ...GLASS, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13,
-                    color: isLight ? L.text : "#fff",
+              <div key={c.id} style={{
+                display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+                minHeight: 44, paddingInline: 12, paddingBlock: 4, borderRadius: 12,
+                background: cz.elevada, border: `1px solid ${cz.divisoria}`,
+              }}>
+                <Mail size={13} style={{ flexShrink: 0, color: cz.textoSecundario }} aria-hidden />
+                <div style={{
+                  flex: "1 1 200px", minWidth: 0,
+                  display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap",
+                  fontFamily: "var(--fonte)", fontSize: 12.5, lineHeight: 1.3,
+                }}>
+                  <span style={{
+                    fontWeight: 600, color: cz.texto,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%",
                   }}>
                     {c.nome}
-                  </div>
-                  <div style={{
-                    fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
-                    color: isLight ? L.textMuted : "rgba(255,255,255,0.5)",
-                    display: "flex", alignItems: "center", gap: 6, marginTop: 2,
+                  </span>
+                  <span style={{
+                    fontWeight: 400, color: cz.textoSecundario, minWidth: 0,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%",
                   }}>
-                    <Mail size={11} />
-                    {c.email} · {CARGO_CONFIG[c.cargo]?.label ?? c.cargo}
-                  </div>
+                    {c.email}
+                  </span>
+                  <span style={{ fontWeight: 400, color: cz.textoSecundario, whiteSpace: "nowrap" }}>
+                    · {ehCargo(c.cargo) ? CARGO_CONFIG[c.cargo].label : c.cargo}
+                  </span>
+                  <span
+                    title="Data do convite"
+                    style={{ fontWeight: 400, color: cz.textoSecundario, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}
+                  >
+                    · {dataDoConvite(c.created_at)}
+                  </span>
                 </div>
-                <div style={{
-                  fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 10,
-                  color: isLight ? "#A63E17" : "#F8C811",
-                  padding: "4px 10px", borderRadius: 999,
-                  background: isLight ? "#fef3c7" : "rgba(248,200,17,0.10)",
-                  border: isLight ? "1px solid #fde68a" : "1px solid rgba(248,200,17,0.25)",
-                  flexShrink: 0,
-                }}>
-                  Aguardando
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: "auto" }}>
+                  {/* R298: reenviar — a mesma linha, o mesmo e-mail, um novo envio
+                    * (server function `reenviarConvite`). Enquanto um está saindo,
+                    * todos ficam travados para não disparar dois de uma vez; só o
+                    * que está saindo diz "Enviando…". */}
+                  <button
+                    onClick={() => reenviarConviteMutation.mutate(c)}
+                    disabled={reenviarConviteMutation.isPending}
+                    title="Reenviar convite"
+                    style={{
+                      height: 36, paddingInline: 12, borderRadius: 10, flexShrink: 0,
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      background: cz.superficie, border: `1px solid ${cz.divisoria}`, color: cz.texto,
+                      fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap",
+                      cursor: reenviarConviteMutation.isPending ? "not-allowed" : "pointer",
+                      opacity: reenviarConviteMutation.isPending && reenviandoId !== c.id ? 0.6 : 1,
+                    }}
+                  >
+                    <RotateCcw size={13} aria-hidden />
+                    {reenviandoId === c.id ? "Enviando…" : "Reenviar"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Cancelar o convite de ${c.nome}?`)) cancelarConviteMutation.mutate(c.id);
+                    }}
+                    disabled={cancelarConviteMutation.isPending}
+                    title="Cancelar convite"
+                    aria-label="Cancelar convite"
+                    style={{
+                      width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                      background: isLight ? "#fee2e2" : "rgba(239,68,68,0.10)",
+                      border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.25)",
+                      color: isLight ? "#dc2626" : "#E64D58",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: cancelarConviteMutation.isPending ? "not-allowed" : "pointer",
+                      opacity: cancelarConviteMutation.isPending ? 0.6 : 1,
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    if (confirm(`Cancelar o convite de ${c.nome}?`)) cancelarConviteMutation.mutate(c.id);
-                  }}
-                  disabled={cancelarConviteMutation.isPending}
-                  title="Cancelar convite"
-                  style={{
-                    width: 30, height: 30, borderRadius: 9, flexShrink: 0,
-                    background: isLight ? "#fee2e2" : "rgba(239,68,68,0.10)",
-                    border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.25)",
-                    color: isLight ? "#dc2626" : "#E64D58",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: cancelarConviteMutation.isPending ? "not-allowed" : "pointer",
-                    opacity: cancelarConviteMutation.isPending ? 0.6 : 1,
-                  }}
-                >
-                  <X size={14} />
-                </button>
               </div>
             ))}
           </div>
@@ -689,8 +767,8 @@ export function GestaoDeUsuarios() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {ativos.map((u) => {
-            const cfg = CARGO_CONFIG[u.cargo] ?? { label: u.cargo, color: "#9CA3AF", desc: "" };
-            const lightCfg = CARGO_LIGHT[u.cargo] ?? { color: "#4b5563", bg: "#f4f4f4", border: "1px solid #e7e7e7" };
+            const cfg: CargoCfg = ehCargo(u.cargo) ? CARGO_CONFIG[u.cargo] : { label: u.cargo, color: "#9CA3AF", desc: "" };
+            const lightCfg: CargoLight = ehCargo(u.cargo) ? CARGO_LIGHT[u.cargo] : { color: "#4b5563", bg: "#f4f4f4", border: "1px solid #e7e7e7" };
             return (
               <div key={u.id} style={{ ...GLASS, padding: "14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -870,7 +948,7 @@ export function GestaoDeUsuarios() {
               {editingUser.nome}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              {Object.entries(CARGO_CONFIG).map(([id, cfg]) => {
+              {CARGOS.map(([id, cfg]) => {
                 const lightCfg = CARGO_LIGHT[id];
                 return (
                   <button

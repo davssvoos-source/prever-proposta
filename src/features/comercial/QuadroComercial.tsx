@@ -33,7 +33,7 @@ const LARGURA_MINIMA_COLUNA = 200;
 
 interface Props {
   visitas: VisitaDoPainel[];
-  /** quais colunas mostrar (o chip de etapa escolhe uma; "todas" traz o ciclo) */
+  /** quais colunas mostrar — a página passa sempre ETAPA_ORDEM desde a R302 (os chips por etapa saíram); a prop fica porque o quadro não sabe quem o usa */
   colunas: EtapaComercial[];
   tecMap: Map<string, string | null>;
   isAdmin?: boolean;

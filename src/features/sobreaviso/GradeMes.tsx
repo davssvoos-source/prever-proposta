@@ -117,10 +117,22 @@ export function GradeMes({
     borderRight: linhaFina, padding: "8px 12px", minWidth: 190, maxWidth: 190,
     display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
   };
+  /**
+   * R300 C (Davi, 15/09/2026: "O campo 'Calendário do Plantão' não está se
+   * adaptando ao tamanho da tela"). MEDIDO: o card pedia `max-content` e os
+   * `<input type="number">` das células engordavam a largura intrínseca de
+   * cada coluna — a grade estourava a coluna da página e rolava de lado com a
+   * barra escondida. Agora a grade ocupa 100% e cada dia tem piso de 28px:
+   * 190 + 31×28 = 1058 ≤ 1086 (1366 de viewport − 232 do menu − 2×24 de
+   * gutter) — o mês inteiro cabe no menor desktop da casa sem rolar. Abaixo
+   * disso o card rola de lado COM barra visível (`overflow: auto`), em vez
+   * de cortar.
+   */
   const gradeEstilo: CSSProperties = {
     display: "grid",
-    gridTemplateColumns: `190px repeat(${n}, minmax(36px, 1fr))`,
-    minWidth: 190 + n * 36,
+    gridTemplateColumns: `190px repeat(${n}, minmax(28px, 1fr))`,
+    minWidth: 190 + n * 28,
+    width: "100%",
   };
 
   if (grade.linhas.length === 0) {
@@ -161,7 +173,7 @@ export function GradeMes({
       }}
       style={{ outline: "none" }}
     >
-      <div style={{ ...card(isLight), overflow: "clip", minWidth: "max-content" }}>
+      <div style={{ ...card(isLight), overflow: "auto" }}>
         <div style={gradeEstilo}>
           {/* ── cabeçalho: dia da semana + número ── */}
           <div style={{ ...colunaFixa, gridRow: 1, gridColumn: 1, borderBottom: linhaFina }}>
@@ -273,7 +285,9 @@ export function GradeMes({
                           title={grade.colunas[i].rotulo ?? undefined}
                           aoDefinir={(h) => aoDefinir!(cel.dia, l.pessoa.id, h)}
                           estilo={{
-                            width: "100%", height: 30, border: "none", background: "transparent",
+                            // border-box: a `.celula-horas` tem padding-left 13px (R256), e em
+                            // content-box o campo estourava a célula por esses 13px
+                            width: "100%", height: 30, border: "none", background: "transparent", boxSizing: "border-box",
                             textAlign: "center", fontFamily: FONT, fontSize: 12, fontWeight: 600,
                             color: textPrimary, outline: "none", position: "relative", zIndex: 1,
                             colorScheme: isLight ? "light" : "dark",

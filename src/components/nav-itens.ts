@@ -2,7 +2,7 @@
 // barra inferior (celular) consomem. Antes cada uma teria a sua lista, e a
 // primeira mudança de menu faria as duas divergirem.
 
-import { Building2, Calendar, Gauge, Home, LayoutGrid, ShieldAlert, User, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, Gauge, Home, LayoutGrid, User, Wrench, type LucideIcon } from "lucide-react";
 
 export interface ItemNav {
   to: string;
@@ -45,10 +45,14 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       // direto para ela, sem painel-índice no meio.
       { to: "/painel/operacional", label: "Operacional Técnica", labelCurto: "Técnica", icon: Gauge, tela: "painel.operacional" },
       { to: "/gerencial", label: "Comercial", icon: LayoutGrid, tela: "gerencial", soDesktop: true },
-      // U86: a grade do sobreaviso. SÓ DESKTOP — a barra do celular tem 5 vagas
-      // e elas já estavam tomadas. O caminho móvel é o LINK com `?mes=`/`?dia=`,
-      // que é o que o gestor manda do desktop, e a rota cai na projeção do dia.
-      { to: "/sobreaviso", label: "Sobreaviso", icon: ShieldAlert, tela: "sobreaviso", soDesktop: true },
+      // R299: a GESTÃO TÉCNICA (era "Sobreaviso", U86) — a mesa do gestor da
+      // equipe de campo. SÓ DESKTOP — a barra do celular tem 5 vagas e elas já
+      // estavam tomadas. O caminho móvel continua sendo o LINK com
+      // `?mes=`/`?dia=` (o /sobreaviso antigo redireciona preservando-o).
+      // R304: o GESTOR recebe esta mesma barra — `useUserCargo` o põe no
+      // balde "admin" da interface, e a matriz fecha por cima o que ele não
+      // abre (Administrativo, Comercial).
+      { to: "/gestao-tecnica", label: "Gestão Técnica", icon: Wrench, tela: "sobreaviso", soDesktop: true },
       { to: "/painel/administrativo", label: "Administrativo", icon: Building2, tela: "painel.administrativo", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
@@ -66,7 +70,7 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       { to: "/painel/operacional", label: "Operacional Técnica", labelCurto: "Técnica", icon: Gauge, tela: "painel.operacional" },
       { to: "/gerencial", label: "Comercial", icon: LayoutGrid, tela: "gerencial", soDesktop: true },
       // O SAC coordena o plantão — a escala existe PARA ele. Só desktop, mesmo motivo.
-      { to: "/sobreaviso", label: "Sobreaviso", icon: ShieldAlert, tela: "sobreaviso", soDesktop: true },
+      { to: "/gestao-tecnica", label: "Gestão Técnica", icon: Wrench, tela: "sobreaviso", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
   }

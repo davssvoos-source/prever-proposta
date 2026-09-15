@@ -117,7 +117,11 @@ const EMBEDS =
  * A lista completa: a base, as colunas da U96 (impacto e proposta), a da U99
  * (`data_agendada`, R168) e os embeds.
  */
-export const CAMPOS_CHAMADO = CAMPOS_BASE + ", impacto_operacional, proposta_id, data_agendada, " + EMBEDS;
+// R286/R300 (U150 rodada em 15/09/2026): `retornos` é a contagem de idas
+// extras da MESMA atividade — a fila "Aguardando retorno" da Gestão Técnica
+// lê esta coluna (`retornoPendente`); sem ela no select a fila seria sempre
+// vazia, com a mesma cara de "nada pendente".
+export const CAMPOS_CHAMADO = CAMPOS_BASE + ", impacto_operacional, proposta_id, data_agendada, retornos, " + EMBEDS;
 
 /** Lista completa — a RLS já limita o técnico aos chamados dele. */
 export function useChamados() {

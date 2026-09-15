@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 176 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 178 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -179,6 +179,8 @@
 - [U150 — o retorno é a mesma atividade (R286)](#u150-o-retorno-é-a-mesma-atividade-r286)
 - [U151 — o que a auditoria de início de sessão achou (R284 inteira, e três defeitos na U150 antes de o Davi rodar)](#u151-o-que-a-auditoria-de-início-de-sessão-achou-r284-inteira-e-três-defeitos-na-u150-antes-de-o-davi-rodar)
 - [U152 — na abertura pergunta-se QUEM, e o apoio vem da liderança (R297)](#u152-na-abertura-pergunta-se-quem-e-o-apoio-vem-da-liderança-r297)
+- [U153 — v1.0.2: a revisão sistêmica começa — a Gestão Técnica, a Operacional como fila, o Administrativo e o Comercial (R298–R303)](#u153-v102-a-revisão-sistêmica-começa-a-gestão-técnica-a-operacional-como-fila-o-administrativo-e-o-comercial-r298r303)
+- [U154 — o cargo GESTOR (R304)](#u154-o-cargo-gestor-r304)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -14593,3 +14595,200 @@ quando a palavra colide.
 **Números.** Verificador: **3.532 asserções, 0 falharam**. `tsc`: 0. `vite build` completa.
 Migrations **U150 e U152 PENDENTES** — a U152 é a que faz o banco concordar com
 a tela nova.
+
+## U153 — v1.0.2: a revisão sistêmica começa — a Gestão Técnica, a Operacional como fila, o Administrativo e o Comercial (R298–R303)
+
+**O pedido.** Davi, 15/09/2026, no dia em que o app entrou em uso oficial:
+*"Neste prompt, nós iremos dar inicio à uma série de alterações no sistema, onde
+o objetivo é fazer uma revisão detalhada e sistêmica de tudo o que temos hoje, e
+a partir dessa revisão, o sistema tenda a ter melhor usabilidade pelos
+usuários."* Seis frentes (I–V mais a hospedagem), com a instrução *"Faça somente
+as solicitações do prompt, caso tenha dúvidas estou a disposição"* e o fecho
+*"Terminando, pode subir na Lovable"*. As regras nasceram ANTES do código
+(R298–R303, uma por frente, cada uma com as frases dele), e no meio da leva ele
+acrescentou o cargo Gestor (R304 — U154).
+
+### Como a leva foi feita
+
+Primeiro um mapa: oito leitores em paralelo sobre as oito frentes (Administrativo,
+Sobreaviso, Operacional, Todos os chamados, Comercial, navegação, design system,
+ações do card), cada um devolvendo arquivo:linha, riscos e os pinos do verificador
+que a mudança quebraria. Depois, a divisão por ARQUIVO: o Administrativo (A) e o
+Comercial (D) não tocam em nada do que a Gestão Técnica e a Operacional tocam,
+então foram para dois agentes em paralelo — cada um implementou, um cético leu o
+diff contra a regra, e um terceiro corrigiu o que o cético pegou. A parte que
+atravessa arquivos (o dashboard que muda de tela, a rota que muda de nome, a
+chave que fica, o verificador, o banco, os documentos) ficou comigo.
+
+Dois limites de sessão derrubaram os agentes no meio (14:30 e 19:30): o
+primeiro antes de tocarem em qualquer arquivo (conferido pelo `git status`), o
+segundo na etapa de correção — os relatórios dos céticos sobreviveram no diário
+do workflow e a correção foi relançada com a lista JÁ DECIDIDA por mim (o que
+aceitar, o que recusar, o que era meu). Um agente não decide política de
+produto; decide quem orquestra.
+
+### I — o Administrativo (R298)
+
+Saíram os quatro textos (o porquê ficou em comentário), os KPIs e a consulta que
+só eles ouviam, e o atalho de Fechamentos (foi para a Gestão Técnica). A tela
+virou título → barra de pílulas → UMA aba no card da largura toda. **A régua da
+barra subiu para `ui.ts`** (`pilulaDaBarra`, `botaoDaBarra`): copiar a função
+local da Operacional para o Administrativo seria a quarta cópia do número, que é
+o defeito que a R296 apontou; o verificador passou a contar os usos por tela e a
+proibir a função local. Os convites pendentes viraram uma linha de 44px com
+**Reenviar** — server function nova, mesma linha de `convites`, mesmo e-mail, um
+novo `inviteUserByEmail`; sem INSERT.
+
+O cético pegou três coisas fora do prompt, e as três ficaram ditas: o `<select>`
+de aprovar solicitação nunca ofereceu SAC (o Gilleno É SAC) — passou a iterar
+`CARGO_CONFIG`, uma lista só, e o SAC apareceu; `isAdmin` lia o PERFIL DE
+INTERFACE (`useUserCargo`), que devolve "admin" também para comercial e agora
+para gestor — passou a ler o cargo cru de `profiles` (`usePermissoes().cargo`);
+e `convites.status` nunca vira "aceito" (P75).
+
+### II — a Gestão Técnica (R299, R300)
+
+"Sobreaviso" virou "Gestão Técnica" e a **chave de permissão continua
+`sobreaviso`** — é o que está gravado na matriz, e renomear a chave apagaria o
+que o admin configurou (a mesma decisão da `painel.operacional`, R125). Mudaram
+rótulo e rota; `/sobreaviso` redireciona **preservando `?mes=&dia=&visao=`**,
+porque esse link é o que o gestor manda para o celular. A tela nova é a cópia da
+antiga com três coisas em cima e o plantão embaixo, recolhível.
+
+**O dashboard mudou de tela sem mudar de desenho.** `painel.operacional.tsx` foi
+FATIADO por âncoras únicas — as constantes, os hooks, as quatro peças (Cabeca,
+Tile, Ranking, PainelObras) e os 330 linhas de JSX foram para
+`features/paineis/DashboardOperacional.tsx` exatamente como estavam. O que
+mudou de dono: o clique do KPI (a hospedeira decide — a Gestão Técnica navega
+para a Operacional com `?kpi=`, e a Operacional recorta com a MESMA
+`chamadosDoKpi`; a invariante "quem conta é quem filtra" atravessa a tela), o
+clique da obra (abre no painel lateral da hospedeira) e o recolher (chave
+própria da Gestão Técnica). Vinte e poucos blocos do verificador que leem o
+arquivo da Operacional foram re-apontados um a um — bloco inteiro quando era só
+dashboard, variável a mais quando o bloco misturava lista e dashboard —, e cada
+um passou a exigir o comportamento NOVO (o clique entrega a chave; a porta das
+equipes mora na Gestão Técnica).
+
+**A fila de decisão (R300)** não conta nada: `filaDeRetornos` (R286, lê
+`chamados.retornos` — que faltava no select; sem ela a fila seria sempre vazia
+com a cara de "nada pendente") e `chamadosDoKpi("aguardando_conferencia")`
+(R125). Erro, carregando e vazio são três telas, e o erro vem antes. Teto de
+doze por grupo; o resto vai para a Operacional pelo mesmo KPI.
+
+**O calendário do plantão (R300 C)** estourava porque o card pedia `max-content`
+e os `<input type="number">` engordavam a largura intrínseca de cada coluna.
+MEDIDO a 1366×768: a coluna útil é 1076 (1366 − 232 do menu − 2×24 de gutter);
+com piso de 28px por dia, 190 + 31×28 = 1058 cabe, e `scrollWidth` =
+`clientWidth` = 1074 — sem rolagem lateral. A célula passou a `border-box`
+(a `.celula-horas` tem padding-left 13px e, em content-box, estourava a célula).
+
+Medido também, e NÃO consertado (não estava no prompt): o orçamento de largura
+do dashboard ignora os gutters, e a 1366 a coluna das implantações quebra para
+baixo (714px de faixa em vez de 350). Já era assim na Operacional. Está em P77.
+
+### III — a Operacional como fila (R301)
+
+O "Ver todos os chamados" saiu e `/chamados/painel` virou redirect (a U153 apaga
+a chave; o verificador exige o redirect e a ausência de guarda). O padrão virou
+o quadro por DIA — revisa a R295, que dizia `estado` —, e visão, eixo e lente
+ficam no navegador, UMA chave por coisa, lidas por `lerPreferencia`, que só
+aceita valor da lista (localStorage é entrada de usuário como a URL). Os dias se
+leem em texto primário; HOJE em dourado — `PRIMARIA.light` (#A06108) no claro,
+porque é dourado de TEXTO, e `#F8C811` no escuro —, com `aria-current="date"`.
+
+**O botão de ações do card.** O card virou `<div role="button" tabIndex={0}>`
+(botão dentro de botão é HTML inválido e o clique vaza), `position: relative`, e
+o botão circular de 26px mora no canto inferior direito com as cores em CSS
+(par claro/escuro) e o hover dourado com glow dentro da media query de ponteiro
+fino — o vocabulário de AÇÃO da casa, transitório; no toque não gruda. O pop-up
+(`AcoesDoCard`) é portal no alvo da R243 e passa pelas portas que já existem:
+re-agendar abre o painel do chamado (o bloco só se move pela U78); desmarcar é
+`desagendar_chamado` quando há bloco, ou limpar a data seca quando é só o dia,
+com o texto DERIVADO de `espelhoAposDesagendar` (sobrando visita cumprida a data
+não some — e a frase diz onde ela vai parar); cancelar exige o motivo numa linha.
+Não há "tem certeza?": a segunda tela É a confirmação.
+
+**Medido, quebrado, consertado:** o React esvazia `e.currentTarget` ao fim do
+handler, e o updater funcional de `setAcoesDe` roda depois disso quando há outra
+atualização na fila — a âncora chegava `null` e o componente estourava em
+`.closest` (visto no console como `PRV-POP-APP-NQHR`). A âncora é capturada numa
+variável antes do updater, e o verificador pina a captura.
+
+### IV — o Comercial (R302)
+
+O funil solto virou um dashboard de quatro painéis: barras de 12 períodos com o
+alternador Semana | Mês (o alternador de PAINEL de 20px, o mesmo do corte da
+rosca do Operacional — o cético pegou que a primeira versão usava a pílula da
+barra dentro do cabeçalho do painel), rosca por tipo de serviço (uma proposta com
+dois serviços conta nas duas fatias; a normalização do legado é a mesma da
+fila), o funil (com a frase da R64 visível no rodapé) e quatro KPIs. A lógica
+é pura (`features/comercial/metricas.ts`, "agora" por parâmetro, nenhum
+`setMonth`), testada por fixture com relógio fixo. A média M-12 passou a ser
+sobre os **12 meses fechados** — o cético mostrou que incluir o mês corrente
+parcial e dividir por 12 subestima sistematicamente. Os chips por etapa saíram
+(revisa R64 e R252) e entrou o MenuFiltro de Tipo de serviço, que recorta a
+página inteira (R8); o botão Clientes saiu (revisa R32). O funil e os KPIs
+continuam no celular — só barras e rosca são desktop.
+
+**O que NÃO entrou, dito:** o **ticket médio**. O valor da proposta nasce em
+`gerarProposta.ts` e não é gravado em coluna nenhuma — precisa de coluna, de
+gravação na hora de gerar e da decisão do Davi sobre QUAL valor é o ticket.
+
+### V — a tipografia das páginas principais (R303)
+
+Ver a nota no fim desta entrada — a revisão de UX/UI foi delegada a um agente
+próprio depois que as frentes I–IV assentaram, para não editar os mesmos
+arquivos ao mesmo tempo.
+
+### O que a verificação pegou
+
+- O bloco novo de asserções quebrou na primeira tentativa por um acento grave
+dentro de template literal (a lição de sempre, quarta vez) — o remédio virou
+método: o bloco vai num `.txt` e um patch de dez linhas o insere.
+- Uma rodada do verificador no meio das edições dos agentes devolveu 2.870
+asserções (660 a menos) com falhas em blocos que nada tinham a ver — os
+`carregar()` de arquivos meio-editados. Rodar o verificador com agente editando
+é medir com a régua torta; a rodada seguinte, com os arquivos parados, voltou
+aos 3.5xx.
+- O plugin do TanStack Router reescreve `createFileRoute("…")` pelo nome do
+arquivo assim que ele nasce com o dev server rodando — o patch que ia trocar a
+rota não achou a âncora porque ela já estava trocada.
+- `.admin-colunas` (R193) ficou órfã em `styles.css` quando as duas colunas
+saíram — apagada, e o pino passou a exigir a ausência.
+
+**Números.** Verificador: **3.577 asserções, 0 falharam**. `tsc`: 0. `vite build` completa.
+Migrations **U153 e U154 PENDENTES**, nesta ordem; U150 e U152 rodadas em 15/09.
+
+## U154 — o cargo GESTOR (R304)
+
+**O pedido.** Davi, 15/09/2026, no meio da leva: *"Não me lembro se mencionei
+isso, mas acho que ficou explícito. Vou criar um novo cargo chamado Gestor, que
+atualmente o Vinicius quem faz este papel."*
+
+Cargo neste sistema não se cria pela tela — é código e banco, e um cargo que
+entra em três lugares e não no quarto vira o balde errado em silêncio (o
+operacional caiu em "tecnico" por meses, U132). A lista de lugares saiu da
+U127, que é o molde: **no front**, `PapelPermissao`/`PAPEIS`/a quinta coluna do
+`T()` em `telas.ts` (onze portas abertas: as da equipe de campo; Administrativo,
+Comercial e Contratos fechados), `useUserCargo` (o gestor recebe a INTERFACE do
+admin — a matriz fecha por cima), `useIsGerente` e `consultarVeFinanceiro`
+(gestor É gestor e VÊ valores: é ele quem lança a cobrança, R125/R300), a
+sessão da Início, as lentes, `veTodos`, `matrizCompleta` (que enumerava os
+papéis à mão e deixou a quinta coluna MENTINDO até o cético do Administrativo
+pegar — passou a iterar `PAPEIS`), `CARGO_CONFIG`/`CargoId`/o `<select>` da tela
+de usuários e o `z.enum` do convite. **No banco**, a U154 no molde da U127: enum
+fora da transação, os dois CHECKs, `salvar_permissoes`, `handle_new_user`,
+`is_gestor` e `pode_ver_financeiro` com o gestor nas duas listas (papel e cargo),
+e a semente de 17 linhas (11 abertas) — paridade com o catálogo, que o
+verificador confere.
+
+O que a migration NÃO faz, de propósito: trocar o cargo do Vinicius. Ela não
+sabe o e-mail de ninguém; é gesto do Davi na aba Usuários, depois de rodar. E o
+que ficou dito como dívida: as listas de "quem é avisado" da U7/U13 enumeram
+admin/comercial/sac à mão e não conhecem o gestor (P73) — importa no dia em que
+o Vinicius deixar de ser Admin.
+
+Revisa a R13 (o Vinicius era Admin por falta de um cargo que dissesse o que ele
+é). O censo do `is_gestor` no verificador passou a ler a definição VIVA (a da
+U154) e mede 40 arquivos / 172 ocorrências / 55 policies — a dívida P51 (a
+função não olha `ativo`) continua a mesma.

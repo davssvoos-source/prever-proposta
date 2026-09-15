@@ -1,4 +1,5 @@
-// Painel Administrativo — R27, reorganizado pela R131 (U94).
+// Painel Administrativo — R27, reorganizado pela R131 (U94), pela R193 (U106)
+// e pela R298 (15/09/2026).
 //
 // O domínio de quem cuida da casa: gente, acesso, catálogo e integrações. É o
 // painel mais restrito dos três — por padrão nenhum papel da matriz o abre, o
@@ -13,32 +14,51 @@
 // de cada cliente" (R132).
 //
 // Então a página deixou de ser uma porta com cinco atalhos e passou a TER o
-// conteúdo: três abas (Usuários · Permissões · APIs), com a lista de usuários e
-// a matriz de acessos morando aqui — as rotas antigas `/gerencial/usuarios` e
-// `/gerencial/permissoes` só redirecionam para a aba. Catálogo e Fechamentos
-// continuam sendo telas próprias (têm trabalho demais para virar aba) e ficam
-// como atalhos no topo. O atalho de Contratos SAIU: a lista morreu, e o
-// contrato se cadastra e se abre na ficha do cliente.
+// conteúdo: a lista de usuários e a matriz de acessos moram aqui — as rotas
+// antigas `/gerencial/usuarios` e `/gerencial/permissoes` só redirecionam para
+// a aba. O atalho de Contratos SAIU: a lista morreu, e o contrato se cadastra
+// e se abre na ficha do cliente.
+//
+// ── O QUE MUDOU NA R298 (Davi, 15/09/2026) ────────────────────────────────
+// "Remova as KPIs da tela Administrativo. Lembre-se de que a tela
+// Administrativo é usado no Desktop por mim, usuário Adm, e o layout deve ser
+// otimizado para que as informações fiquem espalhadas de maneira estratégica e
+// eficiente."
+//
+// SAÍRAM: os três números de estrutura (usuários ativos, esperando aprovação,
+// ativos sem cargo) — eram vitrine, e o que contavam já está nos rótulos das
+// seções da aba Usuários ("Usuários Ativos (N)", "Solicitações de acesso (N)");
+// o subtítulo "Gente, acesso, catálogo e integrações. Contratos e cobranças
+// vivem na ficha de cada cliente." — o que ele dizia continua valendo (R132:
+// contrato e cobrança se abrem na ficha do cliente) e fica registrado aqui,
+// para quem lê o código; os cards "Ir para"; e o atalho Fechamentos, que foi
+// para a Gestão Técnica (R299) — é a mesa do Vinicius, não a do admin.
+//
+// FICOU uma barra de ferramentas na régua da casa (DS §6.26: pílula de 40 e
+// raio 11, gap 8): à esquerda as duas abas da mesa (Usuários · Permissões); à
+// direita, encostados por `marginLeft: auto`, os atalhos (APIs, Viaturas,
+// Equipamentos). O conteúdo da aba ocupa a largura toda — as duas colunas da
+// R193 (1.45fr | 1fr) deixaram de caber: a matriz ganhou a quinta coluna
+// (Gestor, R304) e a lista de usuários é densa; lado a lado, uma rolava dentro
+// da outra.
 //
 // ── NÃO tem números de dinheiro na entrada ────────────────────────────────
 // Fechamento é tela com valor em reais, e a R13 diz que o SAC não vê valores;
 // um número grande na porta do painel vazaria por cima da regra que a tela de
-// dentro respeita. Aqui os números são de ESTRUTURA — quantas pessoas, quantas
-// esperando aprovação —, que é o que o painel precisa responder de relance.
+// dentro respeita. Desde a R298 não há número nenhum na porta.
 //
-// A aba mora na URL (`?aba=`), como a prospecção no Comercial (R38): o número
-// "3 esperando aprovação" é um link para a aba certa, e o link é compartilhável.
+// A aba mora na URL (`?aba=`), como a prospecção no Comercial (R38): é por ela
+// que os endereços antigos chegam (gerencial.usuarios → ?aba=usuarios) e o
+// link para uma aba é compartilhável.
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useMemo, type CSSProperties } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Car, ChevronLeft, CircleDollarSign, Package, Plug, ShieldCheck, Users } from "lucide-react";
+import type { CSSProperties } from "react";
+import { Car, Package, Plug, ShieldCheck, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { guardaDeTela, destinoNegado, usePermissoes } from "@/features/gerencial/permissoes";
-import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card } from "@/lib/ui";
-import { PRISMA, espectroTexto } from "@/lib/paleta";
+import { FONT, card, pilulaDaBarra } from "@/lib/ui";
+import { cinzas } from "@/lib/paleta";
 import { GestaoDeUsuarios } from "@/features/administrativo/Usuarios";
 import { MatrizDePermissoes } from "@/features/administrativo/Permissoes";
 import { Integracoes } from "@/features/administrativo/Integracoes";
@@ -68,206 +88,135 @@ export const Route = createFileRoute("/_authenticated/painel/administrativo")({
   component: PainelAdministrativo,
 });
 
-/** Estrutura do time — sem valores, pelo motivo no cabeçalho do arquivo. */
-function useNumerosDaCasa() {
-  return useQuery({
-    queryKey: ["painel-admin-numeros"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, ativo, status, cargo");
-      if (error) return { ativos: 0, pendentes: 0, semCargo: 0 };
-      const p = (data as any[]) ?? [];
-      return {
-        ativos: p.filter((x) => x.ativo).length,
-        pendentes: p.filter((x) => x.status === "pendente_aprovacao").length,
-        semCargo: p.filter((x) => x.ativo && !x.cargo).length,
-      };
-    },
-  });
-}
-
 function PainelAdministrativo() {
   const navigate = useNavigate();
   const { isLight } = useTheme();
-  const { data: cargo } = useUserCargo();
-  const { podeVer } = usePermissoes();
-  const { data: casa } = useNumerosDaCasa();
+  // O cargo REAL de `profiles`, não o perfil de interface: useUserCargo()
+  // devolve "admin" também para o gestor e para o comercial (R304 — eles
+  // recebem a BARRA do admin, filtrada pela matriz). Convidar, aprovar e
+  // editar a matriz são portas que o banco tranca com `cargo = 'admin'`; a
+  // tela tem de trancar pelo mesmo critério, senão o gestor veria botões que
+  // só devolvem "Acesso negado".
+  const { podeVer, cargo: cargoReal, carregando } = usePermissoes();
   const busca = Route.useSearch();
   const aba: Aba = busca.aba ?? "usuarios";
-  const isAdmin = cargo === "admin";
+  const isAdmin = cargoReal === "admin";
 
-  const textPrimary = isLight ? "#212121" : "#ffffff";
-  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
+  // a escala de cinza do tema (R186) — texto e texto secundário saem daqui
+  const cz = cinzas(isLight);
+  const textPrimary = cz.texto;
+  const textSecondary = cz.textoSecundario;
 
   const irParaAba = (a: Aba) =>
     navigate({ to: "/painel/administrativo", search: { aba: a } as any, replace: true });
 
-  const numeros = useMemo(() => [
-    { rotulo: "Usuários ativos", valor: casa?.ativos ?? 0, tom: 8 },
-    // pendente de aprovação é o que trava alguém de trabalhar — vai no quente
-    { rotulo: "Esperando aprovação", valor: casa?.pendentes ?? 0, tom: 2 },
-    { rotulo: "Ativos sem cargo", valor: casa?.semCargo ?? 0, tom: 5 },
-  ], [casa]);
-
   /**
-   * Os atalhos para as telas que continuam sendo telas. Catálogo é só do
-   * admin (a rota /admin exige o papel); Fechamentos obedece a matriz.
-   * Atalho para porta trancada é armadilha — quem não pode, não vê.
+   * Os atalhos para as telas que continuam sendo telas. Equipamentos obedece a
+   * matriz — atalho para porta trancada é armadilha: quem não pode, não vê.
+   * R198 (U109): era "Catálogo" (/admin), que o Davi mandou excluir; o catálogo
+   * agora é "Equipamentos cadastrados". R298/R299: Fechamentos saiu daqui e
+   * foi para a Gestão Técnica.
    */
   const atalhos = [
-    // R198 (U109): era "Catálogo" (/admin), que o Davi mandou excluir. O
-    // catálogo agora é "Equipamentos cadastrados", e quem o vê é quem a
-    // matriz deixa — não mais só o cargo admin.
-    { label: "Equipamentos", descricao: "O catálogo: as variações importadas do QAP", icon: Package, para: "/equipamentos", mostrar: podeVer("equipamentos") !== false },
-    { label: "Fechamentos", descricao: "O que foi apurado no período, para o financeiro", icon: CircleDollarSign, para: "/fechamentos", mostrar: podeVer("fechamentos") !== false },
+    { label: "Equipamentos", icon: Package, para: "/equipamentos", mostrar: podeVer("equipamentos") !== false },
   ].filter((a) => a.mostrar);
 
-  const MICRO: CSSProperties = {
-    fontFamily: FONT, fontWeight: 700, fontSize: 10.5,
-    letterSpacing: "0.10em", textTransform: "uppercase", color: gold,
-  };
-  const botaoAba = (ativa: boolean): CSSProperties => ({
-    display: "inline-flex", alignItems: "center", gap: 6,
-    height: 34, padding: "0 14px", borderRadius: 17, cursor: "pointer",
-    border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
-    background: ativa ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)" : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-    color: ativa ? "#0E0E0E" : textPrimary,
-    fontFamily: FONT, fontWeight: 600, fontSize: 12,
-  });
+  // a pílula da barra (DS §6.26) — a medida mora em ui.ts, não aqui
+  const pilula = (ativa: boolean): CSSProperties => pilulaDaBarra(isLight, textPrimary, ativa);
+  // a casca do conteúdo: o card do design system com o padding nos quatro
+  // lados declarado por eixo (anti-padrão nº 10: nunca o atalho `padding`)
+  const CASCA: CSSProperties = { ...card(isLight), paddingInline: 16, paddingBlock: 16, minWidth: 0 };
 
   return (
     <div className="sangra-x" style={{ paddingTop: 18, paddingBottom: 140, display: "flex", flexDirection: "column", gap: 16, color: textPrimary }}>
-      <div>
-        <h1 style={{ fontFamily: FONT, fontWeight: 700, fontSize: 22, margin: 0, letterSpacing: "-0.01em" }}>
-          Administrativo
-        </h1>
-        <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, marginTop: 2 }}>
-          Gente, acesso, catálogo e integrações. Contratos e cobranças vivem na ficha de cada cliente.
-        </div>
-      </div>
+      <h1 style={{ fontFamily: FONT, fontWeight: 700, fontSize: 22, margin: 0, letterSpacing: "-0.01em" }}>
+        Administrativo
+      </h1>
 
-      {/* Os números de estrutura — cada um leva à aba de usuários */}
-      <div className="painel-numeros">
-        {numeros.map((n) => {
-          const cor = espectroTexto(n.tom, isLight);
-          return (
-            <button
-              key={n.rotulo}
-              className="elevavel"
-              onClick={() => irParaAba("usuarios")}
-              style={{
-                ...card(isLight), borderRadius: 16, padding: "14px 12px",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                boxSizing: "border-box", minHeight: 96, border: "none", width: "100%", cursor: "pointer",
-              }}
-            >
-              <div style={{
-                fontFamily: FONT, fontWeight: 700, fontSize: 34, color: cor,
-                textShadow: `0 0 14px ${cor}59`, fontVariantNumeric: "tabular-nums", lineHeight: 1,
-              }}>
-                {n.valor}
-              </div>
-              <div style={{
-                fontFamily: FONT, fontWeight: 600, fontSize: 9, letterSpacing: "0.05em",
-                textTransform: "uppercase", color: textSecondary, lineHeight: 1.3, textAlign: "center", marginTop: 6,
-              }}>
-                {n.rotulo}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Atalhos para as telas que continuam sendo telas */}
-      {atalhos.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <span style={MICRO}>Ir para</span>
-          <div className="painel-atalhos">
-            {atalhos.map(({ label, descricao, icon: Icon, para }) => (
-              <button
-                key={label}
-                className="elevavel"
-                onClick={() => navigate({ to: para as any })}
-                style={{
-                  ...card(isLight), borderRadius: 16, padding: "14px 16px",
-                  display: "flex", alignItems: "flex-start", gap: 12,
-                  textAlign: "left", cursor: "pointer", color: textPrimary, border: "none", width: "100%",
-                }}
-              >
-                <span style={{
-                  width: 36, height: 36, borderRadius: 11, flexShrink: 0,
-                  background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
-                  display: "flex", alignItems: "center", justifyContent: "center", color: gold,
-                }}>
-                  <Icon size={17} />
-                </span>
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ display: "block", fontFamily: FONT, fontWeight: 600, fontSize: 13.5 }}>{label}</span>
-                  <span style={{ display: "block", fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, marginTop: 2, lineHeight: 1.4 }}>
-                    {descricao}
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* R193 (U106): DUAS COLUNAS — Usuários | Permissões — e as APIs por um
-          botão que troca a página para UMA coluna. Davi (2026-09-04, revisão
-          manual): a tela dividida em duas colunas, Usuários e Permissões, e as
-          APIs num botão que, ao clicar, deixa a tela com uma coluna só. O
-          `?aba=` continua valendo: é por ele que os endereços antigos chegam
-          (gerencial.usuarios → ?aba=usuarios) e que o botão das APIs troca a
-          página; "usuarios" e "permissoes" mostram as duas colunas. */}
+      {/* A BARRA DE FERRAMENTAS (R298, DS §6.26). O recorte fica com o conteúdo,
+        * à esquerda: as duas abas da mesa do admin. As ferramentas vão à
+        * direita por `marginLeft: auto`: APIs e Viaturas trocam o conteúdo da
+        * página (continuam sendo `?aba=`, por onde os endereços antigos chegam);
+        * Equipamentos navega para a tela própria. A pílula ativa é a única
+        * dourada — é ela que diz onde se está, por isso não há botão de voltar.
+        * O hover é só CSS e só nas inativas — a classe .pilula-da-barra vive
+        * em styles.css (borda e tinta douradas, sem degradê, dentro de @media
+        * hover); a ativa já tem o degradê. */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {aba === "apis" || aba === "viaturas" ? (
-          <button onClick={() => irParaAba("usuarios")} style={botaoAba(false)}>
-            <ChevronLeft size={13} /> Usuários e permissões
+        <button
+          id="adm-usuarios"
+          onClick={() => irParaAba("usuarios")}
+          aria-pressed={aba === "usuarios"}
+          className={aba === "usuarios" ? undefined : "pilula-da-barra"}
+          style={pilula(aba === "usuarios")}
+        >
+          <Users size={17} aria-hidden /> {ABA_LABEL.usuarios}
+        </button>
+        <button
+          id="adm-permissoes"
+          onClick={() => irParaAba("permissoes")}
+          aria-pressed={aba === "permissoes"}
+          className={aba === "permissoes" ? undefined : "pilula-da-barra"}
+          style={pilula(aba === "permissoes")}
+        >
+          <ShieldCheck size={17} aria-hidden /> {ABA_LABEL.permissoes}
+        </button>
+
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <button
+            onClick={() => irParaAba("apis")}
+            aria-pressed={aba === "apis"}
+            className={aba === "apis" ? undefined : "pilula-da-barra"}
+            style={pilula(aba === "apis")}
+          >
+            <Plug size={17} aria-hidden /> {ABA_LABEL.apis}
           </button>
-        ) : (
-          <>
-            <button onClick={() => irParaAba("apis")} style={botaoAba(false)}>
-              <Plug size={13} /> {ABA_LABEL.apis}
+          <button
+            onClick={() => irParaAba("viaturas")}
+            aria-pressed={aba === "viaturas"}
+            className={aba === "viaturas" ? undefined : "pilula-da-barra"}
+            style={pilula(aba === "viaturas")}
+          >
+            <Car size={17} aria-hidden /> {ABA_LABEL.viaturas}
+          </button>
+          {atalhos.map(({ label, icon: Icon, para }) => (
+            <button
+              key={label}
+              onClick={() => navigate({ to: para as any })}
+              className="pilula-da-barra"
+              style={pilula(false)}
+            >
+              <Icon size={17} aria-hidden /> {label}
             </button>
-            <button onClick={() => irParaAba("viaturas")} style={botaoAba(false)}>
-              <Car size={13} /> {ABA_LABEL.viaturas}
-            </button>
-          </>
-        )}
+          ))}
+        </div>
       </div>
 
       {aba === "apis" ? (
-        <div style={{ ...card(isLight), borderRadius: 18, padding: 16 }}>
+        <div style={CASCA}>
           <Integracoes />
         </div>
       ) : aba === "viaturas" ? (
         <PainelDeViaturas />
-      ) : !isAdmin ? (
+      ) : carregando ? null : !isAdmin ? (
         // As duas seções mexem em cargo e em matriz — é regra de CARGO, não de
         // matriz (a rota antiga já trancava assim), senão uma linha errada na
-        // própria matriz tornaria a correção impossível pelo app.
-        <div style={{ ...card(isLight), borderRadius: 18, padding: 16, fontFamily: FONT, fontSize: 12.5, color: textSecondary, lineHeight: 1.5 }}>
+        // própria matriz tornaria a correção impossível pelo app. Enquanto o
+        // cargo não chegou, nada: dizer "editados pelo administrador" AO admin
+        // por meio segundo seria mentir para depois se corrigir.
+        <div style={{ ...CASCA, fontFamily: FONT, fontSize: 12.5, color: textSecondary, lineHeight: 1.5 }}>
           Usuários e permissões são editados pelo administrador.
         </div>
+      ) : aba === "permissoes" ? (
+        // R298: cada aba ocupa a largura toda; o rótulo da seção é a própria
+        // pílula ativa da barra (aria-labelledby aponta para ela)
+        <section aria-labelledby="adm-permissoes" style={CASCA}>
+          <MatrizDePermissoes />
+        </section>
       ) : (
-        <div className="admin-colunas">
-          <section aria-labelledby="adm-usuarios" style={{ ...card(isLight), borderRadius: 18, padding: 16, minWidth: 0 }}>
-            <h2 id="adm-usuarios" style={{ ...MICRO, display: "flex", alignItems: "center", gap: 6, margin: "0 0 12px" }}>
-              <Users size={13} /> {ABA_LABEL.usuarios}
-            </h2>
-            <GestaoDeUsuarios />
-          </section>
-          <section aria-labelledby="adm-permissoes" style={{ ...card(isLight), borderRadius: 18, padding: 16, minWidth: 0 }}>
-            <h2 id="adm-permissoes" style={{ ...MICRO, display: "flex", alignItems: "center", gap: 6, margin: "0 0 12px" }}>
-              <ShieldCheck size={13} /> {ABA_LABEL.permissoes}
-            </h2>
-            <MatrizDePermissoes />
-          </section>
-        </div>
+        <section aria-labelledby="adm-usuarios" style={CASCA}>
+          <GestaoDeUsuarios />
+        </section>
       )}
     </div>
   );

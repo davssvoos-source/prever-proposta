@@ -9,7 +9,46 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
-## v1.0.1 — 2026-09-15 (U141–U152) · migrations **U150 e U152 pendentes**, nesta ordem
+## v1.0.2 — 2026-09-15 (U153–U154) · migrations **U153 e U154 pendentes**, nesta ordem (U150 e U152 rodadas em 15/09)
+
+> A primeira leva da **revisão sistêmica** que o Davi abriu com o uso oficial do
+> app (15/09/2026): *"fazer uma revisão detalhada e sistêmica de tudo o que temos
+> hoje, e a partir dessa revisão, o sistema tenda a ter melhor usabilidade pelos
+> usuários."* Regras R298–R304. Esta versão foi para a Lovable pelo `main`; o
+> pacote Windows sai quando o Davi pedir (o servidor continua na v0.0.7).
+
+**Para quem usa:**
+
+- **"Sobreaviso" virou GESTÃO TÉCNICA** (`/gestao-tecnica`; o link antigo redireciona
+  com `?mes=&dia=`) — a mesa do Vinicius: os **indicadores** que moravam na
+  Operacional Técnica (recolhíveis), a **fila de decisão** — *Aguardando retorno* e
+  *Aguardando cobrança* —, os botões **Equipes de campo** e **Fechamentos**, e o
+  **Plantão** (o antigo sobreaviso) como seção recolhível no fim. O calendário do
+  plantão passou a caber na tela (R299, R300).
+- **Operacional Técnica virou a fila**: abre no **quadro por dia da semana**, os dias
+  se leem e HOJE é dourado; visão, colunas e lente ficam gravadas no navegador de
+  cada pessoa; cada card tem o **botão de ações** (re-agendar · desmarcar ·
+  cancelar com motivo). O botão "Ver todos os chamados" e a tela "Todos os chamados"
+  saíram — está tudo aqui (R301).
+- **Administrativo** sem os textos de apresentação e sem KPIs; pílulas Usuários ·
+  Permissões · APIs · Viaturas · Equipamentos na régua da barra, uma aba na largura
+  toda; convites pendentes compactos com **Reenviar** (R298).
+- **Comercial** com **dashboard** no lugar do funil solto: propostas enviadas por
+  período (12 semanas ou 12 meses), rosca por tipo de serviço, o funil e quatro
+  KPIs; filtro de **Tipo de serviço** no lugar dos chips por etapa; sem o botão
+  Clientes (R302).
+- **Cargo GESTOR** (R304): quinta coluna da matriz de permissões, é gestor e vê
+  valores; a troca do Vinicius de Admin para Gestor é gesto do Davi na aba
+  Usuários **depois** de rodar a U154.
+
+**Migrations:** **U153** (`20261010090000_u153_todos_os_chamados_sai.sql`) apaga a
+chave `chamados.painel` da matriz; **U154** (`20261011090000_u154_o_cargo_gestor.sql`)
+cria o cargo gestor (enum, CHECKs, `is_gestor`, `pode_ver_financeiro`, semente).
+Nesta ordem — a U154 aborta se a U153 não tiver rodado. **O app pode subir antes
+delas**: sem a U153 sobra uma linha órfã na matriz (inofensiva); sem a U154 ninguém
+consegue RECEBER o cargo gestor (o CHECK recusa) — nada quebra.
+
+## v1.0.1 — 2026-09-15 (U141–U152) · migrations **U150 e U152 rodadas em 15/09/2026**
 
 > **O salto de número é decisão do Davi** (15/09/2026: *"Essa será a versão
 > 1.0.1"*). Vem da v0.0.12 e **pula a 1.0.0**: nunca houve uma. O número é

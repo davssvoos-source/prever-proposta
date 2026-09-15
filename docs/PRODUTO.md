@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R297 (68)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R304 (75)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -30,7 +30,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-14 (R296). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-15 (R304). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -322,6 +322,8 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   ou a R13 passa a dizer *o que* ele não vê — o que se COBRA do cliente — em vez
   de "valores", que hoje é literalmente falso. Enquanto isso não for decidido,
   fica em `PENDENCIAS_TECNICAS.md` P22, com o mapa de impacto pronto.
+  *(Revista pela R304 em 15/09/2026: o Vinicius deixa de ser Admin e passa a **Gestor** — o cargo que faltava para dizer o que ele é: gestor da equipe de campo, vê valores, não administra gente nem acessos.)*
+
 - **R14** — Nas duplas de campo, **só o líder tem conta no app**; o ajudante
   não. Tudo é registrado no nome do líder. O Breno é líder de uma das duplas
   (equipe Técnica).
@@ -446,7 +448,7 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 - **R32** — **"Visitas e propostas" É o Painel Comercial.** Não existe porta
   (painel-índice) e sala (lista) separadas: `/gerencial` é a página do domínio
   comercial — funil em cima, lista embaixo, botões só do próprio domínio
-  (Prospecção, Clientes — o Mapa saiu na R192 e o Histórico na R165). Contratos, Fechamentos, Usuários e
+  (Prospecção — o Mapa saiu na R192, o Histórico na R165 e Clientes na R302). Contratos, Fechamentos, Usuários e
   Permissões pertencem ao Painel Administrativo. `/painel/comercial` só
   redireciona. Os indicadores de campo, pela mesma lógica, moram NA ENTRADA
   do Painel Operacional — não numa página à parte.
@@ -608,9 +610,12 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
 
 1. ~~"Chamados" leva a telas diferentes por perfil~~ — **resolvido na U7**:
    um endereço só, `/chamados`, para todos os perfis.
-2. **Dois painéis ainda**: `/chamados/painel` (visão gerencial dos trilhos) e
-   `/chamados/indicadores` (SLA, carga por técnico, tempo médio — só campo).
-   Fundir num só com aba interna, ou manter os dois? *Em aberto.*
+2. ~~**Dois painéis ainda**: `/chamados/painel` (visão gerencial dos trilhos) e
+   `/chamados/indicadores` (SLA, carga por técnico, tempo médio — só campo).~~
+   — **resolvido**: `/chamados/indicadores` foi absorvido pelo Painel Operacional
+   (R31) e `/chamados/painel` **saiu na R301** (15/09/2026): a Operacional Técnica
+   mostra TODOS os chamados, e a rota antiga redireciona para ela (U153 apaga a
+   chave da matriz).
 3. **Comercial tem a barra idêntica à do Admin.** Faz sentido, ou o Comercial
    deveria ter uma barra própria (ex.: trocar "Gerencial" por "Contratos")?
    *Em aberto.*
@@ -637,6 +642,8 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
 | Import QAP (clientes/estoque/equipamentos) | aguardando export (U10) |
 | API QAP contínua | aguardando dev do QAP (U11) |
 | IA no WhatsApp do SAC | futuro (U12) |
+
+  *(Revista pela R302 em 15/09/2026: o funil em cima virou um **dashboard** — propostas por período, rosca por tipo de serviço, o funil e quatro KPIs — e o botão Clientes saiu (Clientes tem item de menu próprio).)*
 
 - **R33** — **O chamado abre num PAINEL, não em outra página.** Clicar num
   cartão na Início ou num item do calendário desliza um painel pela direita
@@ -1050,6 +1057,8 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   **aprovação é interna** — nunca sinônimo de negócio fechado (R4).
   *(Davi, 2026-08-22.)*
 
+  *(Revista pela R302 em 15/09/2026: os chips por etapa saíram — o recorte da página passou a ser o filtro de **Tipo de serviço**, que vale para dashboard, lista e quadro; o ciclo e a lista continuam como aqui.)*
+
 - **R65** — **O dashboard da Início é 100% dinâmico, e sua estrutura virou
   documento** (`docs/DASHBOARD.md`). Os gráficos ganharam o mesmo gesto dos
   4 quadrados de KPI (R60): **clicar em qualquer barra** da Demanda no tempo
@@ -1097,6 +1106,8 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   os indicadores de campo, o atual gráfico de linhas, forme gráficos de bons
   insights e monte esse dashboard na parte superior da tela. A tela deve
   listar os chamados técnicos, abaixo do dashboard.")*
+
+  *(Revista pela R299 e pela R301 em 15/09/2026: o dashboard e os KPIs foram para a **Gestão Técnica** — o clique num quadrado abre a Operacional recortada por `?kpi=`, pela MESMA função —, e o botão "Ver todos os chamados" saiu: a Operacional já mostra todos.)*
 
 - **R67** — O Painel Operacional tem **duas partes, e só duas**: o dashboard
   inteiro em cima, a lista no resto da tela. A R66 tinha entregue os
@@ -3066,6 +3077,8 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   Administrativa. Os usuários podem ser listados diretamente nesta página e as
   permissões estarem junto. O Catálogo já faz mais sentido manter.")*
 
+  *(Revista pela R298 e pela R299 em 15/09/2026: as abas viraram pílulas na régua da barra (DS §6.26) com UMA aba na largura toda (as duas colunas da R193 saíram), os KPIs saíram, **Fechamentos foi para a Gestão Técnica**, e a lista de convites pendentes ficou compacta e ganhou Reenviar.)*
+
 - **R132** — **Os contratos vivem na ficha do cliente; a página de lista
   `/contratos` não existe mais.** Contrato é atributo do cliente, não uma
   coleção à parte: ele se vê, se cadastra e se abre na seção Contratos de
@@ -4781,6 +4794,8 @@ adaptado."
   10/09/2026: "Crie o modo de visualização Kanban e lista no painel Comercial
   de acordo com o status da visita técnica e proposta comercial.")*
 
+  *(Revista pela R302 em 15/09/2026: os chips por etapa saíram; o quadro mostra sempre o ciclo inteiro, e o recorte da página é por Tipo de serviço.)*
+
 - **R253** — **O Sobreaviso é montado por SEMANA, e a tela alterna semana × mês.**
   A tela é do **líder da técnica** (hoje o Vinicius): é ele quem monta a escala
   e quem responde pelas horas que vão para o financeiro.
@@ -5658,6 +5673,8 @@ adaptado."
   **Os três botões (Concluir / Retorno / Cancelar)** que ele pediu no mesmo
   parágrafo ainda **não** estão no card.
 
+  *(Revista pela R301 em 15/09/2026: o PADRÃO do eixo passou a ser o **dia da semana** (`estado` continua a primeira opção do menu e a leitura da R76), e a escolha — como a visão e a lente — fica gravada no navegador de quem escolheu.)*
+
 - **R296** — **A barra do Painel Operacional é a barra da Início: os
   indicadores recolhem, e a lista tem ordem.** *(Davi, 14/09/2026: "ele
   deverá ter a opção de recolher ou aparecer igual ao do INICIO. Além disso,
@@ -5776,3 +5793,250 @@ adaptado."
   A ordem escolhida é aplicada **por cima** da ordem inteligente que já existia
   (`sort` é estável), então o empate cai na urgência — ou, no histórico, na
   mais recente.
+
+> **A REVISÃO SISTÊMICA (15/09/2026) — v1.0.2.** O app entrou em **uso
+> oficial** em 15/09/2026, e o Davi abriu uma série de revisões: *"Neste
+> prompt, nós iremos dar inicio à uma série de alterações no sistema, onde o
+> objetivo é fazer uma revisão detalhada e sistêmica de tudo o que temos hoje,
+> e a partir dessa revisão, o sistema tenda a ter melhor usabilidade pelos
+> usuários."* As regras R298–R303 são a primeira leva. Ele também disse:
+> *"Faça somente as solicitações do prompt, caso tenha dúvidas estou a
+> disposição."*
+
+- **R298** — **O Painel Administrativo é a mesa do admin no desktop: sem KPIs,
+  sem os textos de apresentação, com os convites compactos e reenviáveis, e
+  os botões no design system.** *(Davi, 15/09/2026: "Remova as KPIs da tela
+  Administrativo. Lembre-se de que a tela Administrativo é usado no Desktop
+  por mim, usuário Adm, e o layout deve ser otimizado para que as informações
+  fiquem espalhadas de maneira estratégica e eficiente.")*
+
+  **Saem quatro textos**, literalmente: *"Gente, acesso, catálogo e
+  integrações. Contratos e cobranças vivem na ficha de cada cliente."*; a
+  linha *"N ativos · N convites pendentes · a equipe define de quem é a fila;
+  o cargo define o que se vê"*; *"Marque quais telas cada papel pode abrir"*;
+  e o parágrafo *"Administrador sempre vê tudo — por isso não tem coluna
+  aqui…"*. O porquê de cada um continua no código, para quem lê o código.
+
+  **A lista de convites pendentes ganha REENVIAR e fica compacta.** *(Davi:
+  "Adicione botão de reenviar convite na lista de convites pendentes, e torne
+  a lista de convites pendentes mais compacta, ela está ocupando muito espaço
+  na tela, ainda assim não deixe de respeitar margens, espaçamentos, tamanhos
+  de fonte.")* Reenviar é uma linha por convite, não um convite novo: a
+  mesma linha de `convites`, o mesmo e-mail, um novo envio pelo GoTrue.
+
+  **Os botões de navegação (APIs, Viaturas, Equipamentos) seguem a régua da
+  barra** (DS §6.26: pílula 40, raio 11), e não um terceiro desenho. *(Davi:
+  "devem ser botões estilizados de acordo com o design system. Não só o
+  estilo mas o espaçamento, o formato do campo, o tamanho da fonte, as cores,
+  eu quero que você faça uma revisão geral na parte visual desta página.")*
+
+  **Revisa a R131** em duas partes: os KPIs deixam de ser link para a aba de
+  usuários (não existem mais), e **Fechamentos deixa de ser atalho daqui** —
+  ele foi para a Gestão Técnica (R299).
+
+- **R299** — **"Sobreaviso" vira "Gestão Técnica", e é a mesa do Vinicius:
+  para lá vão o dashboard e os KPIs da Operacional Técnica (com o botão de
+  recolher), o botão Fechamentos e o botão Equipes de Campo.** *(Davi,
+  15/09/2026: "Vamos alterar a tela 'Sobreaviso' para 'Gestão Técnica'";
+  "O Dashboard e KPIs da página Operacional Técnica trocarão de lugar, agora
+  deverão estar em 'Gestão Técnica'. Mova também o botão de expandir e
+  recolher o dashboard"; "Na página Administrativo, mova o botão
+  'Fechamentos' para a página 'Gestão Técnica'"; "O botão 'Equipes de
+  Campo' atualmente na página Operacional Técnica deverá ser movido para a
+  página 'Gestão Técnica'".)*
+
+  **A OBS dele muda uma nota antiga:** *"Note que o Vinicius passará a
+  utilizar bastante esta tela pois nela estarão as principais informações
+  sobre o trabalho da equipe de campo. Isso muda o que eu havia dito sobre o
+  Vinicius usar somente a página Operacional Técnica."* — o Vinicius passa a
+  ter **duas** mesas: a **Gestão Técnica** (o que ele decide: indicadores,
+  equipes, fechamentos, plantão, retornos e cobranças) e a **Operacional
+  Técnica** (a fila de chamados, que o SAC também opera — R301).
+
+  **A chave de permissão NÃO muda.** Continua `sobreaviso` em
+  `permissoes_tela`: renomear a chave apagaria o que o admin configurou na
+  matriz (o tipo `Tela` e o manual proíbem). Mudam o **rótulo** e a **rota**
+  (`/gestao-tecnica`); `/sobreaviso` vira redirect **preservando `?mes=&dia=`**,
+  porque esse link é o que o gestor manda para o celular. O PDF continua se
+  chamando "Sobreaviso" — é a folha do sobreaviso para o financeiro, não a
+  folha da tela.
+
+  **O clique num KPI continua abrindo a lista que ele conta** — a invariante
+  "quem conta é quem filtra" não morre com a mudança de tela: o quadrado leva
+  para a Operacional Técnica já recortada por aquele KPI (`?kpi=`), em vez de
+  filtrar uma lista que não está mais na mesma página.
+
+- **R300** — **Na Gestão Técnica, o que o Vinicius olha TODO DIA ocupa o
+  centro; o que ele monta duas vezes por mês fica secundário.** *(Davi,
+  15/09/2026: "deverão aparecer os cards das atividades aguardando retorno, ou
+  aguardando o Vinicius lançar cobrança (Ou não). Este campo é importante e o
+  Vinicius olhará todos os dias. Diferente do campo de montagem do calendário
+  de plantão, que o Vinicius vai montar 2x ao mês provavelmente (Ou seja, o
+  uso será menor). Então eu quero que você adapte o layout da tela visando
+  aquilo que faz mais sentido ocupar mais espaço, e o deve estar em destaque,
+  o que não deve, os mecanismos para bom uso do usuário, e toda a parte de
+  UX.")*
+
+  A ordem da página, de cima para baixo: **os indicadores** (recolhíveis, com
+  a preferência gravada); **a fila de decisão** — dois grupos de cards,
+  "Aguardando retorno" (`retornoPendente`, R286) e "Aguardando cobrança"
+  (`aguardando_conferencia`, R125) —, que abre o chamado no painel lateral; e
+  só então **o plantão**, recolhível, com a escala e o calendário. O
+  calendário do plantão **se adapta à largura da tela**: *(Davi: "O campo
+  'Calendário do Plantão' não está se adaptando ao tamanho da tela, este
+  campo deve se adequar ao layout do sistema, as margens e ao mecanismo de
+  mudar o tamanho de acordo com a tela para melhor visualização independente
+  do monitor do usuário.")* A causa medida: o card do calendário pedia
+  `max-content`, e os `<input type="number">` das células engordavam a
+  largura intrínseca de cada coluna — a grade estourava e rolava de lado com a
+  barra escondida.
+
+- **R301** — **A Operacional Técnica mostra TODOS os chamados da equipe de
+  campo, abre no quadro por DIA DA SEMANA, lembra os filtros de cada pessoa, e
+  cada card tem um botão de ações.** *(Davi, 15/09/2026: "Na tela
+  'Operacional Técnica' estão centralizados os chamados técnicos da equipe
+  de campo, o SAC usará essa janela para gerenciar os chamados.")*
+
+  **A tela "Todos os chamados" SAI, e o botão que levava a ela também.**
+  *(Davi: "Remova o botão 'Ver todos os chamados', e remova também a tela da
+  página Todos os Chamados, pois na verdade, na tela 'Operacional Técnica'
+  já deverão aparecer TODOS os chamados, então o botão levaria a uma tela com
+  as mesmas informações.")* `/chamados/painel` vira redirect para a
+  Operacional (o padrão da casa para tela removida, R192), a chave
+  `chamados.painel` sai do catálogo e a migration **U153** apaga as linhas da
+  matriz. **Fecha a pergunta em aberto** "Dois painéis ainda…" desta seção, e
+  **reverte o veredito "fica"** da revisão de 03/09/2026.
+
+  **O padrão é o QUADRO por DIA, e a preferência é da pessoa.** *(Davi: "O
+  modo de visualização dos chamados técnicos padrão deverá ser o modo Kanban,
+  com visualização das colunas por dia da semana. Caso o usuário altere os
+  filtros, ou tipo de visualização, o sistema deve deixar salvo no cache, ou
+  no PC do usuário para que quando ele volte lá, esteja com os mesmos filtros
+  e modo de visualização.")* **Revisa a R295** no padrão do eixo: `estado`
+  continua sendo a primeira opção do menu e a leitura da R76, mas quem abre a
+  tela vê a **semana**. Visão, eixo e lente ficam no navegador, ao lado da
+  ordem e do recolher (R296).
+
+  **Os dias da semana se leem, e HOJE é amarelo.** *(Davi: "Os textos dos dias
+  da semana estão muito apagados, deixe-os mais brancos, e o dia de hoje em
+  amarelo.")* O cabeçalho da coluna de dia usa o texto primário; a coluna de
+  hoje ganha o dourado da marca (o de TEXTO no claro, `#A06108`; o disco
+  `#F8C811` fica para o calendário).
+
+  **O botão de ações do card.** *(Davi: "Cada card de chamado técnico deverá
+  ter um botão circular no canto inferior direito, onde ao clicar, abre um
+  pop-up para re-agendar, cancelar, ou desmarcar. Este botão poderá ser um
+  pouco mais discreto em relação à cor, e adicione o mecanismo de hover,
+  tornando-o amarelo degradê com glow ao colocar o cursor em cima.")* Três
+  ações, cada uma pela porta que já existe: **re-agendar** abre o painel do
+  chamado na agenda (o bloco de campo só se move pela porta da U78, e é ela
+  quem recusa conflito e jornada); **desmarcar** é `desagendar_chamado`, com a
+  frase honesta sobre onde a data vai parar (R101); **cancelar** pede o
+  **motivo** numa linha, como o Detalhe faz — cancelar sem motivo é a
+  discussão de três meses depois. O hover dourado é feedback ("você está
+  sobre ele"), transitório, e usa exatamente o vocabulário de ação da casa
+  (`GOLD_GRAD` + `#0E0E0E` + `GOLD_GLOW`), nunca o brilho do FAB; só com
+  ponteiro fino, para não grudar no toque (R174).
+
+- **R302** — **O Painel Comercial ganha um dashboard no lugar do funil, um
+  filtro de Tipo de Serviço no lugar dos chips de etapa, e perde o botão
+  Clientes.** *(Davi, 15/09/2026: "No lugar do atual 'Funil Comercial', vamos
+  inserir um dashboard, que contém: 1- Propostas enviadas por período (Botão
+  de switch entre SEMANA e MÊS para cada barra do gráfico) O gráfico pode
+  conter 12 unidades de barra, que serão os últimos 12 meses ou as ultimas 12
+  semanas… 2- Gráfico de rosca de propostas enviadas por tipo de serviço
+  prestado (portaria remota, monitoramento 24h, controle de acesso
+  eletrônico, cftv, totem de monitoramento… 3- Funil comercial 4- KPIs com
+  insights como: Média de proposta por mês (M-12), Ticket médio cobrado nas
+  propostas, e sugira mais 2 KPIs."; "Os botões de filtros atualmente na tela
+  Comercial são desnecessários. Remova os atuais botões, e adicione um botão
+  de filtro de: Tipo de Serviço"; "Remova o botão 'Clientes' da tela
+  Comercial".)*
+
+  **"Proposta enviada" é `proposta_enviada_em`** (R64: o ciclo encerra no
+  envio), e **"tipo de serviço" é `servicos_propostos`** — a lista que a casa
+  já tem (`servicosPropostos.ts`: Controle de Acesso Eletrônico, Portaria
+  Remota, Monitoramento 24h, CFTV, Alarmes, Totem de Monitoramento, Cerca
+  Elétrica), normalizada para as chaves legadas não virarem fatias
+  duplicadas. Uma proposta com dois serviços conta nas **duas** fatias — a
+  rosca responde "quantas propostas ofereceram X", não "quantas propostas
+  existem", e o número de propostas está no funil ao lado.
+
+  **O ticket médio depende de um dado que o sistema NÃO grava.** O valor da
+  proposta nasce só na hora de gerar o documento (`gerarProposta.ts`) e não
+  fica em coluna nenhuma. Ele entra quando houver onde gravá-lo — decisão
+  aberta: qual valor é o ticket (mensal recorrente? implantação? por forma de
+  pagamento?). Enquanto isso, os quatro KPIs são: **média de propostas por
+  mês (M-12)**, **taxa visita → proposta** (o funil em porcentagem), **tempo
+  médio da visita ao envio** e **aguardando envio** (aprovadas sem proposta —
+  o que está na mão do comercial agora).
+
+  **Os dados do passado entram à mão.** *(Davi: "Eu sei que inicialmente não
+  temos informação, mas na verdade eu tenho aqui e vou te passar para você
+  inserir as informações do passado de maneira manual, e aí as propostas daqui
+  em diante vão ser tudo através do nosso sistema e ai o dashboard atualiza
+  por conta própria…")* — quando vierem, entram como linhas de
+  `visitas_tecnicas` com `proposta_enviada_em` e `servicos_propostos`, por
+  migration, e o dashboard as conta sem código novo.
+
+  **Revisa a R64 e a R252** nos chips de etapa (saem; o quadro continua por
+  etapa, sem o recorte de um chip) e **a R32** no botão Clientes (sai daqui;
+  Clientes tem item de menu próprio).
+
+- **R303** — **Os títulos, tamanhos, cores e famílias de fonte das páginas
+  principais seguem UMA escala.** *(Davi, 15/09/2026: "Revise todos os títulos
+  de campos, tamanhos das fontes, cores das fontes, tipos de fontes, de todas
+  as páginas da coluna esquerda, que são todas as principais páginas. Essa
+  parte passe para um agente que seja excelente UX/UI.")* As "páginas da
+  coluna esquerda" são os itens de `nav-itens.ts`: Início, Calendário,
+  Clientes, Operacional Técnica, Comercial, Gestão Técnica, Administrativo,
+  Perfil. A escala é a do DS §12 (R195): pesos {100, 400, 600, 700}; título
+  de página 22/700 com `letterSpacing -0.01em`; rótulo de campo 10/600
+  `.12em`; micro-rótulo de seção `rotuloDeSecao` 12/700 `.16em`; corpo 12–13.5
+  /400; texto secundário pelo token do tema. **A tabela §3 do DS estava
+  desatualizada** frente à §12 e ao código (listava 300/500/800 e -0.02em) — a
+  revisão a corrige: código e verificador são a verdade.
+
+- **R304** — **Existe o cargo GESTOR: quem manda na equipe técnica de campo.
+  Hoje é o Vinicius.** *(Davi, 15/09/2026: "Não me lembro se mencionei isso,
+  mas acho que ficou explícito. Vou criar um novo cargo chamado Gestor, que
+  atualmente o Vinicius quem faz este papel.")*
+
+  **Revisa a R13** no papel do Vinicius: ele era **Admin** por falta de um
+  cargo que dissesse o que ele é. Cargo neste sistema não se cria pela tela
+  — é código (tipo, menu, matriz) e banco (restrição da coluna, `is_gestor`,
+  `pode_ver_financeiro`, semente da matriz); a **U154** faz a parte do banco
+  no molde da U127 (o operacional), e a troca do Vinicius de Admin para
+  Gestor é um gesto do Davi na aba Usuários, depois de rodar a U154.
+
+  **O que o gestor É, por padrão** (a matriz de permissões ajusta por cima,
+  como para todo cargo):
+  - **é gestor** — entra em `is_gestor()` e em `useIsGerente`: coordena,
+    programa, escala, fecha e cobra; a leitura de tudo já era de todo logado
+    (R221);
+  - **vê valores** — entra em `pode_ver_financeiro()` e em `useVeFinanceiro`:
+    é ele quem lança a cobrança do chamado (R125, R300 — *"aguardando o
+    Vinicius lançar cobrança"*), e quem lança tem de ver o número; como Admin
+    ele sempre viu;
+  - **suas portas** — Início, Calendário, Clientes, Operacional Técnica,
+    **Gestão Técnica**, Abrir chamado, Criar atividade, Programação das
+    duplas, Fechamentos, Equipamentos e Perfil. **Fechadas**: Administrativo
+    (gente, acesso, APIs são do admin), Comercial (visitas e propostas) e
+    Contratos. O Davi abre o que quiser na matriz;
+  - **não é admin** — não convida, não aprova, não altera permissões: as
+    três portas continuam exigindo `cargo = 'admin'` no banco;
+  - **enxerga a casa inteira** na Início (o filtro por pessoa), como o
+    admin, o comercial, o SAC e o operacional.
+
+  Na interface ele recebe a **mesma barra do admin, filtrada pela matriz** —
+  a barra já é filtrada por cima para todo cargo, então o que a matriz fechar
+  some do menu sem um `if` novo. Na matriz de Permissões o Gestor ganha uma
+  **coluna própria** (a quinta), lida da mesma lista `PAPEIS` que desenha as
+  outras.
+
+  **O que fica em aberto, dito:** várias funções do banco que decidem *quem é
+  avisado* (chamado sem dono, prazo, pedido) enumeram `admin/comercial/sac` à
+  mão desde a U7 e a U13 — o gestor ainda NÃO está nessas listas. Enquanto o
+  Vinicius for Admin isso não muda nada; no dia em que virar Gestor, ele
+  deixa de receber esses avisos até uma leva própria reescrever essas listas
+  em cima de `is_gestor()`. Está listado em ESTADO_ATUAL como pendência.

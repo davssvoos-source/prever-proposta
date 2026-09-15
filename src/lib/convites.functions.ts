@@ -5,8 +5,20 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const inviteSchema = z.object({
   email: z.string().email(),
   nome: z.string().min(1),
-  cargo: z.enum(["admin", "comercial", "sac", "tecnico", "operacional"]).default("tecnico"),
+  // R304 (15/09/2026): entra o "gestor" — quem manda na equipe técnica de campo.
+  // Literal de propósito: é validação de SERVIDOR (o mapa da tela não chega aqui).
+  cargo: z.enum(["admin", "comercial", "sac", "tecnico", "operacional", "gestor"]).default("tecnico"),
 });
+
+/**
+ * A URL pública do app, para o link do convite (`redirectTo`). Vem de SITE_URL
+ * no servidor; sem ela, a publicação da Lovable. Um lugar só — enviar e
+ * reenviar montam o link daqui; antes o mesmo fallback vivia duplicado nas
+ * duas funções. (Conferir se a variável existe no servidor é da hospedagem.)
+ */
+function siteUrl() {
+  return process.env.SITE_URL ?? "https://prever.lovable.app";
+}
 
 export const enviarConvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -23,7 +35,6 @@ export const enviarConvite = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const siteUrl = process.env.SITE_URL ?? "https://prever.lovable.app";
     const meta = { nome: data.nome, cargo: data.cargo };
 
     // ── R59: CADASTRAR NÃO DEPENDE DO E-MAIL SAIR ──────────────────────────
@@ -50,7 +61,7 @@ export const enviarConvite = createServerFn({ method: "POST" })
     const { data: convidado, error: inviteErr } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
         data: meta,
-        redirectTo: `${siteUrl}/auth`,
+        redirectTo: `${siteUrl()}/auth`,
       });
 
     if (inviteErr) {
@@ -85,4 +96,59 @@ export const enviarConvite = createServerFn({ method: "POST" })
     // não saiu — sem isso o admin acharia que a pessoa recebeu um e-mail que
     // nunca chegou, e ficaria esperando.
     return { success: true, user_id: userId, emailEnviado };
+  });
+
+// ── R298: REENVIAR o convite pendente ──────────────────────────────────────
+// Davi, 15/09/2026: "Adicione botão de reenviar convite na lista de convites
+// pendentes". Reenviar NÃO é convidar de novo: `enviarConvite` insere outra
+// linha em `convites` e trata "já existe" como erro — chamá-la de novo
+// duplicaria o card ou falharia. Aqui é a MESMA linha, o MESMO e-mail e um
+// novo disparo pelo GoTrue: `inviteUserByEmail` para uma conta que ainda não
+// confirmou o e-mail reenvia o convite (é o caso de todo convite pendente,
+// inclusive o que nasceu pelo `createUser` do R59); para conta já confirmada
+// ele devolve "already registered" — e aí o certo é dizer que a pessoa já
+// entrou, não inventar um segundo envio.
+const reenvioSchema = z.object({ id: z.string().uuid() });
+
+export const reenviarConvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => reenvioSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    // Só admins podem reenviar — a mesma porta de `enviarConvite`
+    const { data: perfil, error: perfilErr } = await context.supabase
+      .from("profiles")
+      .select("cargo")
+      .eq("id", context.userId)
+      .single();
+    if (perfilErr) throw new Error("Não foi possível verificar permissões");
+    if (perfil?.cargo !== "admin") throw new Error("Acesso negado");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // a linha que já existe — nada é inserido em `convites`
+    const { data: convite, error: conviteErr } = await supabaseAdmin
+      .from("convites")
+      .select("id, email, nome, cargo, status")
+      .eq("id", data.id)
+      .single();
+    if (conviteErr || !convite) throw new Error("Convite não encontrado.");
+    if (convite.status !== "pendente") {
+      throw new Error("Este convite já foi cancelado ou aceito — não há o que reenviar.");
+    }
+
+    const { error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(convite.email, {
+      data: { nome: convite.nome, cargo: convite.cargo },
+      redirectTo: `${siteUrl()}/auth`,
+    });
+
+    if (inviteErr) {
+      if (/already|registered|exists|confirmed/i.test(inviteErr.message)) {
+        throw new Error("Esta pessoa já entrou no sistema — o convite não precisa ser reenviado.");
+      }
+      // o texto do driver fica no log do servidor; a tela recebe a frase
+      console.error("[reenviarConvite] inviteUserByEmail:", inviteErr.message);
+      throw new Error('O e-mail não saiu. Tente de novo em alguns minutos ou peça para a pessoa entrar por "esqueci minha senha".');
+    }
+
+    return { success: true, email: convite.email };
   });

@@ -96,7 +96,8 @@ export function useIsGerente() {
         supabase.from("user_roles").select("role").eq("user_id", u.user.id),
         supabase.from("profiles").select("cargo").eq("id", u.user.id).maybeSingle(),
       ]);
-      const gestores = ["admin", "comercial", "sac"];
+      // R304: o GESTOR é gestor — espelho do is_gestor() do banco (U154).
+      const gestores = ["admin", "comercial", "sac", "gestor"];
       const roleStrs = (roles ?? []).map((r) => r.role as string);
       if (roleStrs.some((r) => gestores.includes(r))) return true;
       return gestores.includes(profile?.cargo ?? "");
@@ -117,7 +118,9 @@ export async function consultarVeFinanceiro(): Promise<boolean> {
     supabase.from("user_roles").select("role").eq("user_id", u.user.id),
     supabase.from("profiles").select("cargo").eq("id", u.user.id).maybeSingle(),
   ]);
-  const financeiro = ["admin", "comercial"];
+  // R304: o GESTOR vê valores — é ele quem lança a cobrança do chamado
+  // (R125/R300). Espelho do pode_ver_financeiro() do banco (U154).
+  const financeiro = ["admin", "comercial", "gestor"];
   const roleStrs = (roles ?? []).map((r) => r.role as string);
   if (roleStrs.some((r) => financeiro.includes(r))) return true;
   return financeiro.includes(profile?.cargo ?? "");
@@ -155,6 +158,11 @@ export function useUserCargo() {
       const c = profile?.cargo ?? "";
       if (roleStrs.includes("admin") || roleStrs.includes("comercial")) return "admin" as const;
       if (c === "admin" || c === "comercial") return "admin" as const;
+      // R304: o GESTOR recebe a INTERFACE do admin (barra completa, painéis) —
+      // o que ele não abre, a matriz de permissões fecha por cima. Não é
+      // admin no BANCO: convidar, aprovar e alterar permissões continuam
+      // exigindo cargo = 'admin' lá.
+      if (roleStrs.includes("gestor") || c === "gestor") return "admin" as const;
       if (roleStrs.includes("sac") || c === "sac") return "sac" as const;
       // R244/R263 (U132): o OPERACIONAL tem barra própria (Início, Calendário,
       // Clientes, Perfil) e NÃO é técnico. Este balde devolvia "tecnico" para

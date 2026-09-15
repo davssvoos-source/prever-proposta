@@ -15,29 +15,35 @@
 //   visitas; /historico virou redirect para a Início (R165, U99).
 //
 // A leitura por etapa é derivada em features/comercial/etapas.ts (pura,
-// coberta por asserção): o filtro por chip, o chip de cada linha e o funil
+// coberta por asserção): o chip de cada linha, a coluna do quadro e o funil
 // contam todos da MESMA função — não têm como discordar entre si.
+//
+// R302 (2026-09-15, Davi): o card "Funil comercial" virou um DASHBOARD de
+// quatro peças (features/comercial/DashboardComercial.tsx, contas em
+// metricas.ts); os chips por etapa saíram ("desnecessários") e entrou UM
+// filtro de Tipo de serviço, que vale para a página inteira — dashboard,
+// lista e quadro (R8); o botão "Clientes" saiu (Clientes tem menu próprio).
 
-import { guardaDeTela, usePermissoes } from "@/features/gerencial/permissoes";
+import { guardaDeTela } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, Outlet, useRouterState, useLocation, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Plus, XCircle, FileText, FileClock, Send, Clock,
-  Building2, ChevronRight, KanbanSquare, List as ListIcon,
-} from "lucide-react";
+import { Plus, FileText, KanbanSquare, List as ListIcon } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
-import { FONT, GOLD_GRAD, card } from "@/lib/ui";
-import {
-  etapaDaVisita, contagemPorEtapa, funilComercial,
-  ETAPA_ORDEM, ETAPA_LABEL, ETAPA_CORES, type EtapaComercial,
-} from "@/features/comercial/etapas";
-import { ETAPA_ICONE } from "@/features/comercial/icones";
+import { FONT, GOLD_GRAD, card, botaoDaBarra, pilulaDaBarra } from "@/lib/ui";
+// R302: ETAPA_CORES, ETAPA_ICONE e os ícones de etapa saíram daqui com os
+// chips — quem pinta etapa agora é só CartaoDaVisita/QuadroComercial.
+import { funilComercial, ETAPA_ORDEM } from "@/features/comercial/etapas";
 import { CartaoDaVisita } from "@/features/comercial/CartaoDaVisita";
 import { QuadroComercial } from "@/features/comercial/QuadroComercial";
+import { DashboardComercial } from "@/features/comercial/DashboardComercial";
+import { filtrarPorServico } from "@/features/comercial/metricas";
+import { SERVICOS_PROPOSTOS } from "@/features/visitas/servicosPropostos";
+import { MenuFiltro } from "@/features/home/MenuFiltro";
+import { TelaDeErro } from "@/components/TelaDeErro";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -81,9 +87,11 @@ function GerencialPage() {
   const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
-  // filtro por etapa — chips com contagem, o mesmo padrão de Clientes (R41).
-  // "todas" é o padrão: a promessa da tela é a lista INTEIRA numa tabela só.
-  const [etapa, setEtapa] = useState<"todas" | EtapaComercial>("todas");
+  // R302: o filtro de TIPO DE SERVIÇO — as chaves de servicosPropostos.ts
+  // marcadas no MenuFiltro. Vazio é o padrão: a promessa da tela continua
+  // sendo a lista INTEIRA. Estado local: é pergunta do momento, não
+  // preferência de quem olha.
+  const [servicos, setServicos] = useState<string[]>([]);
   // R252: o modo de visualização — lista (o de sempre) ou quadro por etapa
   const [visao, setVisao] = useState<"lista" | "quadro">(() => {
     try { return localStorage.getItem(CHAVE_VISAO_COMERCIAL) === "quadro" ? "quadro" : "lista"; } catch { return "lista"; }
@@ -92,7 +100,7 @@ function GerencialPage() {
     try { localStorage.setItem(CHAVE_VISAO_COMERCIAL, visao); } catch { /* modo privado */ }
   }, [visao]);
 
-  const { data: visitasRaw = [], isLoading } = useQuery({
+  const { data: visitasRaw = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["gerencial-visitas"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -103,6 +111,7 @@ function GerencialPage() {
             data_hora_agendada,
             endereco,
             servicos_solicitados,
+            servicos_propostos,
             created_at,
             cliente_id,
             tecnico_id,
@@ -166,7 +175,6 @@ function GerencialPage() {
 
   // Admin = linha em user_roles OU profiles.cargo === 'admin' (padrão do app).
   // Checar só user_roles escondia o botão de excluir de admins cadastrados via cargo.
-  const { podeVer } = usePermissoes();
   const { data: isAdmin = false } = useQuery({
     queryKey: ["is-admin-gerencial"],
     queryFn: async () => {
@@ -207,26 +215,13 @@ function GerencialPage() {
   const tecMap = useMemo(() => new Map(tecnicos.map((t) => [t.id, t.nome])), [tecnicos]);
 
   const visitas = visitasRaw as any[];
-  const contagem = useMemo(() => contagemPorEtapa(visitas), [visitas]);
-  const funil = useMemo(() => funilComercial(visitas), [visitas]);
-  const exibidas = useMemo(
-    () => (etapa === "todas" ? visitas : visitas.filter((v) => etapaDaVisita(v) === etapa)),
-    [visitas, etapa],
-  );
-
-  const chipFiltro = (ativo: boolean): CSSProperties => ({
-    padding: "8px 14px",
-    borderRadius: 999,
-    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
-    background: ativo ? GOLD_GRAD : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#0E0E0E" : textPrimary,
-    fontFamily: FONT,
-    fontWeight: 600,
-    fontSize: 12,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-    flexShrink: 0,
-  });
+  // R302/R8: o filtro de Tipo de serviço recorta a página INTEIRA — o
+  // dashboard, o funil do subtítulo, a lista e o quadro leem `exibidas`.
+  const exibidas = useMemo(() => filtrarPorServico(visitas, servicos), [visitas, servicos]);
+  const funil = useMemo(() => funilComercial(exibidas), [exibidas]);
+  // um relógio só para todas as contas do render — os baldes do gráfico e
+  // os KPIs precisam concordar sobre que semana é esta
+  const agora = useMemo(() => new Date(), [visitasRaw]);
 
   if (pathname !== "/gerencial") {
     return <Outlet />;
@@ -239,143 +234,80 @@ function GerencialPage() {
           tela do domínio sem ela. */}
       <div className="sangra-x" style={{ paddingTop: 18, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 16, color: textPrimary }}>
 
-        {/* Cabeçalho — título 22/600 (§3 "Título de página"), subtítulo 12 */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-          <div style={{ minWidth: 0 }}>
-            <h1 style={{
-              fontFamily: FONT, fontWeight: 700, fontSize: 22,
-              letterSpacing: "-0.01em", margin: 0,
-            }}>
-              Painel Comercial
-            </h1>
-            <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, marginTop: 2 }}>
-              {funil.visitas} proposta{funil.visitas !== 1 ? "s" : ""} · o ciclo encerra no envio
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            {/* Só o DOMÍNIO COMERCIAL (R32). "Histórico" saiu (R64): levava a
-                outra página com a mesma lista de visitas — era a terceira
-                porta para o que esta tela já mostra. "Mapa" saiu (R192, U106):
-                a tela /mapa foi excluída a pedido do Davi. */}
-            {[
-              { label: "Clientes", Icon: Building2, to: "/clientes" as const, tela: "clientes" },
-            ]
-              // atalho que leva a uma tela bloqueada é armadilha: some junto
-              .filter((a) => podeVer(a.tela) !== false)
-              .map(({ label, Icon, to }) => (
-                <button
-                  key={label}
-                  onClick={() => navigate({ to })}
-                  style={{
-                    minHeight: 40,
-                    background: isLight ? "#ffffff" : "#1b1b1b",
-                    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-                    borderRadius: 12,
-                    padding: "0 16px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    color: textPrimary,
-                    boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
-                    fontFamily: FONT,
-                    fontWeight: 600,
-                    fontSize: 12.5,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <Icon size={16} color={gold} />
-                  {label}
-                </button>
-              ))}
-          </div>
-        </div>
-
-        {/* Funil — TRÊS estágios, e acaba no envio (R64). "Aceitas/Recusadas"
-            saíram: este sistema não mapeia o resultado no cliente, e mostrar
-            estágio que nenhum fluxo preenche é fingir um dado que não existe. */}
-        <div style={{ ...card(isLight), borderRadius: 16, padding: "16px 18px" }}>
-          <div style={{
-            fontFamily: FONT, fontSize: 10.5, fontWeight: 700,
-            letterSpacing: "0.12em", textTransform: "uppercase",
-            color: gold, marginBottom: 12,
+        {/* Cabeçalho — título 22/700 (§3 "Título de página"), subtítulo 12.
+            Só o DOMÍNIO COMERCIAL (R32): "Histórico" saiu (R64), "Mapa" saiu
+            (R192) e "Clientes" saiu (R302) — Clientes tem item de menu próprio. */}
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{
+            fontFamily: FONT, fontWeight: 700, fontSize: 22,
+            letterSpacing: "-0.01em", margin: 0,
           }}>
-            Funil comercial
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            {[
-              { label: "Visitas", value: funil.visitas, cor: gold },
-              { label: "Aprovadas", value: funil.aprovadas, cor: isLight ? "#1d4ed8" : "#60A5FA" },
-              { label: "Enviadas", value: funil.enviadas, cor: isLight ? "#047862" : "#2DD2A5" },
-            ].map((f, i) => (
-              <div key={f.label} style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
-                {i > 0 && <ChevronRight size={16} color={textSecondary} style={{ marginBottom: 6, flexShrink: 0 }} />}
-                <div style={{ minWidth: 74 }}>
-                  <div style={{
-                    fontFamily: FONT, fontSize: 24, fontWeight: 700,
-                    color: f.cor, fontVariantNumeric: "tabular-nums",
-                  }}>
-                    {f.value}
-                  </div>
-                  <div style={{
-                    fontFamily: FONT, fontSize: 10, fontWeight: 400,
-                    color: textSecondary, letterSpacing: "0.08em",
-                    textTransform: "uppercase", marginTop: 2,
-                  }}>
-                    {f.label}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 400, color: textSecondary, marginTop: 12, lineHeight: 1.5 }}>
-            Aprovação é interna. O ciclo encerra no envio da proposta a quem a solicitou — o aceite do cliente não é mapeado aqui.
+            Painel Comercial
+          </h1>
+          <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, marginTop: 2 }}>
+            {funil.visitas} proposta{funil.visitas !== 1 ? "s" : ""} · o ciclo encerra no envio
           </div>
         </div>
 
-        {/* Filtro por etapa — chips com contagem (o padrão de Clientes).
-            Não é aba: o padrão é "Todas", a lista única que a tela promete. */}
+        {/* R302 — o DASHBOARD no lugar do card do funil: propostas enviadas
+            por período (12 semanas ou 12 meses), rosca por tipo de serviço,
+            o funil (R64, acaba no envio) e quatro KPIs. Lê as propostas JÁ
+            filtradas: o filtro de Tipo de serviço vale para a página inteira.
+            No celular ficam o funil (que o telefone já tinha) e os KPIs — os
+            MESMOS painéis do desktop, empilhados; barras e rosca são
+            `.so-desktop`. */}
+        {!isError && (
+          <DashboardComercial propostas={exibidas} agora={agora} carregando={isLoading} />
+        )}
+
+        {/* A barra de ferramentas (DS §6.26): o recorte à esquerda — o filtro
+            de Tipo de serviço (R302), no lugar dos chips por etapa — e a
+            ferramenta à direita: lista × quadro (R252, preferência de quem
+            olha, gravada no navegador). */}
         <div className="trilho-x" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button style={chipFiltro(etapa === "todas")} onClick={() => setEtapa("todas")}>
-            {`Todas · ${funil.visitas}`}
-          </button>
-          {ETAPA_ORDEM.map((e) => (
-            <button key={e} style={chipFiltro(etapa === e)} onClick={() => setEtapa(e)}>
-              {`${ETAPA_LABEL[e]} · ${contagem[e]}`}
-            </button>
-          ))}
-          {/* R252: lista × quadro — a mesma chave da Início, com os mesmos
-              ícones, no fim da barra de filtros. É preferência de quem olha
-              (R175): fica gravada no navegador. */}
+          <MenuFiltro
+            rotulo="Tipo de serviço"
+            multi
+            larguraMenu={280}
+            opcoes={SERVICOS_PROPOSTOS.map((s) => ({ valor: s.key, label: s.label }))}
+            selecionados={servicos}
+            onMudar={setServicos}
+          />
           <div style={{ flex: 1, minWidth: 8 }} />
           <button
             type="button"
             onClick={() => setVisao((atual) => (atual === "lista" ? "quadro" : "lista"))}
             title={visao === "lista" ? "Ver como quadro por etapa" : "Ver como lista"}
             aria-label={visao === "lista" ? "Ver como quadro por etapa" : "Ver como lista"}
-            style={{ ...chipFiltro(false), flexShrink: 0, padding: "8px 12px" }}
+            style={botaoDaBarra(isLight, gold)}
           >
             {visao === "lista" ? <KanbanSquare size={17} color={gold} /> : <ListIcon size={17} color={gold} />}
           </button>
         </div>
 
-        {/* A lista — todas as etapas juntas, cada linha dizendo a sua */}
-        {isLoading ? (
-          <div style={{ ...card(isLight), borderRadius: 16, padding: "28px 16px", textAlign: "center", color: textSecondary, fontFamily: FONT, fontSize: 13 }}>
+        {/* A lista — erro, carregando e vazio são três telas diferentes */}
+        {isError ? (
+          <TelaDeErro erro={error} pathname={pathname} aoTentarDeNovo={() => { void refetch(); }} />
+        ) : isLoading ? (
+          <div style={{ ...card(isLight), borderRadius: 16, paddingBlock: 28, paddingInline: 16, textAlign: "center", color: textSecondary, fontFamily: FONT, fontSize: 13 }}>
             Carregando propostas…
           </div>
         ) : exibidas.length === 0 ? (
-          <div style={{ ...card(isLight), borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "36px 20px" }}>
+          <div style={{ ...card(isLight), borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingBlock: 36, paddingInline: 20 }}>
             <FileText size={28} color={gold} />
             <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600 }}>
-              {visitas.length === 0 ? "Nenhuma proposta cadastrada ainda" : "Nada nesta etapa"}
+              {visitas.length === 0
+                ? "Nenhuma proposta cadastrada ainda"
+                : servicos.length > 1
+                  ? "Nenhuma proposta com esses tipos de serviço"
+                  : "Nenhuma proposta com esse tipo de serviço"}
             </span>
             {visitas.length === 0 ? (
               <button
                 onClick={() => navigate({ to: "/gerencial/nova" })}
                 style={{
                   marginTop: 8, minHeight: 44, background: GOLD_GRAD,
-                  border: "none", borderRadius: 22, padding: "0 24px",
+                  border: "none", borderRadius: 22, paddingInline: 24,
                   color: "#0E0E0E", fontFamily: FONT, fontWeight: 700, fontSize: 13,
                   cursor: "pointer",
                 }}
@@ -383,15 +315,21 @@ function GerencialPage() {
                 + Criar primeira proposta
               </button>
             ) : (
-              <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary }}>
-                Escolha outra etapa acima, ou "Todas" para a lista inteira.
-              </span>
+              <button
+                type="button"
+                onClick={() => setServicos([])}
+                style={{ ...pilulaDaBarra(isLight, textPrimary), marginTop: 4 }}
+              >
+                Limpar filtro e ver a lista inteira
+              </button>
             )}
           </div>
         ) : visao === "quadro" ? (
           <QuadroComercial
             visitas={exibidas}
-            colunas={etapa === "todas" ? ETAPA_ORDEM : [etapa]}
+            // R302: o quadro mostra sempre o ciclo inteiro — o recorte por
+            // uma etapa saiu com os chips; o filtro da página é por serviço
+            colunas={ETAPA_ORDEM}
             tecMap={tecMap}
             isAdmin={isAdmin}
             marcando={marcarEnviada.isPending}

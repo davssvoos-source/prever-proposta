@@ -7,7 +7,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { podeAbrir, TELAS, type PapelPermissao } from "@/lib/telas";
+import { podeAbrir, TELAS, PAPEIS, type PapelPermissao } from "@/lib/telas";
 
 /** tela → cargo → permitido */
 export type Matriz = Record<string, Record<string, boolean>>;
@@ -127,12 +127,14 @@ export function destinoNegado(chave: string): string {
 export function matrizCompleta(matriz: Matriz | undefined): Matriz {
   const m: Matriz = {};
   for (const t of TELAS) {
-    m[t.chave] = {
-      tecnico:   matriz?.[t.chave]?.tecnico   ?? t.padrao.tecnico,
-      comercial: matriz?.[t.chave]?.comercial ?? t.padrao.comercial,
-      sac:       matriz?.[t.chave]?.sac       ?? t.padrao.sac,
-      operacional: matriz?.[t.chave]?.operacional ?? t.padrao.operacional,   // R244
-    };
+    // R304 (15/09/2026): os papéis vêm de PAPEIS, a MESMA lista que desenha as
+    // colunas da tela. Enumerados à mão aqui (tecnico/comercial/sac/operacional),
+    // o gestor ficou de fora quando entrou em PAPEIS — a quinta coluna aparecia
+    // toda desmarcada, ignorando o padrão de telas.ts e a semente da U154, e um
+    // marca/desmarca gravava `false` por cima. A lista é UMA.
+    const linha = {} as Record<PapelPermissao, boolean>;
+    for (const p of PAPEIS) linha[p.chave] = matriz?.[t.chave]?.[p.chave] ?? t.padrao[p.chave];
+    m[t.chave] = linha;
   }
   return m;
 }

@@ -1,7 +1,7 @@
 # Pendências técnicas — registro dos defeitos da revisão
 
 <!-- sumario:inicio -->
-> **Sumário** — 76 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **59 em aberto, 17 fechadas.**
+> **Sumário** — 81 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo. **64 em aberto, 17 fechadas.**
 
 - [Como ler o status de verificação](#como-ler-o-status-de-verificação)
 - [P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior](#p1-crítico-o-menu-de-filtro-é-pintado-atrás-da-barra-inferior)
@@ -79,6 +79,11 @@
 - [P70 — MÉDIO · O modal do Sobreaviso é artesanal: z-60, sem `role="dialog"` e sem foco preso (2026-09-11, U129)](#p70-médio-o-modal-do-sobreaviso-é-artesanal-z-60-sem-roledialog-e-sem-foco-preso-2026-09-11-u129)
 - [P71 — BAIXO · Quatro telas usam o peso 500, que a R195 proibiu — e a asserção não os vê (2026-09-11, achado na revisão da U129)](#p71-baixo-quatro-telas-usam-o-peso-500-que-a-r195-proibiu-e-a-asserção-não-os-vê-2026-09-11-achado-na-revisão-da-u129)
 - [P72 — BAIXO · `chamado_locais` e `chamado_apoios` continuam `USING (true)`: o técnico lê, por outra tabela, que existe atividade interna sobre o cliente X e quem a apoia (2026-09-13, achado na revisão da U132)](#p72-baixo-chamadolocais-e-chamadoapoios-continuam-using-true-o-técnico-lê-por-outra-tabela-que-existe-atividade-interna-sobre-o-cliente-x-e-quem-a-apoia-2026-09-13-achado-na-revisão-da-u132)
+- [P73 — MÉDIO · as funções do banco que decidem QUEM É AVISADO enumeram `admin/comercial/sac` à mão — o cargo GESTOR (R304) não está nelas (2026-09-15, U154)](#p73-médio-as-funções-do-banco-que-decidem-quem-é-avisado-enumeram-admincomercialsac-à-mão-o-cargo-gestor-r304-não-está-nelas-2026-09-15-u154)
+- [P74 — BAIXO · `gradientesEspectro` tem TRÊS cópias idênticas (2026-09-15, R299/R302)](#p74-baixo-gradientesespectro-tem-três-cópias-idênticas-2026-09-15-r299r302)
+- [P75 — BAIXO · `convites.status` nunca vira "aceito" — a lista de Convites Pendentes acumula gente que já entrou (2026-09-15, R298)](#p75-baixo-convitesstatus-nunca-vira-aceito-a-lista-de-convites-pendentes-acumula-gente-que-já-entrou-2026-09-15-r298)
+- [P76 — BAIXO · `SITE_URL` do servidor Windows: o fallback dos convites aponta para a Lovable (2026-09-15)](#p76-baixo-siteurl-do-servidor-windows-o-fallback-dos-convites-aponta-para-a-lovable-2026-09-15)
+- [P77 — BAIXO · o orçamento de largura do dashboard ignora os gutters — em 1366px a coluna das obras quebra para baixo (2026-09-15, medido na Gestão Técnica)](#p77-baixo-o-orçamento-de-largura-do-dashboard-ignora-os-gutters-em-1366px-a-coluna-das-obras-quebra-para-baixo-2026-09-15-medido-na-gestão-técnica)
 <!-- sumario:fim -->
 
 Registro formal do que a revisão adversarial encontrou.
@@ -2644,3 +2649,51 @@ depende de ler todas as linhas (U78).
 Não entrou na U132 porque o custo de uma função por linha nessas duas tabelas
 (lidas inteiras pela Início de todo mundo) merece medição antes, e porque o
 vazamento é de METADADO, não de conteúdo.
+
+## P73 — MÉDIO · as funções do banco que decidem QUEM É AVISADO enumeram `admin/comercial/sac` à mão — o cargo GESTOR (R304) não está nelas (2026-09-15, U154)
+
+A U154 pôs o gestor em `is_gestor()` e em `pode_ver_financeiro()`, e é isso que
+abre as policies. Mas a U7 (§420/887) e a U13 (§142–201) montam listas de
+destinatários com `p.cargo IN ('admin','comercial','sac')` escritas à mão
+(chamado sem dono, prazo, pedido): um gestor não recebe esses avisos. Enquanto o
+Vinicius for Admin nada muda; no dia em que virar Gestor, ele para de ser
+avisado. **O conserto** é reescrever essas listas em cima de `is_gestor()` —
+uma migration própria, com conferência de "quem recebe" antes e depois.
+
+## P74 — BAIXO · `gradientesEspectro` tem TRÊS cópias idênticas (2026-09-15, R299/R302)
+
+O corpo que devolve os `<linearGradient>` da rampa vive em
+`features/paineis/DashboardOperacional.tsx` e em
+`features/comercial/DashboardComercial.tsx` (e o comentário do
+`painel.operacional.tsx` ainda o cita). A primeira correção da costura numa
+cópia não chega às outras — anti-padrão "componente paralelo" (DS §8). **O
+conserto** é extrair para `src/features/paineis/graficos.tsx` e pinar UMA
+definição; não entrou na v1.0.2 porque mexe em dois arquivos pinados de duas
+frentes ao mesmo tempo.
+
+## P75 — BAIXO · `convites.status` nunca vira "aceito" — a lista de Convites Pendentes acumula gente que já entrou (2026-09-15, R298)
+
+Nada no repo (src nem migrations) marca o convite como aceito quando a pessoa
+cria a senha. Reenviar para essas pessoas devolve "Esta pessoa já entrou no
+sistema" (frase certa), mas a linha fica. **Decisão de produto** (levar ao
+Davi): quando o GoTrue responder "already registered", gravar `status =
+aceito` e invalidar — a lista se limpa sozinha.
+
+## P76 — BAIXO · `SITE_URL` do servidor Windows: o fallback dos convites aponta para a Lovable (2026-09-15)
+
+`convites.functions.ts` (e `integracoes.functions.ts`) caem em
+`https://prever.lovable.app` quando `SITE_URL` não está no ambiente. O app
+oficial roda em `grupoprever.ddns.net:5555` — sem a variável no WinSW/ps1 do
+servidor, o link do e-mail de convite (e do reenvio, R298) leva à Lovable.
+**Conferir a variável no servidor** antes de tirar a Lovable do ar; e um único
+`siteUrl()` compartilhado no lugar dos fallbacks repetidos.
+
+## P77 — BAIXO · o orçamento de largura do dashboard ignora os gutters — em 1366px a coluna das obras quebra para baixo (2026-09-15, medido na Gestão Técnica)
+
+O comentário do `DashboardOperacional` (e o pino do verificador) somam 1116 ≤
+1134 = 1366 − 232, sem descontar os 2×24 da régua de margem (R239). MEDIDO em
+15/09 a 1366×768: a coluna útil é 1076, a terceira coluna (implantações) quebra
+para a linha de baixo e a faixa fica com 714px de altura em vez de 350. Não é
+novo (a Operacional já era assim antes da R299) e não estava no prompt. **O
+conserto** é refazer o orçamento com os gutters (1086) — encurtando bases ou
+aceitando a quebra como comportamento do notebook — e ajustar o pino.

@@ -168,6 +168,12 @@ das linhas + a semente efetiva absorve o DELETE (modelo: U30).
 
 ## Sobreaviso (chave `sobreaviso`, U86)
 
+> **A tela chama-se Gestão Técnica desde a R299 (15/09/2026)**, em
+> `/gestao-tecnica`. A CHAVE continua `sobreaviso` de propósito: é o que está
+> gravado em `permissoes_tela`, e renomear a chave apagaria o que o admin
+> configurou na matriz. O cargo **Gestor** (R304, U154) a abre por padrão — é a
+> mesa dele; o SAC continua coordenando o plantão por ela.
+
 **Ver é de todo mundo que trabalha aqui; editar é de gestor.** A chave
 `sobreaviso` nasceu liberada para os três papéis da matriz (técnico, comercial,
 SAC), e a *policy* de leitura exige que quem pergunta tenha em `profiles` uma

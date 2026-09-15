@@ -11,7 +11,7 @@
 
 import type React from "react";
 import { degradeDaCor, tintaSobreDegrade, hexParaRgb } from "@/lib/degrade";
-import { SUPERNOVA, cinzas, misturar } from "@/lib/paleta";
+import { GRAD_PRIMARIA, SOBRE_PRIMARIA, SUPERNOVA, cinzas, misturar } from "@/lib/paleta";
 
 export const FONT = "var(--fonte)";
 
@@ -109,6 +109,44 @@ export const vidro = (isLight: boolean): React.CSSProperties => ({
   boxShadow: isLight ? "0 8px 28px rgba(0,0,0,0.06)" : "0 8px 28px rgba(0,0,0,0.30)",
   backdropFilter: "var(--vidro-blur)" as any,
   WebkitBackdropFilter: "var(--vidro-blur)" as any,
+});
+
+/**
+ * A RÉGUA DA BARRA DE FERRAMENTAS (DS §6.26 — R296, R298).
+ *
+ * Medida na Início, seguida pela Operacional (U148) e, desde a R298, por
+ * toda tela que tem uma linha de controles entre o título e o conteúdo
+ * (Administrativo, Comercial, Gestão Técnica). Os números NÃO se escrevem
+ * no botão: o Painel Operacional chegou a ter três alturas na mesma linha
+ * porque cada botão trazia o seu. *(Davi, 14/09/2026: "os botões e campos
+ * desalinhados".)*
+ *
+ * - `botaoDaBarra`: o quadrado só com ícone — 42×42, raio 12, ícone 17.
+ * - `pilulaDaBarra`: a pílula com texto — altura 40, raio 11, NUNCA sem
+ *   altura declarada (padding resolve na altura que a fonte do dia produzir).
+ *   `ativa` pinta com o degradê primário e a tinta medida por cima dele.
+ */
+export const botaoDaBarra = (isLight: boolean, cor: string): React.CSSProperties => ({
+  width: 42, height: 42, borderRadius: 12, padding: 0, flexShrink: 0, cursor: "pointer",
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+  background: isLight ? "#ffffff" : "#1b1b1b",
+  color: cor,
+});
+
+export const pilulaDaBarra = (
+  isLight: boolean,
+  cor: string,
+  ativa = false,
+): React.CSSProperties => ({
+  display: "inline-flex", alignItems: "center", gap: 8,
+  height: 40, padding: "0 13px", borderRadius: 11, flexShrink: 0, cursor: "pointer",
+  border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+  background: ativa ? GRAD_PRIMARIA : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+  color: ativa ? SOBRE_PRIMARIA : cor,
+  fontFamily: FONT, fontWeight: 600, fontSize: 12.5, whiteSpace: "nowrap",
+  fontVariantNumeric: "tabular-nums",
+  textDecoration: "none",
 });
 
 /** Botão dourado padrão (igual nos dois temas). */

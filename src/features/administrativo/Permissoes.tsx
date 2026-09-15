@@ -19,10 +19,11 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Check, RotateCcw, ShieldCheck } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
+import { cinzas } from "@/lib/paleta";
 import { TELAS, GRUPOS, PAPEIS, type PapelPermissao } from "@/lib/telas";
 import {
   useMatrizPermissoes, salvarPermissoes, matrizCompleta, useInvalidarPermissoes,
@@ -43,6 +44,8 @@ export function MatrizDePermissoes() {
     setTocado(false);
   }, [doBanco, isLoading]);
 
+  // a escala de cinza do tema (R186) — o fundo do cabeçalho da matriz sai daqui
+  const cz = cinzas(isLight);
   const textPrimary = isLight ? "#212121" : "#ffffff";
   const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
@@ -108,26 +111,23 @@ export function MatrizDePermissoes() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
-      <div>
-        <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 15.5 }}>Acessos por papel</div>
-        <div style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>
-          Marque quais telas cada papel pode abrir.
-        </div>
-      </div>
-
-      <div style={{
-        display: "flex", alignItems: "flex-start", gap: 9, padding: "11px 13px", borderRadius: 12,
-        background: isLight ? "rgba(160,97,8,0.07)" : "rgba(248,200,17,0.07)",
-        border: isLight ? "1px solid rgba(160,97,8,0.20)" : "1px solid rgba(248,200,17,0.20)",
-      }}>
-        <ShieldCheck size={15} color={gold} style={{ flexShrink: 0, marginTop: 1 }} />
-        <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
-          <b style={{ color: textPrimary, fontWeight: 600 }}>Administrador sempre vê tudo</b> — por isso
-          não tem coluna aqui. Isto controla a <b style={{ color: textPrimary, fontWeight: 600 }}>navegação</b>:
-          impede de abrir a tela, mas não substitui a regra de dado. O técnico continua vendo só os
-          chamados dele mesmo com o calendário liberado.
-        </div>
-      </div>
+      {/* R298 (Davi, 15/09/2026): dois textos SAÍRAM da tela — o subtítulo
+        * "Marque quais telas cada papel pode abrir." e a caixa "Administrador
+        * sempre vê tudo — por isso não tem coluna aqui. Isto controla a
+        * navegação: impede de abrir a tela, mas não substitui a regra de dado.
+        * O técnico continua vendo só os chamados dele mesmo com o calendário
+        * liberado." O que eles explicavam continua valendo, e mora aqui para
+        * quem lê o código: (1) o admin não tem coluna porque tem tudo por regra
+        * de sistema, e uma caixa de seleção seria a chance de ele se trancar
+        * para fora desta própria tela (cabeçalho do arquivo); (2) a matriz
+        * controla NAVEGAÇÃO — abrir ou não a tela —, nunca a regra de dado, que
+        * é das policies (RLS) e das consultas: liberar o calendário para o
+        * técnico não faz ele ver o chamado dos outros.
+        * O título "Acessos por papel" (15.5/700) também SAIU: repetia a pílula
+        * ativa da barra logo acima — é ela o rótulo da seção (o painel aponta
+        * aria-labelledby="adm-permissoes" para a pílula) — e 15.5 não está na
+        * escala de fonte.
+        * (Cada linha começa com `*` para o soCodigo() do verificador filtrar.) */}
 
       {isLoading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -137,16 +137,22 @@ export function MatrizDePermissoes() {
         </div>
       ) : (
         <div className="trilho-x" style={{
-          margin: "0 -16px", padding: "0 16px",
+          // sangra até a borda do card (o padding de 16 da casca) para a
+          // rolagem horizontal não parecer cortada — só no eixo horizontal,
+          // sem o atalho `padding` (anti-padrão nº 10 do DS §8)
+          marginInline: -16, paddingInline: 16,
           overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch",
         }}>
           <div style={{ minWidth: "max-content" }}>
             {/* cabeçalho */}
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
-              padding: "8px 0", borderBottom: linhaBorda,
-              position: "sticky", top: 0, zIndex: 2,
-              background: isLight ? "#e9e9e9" : "#0e0e0e",
+              paddingBlock: 8, borderBottom: linhaBorda,
+              // o fundo do CARD (cinzas().superficie), não o da página: o
+              // cabeçalho mora dentro da casca do painel. Sem `position:
+              // sticky` — dentro do .trilho-x (overflow-x: auto) não havia em
+              // que grudar.
+              background: cz.superficie,
             }}>
               <span style={{
                 width: 210, flexShrink: 0,

@@ -34,7 +34,7 @@
   - [6.15 Avatar — sem glow (v11 — 2026-09-04, R176)](#615-avatar-sem-glow-v11-2026-09-04-r176)
   - [6.16 Configurador rápido — o painel da atividade (v12 — 2026-09-04, R183–R185)](#616-configurador-rápido-o-painel-da-atividade-v12-2026-09-04-r183r185)
   - [6.17 Calendário — o card tingido e a dica expandida (v12 — 2026-09-04, R187–R191)](#617-calendário-o-card-tingido-e-a-dica-expandida-v12-2026-09-04-r187r191)
-  - [6.18 Página em duas colunas — o Administrativo (v12 — 2026-09-04, R193)](#618-página-em-duas-colunas-o-administrativo-v12-2026-09-04-r193)
+  - [6.18 O Administrativo — uma aba na largura toda (v24 — 2026-09-15, R298; era duas colunas na R193)](#618-o-administrativo-uma-aba-na-largura-toda-v24-2026-09-15-r298-era-duas-colunas-na-r193)
   - [6.19 Formulário em colunas — a Nova Visita (v12 — 2026-09-04, R194)](#619-formulário-em-colunas-a-nova-visita-v12-2026-09-04-r194)
   - [6.20 Ficha do cliente — três colunas de desktop, os dois painéis do vínculo e os cards editáveis (v15 — 2026-09-08, R200–R210)](#620-ficha-do-cliente-três-colunas-de-desktop-os-dois-painéis-do-vínculo-e-os-cards-editáveis-v15-2026-09-08-r200r210)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
@@ -943,24 +943,29 @@ valor" com rótulo 9,5/700 maiúsculo (112px) e valor 12; o *quando* 10,5
 secundário no fim. Abre embaixo do card; se não couberem 170px, abre em
 cima. Some enquanto se arrasta.
 
-### 6.18 Página em duas colunas — o Administrativo (v12 — 2026-09-04, R193)
+### 6.18 O Administrativo — uma aba na largura toda (v24 — 2026-09-15, R298; era duas colunas na R193)
 
-Quando duas listas são consultadas JUNTAS (usuários e a matriz de permissões:
-quem é, o que pode), elas ficam lado a lado em vez de abas:
+A tela do admin no desktop. *(Davi, 15/09/2026: "o layout deve ser otimizado
+para que as informações fiquem espalhadas de maneira estratégica e eficiente".)*
+A anatomia, de cima para baixo:
 
-```css
-.admin-colunas { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
-@media (min-width: 1024px) {
-  .admin-colunas { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
-}
-```
+1. **título** 22/700 `-0.01em` (§3);
+2. **a barra de pílulas** na régua da §6.26 — `pilulaDaBarra(isLight, cor, ativa)`
+   de `src/lib/ui.ts`: Usuários · Permissões à esquerda, APIs · Viaturas ·
+   Equipamentos encostados à direita (`marginLeft: auto`), gap 8. A pílula
+   ATIVA leva o degradê primário com tinta `#0E0E0E`; a INATIVA leva a classe
+   `.pilula-da-barra`, cujo hover (só com ponteiro fino) muda borda e tinta para
+   o dourado — sem degradê nem glow (R174);
+3. **uma aba de cada vez**, num `<section aria-labelledby>` rotulado pela
+   própria pílula ativa, dentro de um card (`card(isLight)`, `paddingInline`/
+   `paddingBlock` 16 — a CASCA) que ocupa a largura toda.
 
-Cada coluna é um `<section aria-labelledby>` com card(isLight), raio 18,
-padding 16, e um `<h2>` no micro-label dourado (10,5/700, maiúsculas, .10em)
-com o ícone da seção. A coluna da lista mais larga leva 1.45fr. O conteúdo que
-não se consulta junto (as APIs) entra por um **botão-pílula** (`botaoAba`) e
-troca a página inteira para uma coluna, com o botão de voltar no mesmo lugar.
-Breakpoint 1024px — o mesmo de `.cal-semana` e da sidebar.
+O que SAIU na R298: as duas colunas (`.admin-colunas`, apagada do CSS), os KPIs
+(`.painel-numeros`), o botão-pílula `botaoAba` (34/17 — um terceiro desenho fora
+da régua) e o atalho de Fechamentos (foi para a Gestão Técnica, R299). A lista
+de convites pendentes virou UMA linha por convite (44px): e-mail · cargo · data à
+esquerda, **Reenviar** e cancelar (36×36, raio 10 — os botões vizinhos da lista
+de ativos) à direita.
 
 ### 6.19 Formulário em colunas — a Nova Visita (v12 — 2026-09-04, R194)
 
@@ -1420,6 +1425,13 @@ filtros) fica com o conteúdo, à esquerda; o grupo de ferramentas vai encostado
 à direita por `marginLeft: "auto"`, com o rótulo do estado em vigor antes dos
 botões — *"Prioridade"* ao lado do botão de ordenar, para a lista nunca estar
 ordenada por um critério que ela não diz.
+
+**A régua mora em `src/lib/ui.ts` desde a R298 (v24 — 2026-09-15):**
+`botaoDaBarra(isLight, cor)` (o quadrado 42/raio 12) e `pilulaDaBarra(isLight,
+cor, ativa)` (a pílula 40/raio 11, com altura DECLARADA e o degradê primário
+quando ativa). Nenhuma tela escreve o número: a Início, a Operacional Técnica,
+a Gestão Técnica, o Administrativo e o Comercial leem a mesma função. A função
+local `BOTAO_DA_BARRA` da Operacional (v23) foi absorvida por ela.
 
 **Modo com muitos valores vira MENU, não fileira de botões.** Quatro botões
 lado a lado dizem que os quatro pesam igual; quando um é o padrão e os outros

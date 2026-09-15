@@ -19,6 +19,7 @@ import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedNovoRouteImport } from './routes/_authenticated/novo'
 import { Route as AuthenticatedMapaRouteImport } from './routes/_authenticated/mapa'
 import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
+import { Route as AuthenticatedGestaoTecnicaRouteImport } from './routes/_authenticated/gestao-tecnica'
 import { Route as AuthenticatedGerencialRouteImport } from './routes/_authenticated/gerencial'
 import { Route as AuthenticatedFechamentosRouteImport } from './routes/_authenticated/fechamentos'
 import { Route as AuthenticatedEquipamentosRouteImport } from './routes/_authenticated/equipamentos'
@@ -111,6 +112,12 @@ const AuthenticatedHistoricoRoute = AuthenticatedHistoricoRouteImport.update({
   path: '/historico',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGestaoTecnicaRoute =
+  AuthenticatedGestaoTecnicaRouteImport.update({
+    id: '/gestao-tecnica',
+    path: '/gestao-tecnica',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedGerencialRoute = AuthenticatedGerencialRouteImport.update({
   id: '/gerencial',
   path: '/gerencial',
@@ -366,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/equipamentos': typeof AuthenticatedEquipamentosRoute
   '/fechamentos': typeof AuthenticatedFechamentosRouteWithChildren
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
+  '/gestao-tecnica': typeof AuthenticatedGestaoTecnicaRoute
   '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
@@ -419,6 +427,7 @@ export interface FileRoutesByTo {
   '/equipamentos': typeof AuthenticatedEquipamentosRoute
   '/fechamentos': typeof AuthenticatedFechamentosRouteWithChildren
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
+  '/gestao-tecnica': typeof AuthenticatedGestaoTecnicaRoute
   '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
@@ -473,6 +482,7 @@ export interface FileRoutesById {
   '/_authenticated/equipamentos': typeof AuthenticatedEquipamentosRoute
   '/_authenticated/fechamentos': typeof AuthenticatedFechamentosRouteWithChildren
   '/_authenticated/gerencial': typeof AuthenticatedGerencialRouteWithChildren
+  '/_authenticated/gestao-tecnica': typeof AuthenticatedGestaoTecnicaRoute
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
   '/_authenticated/mapa': typeof AuthenticatedMapaRoute
   '/_authenticated/novo': typeof AuthenticatedNovoRoute
@@ -528,6 +538,7 @@ export interface FileRouteTypes {
     | '/equipamentos'
     | '/fechamentos'
     | '/gerencial'
+    | '/gestao-tecnica'
     | '/historico'
     | '/mapa'
     | '/novo'
@@ -581,6 +592,7 @@ export interface FileRouteTypes {
     | '/equipamentos'
     | '/fechamentos'
     | '/gerencial'
+    | '/gestao-tecnica'
     | '/historico'
     | '/mapa'
     | '/novo'
@@ -634,6 +646,7 @@ export interface FileRouteTypes {
     | '/_authenticated/equipamentos'
     | '/_authenticated/fechamentos'
     | '/_authenticated/gerencial'
+    | '/_authenticated/gestao-tecnica'
     | '/_authenticated/historico'
     | '/_authenticated/mapa'
     | '/_authenticated/novo'
@@ -752,6 +765,13 @@ declare module '@tanstack/react-router' {
       path: '/historico'
       fullPath: '/historico'
       preLoaderRoute: typeof AuthenticatedHistoricoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/gestao-tecnica': {
+      id: '/_authenticated/gestao-tecnica'
+      path: '/gestao-tecnica'
+      fullPath: '/gestao-tecnica'
+      preLoaderRoute: typeof AuthenticatedGestaoTecnicaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/gerencial': {
@@ -1202,6 +1222,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEquipamentosRoute: typeof AuthenticatedEquipamentosRoute
   AuthenticatedFechamentosRoute: typeof AuthenticatedFechamentosRouteWithChildren
   AuthenticatedGerencialRoute: typeof AuthenticatedGerencialRouteWithChildren
+  AuthenticatedGestaoTecnicaRoute: typeof AuthenticatedGestaoTecnicaRoute
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
   AuthenticatedMapaRoute: typeof AuthenticatedMapaRoute
   AuthenticatedNovoRoute: typeof AuthenticatedNovoRoute
@@ -1227,6 +1248,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEquipamentosRoute: AuthenticatedEquipamentosRoute,
   AuthenticatedFechamentosRoute: AuthenticatedFechamentosRouteWithChildren,
   AuthenticatedGerencialRoute: AuthenticatedGerencialRouteWithChildren,
+  AuthenticatedGestaoTecnicaRoute: AuthenticatedGestaoTecnicaRoute,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
   AuthenticatedMapaRoute: AuthenticatedMapaRoute,
   AuthenticatedNovoRoute: AuthenticatedNovoRoute,

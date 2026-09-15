@@ -21,7 +21,7 @@ import type { Atividade, ColunaQuadro } from "@/features/atividades/modelo";
 import { mesmoDia } from "@/features/atividades/modelo";
 import { sprintDoPrazo } from "@/lib/chamado-status";
 
-export type Cargo = "tecnico" | "sac" | "comercial" | "admin" | "operacional";
+export type Cargo = "tecnico" | "sac" | "comercial" | "admin" | "operacional" | "gestor";
 export type Vinculo = "responsavel" | "apoio" | "autor" | "todos";
 /**
  * R60 (2026-08-22, Davi): o antigo "Período" (hoje/semana/mês, por data crua)

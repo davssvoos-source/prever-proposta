@@ -9,7 +9,7 @@
 - [A fila canônica: a Início (R17/R31)](#a-fila-canônica-a-início-r17r31)
 - [O que a Início mostra, e em que ordem (R221/R246/R248, U127/U128)](#o-que-a-início-mostra-e-em-que-ordem-r221r246r248-u127u128)
 - [O app do técnico de campo — Início, Agenda, Perfil (R263/R264/R265, U132)](#o-app-do-técnico-de-campo-início-agenda-perfil-r263r264r265-u132)
-- [Sobreaviso: a escala por semana (R116/R253, U86/U129)](#sobreaviso-a-escala-por-semana-r116r253-u86u129)
+- [Plantão (na Gestão Técnica): a escala por semana (R116/R253, U86/U129 — R299)](#plantão-na-gestão-técnica-a-escala-por-semana-r116r253-u86u129-r299)
 - [Programação e painéis](#programação-e-painéis)
 - [O dashboard da Operacional Técnica — as três perguntas do Vinicius (R124–R126, U93)](#o-dashboard-da-operacional-técnica-as-três-perguntas-do-vinicius-r124r126-u93)
 - [O calendário tem duas visões — Mensal e Semanal (R133, U94)](#o-calendário-tem-duas-visões-mensal-e-semanal-r133-u94)
@@ -33,7 +33,7 @@
 - [O que aconteceu no plantão do mês (R122, U91)](#o-que-aconteceu-no-plantão-do-mês-r122-u91)
 - [A rosca do painel tem dois cortes, e a ficha do cliente ganhou o plantão (R123, U92)](#a-rosca-do-painel-tem-dois-cortes-e-a-ficha-do-cliente-ganhou-o-plantão-r123-u92)
 - [Referências](#referências)
-- [Sobreaviso — a escala do plantão (R116, U86)](#sobreaviso-a-escala-do-plantão-r116-u86)
+- [Plantão — a escala do plantão (R116, U86; seção da Gestão Técnica desde a R299)](#plantão-a-escala-do-plantão-r116-u86-seção-da-gestão-técnica-desde-a-r299)
 - [Registrar um atendimento de plantão (U87)](#registrar-um-atendimento-de-plantão-u87)
 <!-- sumario:fim -->
 
@@ -201,9 +201,15 @@ técnico fica mais de 2 minutos a menos de 150 m de um cliente do dia ou da sede
 — é sugestão; quem encerra é ele. O contexto inteiro está em
 `docs/CONTEXTO_VIATURAS.md`.
 
-## Sobreaviso: a escala por semana (R116/R253, U86/U129)
+## Plantão (na Gestão Técnica): a escala por semana (R116/R253, U86/U129 — R299)
 
-A tela é do **líder da técnica** (hoje o Vinicius). Ele monta a escala, e as
+> **Desde a R299 (15/09/2026) a tela "Sobreaviso" chama-se Gestão Técnica**
+> (`/gestao-tecnica`): a mesa do gestor da equipe de campo — indicadores, fila de
+> decisão (retornos e cobranças), Equipes, Fechamentos — e o sobreaviso é a
+> seção **Plantão** dela, recolhível, no fim da página. O link antigo
+> `/sobreaviso?mes=&dia=` continua valendo: redireciona preservando a busca.
+
+A tela é do **gestor da técnica** (hoje o Vinicius — cargo Gestor, R304). Ele monta a escala, e as
 horas que ficam ali são o que vai para o financeiro pagar.
 
 **A regra das horas** (o sistema calcula, ninguém digita de cabeça): o plantão
@@ -1457,10 +1463,10 @@ Detalhes que valem saber:
 - `docs/PRODUTO.md` — R1, R5–R9, R11–R12, R14–R20, R24–R26, R31, R95–R97, R107–R112
 
 
-## Sobreaviso — a escala do plantão (R116, U86)
+## Plantão — a escala do plantão (R116, U86; seção da Gestão Técnica desde a R299)
 
-**Onde fica:** menu → **Sobreaviso** (só no desktop; no celular chega-se pelo
-link). A tela é uma **grade: uma linha por pessoa, uma coluna por dia do mês**.
+**Onde fica:** menu → **Gestão Técnica** → seção **Plantão**, no fim da página (só no
+desktop; no celular chega-se pelo link — o `/sobreaviso` antigo redireciona). A tela é uma **grade: uma linha por pessoa, uma coluna por dia do mês**.
 Digite as horas direto na célula — **salva sozinho, sem botão**, quando você sai
 do campo (com **Tab**, com o mouse, ou apertando **Enter**). **Esc** desfaz o que
 você digitou e devolve o número que estava lá. Apagar o conteúdo da célula apaga
@@ -1582,7 +1588,8 @@ e as três querem dizer coisas diferentes:
 Isso **não impede nada**: quem atendeu foi quem atendeu. O aviso existe porque a
 escala é o **plano** e o registro é o **fato**, e eles divergem de verdade —
 troca de última hora, o colega que pegou porque o outro não acordou. Se a
-divergência não era para existir, o lugar de consertar é a **/sobreaviso**.
+divergência não era para existir, o lugar de consertar é o **Plantão da Gestão
+Técnica** (`/gestao-tecnica`; o link antigo `/sobreaviso` redireciona para lá).
 
 **O cliente pode ser da lista OU escrito à mão, nunca os dois.** A opção de
 escrever existe para o cliente que você não enxerga na lista — e ela tem um

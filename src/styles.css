@@ -739,6 +739,25 @@ input::placeholder, textarea::placeholder {
   .hover-suave { transition: background .15s ease; }
   .hover-suave:hover { background: rgba(120,120,128,0.14) !important; }
 
+  /* R298 — a pílula INATIVA da barra de ferramentas (DS §6.26) reage ao mouse:
+     só a borda e a tinta viram dourado — sem degradê nem glow (R174: brilho é
+     exceção; a ativa já tem o degradê e não recebe a classe). `!important`
+     porque borda e cor são inline, vindas de pilulaDaBarra(). */
+  .pilula-da-barra { transition: border-color .15s ease, color .15s ease; }
+  .pilula-da-barra:hover { border-color: var(--gold-primary) !important; color: var(--gold-primary) !important; }
+
+  /* R301 C — o botão de ações do card do quadro: "amarelo degradê com glow ao
+     colocar o cursor em cima". O vocabulário de AÇÃO da casa (GOLD_GRAD +
+     tinta #0E0E0E + GOLD_GLOW 0.35), transitório, só com ponteiro fino — no
+     toque não há hover para grudar (R174). O repouso está fora da media query. */
+  .acao-do-card { transition: background .15s ease, color .15s ease, box-shadow .15s ease, border-color .15s ease; }
+  .acao-do-card:hover {
+    background: linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A);
+    color: #0E0E0E;
+    border-color: transparent;
+    box-shadow: 0 6px 20px rgba(248,200,17,0.35);
+  }
+
   .barra-btn:hover .barra-demanda { transform: scaleY(1.05); filter: brightness(1.18); }
 
   .kpi-num { transition: transform .18s ease; }
@@ -1036,6 +1055,27 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   min-height: 0;
   min-width: 0;
 }
+/* R301 C — o botão de AÇÕES do card do quadro, em repouso: discreto ("um
+   pouco mais discreto em relação à cor"), 26px, no canto inferior direito do
+   card (que é `position: relative`). As cores moram AQUI, e não inline, para
+   o hover da media query acima ganhar sem `!important`. Par claro/escuro
+   (anti-padrão nº 9). */
+.acao-do-card {
+  position: absolute; right: 8px; bottom: 8px;
+  width: 26px; height: 26px; border-radius: 13px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.55);
+}
+html[data-theme="light"] .acao-do-card {
+  background: #f4f4f4;
+  border-color: rgba(0,0,0,0.10);
+  color: #505050;
+}
+/* o foco visível é o da regra global de button:focus-visible (R79: nunca dourado fixo) */
+
 .kanban-op-itens {
   display: flex;
   flex-direction: column;
@@ -1200,14 +1240,10 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   .cal-semana { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 
-/* ── O Administrativo em DUAS colunas (R193, U106) ───────────────────────────
-   Usuários | Permissões lado a lado no desktop (a coluna de usuários é mais
-   larga: a lista tem nome, e-mail, cargo e equipe); no celular, uma embaixo da
-   outra. As APIs trocam a página para uma coluna só, por botão. */
-.admin-colunas { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
-@media (min-width: 1024px) {
-  .admin-colunas { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
-}
+/* ── O Administrativo (R193 → R298) ─────────────────────────────────────────
+   As DUAS colunas da R193 (`.admin-colunas`, U106) saíram na R298 (15/09/2026):
+   a tela virou título → barra de pílulas (§6.26) → UMA aba no card da largura
+   toda. Não há classe própria — o card é `card(isLight)` inline (CASCA). */
 
 /* ── A Nova Visita Técnica numa tela só (R194, U107) ─────────────────────────
    Local · Contatos e serviços · Agendamento. Uma coluna no celular; duas a

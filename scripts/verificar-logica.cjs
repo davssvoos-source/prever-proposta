@@ -372,10 +372,12 @@ eq('sem matriz, o padrão do catálogo vale (SAC não vê contratos — R13)',
    TL.podeAbrir('contratos', 'sac', undefined), false);
 // (a tela-exemplo era 'chamados'; a lista morreu na R31 — o painel de
 // chamados herda o papel de exemplo por ter o mesmo padrão: técnico não)
-eq('sem matriz, técnico não abre o painel de chamados',
-   TL.podeAbrir('chamados.painel', 'tecnico', undefined), false);
+// R301 (15/09/2026): 'chamados.painel' saiu do catálogo — o exemplo passou a
+// ser a programação, que tem o mesmo padrão (técnico não abre).
+eq('sem matriz, técnico não abre a programação das duplas',
+   TL.podeAbrir('chamados.programacao', 'tecnico', undefined), false);
 eq('matriz vazia é o mesmo que sem matriz',
-   TL.podeAbrir('chamados.painel', 'tecnico', {}), false);
+   TL.podeAbrir('chamados.programacao', 'tecnico', {}), false);
 
 // telas obrigatórias não podem ser bloqueadas nem por engano nem de propósito
 eq('perfil é sempre acessível — é por onde se sai do app',
@@ -423,6 +425,11 @@ const ARQUIVOS_SEMENTE = [
   // U132 (R263): a chave 'sobreaviso' FECHA para o técnico — o UPSERT conta
   // na semente, senão o catálogo (que já diz false) divergiria dela.
   'supabase/migrations/20260929090000_u132_o_tecnico_le_so_campo.sql',
+  // U153 (R301): 'chamados.painel' sai — a tela virou redirect para a
+  // Operacional, que mostra TODOS os chamados; o DELETE participa da semente.
+  'supabase/migrations/20261010090000_u153_todos_os_chamados_sai.sql',
+  // U154 (R304): a semente do cargo GESTOR — uma linha por tela, onze abertas.
+  'supabase/migrations/20261011090000_u154_o_cargo_gestor.sql',
 ];
 const semente = {};
 // REGRA 2, E ELA MORDEU AQUI: este leitor casava COMENTÁRIO. O bloco DESFAZER
@@ -442,7 +449,7 @@ for (const arq of ARQUIVOS_SEMENTE) {
   const ini = sql.indexOf('INSERT INTO public.permissoes_tela (tela, cargo, permitido) VALUES');
   const fim = sql.indexOf('ON CONFLICT (tela, cargo)', ini);
   const bloco = sql.slice(ini, fim);
-  for (const m of bloco.matchAll(/\('([a-z._]+)',\s*'(tecnico|comercial|sac|operacional)',\s*(true|false)\)/g)) {
+  for (const m of bloco.matchAll(/\('([a-z._]+)',\s*'(tecnico|comercial|sac|operacional|gestor)',\s*(true|false)\)/g)) {
     (semente[m[1]] ??= {})[m[2]] = m[3] === 'true';
   }
   // a U30 APAGA telas da matriz — o DELETE participa da semente efetiva,
@@ -460,7 +467,7 @@ eq('catálogo e semente têm as mesmas telas',
 // e o padrão do catálogo tem que bater com a semente efetiva, senão o app se
 // comporta de um jeito antes da migration e de outro depois
 const divergem = TL.TELAS.filter((t) =>
-  ['tecnico', 'comercial', 'sac', 'operacional'].some((c) => semente[t.chave]?.[c] !== t.padrao[c]));   // R244: quatro cargos
+  ['tecnico', 'comercial', 'sac', 'operacional', 'gestor'].some((c) => semente[t.chave]?.[c] !== t.padrao[c]));   // R244: quatro cargos; R304: o gestor é o quinto
 eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t.chave), []);
 
 // ── Faixa de prazo: a cor do card (fundo em 2026-08-20; só a BORDA desde a R136) ──
@@ -1186,7 +1193,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // o Painel Operacional pinta o que o módulo calcula — não calcula nada
   const po = fs9.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
-  eq('o Painel Operacional usa o módulo de indicadores', /calcularIndicadores\(/.test(po), true);
+  // R299: o dashboard saiu da Operacional e virou componente (a Gestão Técnica o monta)
+  const dashPo = fs9.readFileSync('src/features/paineis/DashboardOperacional.tsx', 'utf8');
+  eq('o dashboard da equipe de campo usa o módulo de indicadores', /calcularIndicadores\(/.test(dashPo), true);
   eq('o Painel Operacional olha só chamados de campo',
      /useChamadosPorNatureza\("campo"\)/.test(po), true);
 
@@ -1285,10 +1294,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /DELETE FROM public\.permissoes_tela\s+WHERE tela IN \('chamados', 'chamados\.indicadores', 'painel\.comercial'\)/.test(u30), true);
   eq('U30 termina com SELECT de verificação', /SELECT '.*esperado/.test(u30), true);
 
-  // o painel de chamados ganhou a guarda que a chave da matriz prometia
+  // R301 (15/09/2026): o painel de chamados SAIU — a rota só redireciona para a
+  // Operacional, que mostra TODOS os chamados. Guarda ali seria guardar parede.
   const pc = fs9.readFileSync('src/routes/_authenticated/chamados.painel.tsx', 'utf8');
-  eq('chamados.painel tem guarda de rota própria',
-     /guardaDeTela\("chamados\.painel"\)/.test(pc), true);
+  eq('R301: chamados.painel só redireciona para /painel/operacional (a tela saiu)',
+     /redirect\(\{ to: "\/painel\/operacional" \}\)/.test(pc) && !/guardaDeTela|useQuery|PainelBase/.test(pc), true);
 }
 
 // ── U31: códigos de erro (2026-08-21) ──────────────────────────────────────
@@ -3143,6 +3153,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const u47 = fs29.readFileSync('supabase/migrations/20260822050000_u47_duplas_de_campo.sql', 'utf8');
   const prog = fs29.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8');
   const pop = fs29.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  // R299 (15/09/2026): o dashboard virou componente e a porta das equipes foi
+  // para a Gestão Técnica — os pinos abaixo leem onde cada coisa mora AGORA.
+  const popDash = fs29.readFileSync('src/features/paineis/DashboardOperacional.tsx', 'utf8');
+  const popGt = fs29.readFileSync('src/routes/_authenticated/gestao-tecnica.tsx', 'utf8');
   const dlg = fs29.readFileSync('src/features/duplas/DialogoEquipes.tsx', 'utf8');
   const conv = fs29.readFileSync('src/lib/convites.functions.ts', 'utf8');
   const CS2 = carregar('src/lib/chamado-status.ts');
@@ -3267,22 +3281,22 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('PainelBase esconde a seção inteira quando não há atalho — não sobra um "Ir para" órfão',
      /\{visiveis\.length > 0 && \(/.test(fs29.readFileSync('src/features/paineis/PainelBase.tsx', 'utf8')),
      true);
-  eq('o painel tem o botão que abre o pop-up de cadastro de duplas',
-     /setDuplasAberto\(true\)/.test(pop) && /<DialogoEquipes aberto=\{duplasAberto\}/.test(pop), true);
+  eq('R299: a Gestão Técnica tem o botão que abre o pop-up das equipes de campo (veio da Operacional com o dashboard)',
+     /setDuplasAberto\(true\)/.test(popGt) && /<DialogoEquipes aberto=\{duplasAberto\}/.test(popGt), true);
   eq('o gráfico é de LINHAS (pedido explícito), uma <Line> por equipe QUE TEVE ESCALA na janela — não por equipe ativa hoje',
-     /<LineChart data=\{serieDuplas\}/.test(pop)
-     && /duplasDoGrafico\.map\(\(d, i\) => \{[\s\S]{0,300}<Line/.test(pop)
-     && /duplasNaJanela\(duplas, semanas, escala\)/.test(pop), true);
+     /<LineChart data=\{serieDuplas\}/.test(popDash)
+     && /duplasDoGrafico\.map\(\(d, i\) => \{[\s\S]{0,300}<Line/.test(popDash)
+     && /duplasNaJanela\(duplas, semanas, escala\)/.test(popDash), true);
   eq('CRÍTICO: o gráfico atribui cada atividade pela escala da SEMANA DELA — é o defeito que a U76 consertou',
-     /serieAtividadesPorEscala\(chamados as any\[\], duplas, semanas, escala, referenciaSemanal\)/.test(pop),
+     /serieAtividadesPorEscala\(chamados as any\[\], duplas, semanas, escala, referenciaSemanal\)/.test(popDash),
      true);
   eq('cada item do eixo X é uma SEMANA',
-     /<XAxis dataKey="semana"/.test(pop) && /SEMANAS_NO_GRAFICO = 8/.test(pop), true);   // R125: 8, não 12
+     /<XAxis dataKey="semana"/.test(popDash) && /SEMANAS_NO_GRAFICO = 8/.test(popDash), true);   // R125: 8, não 12
   eq('a legenda mostra o nome da equipe, não o uuid que é o dataKey',
-     /rotuloDaComposicao\(d, composicaoDaDupla\(d\.id, semanaDaLegenda, escala\), nomeDeTecnico\)/.test(pop),
+     /rotuloDaComposicao\(d, composicaoDaDupla\(d\.id, semanaDaLegenda, escala\), nomeDeTecnico\)/.test(popDash),
      true);
   eq('o painel avisa quantos atendimentos ficaram FORA de equipe (gráfico não pode sumir com trabalho em silêncio)',
-     /semDuplaNaJanela > 0 && \(/.test(pop) && /foraDeEscala\(chamados as any\[\], semanas, escala, referenciaSemanal\)/.test(pop),
+     /semDuplaNaJanela > 0 && \(/.test(popDash) && /foraDeEscala\(chamados as any\[\], semanas, escala, referenciaSemanal\)/.test(popDash),
      true);
   // R67 mudou COMO o vazio é dito, não a regra. Antes o painel inteiro sumia
   // e um card largo acima explicava o que fazer. Esse card largo saiu (o
@@ -3291,16 +3305,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // vazio se explica DENTRO dele. O que segue proibido é o mesmo: moldura de
   // gráfico vazia sem uma palavra sobre o próprio vazio.
   eq('sem escala na janela, o painel explica o vazio em vez de mostrar moldura de gráfico sem linha',
-     /duplasDoGrafico\.length === 0 \? \(/.test(pop)
-     && /Nenhuma equipe de campo com escala nestas semanas/.test(pop), true);
+     /duplasDoGrafico\.length === 0 \? \(/.test(popDash)
+     && /Nenhuma equipe de campo com escala nestas semanas/.test(popDash), true);
   eq('o gráfico de linhas só é montado quando HÁ equipe com escala (o ramo else do vazio)',
-     /Nenhuma equipe de campo com escala[\s\S]{0,700}<LineChart data=\{serieDuplas\}/.test(pop), true);
+     /Nenhuma equipe de campo com escala[\s\S]{0,700}<LineChart data=\{serieDuplas\}/.test(popDash), true);
   // R68 trocou a paleta categórica local pelo ESPECTRO — a rampa oficial da
   // casa, a mesma da Início. A regra que a asserção guarda é a de sempre:
   // a cor sai de paleta.ts, não de um hex digitado na tela.
   eq('o gráfico usa a rampa oficial (ESPECTRO), sem inventar cor',
-     /stroke=\{`url\(#op-dupla-\$\{passo\}\)`\}/.test(pop)
-     && /const passo = i % PECAS_ESPECTRO;/.test(pop), true);
+     /stroke=\{`url\(#op-dupla-\$\{passo\}\)`\}/.test(popDash)
+     && /const passo = i % PECAS_ESPECTRO;/.test(popDash), true);
 
   // ── o pop-up de equipes (R56 → R285) ────────────────────────────────────
   // A SEMANA SAIU DA TELA com a R285: o seletor, as setinhas, a herança, a
@@ -3840,16 +3854,24 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /className="sangra-x"/.test(ger2), true);
   eq('título no padrão da casa: 22 com letterSpacing -0.01em (§3; o peso virou 700 na R195), não 24 espaçado',
      /fontSize: 22,\s*\n\s*letterSpacing: "-0\.01em"/.test(ger2), true);
-  eq('o filtro por etapa é chip com contagem (padrão de Clientes), com "Todas" na frente',
-     /\{`Todas · \$\{funil\.visitas\}`\}/.test(ger2) && /ETAPA_ORDEM\.map\(\(e\) => \(/.test(ger2), true);
+  // R302 (15/09/2026, revisa a R64): os chips por etapa SAÍRAM — Davi: "Os botões
+  // de filtros atualmente na tela Comercial são desnecessários. Remova os atuais
+  // botões, e adicione um botão de filtro de: Tipo de Serviço". O recorte da
+  // página é UM MenuFiltro com as sete opções da lista oficial.
+  eq('R302 (revisa R64): os chips por etapa SAÍRAM; o recorte da página é UM MenuFiltro de Tipo de serviço com as opções de servicosPropostos.ts',
+     [/rotulo="Tipo de serviço"/.test(ger2),
+      /opcoes=\{SERVICOS_PROPOSTOS\.map\(\(s\) => \(\{ valor: s\.key, label: s\.label \}\)\)\}/.test(ger2),
+      /chipFiltro|setEtapa\(|`Todas · /.test(ger2)],
+     [true, true, false]);
   eq('o chip de cada linha vem de ETAPA_CORES/ETAPA_LABEL — a mesma função do filtro e do funil',
      /const et = etapaDaVisita\(v\);/.test(cv2) && /\{ETAPA_LABEL\[et\]\}/.test(cv2), true);
   eq('o chip da linha leva ícone junto da cor (status nunca é só cor, §2.4)',
      /<Icone size=\{13\} \/>/.test(cv2), true);
   eq('a linha enviada mostra QUANDO foi enviada (o carimbo que encerrou o ciclo)',
      /Enviada em \{enviadaEm\}/.test(cv2), true);
-  eq('a nota do funil diz a verdade nova: o ciclo encerra no envio, aceite não é mapeado',
-     /o aceite do cliente não é mapeado aqui/.test(ger2), true);
+  // R302: o funil virou painel do DashboardComercial — a frase da R64 foi com ele
+  eq('a nota do funil diz a verdade nova: o ciclo encerra no envio, aceite não é mapeado (R302: a frase mora no painel do funil do DashboardComercial)',
+     /o aceite do cliente não é mapeado aqui/.test(fs35.readFileSync('src/features/comercial/DashboardComercial.tsx', 'utf8')), true);
   eq('os cards usam card(isLight) de lib/ui — a superfície padrão, não um gradiente próprio da página',
      /card\(isLight\), borderRadius: 16/.test(ger2), true);
 
@@ -3999,6 +4021,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const fs37 = require('fs');
   const IND2 = carregar('src/features/paineis/indicadores.ts');
   const op2 = fs37.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  const op2d = fs37.readFileSync('src/features/paineis/DashboardOperacional.tsx', 'utf8');   // R299
 
   const ch = (overrides) => ({
     id: 'c-' + Math.random(),
@@ -4095,17 +4118,23 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a página: 2×2, gráficos no lugar de números soltos, lista nova ──────
   eq('os 4 KPIs viraram grid 2×2 (não mais o painel-numeros de 4-em-linha herdado do PainelBase)',
-     /gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr"[\s\S]{0,200}\{kpis\.map/.test(op2), true);
+     /gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr"[\s\S]{0,200}\{kpis\.map/.test(op2d), true);
   eq('o painel não usa mais o `numeros` genérico do PainelBase — os KPIs agora são bespoke, clicáveis',
      /numeros=\{\[\]\}/.test(op2), true);
   eq('cada quadrado de KPI é <button aria-pressed> — a mesma linguagem de clique da Início',
-     /aria-pressed=\{selecionado\}/.test(op2) && /className="elevavel kpi-tile ruido"/.test(op2), true);
-  eq('clicar no quadrado ativo desliga (toggle), como os KPIs da Início',
-     /setKpiAtivo\(selecionado \? null : k\.chave\);/.test(op2), true);
+     /aria-pressed=\{selecionado\}/.test(op2d) && /className="elevavel kpi-tile ruido"/.test(op2d), true);
+  // R299: a lista não está mais na mesma tela — o clique ENTREGA a chave à
+  // hospedeira (a Gestão Técnica navega para a Operacional com ?kpi=).
+  eq('R299: o clique no quadrado entrega a chave do KPI à hospedeira, e a Gestão Técnica abre a Operacional recortada por ela',
+     /onClick=\{\(\) => aoEscolherKpi\(k\.chave\)\}/.test(op2d)
+     && /aoEscolherKpi=\{\(kpi\) => navigate\(\{ to: "\/painel\/operacional", search: \{ kpi \} as any \}\)\}/.test(fs37.readFileSync('src/routes/_authenticated/gestao-tecnica.tsx', 'utf8')), true);
   // (o painel "Backlog por idade" da R66 foi removido pela R68 — a asserção
   // que o travava saiu junto; o que entrou no lugar está no bloco da R68)
-  eq('a lista de chamados técnicos é NOVA (R66) — não existia nesta tela antes',
-     /Chamados técnicos/.test(op2) && /Ver todos os chamados →/.test(op2), true);
+  // R301 (15/09/2026): o "Ver todos os chamados →" SAIU — a Operacional mostra
+  // TODOS os chamados, e a tela para onde ele levava virou redirect para cá.
+  eq('a lista de chamados técnicos é a da R66, e o "Ver todos os chamados" SAIU (R301: já está tudo aqui)',
+     // a construção de CÓDIGO, não o texto: o comentário que explica a saída cita a rota de propósito
+     /Chamados técnicos/.test(op2) && !/Ver todos os chamados →/.test(op2) && !/navigate\(\{ to: "\/chamados\/painel" \}\)/.test(op2), true);
   eq('a lista anuncia o recorte com "Mostrando:", como a Início pede (DASHBOARD.md §7.3)',
      /Mostrando: <strong/.test(op2), true);
   // R73 trocou o `kpiAtivo ?? "abertos"` pela LENTE: a lista tem três
@@ -4127,40 +4156,42 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 {
   const fs38 = require('fs');
   const op3 = fs38.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  const op3d = fs38.readFileSync('src/features/paineis/DashboardOperacional.tsx', 'utf8');   // R299: o dashboard
+  const op3gt = fs38.readFileSync('src/routes/_authenticated/gestao-tecnica.tsx', 'utf8');  // R299: a hospedeira
 
   // ── a faixa de altura única (DASHBOARD.md §4) ────────────────────────────
   eq('existe uma ALTURA única, e ela é MENOR que a da Início (mais painéis, tem de terminar mais cedo)',
-     /const ALTURA = (\d+);/.test(op3) && Number(op3.match(/const ALTURA = (\d+);/)[1]) < 252, true);
+     /const ALTURA = (\d+);/.test(op3d) && Number(op3d.match(/const ALTURA = (\d+);/)[1]) < 252, true);
   eq('CRÍTICO: todo painel da faixa herda a altura pelo PAINEL compartilhado — altura própria por painel transforma a fileira numa colagem',
-     /const PAINEL: CSSProperties = \{[\s\S]{0,200}height: ALTURA,/.test(op3), true);
+     /const PAINEL: CSSProperties = \{[\s\S]{0,200}height: ALTURA,/.test(op3d), true);
   // R69: o gap virou constante (GAP) porque a altura do painel de duas
   // faixas é DERIVADA dele — dois lugares digitando 14 se descolariam.
   eq('as faixas usam o gap canônico do DASHBOARD.md §6 por constante, com wrap',
-     (op3.match(/display: "flex", gap: GAP, alignItems: "stretch", flexWrap: "wrap"/g) ?? []).length >= 2
-     && /const GAP = 14;/.test(op3), true);
+     (op3d.match(/display: "flex", gap: GAP, alignItems: "stretch", flexWrap: "wrap"/g) ?? []).length >= 2
+     && /const GAP = 14;/.test(op3d), true);
   // 3+ dígitos = altura de PAINEL (168/350). Alturas pequenas (botão 24,
   // barra de progresso 5) são de peça interna e não desalinham fileira.
   eq('nenhum painel declara altura própria em pixel — ou é ALTURA (uma faixa) ou ALTURA_DUPLA (as duas)',
-     /height: \d{3,}/.test(op3), false);
+     /height: \d{3,}/.test(op3d), false);
 
   // ── o que encolheu para o dashboard caber no topo ────────────────────────
   // R125 (U93): "Fluxo e ritmo" SAIU da tela — os seis micro-números continuam
   // em indicadores.ts (a U93 prende isso lá embaixo). Aqui só se prende a saída.
   eq('R125: "Fluxo e ritmo" saiu do painel (o que ele mostrava segue na biblioteca de indicadores)',
-     /titulo="Fluxo e ritmo"/.test(op3), false);
+     /titulo="Fluxo e ritmo"/.test(op3d), false);
   // só as linhas de CÓDIGO: o comentário do topo cita o card "Duplas de
   // campo" de propósito, explicando por que ele NÃO está mais ali
   const op3cod = op3.split('\n').filter((l) => !/^\s*(\/\/|\*|\{\/\*)/.test(l)).join('\n');
   eq('o card largo "Duplas de campo" saiu — o botão que cadastra dupla mora no cabeçalho do gráfico de duplas',
      /Duplas de campo|Cadastrar duplas/.test(op3cod), false);
-  eq('…e o botão continua existindo, abrindo o mesmo diálogo',
-     /setDuplasAberto\(true\)/.test(op3) && /<DialogoEquipes aberto=\{duplasAberto\}/.test(op3), true);
+  eq('…e o botão continua existindo, abrindo o mesmo diálogo — na Gestão Técnica (R299)',
+     /setDuplasAberto\(true\)/.test(op3gt) && /<DialogoEquipes aberto=\{duplasAberto\}/.test(op3gt), true);
   eq('a legenda da rosca foi para o LADO do arco (metade da altura, mesma informação)',
-     /display: "flex", alignItems: "center", gap: 6 \}\}>[\s\S]{0,400}<PieChart>/.test(op3), true);
+     /display: "flex", alignItems: "center", gap: 6 \}\}>[\s\S]{0,400}<PieChart>/.test(op3d), true);
   eq('R125: sobrou UM ranking na tela (Abertos por cliente) — "Em aberto por técnico" saiu; o componente continua único',
-     (op3.match(/<Ranking\s/g) ?? []).length, 1);
+     (op3d.match(/<Ranking\s/g) ?? []).length, 1);
   eq('ranking corta no topo N e DIZ que cortou (nº silenciosamente truncado lê como "é só isso")',
-     /top \{teto\} de \{dados\.length\}/.test(op3), true);
+     /top \{teto\} de \{dados\.length\}/.test(op3d), true);
 
   // ── a lista É a tabela da Início, não uma parecida ───────────────────────
   eq('a lista reusa TabelaAtividades da Início — reescrever aqui criaria a segunda tabela, que fica um passo atrás na primeira mudança de coluna',
@@ -4182,7 +4213,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 {
   const fs39 = require('fs');
   const PAL = carregar('src/lib/paleta.ts');
-  const op4 = fs39.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  // R299 (15/09/2026): o dashboard mora em features/paineis/DashboardOperacional.tsx
+  const op4 = fs39.readFileSync('src/features/paineis/DashboardOperacional.tsx', 'utf8');
   const pb2 = fs39.readFileSync('src/features/paineis/PainelBase.tsx', 'utf8');
   // só as linhas de CÓDIGO: os comentários do arquivo citam de propósito o
   // que NÃO está mais lá (o card "Duplas de campo", o <defs> embrulhado em
@@ -4296,7 +4328,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 // ── R69: "Abertos por cliente" ocupa as duas faixas ────────────────────────
 {
   const fs40 = require('fs');
-  const op5 = fs40.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  const op5 = fs40.readFileSync('src/features/paineis/DashboardOperacional.tsx', 'utf8');   // R299
 
   eq('CRÍTICO: a altura do painel de duas faixas é DERIVADA de ALTURA e GAP — um 350 digitado se descolaria na primeira vez que um dos dois mudasse, e o painel deixaria de casar com a faixa 2',
      /const ALTURA_DUPLA = ALTURA \* 2 \+ GAP;/.test(op5), true);
@@ -4602,8 +4634,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      && /chamadosDaLente\(l, chamados, agora\)\.length/.test(op6), true);
   // R76 acrescentou o retorno à visão de LISTA: o KPI é drill-down de lista,
   // e no quadro ele esvaziaria as colunas que não são "em aberto".
-  eq('CRÍTICO: clicar num KPI devolve a lente para "abertos" E volta para a lista — os 4 contam só o que está em aberto, e abrir um deles sobre o histórico (ou sobre o quadro) mostraria algo que não bate com o número tocado',
-     /setLente\("abertos"\);\s*\n\s*setVisao\("lista"\);[^\n]*\n\s*setKpiAtivo\(selecionado \? null : k\.chave\);/.test(op6),
+  // R299: o KPI vem da Gestão Técnica pela URL (?kpi=) e faz o que o clique no
+  // quadrado fazia quando ele morava aqui.
+  eq('CRÍTICO: o KPI vindo pela URL devolve a lente para "abertos" E volta para a lista — os 4 contam só o que está em aberto, e abrir um deles sobre o histórico (ou sobre o quadro) mostraria algo que não bate com o número tocado',
+     /setLente\("abertos"\);\s*\n\s*setVisao\("lista"\);\s*\n\s*setKpiAtivo\(busca\.kpi\);/.test(op6)
+     && /typeof s\.kpi === "string" && KPIS_DA_URL\.has\(s\.kpi\)/.test(op6),
      true);
   eq('e escolher uma lente limpa o KPI — só uma peça filtra por vez',
      /onClick=\{\(\) => \{ setKpiAtivo\(null\); setLente\(l\); \}\}/.test(op6), true);
@@ -5675,10 +5710,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('…e a barra do celular usa o curto quando ele existe',
      bn.includes('item.labelCurto ?? item.label'), true);
 
-  eq('CRÍTICO (R95): o painel recorta pela equipe TÉCNICA — antes lia todo chamado de campo e acertava por coincidência',
-     po.includes("chamadosDeCampo.filter((c) => c.equipe === \"tecnica\")"), true);
+  const poD = fs57.readFileSync('src/features/paineis/DashboardOperacional.tsx', 'utf8');   // R299
+  eq('CRÍTICO (R95): o painel E o dashboard recortam pela equipe TÉCNICA — antes liam todo chamado de campo e acertavam por coincidência',
+     po.includes("chamadosDeCampo.filter((c) => c.equipe === \"tecnica\")")
+     && poD.includes("chamadosDeCampo.filter((c) => c.equipe === \"tecnica\")"), true);
   eq('…e o recorte vem ANTES dos indicadores, não dentro deles (a tela não calcula)',
-     po.indexOf('chamadosDeCampo.filter') < po.indexOf('calcularIndicadores(chamados'), true);
+     poD.indexOf('chamadosDeCampo.filter') < poD.indexOf('calcularIndicadores(chamados'), true);
 
   eq('R95 está documentado',
      fs57.readFileSync('docs/PRODUTO.md', 'utf8').includes('**R95**'), true);
@@ -11624,11 +11661,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq('U83: o seletor de novo chamado de campo DERIVA de tiposDaNatureza("campo") — era uma cópia com `as ChamadoTipo[]`, e é um caminho de ESCRITA (por isso deriva da lista de OFERTA)',
        /\{tiposDaNatureza\("campo"\)\.map\(\(t\) => \(/.test(novoCampo83), true);
 
+    // R301 (15/09/2026): o Painel de chamados SAIU — a rota só redireciona. A
+    // série e o filtro que a U83 derivou morreram com a tela; o que a asserção
+    // guarda agora é que a cópia não voltou por outra porta.
     const painel83 = fs83.readFileSync('src/routes/_authenticated/chamados.painel.tsx', 'utf8');
-    eq('U83: a série do gráfico do painel DERIVA de TIPOS_DA_NATUREZA.campo — era a cópia cujo fallback contava o tipo desconhecido COMO CORRETIVA',
-       /const tiposCampo: ChamadoTipo\[\] = TIPOS_DA_NATUREZA\.campo;/.test(painel83), true);
-    eq('U83: e o filtro de tipo do painel DERIVA de TIPOS menos prospeccao — eram três listas coladas à mão (os quatro de campo, melhoria e pedido_compra um a um)',
-       /\.\.\.TIPOS\.filter\(\(t\) => t !== "prospeccao"\)\.map\(/.test(painel83), true);
+    eq('U83→R301: o painel de chamados virou redirect — nenhuma série nem filtro de tipo sobrou nele para voltar a contar tipo desconhecido como corretiva',
+       [/redirect\(\{ to: "\/painel\/operacional" \}\)/.test(painel83), /TIPOS_DA_NATUREZA|tiposCampo|prospeccao/.test(painel83)],
+       [true, false]);
 
     const rapido83 = fs83.readFileSync('src/lib/chamado-rapido.functions.ts', 'utf8');
     eq('U83: o enum do schema da IA DERIVA da lista de oferta — era a quarta cópia, e a única cujo resultado é gravado sem uma pessoa conferir',
@@ -13137,14 +13176,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/_confirmar boolean DEFAULT false/.test(u86),
       (u86.match(/_confirmar boolean DEFAULT false/g) ?? []).length,
       /_so_padrao boolean DEFAULT true/.test(u86),
-      /window\.confirm\(|[^.\w]confirm\(/.test(fsS.readFileSync('src/routes/_authenticated/sobreaviso.tsx', 'utf8'))],
+      /window\.confirm\(|[^.\w]confirm\(/.test(fsS.readFileSync('src/routes/_authenticated/gestao-tecnica.tsx', 'utf8'))],
      [true, 2, true, false]);
 
   {
     // REGRA 2: filtra linha de comentário ANTES de medir. O cabeçalho do
     // arquivo diz, em prosa, que não existe "tem certeza?" nesta tela — e um
     // grep cru casaria justamente a frase que promete a ausência dela.
-    const telaCrua = fsS.readFileSync('src/routes/_authenticated/sobreaviso.tsx', 'utf8');
+    const telaCrua = fsS.readFileSync('src/routes/_authenticated/gestao-tecnica.tsx', 'utf8');
     const tela = telaCrua.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
     // R254 (U129): o modal de LIMPAR saiu junto com o gesto que o abria. Tirar
     // a semana de alguém agora é a TROCA (uma transação, subtração exata) e
@@ -13475,7 +13514,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 // prova que o PDF é inalcançável — foi assim que a U83 ficou dois meses verde.
 {
   const fsE = require('fs');
-  const cru = fsE.readFileSync('src/routes/_authenticated/sobreaviso.tsx', 'utf8');
+  const cru = fsE.readFileSync('src/routes/_authenticated/gestao-tecnica.tsx', 'utf8');
   const tela = cru.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
 
   const iErro = tela.indexOf('if (escala.isError || pessoas.isError)');
@@ -13655,11 +13694,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       const re = /CREATE\s+POLICY[\s\S]*?;/gi; let m;
       while ((m = re.exec(txt)) !== null) if (/is_gestor/.test(m[0])) policies++;
     }
-    const u6a = fsG.readFileSync('supabase/migrations/20260818230000_u6a_papel_sac.sql', 'utf8');
-    const corpo = u6a.slice(u6a.indexOf('CREATE OR REPLACE FUNCTION public.is_gestor'),
-                            u6a.indexOf('4) pode_ver_financeiro'));
+    // R304 (U154): a definição VIVA de is_gestor é a da U154 (ganhou o gestor);
+    // a dívida continua a mesma — ela ainda não olha `ativo`.
+    const u154 = fsG.readFileSync('supabase/migrations/20261011090000_u154_o_cargo_gestor.sql', 'utf8');
+    const corpo = u154.slice(u154.indexOf('CREATE OR REPLACE FUNCTION public.is_gestor'),
+                             u154.indexOf('§6  o gestor VÊ valores'));
     eq('CRÍTICO (dívida P51, alcance MEDIDO): `is_gestor()` decide por CARGO e por PAPEL e NÃO olha `ativo` — um ex-funcionário com login vivo é gestor para o sistema INTEIRO. O censo declara o recorte: ocorrências VIVAS (linhas de comentário filtradas) em supabase/migrations, e statements CREATE POLICY que a mencionam, replays de DROP/CREATE incluídos',
-       [/cargo IN \('admin', 'comercial', 'sac'\)/.test(corpo),
+       [/cargo IN \('admin', 'comercial', 'sac', 'gestor'\)/.test(corpo),
         /\bativo\b/.test(corpo),
         arquivos.size, ocorrencias, policies],
        // U96 (+1 arquivo, +3 ocorrências, +3 policies): as três policies de
@@ -13738,7 +13779,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // é a MESMA decisão de acesso da U78, reescrita noutro arquivo, como
        // aconteceu na U136. Nenhuma policy nova — a escrita de `agenda_campo`
        // continua não existindo pela tabela (U78 §4).
-       [true, false, 39, 164, 55]);
+       // U154 (+1 arquivo, +8 ocorrências, +0 policies): reemite is_gestor com o
+       // GESTOR na lista (R304) — pré-voo, CREATE, COMMENT e as duas conferências.
+       [true, false, 40, 172, 55]);
   }
 }
 
@@ -16194,7 +16237,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   {
     const fs91 = require('fs');
     const pnl = fs91.readFileSync('src/features/plantao/PainelDoPlantao.tsx', 'utf8');
-    const sob = fs91.readFileSync('src/routes/_authenticated/sobreaviso.tsx', 'utf8');
+    const sob = fs91.readFileSync('src/routes/_authenticated/gestao-tecnica.tsx', 'utf8');
     const vivoPnl = pnl.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
 
     eq('U91/R122: o painel está montado na tela do sobreaviso — a escala (o plano) e o atendimento (o registro) na mesma rolagem, com as mesmas colunas de dia',
@@ -16325,7 +16368,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // é outra coisa (locação/manutenção/comodato/venda), e a decisão da Fase 1
   // fechou a colisão. Trazer a palavra de volta na interface a reabriria.
   {
-    const pop = fs92.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+    const pop = fs92.readFileSync('src/features/paineis/DashboardOperacional.tsx', 'utf8');   // R299
     const vivoPop = pop.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
 
     eq('U92/R123 CRÍTICO: a rosca tem DOIS cortes e as duas leituras saem do MESMO `roscaComRotulo` — se o rótulo lesse um e o gráfico outro, o título diria "por status" sobre fatias de tipo',
@@ -16416,7 +16459,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const OBRA93 = carregar('src/features/implantacao/modelo.ts');
   const AB93 = carregar('src/features/chamados/abertura.ts');
   const CS93 = carregar('src/lib/chamado-status.ts');
-  const pop93 = fs93.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  // R299 (15/09/2026): o dashboard virou componente; o que é da LISTA continua
+  // na Operacional e é lido em `op93`.
+  const pop93 = fs93.readFileSync('src/features/paineis/DashboardOperacional.tsx', 'utf8');
+  const op93 = fs93.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
   // asserções NEGATIVAS só sobre CÓDIGO: o cabeçalho cita os painéis que saíram
   const semCom93 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
   const popCod93 = semCom93(pop93);
@@ -16515,8 +16561,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      IND93.KPI_OPERACIONAL_LABEL.aguardando_conferencia, 'Aguardando conferência');
   eq('U93/R125: na tela, número e lista do tile saem da MESMA função, e a lista de concluídos ordena por HISTÓRICO (prazo não tem urgência depois de encerrado)',
      [/chamadosDoKpi\("aguardando_conferencia", chamados as any\[\], agora\)\.length/.test(pop93),
-      /setKpiAtivo\(kpiAtivo === "aguardando_conferencia" \? null : "aguardando_conferencia"\)/.test(pop93),
-      /kpiAtivo === "aguardando_conferencia"\s*\n\s*\? ordenarHistorico\(chamadosDoKpi\(kpiAtivo, chamados, agora\)\)/.test(pop93)],
+      /aoClicar=\{\(\) => aoEscolherKpi\("aguardando_conferencia"\)\}/.test(pop93),   // R299: entrega a chave
+      /kpiAtivo === "aguardando_conferencia"\s*\n\s*\? ordenarHistorico\(chamadosDoKpi\(kpiAtivo, chamados, agora\)\)/.test(op93)],
      [true, true, true]);
   eq('U93/R125: a consulta de chamados TRAZ faturamento_status — sem a coluna o recorte não conta ninguém, e o tile diria zero',
      /faturamento_status/.test(fs93.readFileSync('src/features/chamados/data.ts', 'utf8').match(/const CAMPOS_BASE =[\s\S]*?;/)[0]), true);
@@ -16558,7 +16604,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('U93/R125: a barra pinta o REAL e MARCA o plano — a marca só aparece quando há real (sobre o plano ela seria o fim da barra)',
      /progresso && progresso\.pctReal !== null && progresso\.pctPlano !== null && \(/.test(pop93), true);
   eq('U93/R125: lista de obras cortada DIZ que cortou, e a obra abre no painel lateral',
-     [/top \{TETO_OBRAS\} de \{obras\.length\}/.test(pop93), /onClick=\{\(\) => setPainelId\(c\.id\)\}/.test(pop93)], [true, true]);
+     [/top \{TETO_OBRAS\} de \{obras\.length\}/.test(pop93), /onClick=\{\(\) => aoAbrirChamado\(c\.id\)\}/.test(pop93)], [true, true]);   // R299: abre onde a hospedeira mandar
 
   // ── R126: o "+" e o formulário ÚNICO ────────────────────────────────────
   const form93 = fs93.readFileSync('src/features/chamados/FormularioChamadoTecnico.tsx', 'utf8');
@@ -16570,8 +16616,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /abrirChamado\(\{/.test(form93) && /useMarcarBloco\(\)/.test(form93)],
      [true, true, false, true]);
   eq('U93/R126: o "+" do painel só aparece para quem pode abrir chamado, e o chamado criado abre no painel lateral (R33)',
-     [/podeVer\("chamados\.novo"\) !== false && \(/.test(pop93),
-      /aoCriar=\{\(id\) => \{ setNovoAberto\(false\); setPainelId\(id\); \}\}/.test(pop93)],
+     [/podeVer\("chamados\.novo"\) !== false && \(/.test(op93),
+      /aoCriar=\{\(id\) => \{ setNovoAberto\(false\); setPainelId\(id\); \}\}/.test(op93)],
      [true, true]);
   eq('U93/R126: responsavelProposto — técnico vence; sem técnico, o PRIMEIRO da escala; sem os dois, ninguém',
      [AB93.responsavelProposto('t1', ['a', 'b']), AB93.responsavelProposto('', ['a', 'b']),
@@ -16643,12 +16689,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /<GestaoDeUsuarios \/>/.test(adm94), /<MatrizDePermissoes \/>/.test(adm94), /<Integracoes \/>/.test(adm94),
       /validateSearch: \(s: Record<string, unknown>\) => \(\{\s*\n\s*aba: ABAS\.includes/.test(adm94)],
      [true, true, true, true, true]);
-  eq('U94/R131: Catálogo e Fechamentos continuam como atalhos; o atalho de Contratos SAIU (R132)',
+  // R298/R299 (15/09/2026): FECHAMENTOS saiu do Administrativo e foi para a
+  // Gestão Técnica — Davi: "Na página Administrativo, mova o botão 'Fechamentos'
+  // para a página 'Gestão Técnica'". Equipamentos fica.
+  eq('U94/R131→R298: Equipamentos continua como atalho; Fechamentos FOI para a Gestão Técnica; o atalho de Contratos SAIU (R132)',
      // R198 (U109): o atalho do Catálogo virou "Equipamentos" (/equipamentos) — a tela /admin saiu
-     [/para: "\/equipamentos"/.test(adm94), /para: "\/fechamentos"/.test(adm94), /para: "\/contratos"/.test(semCom94(adm94))],
-     [true, true, false]);
+     [/para: "\/equipamentos"/.test(adm94), /para: "\/fechamentos"/.test(semCom94(adm94)), /para: "\/contratos"/.test(semCom94(adm94)),
+      /navigate\(\{ to: "\/fechamentos" \}\)/.test(ler94('src/routes/_authenticated/gestao-tecnica.tsx'))],
+     [true, false, false, true]);
   eq('U94/R131 CRÍTICO: usuários e permissões só para o CARGO admin — regra de cargo, nunca linha da matriz (uma linha errada tornaria a correção impossível pelo app)',
-     /: !isAdmin \? \(/.test(adm94) && /const isAdmin = cargo === "admin";/.test(adm94), true);
+     // R304: o cargo REAL de profiles (usePermissoes), não o perfil de interface —
+     // useUserCargo devolve "admin" também para gestor e comercial, e a UI de
+     // convidar/aprovar/matriz abriria para quem o banco recusa
+     /: !isAdmin \? \(/.test(adm94) && /const isAdmin = cargoReal === "admin";/.test(adm94)
+     && /const \{ podeVer, cargo: cargoReal, carregando \} = usePermissoes\(\);/.test(adm94), true);
   for (const [arq, aba] of [['gerencial.usuarios.tsx', 'usuarios'], ['gerencial.permissoes.tsx', 'permissoes']]) {
     const r = ler94(`src/routes/_authenticated/${arq}`);
     eq(`U94/R131: ${arq} só redireciona para a aba "${aba}" — sem consulta, sem conteúdo próprio`,
@@ -16671,8 +16725,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // A extração não mudou a regra: as asserções da U29 sobre a tela de usuários
   // agora leem o componente — e continuam verdes (ver o bloco da U29).
   const usr94 = ler94('src/features/administrativo/Usuarios.tsx');
-  eq('U94/R131: o componente extraído invalida os números do painel quando um usuário muda — o "3 esperando aprovação" não pode ficar velho na mesma tela',
-     (usr94.match(/queryKey: \["painel-admin-numeros"\]/g) ?? []).length >= 4, true);
+  // R298 (15/09/2026): os KPIs do Administrativo SAÍRAM — Davi: "Remova as KPIs
+  // da tela Administrativo". Com eles saíram a consulta e as invalidações que
+  // só ela ouvia; uma invalidação órfã é a mentira inversa do número velho.
+  eq('U94/R131→R298: os KPIs do Administrativo saíram — nenhuma invalidação órfã de painel-admin-numeros sobrou em Usuarios.tsx, e o painel não lê mais useNumerosDaCasa',
+     [(usr94.match(/painel-admin-numeros/g) ?? []).length, /useNumerosDaCasa|painel-numeros/.test(semCom94(adm94))],
+     [0, false]);
 
   // ── A aba APIs: presença, nunca valor ───────────────────────────────────
   {
@@ -17119,7 +17177,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // leitura pede as colunas da U96 e da U99 direto, e um erro SOBE (não vira
   // lista vazia).
   eq('U96→U100b: toda leitura de chamados pede impacto, proposta e data_agendada DIRETO (CAMPOS_CHAMADO), e o fallback da ordem de deploy não existe mais',
-     [/export const CAMPOS_CHAMADO = CAMPOS_BASE \+ ", impacto_operacional, proposta_id, data_agendada, " \+ EMBEDS;/.test(dados96),
+     // R300 (15/09/2026): `retornos` entrou no select — a fila "Aguardando retorno" da Gestão Técnica lê a coluna da U150
+     [/export const CAMPOS_CHAMADO = CAMPOS_BASE \+ ", impacto_operacional, proposta_id, data_agendada, retornos, " \+ EMBEDS;/.test(dados96),
       (codigo96(dados96).match(/\.select\(CAMPOS_CHAMADO\)/g) ?? []).length >= 4,
       /comFallbackDaU96|COLUNAS_DA_U96|camposDeChamado\(/.test(codigo96(dados96)),
       /delete linha\.impacto_operacional/.test(dados96), /a migration U96 precisa ser rodada/.test(dados96)],
@@ -17551,7 +17610,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        { valor: 5, competencia: '2026-09', status: 'cancelada' },
      ], '2026-09'),
      { total: 10, quantidade: 1, emAberto: 0, totalEmAberto: 0, faturadas: 1, totalFaturado: 100 });
-  const pop98 = ler98('src/routes/_authenticated/painel.operacional.tsx');
+  const pop98 = ler98('src/features/paineis/DashboardOperacional.tsx');   // R299: o tile mora no dashboard
   eq('R161: o tile diz "a faturar" e a dica conta as já faturadas — o número mostrado é o que falta, não o que existe',
      [/\$\{aCobrar\.quantidade\} a faturar · \$\{aCobrar\.emAberto\} em aberto/.test(pop98),
       /a faturar na competência \$\{competenciaAtual\} \(R161: faturadas e canceladas ficam fora/.test(pop98)],
@@ -17613,7 +17672,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R164: a guarda e o hook fazem a MESMA pergunta — useVeFinanceiro usa consultarVeFinanceiro como queryFn',
      [/export async function consultarVeFinanceiro\(\): Promise<boolean> \{/.test(gd98),
       /queryFn: consultarVeFinanceiro,/.test(gd98),
-      /const financeiro = \["admin", "comercial"\];/.test(gd98)],
+      /const financeiro = \["admin", "comercial", "gestor"\];/.test(gd98)],   // R304: o gestor vê valores
      [true, true, true]);
 
   // ── regra 7 ──────────────────────────────────────────────────────────────
@@ -18337,9 +18396,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /guardaDeTela|useQuery|leaflet|bindPopup/.test(cod106(mapa106))],
      [true, true, false]);
   const ger106 = cod106(ler106('src/routes/_authenticated/gerencial.tsx'));
-  eq('R192: o botão "Mapa" saiu da aba Comercial (e o ícone com ele); "Clientes" ficou',
+  // R302 (15/09/2026): "Clientes" também saiu — Davi: "Remova o botão 'Clientes'
+  // da tela Comercial" (Clientes tem item de menu próprio).
+  eq('R192/R302: o botão "Mapa" saiu da aba Comercial (e o ícone com ele); e "Clientes" saiu na R302',
      [/label: "Mapa"/.test(ger106), /to: "\/mapa"/.test(ger106), /MapPinned/.test(ger106), /label: "Clientes", Icon: Building2, to: "\/clientes"/.test(ger106)],
-     [false, false, false, true]);
+     [false, false, false, false]);
   eq('R192: o prefixo de erro MAP saiu de erros.ts — não há mais tela onde um erro MAP possa nascer',
      /\["\/mapa", "MAP"\]/.test(ler106('src/lib/erros.ts')), false);
   const mig106 = ler106('supabase/migrations/20260917090000_u106_mapa_sai.sql');
@@ -18353,19 +18414,32 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // R193 — o Administrativo em duas colunas
   const adm106 = ler106('src/routes/_authenticated/painel.administrativo.tsx');
   const adm106c = cod106(adm106);
-  eq('R193: Usuários e Permissões são DUAS colunas na mesma tela (.admin-colunas), cada uma numa seção rotulada',
-     [/<div className="admin-colunas">/.test(adm106), /<section aria-labelledby="adm-usuarios"[\s\S]{0,600}<GestaoDeUsuarios \/>/.test(adm106),
-      /<section aria-labelledby="adm-permissoes"[\s\S]{0,600}<MatrizDePermissoes \/>/.test(adm106)],
-     [true, true, true]);
-  eq('R193: as APIs entram por um BOTÃO que troca a página para uma coluna só, e o botão de voltar devolve as duas',
-     [/onClick=\{\(\) => irParaAba\("apis"\)\}/.test(adm106), /aba === "apis" \? \(\s*\n\s*<div style=\{\{ \.\.\.card\(isLight\), borderRadius: 18, padding: 16 \}\}>\s*\n\s*<Integracoes \/>/.test(adm106),
-      /<ChevronLeft size=\{13\} \/> Usuários e permissões/.test(adm106)],
-     [true, true, true]);
+  // R298 (15/09/2026): as DUAS colunas da R193 viraram UMA aba na largura toda —
+  // Davi: "a tela Administrativo é usado no Desktop por mim, usuário Adm, e o
+  // layout deve ser otimizado para que as informações fiquem espalhadas de
+  // maneira estratégica e eficiente". Título → barra de pílulas (DS §6.26) →
+  // a aba escolhida num card (CASCA) ocupando a largura; cada seção continua
+  // rotulada pela pílula ativa (aria-labelledby).
+  eq('R193→R298: Usuários e Permissões são UMA aba de cada vez, cada uma numa seção rotulada pela pílula ativa, no card da largura toda (CASCA) — a grade de duas colunas saiu',
+     [/<section aria-labelledby="adm-usuarios" style=\{CASCA\}>\s*\n\s*<GestaoDeUsuarios \/>/.test(adm106),
+      /<section aria-labelledby="adm-permissoes" style=\{CASCA\}>\s*\n\s*<MatrizDePermissoes \/>/.test(adm106),
+      /const CASCA: CSSProperties = \{ \.\.\.card\(isLight\), paddingInline: 16, paddingBlock: 16, minWidth: 0 \};/.test(adm106),
+      /admin-colunas/.test(adm106c)],
+     [true, true, true, false]);
+  eq('R193→R298: as APIs entram por uma PÍLULA da barra (irParaAba) e ocupam a mesma casca; as cinco pílulas seguem a régua de ui.ts (pilulaDaBarra), com a ativa em degradê',
+     [/onClick=\{\(\) => irParaAba\("apis"\)\}/.test(adm106),
+      /aba === "apis" \? \(\s*\n\s*<div style=\{CASCA\}>\s*\n\s*<Integracoes \/>/.test(adm106),
+      // as cinco passam por UM helper local que chama a régua de ui.ts
+      (adm106.match(/style=\{pilula\(/g) ?? []).length >= 5
+      && /const pilula = \(ativa: boolean\): CSSProperties => pilulaDaBarra\(isLight, textPrimary, ativa\);/.test(adm106),
+      /botaoAba\(/.test(adm106c)],
+     [true, true, true, false]);
   eq('R193: a fileira de abas morreu — não há mais ABAS.map desenhando três botões',
      /ABAS\.map\(/.test(adm106c), false);
   const css106 = ler106('src/styles.css');
-  eq('R193: .admin-colunas é uma coluna no celular e duas (1.45fr | 1fr) a partir de 1024px — o mesmo breakpoint do resto do app',
-     /\.admin-colunas \{ display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; \}\s*\n@media \(min-width: 1024px\) \{\s*\n\s*\.admin-colunas \{ grid-template-columns: minmax\(0, 1\.45fr\) minmax\(0, 1fr\); \}/.test(css106), true);
+  // R298: a grade de duas colunas saiu com a tela — a classe não pode ficar órfã
+  eq('R193→R298: `.admin-colunas` SAIU do CSS junto com as duas colunas (classe órfã é o próximo bug de alguém que a reusa)',
+     /^\.admin-colunas/m.test(css106), false);
 
   // regra 7
   const prod106 = ler106('docs/PRODUTO.md');
@@ -18522,7 +18596,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true]);
   eq('R195: rótulo pequeno (≤ 10,5px) que era 500 virou 600 — texto pequeno precisa de peso para existir',
      [/fontWeight: 600, fontSize: 9,/.test(ler108('src/features/paineis/PainelBase.tsx')),
-      /fontWeight: 600, fontSize: 8, letterSpacing: "0\.05em"/.test(ler108('src/routes/_authenticated/painel.operacional.tsx'))],
+      /fontWeight: 600, fontSize: 8, letterSpacing: "0\.05em"/.test(ler108('src/features/paineis/DashboardOperacional.tsx'))],   // R299
      [true, true]);
 
   // regra 7
@@ -20687,16 +20761,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       TL7.PAPEIS.map((p) => p.chave),
       NAV7.itensDoCargo('operacional').map((i) => i.tela),
       TL7.podeAbrir('gerencial', 'operacional', undefined), TL7.podeAbrir('clientes', 'operacional', undefined),
-      /const gestores = \["admin", "comercial", "sac"\];/.test(ler127('src/features/gerencial/data.ts')),
+      // R304: o GESTOR entrou na lista — o operacional continua fora dela
+      /const gestores = \["admin", "comercial", "sac", "gestor"\];/.test(ler127('src/features/gerencial/data.ts')),
       LT7.presetPadrao('operacional')],
-     [['calendario', 'clientes', 'dashboard', 'perfil'], ['tecnico', 'comercial', 'sac', 'operacional'], ['dashboard', 'calendario', 'clientes', 'perfil'], false, true, true, null]);
+     [['calendario', 'clientes', 'dashboard', 'perfil'], ['tecnico', 'comercial', 'sac', 'operacional', 'gestor'], ['dashboard', 'calendario', 'clientes', 'perfil'], false, true, true, null]);
   eq('R244: o cargo novo entrou em TODO lugar do app que enumera cargos — sessão da Início, lentes, matriz completa, convite, tela de usuários',
      [/"operacional"/.test(cod127(ler127('src/features/home/data.ts'))),
       /\| "operacional"/.test(cod127(ler127('src/features/home/lentes.ts'))),
-      /operacional: matriz\?\.\[t\.chave\]\?\.operacional \?\? t\.padrao\.operacional/.test(ler127('src/features/gerencial/permissoes.ts')),
-      /z\.enum\(\["admin", "comercial", "sac", "tecnico", "operacional"\]\)/.test(ler127('src/lib/convites.functions.ts')),
+      // R304: matrizCompleta passou a iterar PAPEIS — a lista é UMA, e o gestor entrou sozinho
+      /for \(const p of PAPEIS\) linha\[p\.chave\] = matriz\?\.\[t\.chave\]\?\.\[p\.chave\] \?\? t\.padrao\[p\.chave\];/.test(ler127('src/features/gerencial/permissoes.ts')),
+      /z\.enum\(\["admin", "comercial", "sac", "tecnico", "operacional", "gestor"\]\)/.test(ler127('src/lib/convites.functions.ts')),   // R304
       /operacional: \{ label: "Operacional"/.test(ler127('src/features/administrativo/Usuarios.tsx')),
-      /<option value="operacional"/.test(ler127('src/features/administrativo/Usuarios.tsx'))],
+      // R304: o <select> itera CARGO_CONFIG (uma lista só) — não há mais <option> literal por cargo
+      /const CARGOS = Object\.entries\(CARGO_CONFIG\) as \[CargoId, CargoCfg\]\[\];/.test(ler127('src/features/administrativo/Usuarios.tsx'))
+      && /<option key=\{id\} value=\{id\}/.test(ler127('src/features/administrativo/Usuarios.tsx'))],
      [true, true, true, true, true, true]);
   eq('U127 migration CRÍTICO: o enum ganha o valor FORA da transação, os dois CHECKs aceitam o cargo, salvar_permissoes e handle_new_user o reconhecem, a semente tem UMA linha por tela (17) com as quatro portas abertas — e a transação não toca em is_gestor',
      [mig127.indexOf("ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'operacional';") < mig127.indexOf('\nBEGIN;'),
@@ -20877,7 +20955,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const ET8 = carregar('src/features/comercial/etapas.ts');
     eq('R252 CRÍTICO: o quadro do Comercial tem UMA coluna por etapa do ciclo, na ordem do ciclo, e a coluna sai da MESMA função que pinta o chip e conta o funil (etapaDaVisita) — quadro, chips e funil não têm como discordar',
        [/import \{ QuadroComercial \} from "@\/features\/comercial\/QuadroComercial";/.test(ger8),
-        /colunas=\{etapa === "todas" \? ETAPA_ORDEM : \[etapa\]\}/.test(ger8),
+        /colunas=\{ETAPA_ORDEM\}/.test(ger8),   // R302 (revisa R252): sempre o ciclo inteiro — o recorte por chip de etapa saiu
         /const e = etapaDaVisita\(v\);/.test(qc8),
         /colunas\.map\(\(e\) => \{/.test(qc8),
         ET8.ETAPA_ORDEM,
@@ -20981,7 +21059,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [8, 30, true, true, 118, 118]);
 
   {
-    const tela = ler129('src/routes/_authenticated/sobreaviso.tsx');
+    const tela = ler129('src/routes/_authenticated/gestao-tecnica.tsx');
     const faixa = ler129('src/features/sobreaviso/EscalaDasSemanas.tsx');
     // R254 (U129): a linha passou a ter UM SELETOR POR PLANTONISTA mais o "+"
     // (Davi: "adicione um botão na direita da linha do Plantonista escalado […]
@@ -21114,7 +21192,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a tela ───────────────────────────────────────────────────────────────
   {
-    const tela254 = ler254('src/routes/_authenticated/sobreaviso.tsx');
+    const tela254 = ler254('src/routes/_authenticated/gestao-tecnica.tsx');
     const grade254 = ler254('src/features/sobreaviso/GradeMes.tsx');
     const faixa254 = ler254('src/features/sobreaviso/EscalaDasSemanas.tsx');
     const ui254 = ler254('src/lib/ui.ts');
@@ -21260,7 +21338,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /textoPrazo\(os\.prazo_limite\)/.test(ler256('src/features/chamados/DetalheCampo.tsx')),
       /textoPrazo\(chamado\.prazo_limite\)/.test(ler256('src/features/chamados/DetalheInterno.tsx')),
       /textoPrazo\(c\.prazo_limite\)/.test(ler256('src/features/programacao/FaixaSemHorario.tsx')),
-      /textoPrazo\(c\.prazo_limite, agora\)/.test(ler256('src/routes/_authenticated/painel.operacional.tsx'))],
+      /textoPrazo\(c\.prazo_limite, agora\)/.test(ler256('src/features/paineis/DashboardOperacional.tsx'))],   // R299: as obras
      [true, false, true, true, true, true]);
 }
 
@@ -22965,23 +23043,33 @@ assincronas.push(async () => {
   const IO = carregar('src/features/paineis/indicadores.ts');
   const op8 = require('fs').readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
   const home8 = require('fs').readFileSync('src/features/home/MenuFiltro.tsx', 'utf8');
+  const ui8 = require('fs').readFileSync('src/lib/ui.ts', 'utf8');                                   // R298: a régua compartilhada
+  const gt8 = require('fs').readFileSync('src/routes/_authenticated/gestao-tecnica.tsx', 'utf8');   // R299: a hospedeira
 
   // A RÉGUA. Não é gosto: os controles estavam em 28px ao lado de chips que
   // resolviam em ~26 pelo padding, e foi isso que o Davi viu como "os botões e
   // campos desalinhados". A medida saiu MEDIDA na Início — pílula 40/raio 11,
   // botão quadrado 42/raio 12 —, não escolhida.
-  eq('R296 CRÍTICO: os botões quadrados da barra saem de UMA função (BOTAO_DA_BARRA), na medida da Início — 42×42, raio 12. Escrever o número em cada botão é exatamente como a tela acabou com três alturas na mesma linha',
-     [/function BOTAO_DA_BARRA\(isLight: boolean, cor: string\): CSSProperties/.test(op8),
-      /width: 42, height: 42, borderRadius: 12,/.test(op8),
-      (op8.match(/style=\{BOTAO_DA_BARRA\(isLight, textPrimary\)\}/g) || []).length,
-      /width: 42, height: 42, borderRadius: 12, padding: 0, flexShrink: 0,\n\s*display: "inline-flex"/.test(op8)],
+  // R298 (15/09/2026): a função subiu para ui.ts (`botaoDaBarra`/`pilulaDaBarra`)
+  // — a régua é de TODA tela de fila, não da Operacional. Nenhuma tela escreve
+  // o número: a Operacional tem 1 botão quadrado (o alternador), a Gestão
+  // Técnica 2 (Equipes e recolher indicadores), e o número mora em ui.ts.
+  eq('R296/R298 CRÍTICO: os botões quadrados da barra saem de UMA função COMPARTILHADA (ui.ts: botaoDaBarra), na medida da Início — 42×42, raio 12. Escrever o número em cada botão é exatamente como a tela acabou com três alturas na mesma linha',
+     [/export const botaoDaBarra = \(isLight: boolean, cor: string\): React\.CSSProperties => \(\{/.test(ui8),
+      /width: 42, height: 42, borderRadius: 12, padding: 0, flexShrink: 0, cursor: "pointer",/.test(ui8),
+      (op8.match(/style=\{botaoDaBarra\(isLight, textPrimary\)\}/g) || []).length,
+      (gt8.match(/style=\{botaoDaBarra\(isLight, textPrimary\)\}/g) || []).length,
+      /function BOTAO_DA_BARRA/.test(op8)],   // a FUNÇÃO local não pode voltar (o "+" sempre foi goldButton com 42 inline)
      // 3 (era 2) desde 15/09/2026: a porta das EQUIPES entrou na barra. Ela
      // morava no cabeçalho do gráfico "Atividades por equipe" — que é
      // justamente o que esta mesma regra passou a esconder —, e com a faixa
      // recolhida NÃO HAVIA porta nenhuma para a janela de equipes. Medido: 1
      // botão com a faixa aberta, ZERO com ela recolhida, e a preferência fica
      // gravada. Gesto de gestão não pode depender de um painel de leitura.
-     [true, true, 3, true]);
+     // R299 (15/09/2026): Equipes e recolher foram para a Gestão Técnica junto
+     // com o dashboard; aqui sobrou o alternador. Lá são dois na medida exata
+     // (o recolher do PLANTÃO é menor de propósito: seção secundária, 34px).
+     [true, true, 1, 2, false]);
 
   eq('R296: as pílulas das lentes têm 40px e raio 11 — a MESMA medida das pílulas de filtro da Início, e nunca mais a altura que sobra do padding',
      [/height: 40, padding: "0 13px", borderRadius: 11, flexShrink: 0, cursor: "pointer",/.test(op8),
@@ -22990,9 +23078,10 @@ assincronas.push(async () => {
 
   // A FORMA, não só a medida: quatro botões de eixo diziam que os quatro modos
   // pesam igual, e o `estado` é o padrão da R76.
-  eq('R296: o eixo do quadro é UMA pílula com menu (MenuFiltro), não quatro botões — e desmarcar devolve ao `estado`, porque o quadro não tem como não ter eixo',
+  // R301 (15/09/2026): o padrão do eixo passou a ser o DIA — desmarcar devolve a ele.
+  eq('R296/R301: o eixo do quadro é UMA pílula com menu (MenuFiltro), não quatro botões — e desmarcar devolve ao `dia` (o padrão da R301), porque o quadro não tem como não ter eixo',
      [/rotulo="Colunas"/.test(op8),
-      /setEixoDoQuadro\(\(v\[0\] as EixoDoQuadro\) \?\? "estado"\)/.test(op8),
+      /setEixoDoQuadro\(\(v\[0\] as EixoDoQuadro\) \?\? "dia"\)/.test(op8),
       /nota: EIXO_NOTA\[e\]/.test(op8),
       Object.keys(IO.EIXO_NOTA).sort()],
      [true, true, true, ['dia', 'equipe', 'estado', 'status']]);
@@ -23046,12 +23135,17 @@ assincronas.push(async () => {
      /return ordenarCampo\(base as any\[\], ordem, \(c: any\) =>/.test(op8), true);
 
   // O RECOLHER, e a regra que veio junto.
-  eq('R296: a faixa de indicadores recolhe e FICA recolhida (chave própria, não a da Início: são duas telas e duas rotinas), e recolher LIMPA o KPI ativo — esconder o controle deixando o filtro ligado foi o defeito que a U94 consertou no calendário',
-     [/const CHAVE_PAINEL_OP = "prever-operacional-painel";/.test(op8),
-      /setPainelAberto\(\(v\) => \{ if \(v\) setKpiAtivo\(null\); return !v; \}\)/.test(op8),
-      /\{painelAberto && \(/.test(op8),
-      /const CHAVE_ORDEM_OP = "prever-operacional-ordem";/.test(op8)],
-     [true, true, true, true]);
+  // R299 (15/09/2026): a faixa de indicadores — e o recolher dela — foram para a
+  // Gestão Técnica. Lá o recolher NÃO precisa limpar KPI: a lista que o KPI
+  // recorta está em outra tela (a Operacional, por ?kpi=). A chave é PRÓPRIA da
+  // Gestão Técnica, e a Operacional guarda só a ordem.
+  eq('R296→R299: a faixa de indicadores recolhe e FICA recolhida na Gestão Técnica (chave própria), e a Operacional continua guardando a ordem',
+     [/const CHAVE_PAINEL_GT = "prever-gestao-painel";/.test(gt8),
+      /setPainelAberto\(\(v\) => !v\)/.test(gt8),
+      /\{painelAberto \? \(/.test(gt8),
+      /const CHAVE_ORDEM_OP = "prever-operacional-ordem";/.test(op8),
+      /CHAVE_PAINEL_OP|painelAberto/.test(op8)],
+     [true, true, true, true, false]);
 }
 
 // ── R295 — O QUADRO GANHA EIXO (14/09/2026) ───────────────────────────────
@@ -23138,7 +23232,7 @@ assincronas.push(async () => {
   eq('R295: o seletor de eixo só aparece no QUADRO (na lista seria controle inerte), e o eixo por dia usa `lugarNoCalendario` — a mesma conta do calendário, para as duas telas não discordarem sobre em que dia a atividade cai (foi o P57)',
      [/\{visao === "kanban" && \(/.test(op7q),
       /lugarNoCalendario\(c\)\.quando/.test(op7q),
-      /setEixoDoQuadro\(\(v\[0\] as EixoDoQuadro\) \?\? "estado"\)/.test(op7q),
+      /setEixoDoQuadro\(\(v\[0\] as EixoDoQuadro\) \?\? "dia"\)/.test(op7q),   // R301: o padrão virou o dia
       /TIPO_LABEL\[c\.tipo as ChamadoTipo\]/.test(op7q)],
      [true, true, true, true]);
 }
@@ -24116,6 +24210,365 @@ assincronas.push(async () => {
      })(),
      [true, 1, false]);
 }
+
+// ── v1.0.2 — A REVISÃO SISTÊMICA (15/09/2026): R298–R304 ─────────────────
+//
+// Davi: "fazer uma revisão detalhada e sistêmica de tudo o que temos hoje".
+// O que segue trava a parte estrutural da leva: a Gestão Técnica (R299/R300),
+// a Operacional como fila (R301), o cargo Gestor (R304) e a régua compartilhada
+// (R298). O Administrativo e o Comercial têm blocos próprios logo abaixo.
+{
+  const fsV = require('fs');
+  const ler = (p) => fsV.readFileSync(p, 'utf8');
+  const cod = (s) => soCodigo(s, 'js');
+  const gt = ler('src/routes/_authenticated/gestao-tecnica.tsx');
+  const gtc = cod(gt);
+  const sob = ler('src/routes/_authenticated/sobreaviso.tsx');
+  const opv = ler('src/routes/_authenticated/painel.operacional.tsx');
+  const opc = cod(opv);
+  const dashv = ler('src/features/paineis/DashboardOperacional.tsx');
+  const fila = ler('src/features/paineis/FilaDeDecisao.tsx');
+  const acoes = ler('src/features/paineis/AcoesDoCard.tsx');
+  const acoesc = cod(acoes);
+  const grade = ler('src/features/sobreaviso/GradeMes.tsx');
+  const cssv = ler('src/styles.css');
+  const uiv = ler('src/lib/ui.ts');
+  const telasv = cod(ler('src/lib/telas.ts'));
+  const navv = cod(ler('src/components/nav-itens.ts'));
+  const TLv = carregar('src/lib/telas.ts');
+  const NAVv = carregar('src/components/nav-itens.ts');
+  const PALv = carregar('src/lib/paleta.ts');
+
+  // ── R299: "Sobreaviso" virou "Gestão Técnica"; a CHAVE ficou ─────────────
+  eq('R299 CRÍTICO: a chave de permissão continua `sobreaviso` (é o que está gravado na matriz) — mudaram o RÓTULO e a ROTA, e o menu aponta para a rota nova nos dois perfis',
+     [TLv.TELAS.find((x) => x.chave === 'sobreaviso')?.label,
+      TLv.TELAS.find((x) => x.chave === 'sobreaviso')?.rota,
+      /guardaDeTela\("sobreaviso"\)/.test(gt),
+      /createFileRoute\("\/_authenticated\/gestao-tecnica"\)/.test(gt),
+      (navv.match(/to: "\/gestao-tecnica", label: "Gestão Técnica", icon: Wrench, tela: "sobreaviso", soDesktop: true/g) ?? []).length,
+      /\/sobreaviso"/.test(navv)],
+     ['Gestão Técnica', '/gestao-tecnica', true, true, 2, false]);
+  eq('R299: /sobreaviso redireciona para /gestao-tecnica PRESERVANDO a busca (?mes=&dia=&visao= é o link que o gestor manda para o celular) — e não tem conteúdo próprio',
+     [/validateSearch: \(s: Record<string, unknown>\) => s,/.test(sob),
+      /throw redirect\(\{ to: "\/gestao-tecnica", search: search as any \}\);/.test(sob),
+      /component: \(\) => null,/.test(sob),
+      /guardaDeTela|useQuery|GradeMes/.test(cod(sob))],
+     [true, true, true, false]);
+  eq('R299: a tela se apresenta como Gestão Técnica nas duas cascas (a página e o Aviso de carregando/erro)',
+     (gtc.match(/>\s*Gestão Técnica\s*<\/h1>/g) ?? []).length, 2);
+
+  // ── R299 B: o que veio para a Gestão Técnica ─────────────────────────────
+  eq('R299 B.1 CRÍTICO: o dashboard é COMPONENTE (features/paineis/DashboardOperacional) montado pela Gestão Técnica, e o clique num KPI abre a Operacional recortada por ele (?kpi=) — "quem conta é quem filtra" atravessa a tela',
+     [/import \{ DashboardOperacional \} from "@\/features\/paineis\/DashboardOperacional";/.test(gt),
+      /<DashboardOperacional\s*\n\s*aoEscolherKpi=\{\(kpi\) => navigate\(\{ to: "\/painel\/operacional", search: \{ kpi \} as any \}\)\}/.test(gt),
+      /export function DashboardOperacional\(\{ aoEscolherKpi, aoAbrirChamado, kpiAtivo = null \}: Props\)/.test(dashv),
+      // o componente NÃO decide o que o clique faz nem se está recolhido — a hospedeira decide
+      /setPainelId|setVisao\(|setLente\(|painelAberto|localStorage/.test(cod(dashv)),
+      // e a Operacional não monta mais gráfico nenhum
+      /from "recharts"|<DashboardOperacional/.test(opc)],
+     [true, true, true, false, false]);
+  eq('R299 B.1: o recolher dos indicadores mora na Gestão Técnica, com chave PRÓPRIA e preferência gravada; a Operacional não recolhe mais nada',
+     [/const CHAVE_PAINEL_GT = "prever-gestao-painel";/.test(gt),
+      /localStorage\.setItem\(CHAVE_PAINEL_GT, painelAberto \? "aberto" : "fechado"\)/.test(gt),
+      /aria-pressed=\{!painelAberto\}/.test(gt),
+      /\{painelAberto \? \(\s*\n\s*<div className="so-desktop"/.test(gt),
+      /CHAVE_PAINEL_OP|setPainelAberto/.test(opc)],
+     [true, true, true, true, false]);
+  eq('R299 B.2: FECHAMENTOS mora na barra da Gestão Técnica, como pílula na régua (DS §6.26), e some para quem a matriz não deixa entrar',
+     /\{podeVer\("fechamentos"\) !== false \? \(\s*\n\s*<button\s*\n\s*type="button"\s*\n\s*onClick=\{\(\) => navigate\(\{ to: "\/fechamentos" \}\)\}[\s\S]{0,200}style=\{pilulaDaBarra\(isLight, textPrimary\)\}/.test(gt),
+     true);
+  eq('R299 B.3: EQUIPES DE CAMPO mora na barra da Gestão Técnica (botão quadrado da régua) e abre o mesmo diálogo; a Operacional não tem mais a porta',
+     [/onClick=\{\(\) => setDuplasAberto\(true\)\}[\s\S]{0,160}style=\{botaoDaBarra\(isLight, textPrimary\)\}\s*\n\s*>\s*\n\s*<Users size=\{17\} \/>/.test(gt),
+      /<DialogoEquipes aberto=\{duplasAberto\} aoFechar=\{\(\) => setDuplasAberto\(false\)\} \/>/.test(gt),
+      /DialogoEquipes|setDuplasAberto/.test(opc)],
+     [true, true, false]);
+  eq('R299: o chamado aberto pela fila ou pelas obras desliza no painel lateral da Gestão Técnica (R33) e leva à página completa',
+     /<PainelChamado\s*\n\s*chamadoId=\{painelId\}[\s\S]{0,200}navigate\(\{ to: "\/chamados\/\$id", params: \{ id \} \}\)/.test(gt), true);
+
+  // ── R300: a ordem da página é a ordem do dia do gestor ───────────────────
+  eq('R300 CRÍTICO: a ordem da página — INDICADORES, depois a FILA DE DECISÃO, e só então o PLANTÃO (o que se olha todo dia antes do que se monta 2x por mês)',
+     (() => {
+       const i = gt.indexOf('<DashboardOperacional');
+       const f = gt.indexOf('<FilaDeDecisao');
+       const p = gt.indexOf('rotuloDeSecao(isLight)}>Plantão</span>');
+       return [i > 0, f > i, p > f];
+     })(), [true, true, true]);
+  eq('R300: o plantão é seção RECOLHÍVEL com chave própria — e nasce aberto',
+     [/const CHAVE_PLANTAO_GT = "prever-gestao-plantao";/.test(gt),
+      /localStorage\.getItem\(CHAVE_PLANTAO_GT\) !== "fechado"/.test(gt),
+      /\{plantaoAberto \? \(<>/.test(gt),
+      /<PainelDoPlantao mes=\{mes\} isLight=\{isLight\} \/>\s*\n\s*<\/>\) : null\}/.test(gt)],
+     [true, true, true, true]);
+  eq('R300 CRÍTICO: a fila de decisão NÃO conta nada — os dois grupos saem das funções puras que já existiam (filaDeRetornos da R286, chamadosDoKpi("aguardando_conferencia") da R125), recortadas pela equipe técnica, com um "agora" só',
+     [/filaDeRetornos\(chamados as any\[\], agora\)/.test(fila),
+      /chamadosDoKpi\("aguardando_conferencia", chamados as any\[\], agora\)/.test(fila),
+      /\.filter\(\(c\) => c\.equipe === "tecnica"\)/.test(fila),
+      /const agora = useMemo\(\(\) => new Date\(\), \[chamados\]\);/.test(fila),
+      /etiquetaDeRetorno\(c\.retornos\)/.test(fila)],
+     [true, true, true, true, true]);
+  eq('R300: erro, carregando e vazio são TRÊS telas na fila — e o erro vem antes ("isto NÃO é uma fila vazia"); o teto é 12 e o resto vai para a Operacional pelo mesmo KPI',
+     [/if \(consulta\.isError\) \{/.test(fila),
+      fila.indexOf('consulta.isError') < fila.indexOf('consulta.isLoading'),
+      /NÃO é uma fila vazia/.test(fila),
+      /export const TETO_DA_FILA = 12;/.test(fila),
+      /aoVerCobrancas=\{\(\) => navigate\(\{ to: "\/painel\/operacional", search: \{ kpi: "aguardando_conferencia" \} as any \}\)\}/.test(gt),
+      // anti-padrão nº 10: nenhum atalho `padding` inline na fila
+      /padding: "/.test(cod(fila))],
+     [true, true, true, true, true, false]);
+  eq('R300: a fila lê `retornos` — a coluna da U150 entrou no select dos chamados (sem ela a fila seria sempre vazia, com a cara de "nada pendente")',
+     /, data_agendada, retornos, /.test(cod(ler('src/features/chamados/data.ts'))), true);
+  eq('R300 C: o calendário do plantão se adapta à largura — sem `max-content`, grade a 100% com piso de 28px por dia (190 + 31×28 ≤ 1086), rolagem COM barra quando não cabe, e a célula em border-box',
+     [/gridTemplateColumns: `190px repeat\(\$\{n\}, minmax\(28px, 1fr\)\)`,/.test(grade),
+      /minWidth: 190 \+ n \* 28,\s*\n\s*width: "100%",/.test(grade),
+      /max-content/.test(cod(grade)),
+      /\.\.\.card\(isLight\), overflow: "auto" \}\}>/.test(grade),
+      /boxSizing: "border-box",/.test(grade),
+      190 + 31 * 28 <= 1366 - 232 - 2 * 24],
+     [true, true, false, true, true, true]);
+
+  // ── R301: a Operacional é a FILA — todos os chamados, quadro por dia ─────
+  eq('R301 CRÍTICO: a tela "Todos os chamados" SAIU — a chave saiu do catálogo, a rota redireciona para a Operacional, e a U153 apaga as linhas da matriz (com conferência e DESFAZER)',
+     (() => {
+       const u153 = ler('supabase/migrations/20261010090000_u153_todos_os_chamados_sai.sql');
+       return [TLv.TELAS.some((x) => x.chave === 'chamados.painel'),
+               /T\("chamados\.painel"/.test(telasv),
+               /^DELETE FROM public\.permissoes_tela WHERE tela IN \('chamados\.painel'\);$/m.test(u153),
+               />>> OLHAR <<</.test(u153), /DESFAZER/.test(u153), /RODAR NO SQL EDITOR DO SUPABASE, À MÃO/.test(u153)];
+     })(), [false, false, true, true, true, true]);
+  eq('R301 CRÍTICO: o QUADRO por DIA é o padrão, e visão, eixo e lente são PREFERÊNCIA da pessoa (uma chave por coisa, gravada a cada mudança, lida SÓ se for valor válido)',
+     [/useState<"lista" \| "kanban">\(\(\) => lerPreferencia\(CHAVE_VISAO_OP, \["lista", "kanban"\] as const, "kanban"\)\)/.test(opv),
+      /useState<EixoDoQuadro>\(\(\) => lerPreferencia\(CHAVE_EIXO_OP, \["estado", "status", "equipe", "dia"\] as const, "dia"\)\)/.test(opv),
+      /useState<LenteLista>\(\(\) => lerPreferencia\(CHAVE_LENTE_OP, LENTE_ORDEM, "abertos"\)\)/.test(opv),
+      ['prever-operacional-visao', 'prever-operacional-eixo', 'prever-operacional-lente'].every((k) => opv.includes(`"${k}"`)),
+      /function lerPreferencia<T extends string>\(chave: string, validos: readonly T\[\], padrao: T\): T/.test(opv),
+      /\(validos as readonly string\[\]\)\.includes\(v\) \? \(v as T\) : padrao/.test(opv),
+      (opv.match(/localStorage\.setItem\(CHAVE_(VISAO|EIXO|LENTE)_OP, /g) ?? []).length],
+     [true, true, true, true, true, true, 3]);
+  eq('R301: os dias da semana se leem (texto primário nos eixos sem cor própria) e HOJE é dourado — o de TEXTO no claro (PRIMARIA.light = #A06108), com aria-current',
+     [/const eHoje = eixoDoQuadro === "dia" && coluna\.chave === hoje;/.test(opv),
+      /const dourado = isLight \? PRIMARIA\.light : PRIMARIA\.dark;/.test(opv),
+      /const corDoTitulo = col in CORES_COLUNA \? cor : eHoje \? dourado : textPrimary;/.test(opv),
+      /aria-current=\{eHoje \? "date" : undefined\}/.test(opv),
+      PALv.PRIMARIA.light, PALv.PRIMARIA.dark],
+     [true, true, true, true, '#A06108', '#F8C811']);
+  eq('R299/R301: o KPI clicado na Gestão Técnica chega por ?kpi= (só valores da lista), recorta a lista e a URL é limpa em seguida — o F5 não recorta de novo o que a pessoa já liberou',
+     [/const KPIS_DA_URL = new Set<string>\(\[\.\.\.KPI_OPERACIONAL_ORDEM, "aguardando_conferencia"\]\);/.test(opv),
+      /validateSearch: \(s: Record<string, unknown>\): \{ kpi\?: ChaveKpiOperacional \} =>/.test(opv),
+      /setKpiAtivo\(busca\.kpi\);\s*\n\s*navigate\(\{ to: "\/painel\/operacional", search: \{\} as any, replace: true \}\);/.test(opv)],
+     [true, true, true]);
+
+  // ── R301 C: o botão de ações do card ─────────────────────────────────────
+  eq('R301 C CRÍTICO: o card virou <div role="button"> (botão dentro de botão é HTML inválido), é `position: relative`, e tem o botão circular `.acao-do-card` no canto — a âncora é capturada ANTES do updater (o React esvazia e.currentTarget; medido: chegava null)',
+     [/<div\s*\n\s*key=\{c\.id\}\s*\n\s*role="button"\s*\n\s*tabIndex=\{0\}/.test(opv),
+      /position: "relative",/.test(opv),
+      /className="acao-do-card"/.test(opv),
+      /const ancora = e\.currentTarget;\s*\n\s*setAcoesDe\(\(atual\) => \(atual\?\.id === c\.id \? null : \{ id: c\.id, ancora \}\)\);/.test(opv),
+      /<AcoesDoCard\s*\n\s*chamado=\{c\}[\s\S]{0,200}aoReagendar=\{\(\) => setPainelId\(c\.id\)\}/.test(opv),
+      /paddingRight: 30,/.test(opv),
+      /<button\s*\n\s*key=\{c\.id\}\s*\n\s*className="elevavel"/.test(opv)],
+     [true, true, true, true, true, true, false]);
+  eq('R301 C: o botão é DISCRETO em repouso (26px, cores em CSS com par claro/escuro) e o hover dourado com glow é CSS dentro da media query de ponteiro fino — nunca JS, nunca no toque',
+     (() => {
+       const iMedia = cssv.indexOf('.hover-suave { transition: background .15s ease; }');
+       const bloco = cssv.slice(cssv.lastIndexOf('@media (hover: hover) and (pointer: fine) {', iMedia), cssv.indexOf('\n}\n', iMedia));
+       return [/\.acao-do-card \{\s*\n\s*position: absolute; right: 8px; bottom: 8px;\s*\n\s*width: 26px; height: 26px; border-radius: 13px;/.test(cssv),
+               /html\[data-theme="light"\] \.acao-do-card \{/.test(cssv),
+               /\.acao-do-card:hover \{\s*\n\s*background: linear-gradient\(135deg,#FCDE48,#F8C811,#E8B00A\);\s*\n\s*color: #0E0E0E;\s*\n\s*border-color: transparent;\s*\n\s*box-shadow: 0 6px 20px rgba\(248,200,17,0\.35\);/.test(bloco),
+               /onMouseEnter|onMouseLeave/.test(opc),
+               /outline: 2px solid #F8C811/.test(cssv)];
+     })(), [true, true, true, false, false]);
+  eq('R301 C CRÍTICO: as três ações passam pelas portas que JÁ existem — desagendar_chamado (U79) ou a data seca, cancelarChamado com MOTIVO obrigatório, e re-agendar abre o painel; o pop-up não escreve no banco por conta própria',
+     [/await desagendar\.mutateAsync\(chamado\.id\);/.test(acoes),
+      /await atualizarChamado\(chamado\.id, \{ data_agendada: null \} as any\);/.test(acoes),
+      /await cancelarChamado\(chamado\.id, motivo\.trim\(\)\);/.test(acoes),
+      /if \(!motivo\.trim\(\)\) \{ toast\.error\("Informe o motivo do cancelamento\."\); return; \}/.test(acoes),
+      /disabled=\{ocupado \|\| !motivo\.trim\(\)\}/.test(acoes),
+      /onClick=\{\(\) => \{ aoReagendar\(\); aoFechar\(\); \}\}/.test(acoes),
+      /from "@\/integrations\/supabase\/client"/.test(acoes)],
+     [true, true, true, true, true, true, false]);
+  eq('R301 C: o texto do desmarcar é DERIVADO de espelhoAposDesagendar (R101) — sobrando visita cumprida a data NÃO some, e a frase diz onde ela vai parar; não há "tem certeza?" (a segunda tela É a confirmação)',
+     [/const resto = espelhoAposDesagendar\(chamado\.id, blocos\);/.test(acoes),
+      /horaTexto\(resto\.inicio_min\)/.test(acoes),
+      /a data continua mostrando a última visita que ACONTECEU/.test(acoes),
+      /window\.confirm\(|[^.\w]confirm\(/.test(acoesc),
+      /disabled=\{!marcado\}/.test(acoes)],
+     [true, true, true, false, true]);
+  eq('R301 C: o pop-up é portal no alvo da R243 (o diálogo, se houver; senão o body), z-index 200, fecha no clique fora, no Escape e quando a página rola',
+     [/const alvo = \(ancora\.closest\('\[role="dialog"\]'\) as HTMLElement \| null\) \?\? document\.body;/.test(acoes),
+      /zIndex: 200/.test(acoes),
+      /if \(e\.key === "Escape"\) aoFechar\(\);/.test(acoes),
+      /window\.addEventListener\("scroll", rolou, true\);/.test(acoes),
+      /document\.addEventListener\("pointerdown", fora\)/.test(acoes),
+      (acoes.match(/role="menuitem"/g) ?? []).length],
+     [true, true, true, true, true, 3]);
+
+  // ── R304: o cargo GESTOR ─────────────────────────────────────────────────
+  eq('R304 CRÍTICO: o gestor existe no catálogo como QUINTA coluna, com as onze portas da equipe de campo abertas e Administrativo/Comercial/Contratos fechados — e a U154 semeia EXATAMENTE isso (paridade)',
+     [TLv.PAPEIS.map((p) => p.chave).includes('gestor'),
+      TLv.TELAS.filter((x) => x.padrao.gestor).map((x) => x.chave).sort(),
+      TLv.TELAS.filter((x) => !x.padrao.gestor).map((x) => x.chave).sort()],
+     [true,
+      ['atividades.nova', 'calendario', 'chamados.novo', 'chamados.programacao', 'clientes', 'dashboard', 'equipamentos', 'fechamentos', 'painel.operacional', 'perfil', 'sobreaviso'],
+      ['clientes.migrar', 'clientes.novo', 'contratos', 'gerencial', 'gerencial.nova', 'painel.administrativo']]);
+  eq('R304 CRÍTICO: U154 — o enum ganha o valor FORA da transação, os dois CHECKs aceitam gestor, salvar_permissoes e handle_new_user o reconhecem, is_gestor e pode_ver_financeiro o incluem (papel E cargo), a semente tem 17 linhas (11 abertas), e a migration NÃO troca o cargo de ninguém',
+     (() => {
+       const m = ler('supabase/migrations/20261011090000_u154_o_cargo_gestor.sql');
+       const vivo = m.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+       const seed = vivo.slice(vivo.indexOf('INSERT INTO public.permissoes_tela (tela, cargo, permitido) VALUES'), vivo.indexOf('ON CONFLICT (tela, cargo) DO NOTHING'));
+       return [m.indexOf("ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'gestor';") < m.indexOf('\nBEGIN;'),
+               /CHECK \(cargo IS NULL OR cargo IN \('admin', 'comercial', 'sac', 'tecnico', 'operacional', 'gestor'\)\);/.test(m),
+               /CHECK \(cargo IN \('tecnico', 'comercial', 'sac', 'operacional', 'gestor'\)\);/.test(m),
+               /WHERE x\.cargo IN \('tecnico', 'comercial', 'sac', 'operacional', 'gestor'\)/.test(m),
+               /IF v_cargo NOT IN \('admin', 'comercial', 'sac', 'tecnico', 'operacional', 'gestor'\) THEN/.test(m),
+               (vivo.match(/IN \('admin', 'comercial', 'sac', 'gestor'\)/g) ?? []).length,
+               (vivo.match(/IN \('admin', 'comercial', 'gestor'\)/g) ?? []).length,
+               (seed.match(/'gestor', true\)/g) ?? []).length, (seed.match(/'gestor', false\)/g) ?? []).length,
+               /UPDATE public\.profiles/.test(vivo),
+               /chamados\.painel/.test(vivo) && /'operacional'\) THEN/.test(vivo),
+               />>> OLHAR <<</.test(m) && /DESFAZER/.test(m)];
+     })(), [true, true, true, true, true, 2, 2, 11, 6, false, true, true]);
+  eq('R304: no app o gestor recebe a INTERFACE do admin (balde "admin" de useUserCargo — a matriz fecha por cima), é gestor e vê valores, e enxerga a casa inteira na Início',
+     [/if \(roleStrs\.includes\("gestor"\) \|\| c === "gestor"\) return "admin" as const;/.test(ler('src/features/gerencial/data.ts')),
+      /const gestores = \["admin", "comercial", "sac", "gestor"\];/.test(ler('src/features/gerencial/data.ts')),
+      /const financeiro = \["admin", "comercial", "gestor"\];/.test(ler('src/features/gerencial/data.ts')),
+      /\| "gestor" \| null;/.test(ler('src/features/home/data.ts')) && /c === "gestor" \? c : null/.test(ler('src/features/home/data.ts')),
+      /\| "gestor";/.test(ler('src/features/home/lentes.ts')),
+      /s\.cargo === "gestor";/.test(ler('src/routes/_authenticated/dashboard.tsx')),
+      NAVv.itensDoCargo('admin').some((i) => i.to === '/gestao-tecnica')],
+     [true, true, true, true, true, true, true]);
+
+  // ── R298 (a parte compartilhada): a régua da barra mora em ui.ts ─────────
+  eq('R298 CRÍTICO: a régua da barra (DS §6.26) é de ui.ts — pílula 40/raio 11 com altura DECLARADA e degradê primário quando ativa; quadrado 42/raio 12 — para nenhuma tela escrever o número',
+     [/export const pilulaDaBarra = \(\s*\n\s*isLight: boolean,\s*\n\s*cor: string,\s*\n\s*ativa = false,\s*\n\): React\.CSSProperties => \(\{/.test(uiv),
+      /height: 40, padding: "0 13px", borderRadius: 11, flexShrink: 0, cursor: "pointer",/.test(uiv),
+      /background: ativa \? GRAD_PRIMARIA : isLight \? "#ffffff" : "rgba\(255,255,255,0\.03\)",/.test(uiv),
+      /color: ativa \? SOBRE_PRIMARIA : cor,/.test(uiv),
+      /import \{ GRAD_PRIMARIA, SOBRE_PRIMARIA, SUPERNOVA, cinzas, misturar \} from "@\/lib\/paleta";/.test(uiv)],
+     [true, true, true, true, true]);
+
+  // ── regra 7 ──────────────────────────────────────────────────────────────
+  const prodV = ler('docs/PRODUTO.md');
+  eq('v1.0.2 (regra 7): R298–R304 existem no PRODUTO, cada uma com a frase do Davi de 15/09/2026',
+     ['R298', 'R299', 'R300', 'R301', 'R302', 'R303', 'R304'].map((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prodV)),
+     [true, true, true, true, true, true, true]);
+}
+
+
+// ── v1.0.2 — Administrativo (R298) e Comercial (R302): o que os pacotes A e D fizeram ─
+{
+  const fsAD = require('fs');
+  const ler = (p) => fsAD.readFileSync(p, 'utf8');
+  const cod = (s) => soCodigo(s, 'js');
+  const adm = ler('src/routes/_authenticated/painel.administrativo.tsx');
+  const admc = cod(adm);
+  const usu = ler('src/features/administrativo/Usuarios.tsx');
+  const usuc = cod(usu);
+  const permT = ler('src/features/administrativo/Permissoes.tsx');
+  const permc = cod(permT);
+  const conv = ler('src/lib/convites.functions.ts');
+  const ger = ler('src/routes/_authenticated/gerencial.tsx');
+  const gerc = cod(ger);
+  const dc = ler('src/features/comercial/DashboardComercial.tsx');
+  const dcc = cod(dc);
+  const met = ler('src/features/comercial/metricas.ts');
+  const cssAD = ler('src/styles.css');
+
+  // ── R298 ─────────────────────────────────────────────────────────────────
+  eq('R298 CRÍTICO: os quatro textos SAÍRAM do código do Administrativo (o porquê fica em comentário)',
+     ['Gente, acesso, catálogo', 'a equipe define de quem é a fila', 'Marque quais telas cada papel pode abrir', 'Administrador sempre vê tudo']
+       .map((t) => admc.includes(t) || usuc.includes(t) || permc.includes(t)),
+     [false, false, false, false]);
+  eq('R298: as cinco pílulas da barra passam pela régua de ui.ts via UM helper local, e só as INATIVAS levam a classe de hover (a ativa já tem o degradê)',
+     [/const pilula = \(ativa: boolean\): CSSProperties => pilulaDaBarra\(isLight, textPrimary, ativa\);/.test(adm),
+      (adm.match(/style=\{pilula\(/g) ?? []).length >= 5,
+      (adm.match(/"pilula-da-barra"/g) ?? []).length, /botaoAba\(/.test(admc)],
+     [true, true, 5, false]);
+  eq('R298: o hover da pílula inativa é CSS dentro da media query de ponteiro fino — borda e tinta douradas, SEM degradê nem glow (R174)',
+     (() => {
+       const i = cssAD.indexOf('.pilula-da-barra:hover');
+       const bloco = cssAD.slice(cssAD.lastIndexOf('@media (hover: hover) and (pointer: fine) {', i), i + 200);
+       return [i > 0, /\.pilula-da-barra:hover \{ border-color: var\(--gold-primary\) !important; color: var\(--gold-primary\) !important; \}/.test(bloco),
+               /\.pilula-da-barra:hover[^}]*linear-gradient|\.pilula-da-barra:hover[^}]*box-shadow/.test(cssAD)];
+     })(), [true, true, false]);
+  eq('R298 CRÍTICO: REENVIAR é a mesma linha de convites e um novo envio pelo GoTrue — server function própria, POST, autenticada, sem INSERT em convites; a UI tem a mutation e o botão na régua dos vizinhos (36/10)',
+     [/export const reenviarConvite = createServerFn\(\{ method: "POST" \}\)/.test(conv),
+      (() => { const corpo = conv.slice(conv.indexOf('export const reenviarConvite')); return /inviteUserByEmail/.test(corpo) && !/\.from\("convites"\)\s*\.insert/.test(corpo); })(),
+      /function siteUrl\(\) \{/.test(conv), (conv.match(/process\.env\.SITE_URL/g) ?? []).length,
+      /reenviarConviteMutation/.test(usu),
+      /height: 36, paddingInline: 12, borderRadius: 10, flexShrink: 0,/.test(usu),
+      /minHeight: 44, paddingInline: 12, paddingBlock: 4, borderRadius: 12,/.test(usu)],
+     [true, true, true, 1, true, true, true]);
+  eq('R298/R304: cargo é UMA lista — CARGO_CONFIG alimenta o tipo, os selects (o SAC aparece) e as cores; os títulos duplicados (15.5) saíram; o cabeçalho da matriz usa a superfície de paleta.ts e não gruda em nada',
+     [/type CargoId = keyof typeof CARGO_CONFIG;/.test(usu), /sac:\s+\{ label: "SAC",/.test(usu),
+      (usu.match(/CARGOS\.map\(\(\[id, cfg\]\)/g) ?? []).length >= 3,
+      /fontSize: 15\.5/.test(usuc) || /fontSize: 15\.5/.test(permc),
+      /const cz = cinzas\(isLight\);/.test(permT), /background: cz\.superficie,/.test(permT),
+      /position: "sticky"/.test(permc) || /#e9e9e9/.test(permc)],
+     [true, true, true, false, true, true, false]);
+
+  // ── R302 ─────────────────────────────────────────────────────────────────
+  eq('R302 CRÍTICO: o filtro de Tipo de serviço recorta a PÁGINA inteira — `exibidas` sai de filtrarPorServico e alimenta dashboard, funil, lista e quadro (R8); a consulta pede servicos_propostos',
+     [/const exibidas = useMemo\(\(\) => filtrarPorServico\(visitas, servicos\), \[visitas, servicos\]\);/.test(ger),
+      /const funil = useMemo\(\(\) => funilComercial\(exibidas\), \[exibidas\]\);/.test(ger),
+      /<DashboardComercial propostas=\{exibidas\} agora=\{agora\} carregando=\{isLoading\} \/>/.test(ger),
+      /servicos_propostos,/.test(ger),
+      /rotulo="Tipo de serviço"\s*\n\s*multi/.test(ger),
+      /colunas=\{ETAPA_ORDEM\}/.test(ger), /etapa === "todas"/.test(gerc),
+      /style=\{botaoDaBarra\(isLight, gold\)\}/.test(ger),
+      /: servicos\.length > 1\s*\n\s*\? "Nenhuma proposta com esses tipos de serviço"/.test(ger)],
+     [true, true, true, true, true, true, false, true, true]);
+  eq('R302: o dashboard é UMA faixa — barras e rosca só no desktop, funil e KPIs em toda largura (o celular não perdeu o funil); Semana|Mês é o alternador de PAINEL (20px), não a pílula da barra; ALTURA 168 como o Operacional',
+     [(dc.match(/className="so-desktop elevavel"/g) ?? []).length, /so-celular|compacto/.test(dcc),
+      /const ALTURA = 168;/.test(dc), /const ALTURA_CABECA = 20;/.test(dc),
+      /style=\{alternadorDoPainel\(isLight, tipo === valor, t\)\}/.test(dc), /pilulaDaBarra/.test(dcc),
+      /^function Cabeca\(/m.test(dc) && /^function Tile\(/m.test(dc),
+      /kpi-tile/.test(dcc),
+      /const NOTA_DO_FUNIL = "Aprovação é interna · o aceite do cliente não é mapeado aqui";/.test(dc),
+      /fontSize: 9\.5, color: t\.textSecondary, lineHeight: 1\.3 \}\}>\s*\n\s*\{NOTA_DO_FUNIL\}/.test(dc),
+      (dc.match(/<defs>\{gradientesEspectro\(/g) ?? []).length],
+     [2, false, true, true, true, false, true, false, true, true, 2]);
+  eq('R302: a lógica é PURA — "agora" por parâmetro, nenhum setMonth, nenhum relógio interno',
+     [/setMonth\(/.test(cod(met)), /new Date\(\)/.test(cod(met)), /Date\.now\(\)/.test(cod(met)), /export const MESES_DA_MEDIA = 12;/.test(met),
+      /const ultimoFechado = mesesAdiante\(inicioMes\(agora\), -1\);/.test(met)],
+     [false, false, false, true, true]);
+
+  // ── R302: os números, com relógio fixo (terça 15/09/2026 10h) ────────────
+  const MC = carregar('src/features/comercial/metricas.ts');
+  const agoraC = new Date(2026, 8, 15, 10, 0, 0);
+  const semC = MC.periodosRecentes('semana', agoraC);
+  const mesC = MC.periodosRecentes('mes', agoraC);
+  eq('R302: 12 períodos SEMPRE — a última semana é a corrente (segunda 14/09), a primeira 11 antes; do out/25 ao set/26',
+     [semC.length, semC[11].chave, semC[11].atual, semC[0].chave, semC.filter((p) => p.atual).length, mesC.length, mesC[0].chave, mesC[11].chave],
+     [12, '2026-09-14', true, '2026-06-29', 1, 12, '2025-10', '2026-09']);
+  eq('R302: 31/01 não transborda (mesesAdiante, nunca setMonth): fev/26 … jan/27',
+     (() => { const j = MC.periodosRecentes('mes', new Date(2027, 0, 31)); return [j[0].chave, j[11].chave]; })(), ['2026-02', '2027-01']);
+  const Pc = (enviada, servicos, extra = {}) => ({ status: enviada ? 'aprovada' : 'pendente', proposta_enviada_em: enviada, servicos_propostos: servicos, ...extra });
+  const loteC = [
+    Pc('2026-09-15T08:00:00', ['portaria_remota', 'cftv']), Pc('2026-09-13T23:30:00', ['implantacao_cftv']),
+    Pc('2026-08-03T12:00:00', ['monitoramento_alarmes']), Pc('2025-10-01T00:00:00', ['alarmes']),
+    Pc('2025-09-30T23:59:00', ['alarmes']), Pc(null, ['cftv'], { status: 'aprovada' }), Pc(null, ['cftv'], { status: 'pendente' }),
+    Pc('2026-09-14T09:00:00', ['chave_desconhecida']),
+  ];
+  const sC = MC.enviadasPorPeriodo(loteC, 'semana', agoraC);
+  const mC = MC.enviadasPorPeriodo(loteC, 'mes', agoraC);
+  eq('R302 CRÍTICO: os baldes — semana corrente 2, semana de 07/09 1 (o domingo), oito antigas em ZERO e existindo; setembro 3, agosto 1, out/25 1, e set/25 fora do gráfico',
+     [sC.length, sC[11].valor, sC[10].valor, sC.slice(0, 10).filter((p) => p.valor === 0).length, mC[11].valor, mC[10].valor, mC[0].valor, mC.reduce((t, p) => t + p.valor, 0)],
+     [12, 2, 1, 9, 3, 1, 1, 5]);
+  const rC = MC.enviadasPorServico(loteC);
+  eq('R302 CRÍTICO: a rosca conta PROPOSTAS no total (6) e fatias por serviço (7): legado normalizado, dois serviços contam nas duas, desconhecido vira a fatia neutra',
+     [rC.totalEnviadas, rC.fatias.reduce((t, f) => t + f.valor, 0) + rC.semServico, rC.fatias.map((f) => [f.chave, f.valor]), rC.semServico],
+     [6, 7, [['portaria_remota', 1], ['monitoramento_24h', 1], ['cftv', 2], ['alarmes', 2]], 1]);
+  eq('R302: o filtro usa a MESMA normalização da rosca (cftv casa implantacao_cftv), OU entre escolhidos, e sem escolha devolve tudo',
+     [MC.filtrarPorServico(loteC, []).length, MC.filtrarPorServico(loteC, ['cftv']).length, MC.filtrarPorServico(loteC, ['alarmes', 'portaria_remota']).length], [8, 4, 3]);
+  const kC = MC.kpisComerciais(loteC.map((p) => ({ ...p, data_hora_agendada: p.proposta_enviada_em ? '2026-09-05T10:00:00' : null })), agoraC);
+  const umaPorMesC = Array.from({ length: 13 }, (_, i) => { const d = new Date(2025, 8 + i, 10, 10); return Pc(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-10T10:00:00`, ['cftv']); });
+  eq('R302 CRÍTICO: a média M-12 é sobre os 12 meses FECHADOS (o corrente parcial não entra), e no dia 1º ela NÃO cai; taxa 75%, 1 aguardando envio; sem visita nenhuma → null/0',
+     [kC.mediaPorMes, kC.taxaVisitaProposta, kC.aguardandoEnvio,
+      MC.kpisComerciais(umaPorMesC, new Date(2026, 8, 30, 23, 59, 59)).mediaPorMes, MC.kpisComerciais(umaPorMesC, new Date(2026, 9, 1, 0, 0, 1)).mediaPorMes,
+      MC.kpisComerciais([], agoraC)],
+     [0.3, 75, 1, 1, 1, { mediaPorMes: 0, taxaVisitaProposta: null, tempoMedioDias: null, aguardandoEnvio: 0 }]);
+}
+
 
 (async () => {
   for (const bloco of assincronas) await bloco();
