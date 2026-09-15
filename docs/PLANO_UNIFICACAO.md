@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 171 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 172 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -174,6 +174,7 @@
 - [U147 — o campo perde o prazo automático (R284), e a escala por semana vira uma vista](#u147-o-campo-perde-o-prazo-automático-r284-e-a-escala-por-semana-vira-uma-vista)
 - [A ponta solta da R285, achada por acaso](#a-ponta-solta-da-r285-achada-por-acaso)
 - [A quarta vez do mesmo erro, e a ferramenta que faltava](#a-quarta-vez-do-mesmo-erro-e-a-ferramenta-que-faltava)
+- [U148 — o quadro do Painel Operacional ganha eixo, e o card ganha o que o Davi listou (R295)](#u148-o-quadro-do-painel-operacional-ganha-eixo-e-o-card-ganha-o-que-o-davi-listou-r295)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -13885,3 +13886,120 @@ comentário certo, e os quatro lugares de hoje passaram a chamá-la.
 
 **Números.** Verificador: **3.474 asserções, 0 falharam**. `tsc`: 0. Migration **U147
 PENDENTE**.
+
+## U148 — o quadro do Painel Operacional ganha eixo, e o card ganha o que o Davi listou (R295)
+
+**O que o Davi disse, e por que ele teve de dizer duas vezes.** Ele pediu isto
+de manhã, junto com a leva inteira. À noite abriu a tela e escreveu: *"Eu te
+pedi várias alterações hoje referente ao Painel Operacional. Estou abrindo o
+painel operacional e continua igual. Você fez tudo o que eu te pedi?"*
+
+A resposta honesta era **não**. O dia inteiro tinha ido para banco (U142–U147)
+e para a tela de equipes, e o único commit que tocou
+`painel.operacional.tsx` trocava o nome de um diálogo. Sete regras ditadas,
+nenhuma linha na tela que ele abre todo dia. Fica registrado porque a lição
+não é sobre esta tela: **entregar a fundação e chamar de entrega é a forma
+mais fácil de um dia inteiro não aparecer para quem pediu.**
+
+### O eixo
+
+*"O Kanban deve ter visualização por STATUS, por EQUIPE, e por DIA DA SEMANA,
+eu me refiro às colunas do Kanban."*
+
+A R76 tinha decidido, lá atrás, contra o status cru como agrupamento do
+quadro — e continua certa: quem abre a tela quer saber **o que está em
+risco**, e "Aberto / Em andamento" não responde isso. Então o eixo `estado`
+(Não agendados · Agendados · Atrasados · Concluídos) **permaneceu o padrão**, e
+os três novos entraram como LENTES ao lado dele. O Davi pediu para
+ACRESCENTAR modos, não para trocar o padrão, e essas duas leituras do mesmo
+pedido levam a telas bem diferentes.
+
+A conta mora em `colunasDoQuadro(eixo, chamados, opções)`, em
+`src/features/paineis/indicadores.ts`: lógica pura, exercitável sem tela. A
+tela só escolhe o eixo e pinta o que voltou. O seletor aparece **só no
+quadro** — na lista ele não teria o que fazer, e controle inerte é pior que
+controle ausente.
+
+Duas decisões pequenas que mudam o uso: **a coluna de equipe vazia fica**
+(é a equipe livre — justamente a que o gestor procura ao distribuir), e no
+eixo de dia o **"Sem data" vem na frente** (é a pilha a agendar, o primeiro
+trabalho do Vinicius). O dia de cada card sai de `lugarNoCalendario`, a mesma
+conta do calendário: duas telas discordando sobre em que dia a atividade cai
+foi o P57, e não vale repetir.
+
+### O defeito que só apareceu MEDINDO
+
+Com os quatro eixos no ar, medi a tela pelo navegador e a mesma fila contava
+**1 card no eixo Estado e 3 no eixo Equipe**.
+
+A causa: `agruparPorColuna` — o eixo de estado, da R76 — sempre excluiu
+CANCELADO, e os três eixos novos não excluíam. Ou seja, **um botão de
+visualização mudava quantos chamados existem**. É o pior defeito que um quadro
+pode ter, porque não parece um defeito: parece que o número estava errado no
+outro eixo, e o gestor nunca sabe em qual acreditar.
+
+A regra passou a ser uma só, e é a da R76: cancelado fica fora do quadro
+inteiro. Vale **inclusive no eixo `status`**, onde a tentação é mostrá-lo
+"porque é um status" — o quadro é a FILA do que há para fazer, e cancelado não
+é trabalho. Quem quer vê-lo tem a lente "Todos" na lista.
+
+A asserção que trava isso não confere coluna nenhuma: confere que **os quatro
+eixos somam o mesmo total**. Invariante, não amostra.
+
+### O card
+
+*"Data e Horário Agendado (Caso esteja pendente dar inicio) / Data e Horário de
+Inicio (Caso esteja em andamento) / Data e Horário de inicio e do término (Caso
+esteja encerrada) / Status / Cliente / Tipo de Demanda / Titulo da atividade /
+Equipe."*
+
+As três datas são **três leituras do mesmo card em três momentos**, e não três
+linhas ao mesmo tempo — quem varre o quadro quer o próximo marco; o histórico
+está dentro do card. Isso virou `momentoDoCard`, também puro, porque "que data
+mostrar" é REGRA, não desenho.
+
+Cada data vem com **rótulo** — "Agendado", "Começou", "Feito". Sem ele,
+"14/09 08:00" num card não distingue "vai começar" de "começou", que é a
+diferença entre cobrar e não cobrar. E a data agendada **seca**
+(`data_agendada`, sem hora) **não ganha horário inventado**: prometer "08:00"
+onde ninguém combinou hora é a tela mentindo — é a mesma recusa da P16.
+
+Entraram no card o **tipo de demanda** (sem ele, corretiva e preventiva são o
+mesmo retângulo) e a **equipe**, ao lado do técnico, porque é ela que sai no
+carro (R100). A equipe **some quando o eixo já é equipe**: repetir o nome da
+coluna em que o card está é ruído.
+
+Isto **não** contradiz a R153. O card que o Davi mandou enxugar ("mais nenhuma
+informação deve aparecer no card") é o do CALENDÁRIO, e continua enxuto. O que
+ganhou informação é o card do QUADRO — a ferramenta de decisão do gestor, não a
+vista de mês.
+
+### O que NÃO entrou
+
+Os **três botões (Concluir / Retorno / Cancelar)** no card, que ele pediu no
+mesmo parágrafo. Ficaram de fora de propósito: "Retorno" depende da R286, que
+ainda não tem nem coluna no banco, e botão que abre um fluxo pela metade é
+pior do que botão ausente. A R295 registra a falta.
+
+Também não entraram, e continuam ditadas: KPIs recolhíveis, filtros no molde
+da Início, a faixa "Retornos Pendentes", o painel lateral ao clicar no card, o
+mapa de calor (R289) e as viaturas. O Davi pediu depois que **tudo o que o
+Vinicius faz como gestor caiba no Painel Operacional, organizado e
+estruturado** — e "estrutura" nesta casa passa por mockup aprovado antes do
+código (foi assim na tela da atividade, e está na memória do repo). A proposta
+de estrutura vai antes de eu reescrever as 1.312 linhas da tela.
+
+### A regra que quase nasceu com o número errado
+
+Escrevi os cinco patches carimbando **R286** nos comentários e nas asserções.
+A R286 é a do RETORNO, ditada de manhã. O eixo do quadro era regra NOVA e
+precisava do próximo número livre — **R295**. Peguei ao ir escrever o
+`PRODUTO.md` e ver que o número já tinha dono.
+
+Vale o registro porque o erro é silencioso: nada quebra, o verificador passa,
+e o repo fica com dois assuntos diferentes atendendo pelo mesmo nome — que é
+exatamente o que a R-série existe para impedir. **Antes de carimbar R-número
+novo, conferir o último do `PRODUTO.md`.**
+
+**Números.** Verificador: **3.481 asserções, 0 falharam**. `tsc`: 0. Sem
+migration nova.

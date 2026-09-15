@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R294 (65)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R295 (66)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -5341,6 +5341,7 @@ adaptado."
 > | **R290** | confirma o código — nada mudou, e a regra amarrou os três lugares |
 > | **R291**–**R293** | ditadas |
 > | **R294** | entregue (U144) |
+> | **R295** | eixos e card entregues (U148); os três botões, ditados |
 >
 > O retrato ao vivo está em `docs/ESTADO_ATUAL.md`; esta tabela existe para
 > quem chega pelo PRODUTO e não passou por lá.
@@ -5521,3 +5522,49 @@ adaptado."
   quem pode ser responsável por chamado em campo, vamos manter essa parte para
   os técnicos de campo".)* **Revisa a R244**, que os punha na lista única da
   R241. O **admin** continua na lista: o que saiu foi o cargo operacional.
+
+- **R295** — **O quadro do Painel Operacional separa as colunas por ESTADO,
+  STATUS, EQUIPE ou DIA DA SEMANA — e o card diz a data que o estado pede.**
+  O eixo é escolha de quem olha, e existe só no quadro. *(Davi, 14/09/2026:
+  "O Kanban deve ter visualização por STATUS, por EQUIPE, e por DIA DA
+  SEMANA, eu me refiro às colunas do Kanban".)*
+
+  **Acrescenta à R76, não a substitui.** A R76 decidiu contra o status cru
+  como ÚNICA leitura e continua certa: `estado` (Não agendados · Agendados ·
+  Atrasados · Concluídos) segue sendo o padrão de quem abre a tela, porque é
+  a leitura que responde "o que está em risco". Os outros três são LENTES:
+  **status** para conferir o vocabulário cru, **equipe** para distribuir
+  trabalho, **dia** para ver a semana como ela vai cair.
+
+  **Trocar de eixo muda o AGRUPAMENTO, nunca o total.** Cancelado fica fora
+  do quadro inteiro, nos quatro eixos — inclusive no de status, onde a
+  tentação é mostrá-lo "porque é um status": o quadro é a FILA do que há para
+  fazer, e cancelado não é trabalho. Quem quer vê-lo tem a lente "Todos" na
+  lista. *(Isto não é preciosismo: medido na tela em 14/09/2026, a mesma fila
+  contava **1 card no eixo Estado e 3 no eixo Equipe**, porque só o de estado
+  excluía cancelado. Um botão de visualização que muda quantos chamados
+  existem destrói a confiança no número inteiro.)*
+
+  **A coluna vazia FICA no eixo de equipe** — é a equipe livre, que é
+  justamente a que o gestor procura. **No eixo de dia, "Sem data" vem NA
+  FRENTE**: é a pilha a agendar, e é o primeiro trabalho do Vinicius. E o dia
+  de cada card sai de `lugarNoCalendario`, a MESMA conta do calendário, para
+  as duas telas não discordarem sobre em que dia a atividade cai (foi o P57).
+
+  **O card mostra:** *(Davi, 14/09/2026: "Data e Horário Agendado (Caso
+  esteja pendente dar inicio) / Data e Horário de Inicio (Caso esteja em
+  andamento) / Data e Horário de inicio e do término (Caso esteja encerrada)
+  / Status / Cliente / Tipo de Demanda / Titulo da atividade / Equipe".)* As
+  três datas são **três leituras do mesmo card em três momentos**, não três
+  linhas ao mesmo tempo — quem varre o quadro quer o próximo marco, não o
+  histórico; o histórico está dentro do card. Cada data vem com um **rótulo**
+  ("Agendado", "Começou", "Feito"), porque "14/09 08:00" sozinho não distingue
+  "vai começar" de "começou", que é a diferença entre cobrar e não cobrar. A
+  data agendada SEM hora não ganha horário inventado. A **equipe** some do
+  card quando o eixo já é equipe, para o card não repetir o nome da coluna em
+  que está. **Revisa a R153 no Painel Operacional**: o card enxuto do
+  CALENDÁRIO continua enxuto — o que ganhou informação foi o card do QUADRO,
+  que é a ferramenta de decisão do gestor, não a vista de mês.
+
+  **Os três botões (Concluir / Retorno / Cancelar)** que ele pediu no mesmo
+  parágrafo ainda **não** estão no card.

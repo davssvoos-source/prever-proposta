@@ -358,6 +358,203 @@ export function chamadosDaLente<T extends ChamadoParaIndicador>(
  * Derivar aqui, numa função só, é o que impede a tela de reimplementar essa
  * conta e discordar do resto do painel.
  */
+/**
+ * O MOMENTO QUE O CARD MOSTRA (R295, 14/09/2026).
+ *
+ * Davi: "Data e Horário Agendado (caso esteja pendente dar inicio) / Data e
+ * Horário de Inicio (caso esteja em andamento) / Data e Horário de inicio e do
+ * término (caso esteja encerrada)."
+ *
+ * São três leituras do MESMO card em três momentos, e não três linhas ao mesmo
+ * tempo: o que interessa a quem varre o quadro é o próximo marco, não o
+ * histórico. Quem quer o histórico abre o card.
+ *
+ * `rotulo` diz O QUE é a data — sem ele, "14/09 08:00" num card não distingue
+ * "vai começar" de "começou", que é a diferença entre cobrar e não cobrar.
+ */
+export interface MomentoDoCard {
+  rotulo: string;
+  inicio: string | null;
+  fim: string | null;
+}
+
+export function momentoDoCard(c: {
+  status?: string | null;
+  data_hora_agendada?: string | null;
+  data_agendada?: string | null;
+  iniciada_em?: string | null;
+  finalizada_em?: string | null;
+  concluida_em?: string | null;
+}): MomentoDoCard {
+  const encerrado = c.status === "concluido" || c.status === "cancelado";
+  if (encerrado) {
+    return {
+      rotulo: "Feito",
+      inicio: c.iniciada_em ?? null,
+      fim: c.finalizada_em ?? c.concluida_em ?? null,
+    };
+  }
+  if (c.iniciada_em) return { rotulo: "Começou", inicio: c.iniciada_em, fim: null };
+  // ainda não começou: a data MARCADA, com hora quando existe. A data seca
+  // (`data_agendada`) não tem hora para mostrar, e inventar uma faria o card
+  // prometer um horário que ninguém combinou.
+  return {
+    rotulo: "Agendado",
+    inicio: c.data_hora_agendada ?? (c.data_agendada ? `${c.data_agendada}T00:00:00` : null),
+    fim: null,
+  };
+}
+
+/**
+ * OS QUATRO EIXOS DO QUADRO (R295, 14/09/2026).
+ *
+ * · `estado`  — o de sempre (R76): não agendado · agendado · atrasado ·
+ *               concluído. É a LEITURA OPERACIONAL do status, e continua
+ *               sendo o padrão.
+ * · `status`  — o campo `status` cru, em colunas. A R76 recusou isto como
+ *               ÚNICA leitura, e continua certa; como OPÇÃO é outra coisa —
+ *               quem coordena às vezes precisa ver "quantos em stand-by".
+ * · `equipe`  — uma coluna por equipe de campo, mais "sem equipe".
+ * · `dia`     — uma coluna por dia da semana, mais "sem data".
+ */
+export type EixoDoQuadro = "estado" | "status" | "equipe" | "dia";
+
+export const EIXO_LABEL: Record<EixoDoQuadro, string> = {
+  estado: "Estado",
+  status: "Status",
+  equipe: "Equipe",
+  dia: "Dia da semana",
+};
+
+export interface ColunaDoQuadro<T> {
+  /** chave estável — serve de `key` e de alvo de filtro */
+  chave: string;
+  titulo: string;
+  itens: T[];
+}
+
+/**
+ * As colunas do quadro, por eixo.
+ *
+ * Recebe os RESOLVEDORES em vez de consultar — `equipeDoChamado` e
+ * `diaDoChamado` são funções que a tela injeta. É o que faz esta conta ser
+ * exercitável sem banco, e é o que impede a tela de ter uma segunda conta:
+ * duas contas para "de quem é este chamado" é como o quadro e o calendário
+ * passam a discordar.
+ *
+ * COLUNA VAZIA FICA. Um eixo que esconde a coluna sem ninguém faz o gestor ler
+ * "esta equipe não existe" onde a verdade é "esta equipe não tem nada hoje" —
+ * e é justamente a equipe vazia que ele precisa ver para distribuir trabalho.
+ * A exceção é `dia`, onde os dias vêm de fora e já são o recorte.
+ */
+export function colunasDoQuadro<T extends ChamadoParaIndicador & { data_hora_agendada?: string | null }>(
+  eixo: EixoDoQuadro,
+  chamados: T[],
+  op: {
+    agora?: Date;
+    /** a equipe de campo do chamado naquele instante; null = sem equipe */
+    equipeDoChamado?: (c: T) => { id: string; nome: string } | null;
+    /** o dia que coloca o chamado numa coluna ("AAAA-MM-DD"); null = sem data */
+    diaDoChamado?: (c: T) => string | null;
+    /** as colunas do eixo `dia`, na ordem em que aparecem */
+    dias?: { chave: string; titulo: string }[];
+    /** as equipes conhecidas, para a coluna existir mesmo vazia */
+    equipes?: { id: string; nome: string }[];
+    /** o vocabulário de status, na ordem — e o rótulo de cada um */
+    status?: { chave: string; titulo: string }[];
+  } = {},
+): ColunaDoQuadro<T>[] {
+  const agora = op.agora ?? new Date();
+  // CANCELADO fica fora do quadro INTEIRO, em todos os eixos.
+  //
+  // A R76 já o excluía do eixo de estado ("cancelado fica de fora"), e deixar
+  // os eixos novos incluí-lo fazia a MESMA fila contar 1 num eixo e 3 no
+  // outro — medido na tela em 14/09/2026. Um botão de visualização que muda
+  // quantos chamados existem destrói a confiança no número inteiro.
+  //
+  // Vale também no eixo `status`, onde a tentação é mostrá-lo "porque é um
+  // status": o quadro é a FILA do que há para fazer, e cancelado não é
+  // trabalho. Quem quer vê-lo tem a lente "Todos" na lista.
+  const doCampo = naturezaCampo(chamados).filter((c) => (c as any).status !== "cancelado");
+
+  // ordena DENTRO da coluna com a mesma régua das duas ordens da lista:
+  // aberto por urgência de prazo, encerrado pelo mais recente
+  const ordenar = (itens: T[], ehHistorico: boolean) =>
+    ehHistorico ? ordenarHistorico(itens) : ordenarChamados(itens, agora);
+
+  if (eixo === "estado") {
+    const balde = agruparPorColuna(doCampo, agora);
+    return COLUNA_OP_ORDEM.map((k) => ({
+      chave: k, titulo: COLUNA_OP_LABEL[k], itens: balde[k],
+    }));
+  }
+
+  if (eixo === "status") {
+    const vocab = op.status ?? [];
+    const porStatus = new Map<string, T[]>();
+    for (const c of doCampo) {
+      const s = (c as any).status ?? "sem_status";
+      const lista = porStatus.get(s);
+      if (lista) lista.push(c); else porStatus.set(s, [c]);
+    }
+    const conhecidos = new Set(vocab.map((v) => v.chave));
+    // status FORA do vocabulário vira coluna própria em vez de sumir: um
+    // chamado que não aparece em quadro nenhum é um chamado perdido
+    const extras = [...porStatus.keys()].filter((s) => !conhecidos.has(s))
+      .sort().map((s) => ({ chave: s, titulo: s }));
+    return [...vocab, ...extras].map((v) => ({
+      chave: v.chave,
+      titulo: v.titulo,
+      itens: ordenar(porStatus.get(v.chave) ?? [], v.chave === "concluido" || v.chave === "cancelado"),
+    }));
+  }
+
+  if (eixo === "equipe") {
+    const de = op.equipeDoChamado ?? (() => null);
+    const porEquipe = new Map<string, T[]>();
+    const nomes = new Map<string, string>();
+    for (const e of op.equipes ?? []) { porEquipe.set(e.id, []); nomes.set(e.id, e.nome); }
+    const semEquipe: T[] = [];
+    for (const c of doCampo) {
+      const e = de(c);
+      if (!e) { semEquipe.push(c); continue; }
+      nomes.set(e.id, e.nome);
+      const lista = porEquipe.get(e.id);
+      if (lista) lista.push(c); else porEquipe.set(e.id, [c]);
+    }
+    const colunas = [...porEquipe.entries()]
+      .sort((a, b) => (nomes.get(a[0]) ?? "").localeCompare(nomes.get(b[0]) ?? ""))
+      .map(([id, itens]) => ({ chave: id, titulo: nomes.get(id) ?? "Equipe", itens: ordenar(itens, false) }));
+    // "Sem equipe" no FIM e só quando tem gente: é uma pilha de trabalho a
+    // distribuir, não uma equipe
+    if (semEquipe.length) {
+      colunas.push({ chave: "sem_equipe", titulo: "Sem equipe", itens: ordenar(semEquipe, false) });
+    }
+    return colunas;
+  }
+
+  // eixo === "dia"
+  const dia = op.diaDoChamado ?? (() => null);
+  const dias = op.dias ?? [];
+  const porDia = new Map<string, T[]>(dias.map((d) => [d.chave, [] as T[]]));
+  const semData: T[] = [];
+  for (const c of doCampo) {
+    const d = dia(c);
+    const lista = d ? porDia.get(d) : undefined;
+    if (lista) lista.push(c);
+    else if (!d) semData.push(c);
+    // com data FORA da janela desenhada, o chamado não entra: a janela é o
+    // recorte, e inventar uma coluna para ele faria o quadro crescer sozinho
+  }
+  const colunas = dias.map((d) => ({
+    chave: d.chave, titulo: d.titulo, itens: ordenar(porDia.get(d.chave) ?? [], false),
+  }));
+  if (semData.length) {
+    colunas.unshift({ chave: "sem_data", titulo: "Sem data", itens: ordenar(semData, false) });
+  }
+  return colunas;
+}
+
 export type ColunaOperacional = "nao_agendado" | "agendado" | "atrasado" | "concluido";
 
 export const COLUNA_OP_ORDEM: ColunaOperacional[] = [

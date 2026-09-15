@@ -62,18 +62,21 @@ import { NovoChamadoTecnicoDialog } from "@/features/chamados/NovoChamadoTecnico
 import { moeda, useCobrancasDaCompetencia } from "@/features/chamados/cobranca";
 import { useApoiosDeTodos } from "@/features/home/data";
 import { TabelaAtividades } from "@/features/home/TabelaAtividades";
-import { atividadeDoChamado, type Atividade } from "@/features/atividades/modelo";
+// `lugarNoCalendario`: a MESMA conta do calendário decide em que DIA o card
+// cai no eixo por dia do quadro (P57). Duas contas fariam as duas telas
+// discordarem sobre a mesma atividade — que foi exatamente o defeito da P57.
+import { atividadeDoChamado, lugarNoCalendario, type Atividade } from "@/features/atividades/modelo";
 import { useDuplas, useEscala } from "@/features/duplas/data";
 // R285 (U142): a tela de equipes deixou de ter eixo de SEMANA — a composição
 // vale do instante da troca, e o pop-up mostra quem está com quem agora.
 import { DialogoEquipes } from "@/features/duplas/DialogoEquipes";
 import {
   serieAtividadesPorEscala, foraDeEscala, duplasNaJanela, composicaoDaDupla,
-  montarEscala, rotuloDaComposicao, type SemanaDoGrafico,
+  montarEscala, rotuloDaComposicao, duplaDaPessoaNaSemana, type SemanaDoGrafico,
 } from "@/features/duplas/modelo";
 import { useObrasEmAndamento } from "@/features/implantacao/data";
 import { progressoDaObra, rotuloDoProgresso, preenchimentoDaBarra } from "@/features/implantacao/modelo";
-import { chamadoStatusInfo, textoPrazo, TIPO_LABEL, type ChamadoTipo } from "@/lib/chamado-status";
+import { chamadoStatusInfo, textoPrazo, TIPO_LABEL, STATUS_ORDEM, type ChamadoTipo } from "@/lib/chamado-status";
 import { referenciaSemanal, inicioSemana, competencia, dataIso } from "@/lib/periodos";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card, goldButton } from "@/lib/ui";
@@ -87,6 +90,7 @@ import {
   abertosPorCliente, abertosPorTipo, ordenarChamados, ordenarHistorico,
   chamadosDaLente, LENTE_ORDEM, LENTE_LABEL, type LenteLista,
   agruparPorColuna, COLUNA_OP_ORDEM, COLUNA_OP_LABEL, type ColunaOperacional,
+  colunasDoQuadro, EIXO_LABEL, momentoDoCard, type EixoDoQuadro,
   implantacoesEmAndamento, totalACobrar, moedaCurta,
 } from "@/features/paineis/indicadores";
 import { PainelBase, type AtalhoPainel } from "@/features/paineis/PainelBase";
@@ -253,6 +257,10 @@ function PainelOperacional() {
   // inclusive Concluídos —, então lente e KPI não valem nele: os dois
   // recortam para subconjuntos de "em aberto" e esvaziariam colunas.
   const [visao, setVisao] = useState<"lista" | "kanban">("lista");
+  // R295: por que eixo o quadro separa as colunas. `estado` é o de sempre
+  // (R76) e continua o padrão — a R76 recusou o status CRU como única
+  // leitura, e continua certa; o que o Davi pediu foi acrescentar modos.
+  const [eixoDoQuadro, setEixoDoQuadro] = useState<EixoDoQuadro>("estado");
 
   // nomes dos clientes para o gráfico por cliente — só id/nome
   const { data: clientes = [] } = useQuery({
@@ -481,6 +489,56 @@ function PainelOperacional() {
 
   /** As quatro colunas do quadro (R76) — cancelado fica de fora. */
   const quadro = useMemo(() => agruparPorColuna(chamados as any[], agora), [chamados, agora]);
+
+  /**
+   * Os SEIS dias da semana desenhada, para o eixo `dia` (R295).
+   *
+   * Segunda a sábado: domingo não é dia de campo, e uma coluna que nunca
+   * enche empurra as outras seis para fora da tela. O rótulo traz o dia da
+   * semana E a data, porque "Qua" sozinho não diz de qual semana.
+   */
+  const diasDaSemana = useMemo(() => {
+    const segunda = inicioSemana(agora);
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(segunda);
+      d.setDate(d.getDate() + i);
+      return {
+        chave: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+        titulo: `${["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][i]} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`,
+      };
+    });
+  }, [agora]);
+
+  /**
+   * As colunas do quadro, pelo eixo escolhido.
+   *
+   * A equipe do chamado é DERIVADA do responsável (nunca houve
+   * `chamados.dupla_id`, de propósito — ver a U47), pela composição da
+   * semana do agendamento. O dia sai de `lugarNoCalendario`, a MESMA conta do
+   * calendário: duas contas para "em que dia isto cai" é como o quadro e o
+   * calendário passam a discordar sobre a mesma atividade (foi o P57).
+   */
+  const colunas = useMemo(() => colunasDoQuadro(eixoDoQuadro, chamados as any[], {
+    agora,
+    equipes: duplas.filter((d) => d.ativa).map((d) => ({ id: d.id, nome: d.nome })),
+    equipeDoChamado: (c: any) => {
+      if (!c.responsavel_id) return null;
+      const semana = referenciaSemanal(new Date(c.data_hora_agendada ?? c.created_at ?? agora));
+      const id = duplaDaPessoaNaSemana(c.responsavel_id, semana, escala);
+      const d = id ? duplas.find((x) => x.id === id) : null;
+      return d ? { id: d.id, nome: d.nome } : null;
+    },
+    diaDoChamado: (c: any) => {
+      const quando = lugarNoCalendario(c).quando;
+      if (!quando) return null;
+      const d = new Date(quando);
+      return Number.isNaN(d.getTime()) ? null
+        : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    },
+    dias: diasDaSemana,
+    status: (STATUS_ORDEM as string[]).filter((s) => s !== "cancelado")
+      .map((s) => ({ chave: s, titulo: chamadoStatusInfo(s as any).label })),
+  }), [eixoDoQuadro, chamados, agora, duplas, escala, diasDaSemana]);
 
   const semDados = ind.abertos === 0 && ind.entradasMes === 0 && ind.saidasMes === 0;
 
@@ -1098,6 +1156,35 @@ function PainelOperacional() {
             })}
           </div>
 
+          {/* R295: POR QUE EIXO o quadro separa as colunas. Só aparece no
+              quadro — na lista ele não teria o que fazer, e controle inerte é
+              pior que controle ausente. `estado` continua sendo o padrão: a
+              R76 decidiu contra o status cru como ÚNICA leitura, e o Davi
+              pediu para ACRESCENTAR modos, não para trocar. */}
+          {visao === "kanban" && (
+            <div style={{ display: "flex", gap: 4, flexShrink: 0, flexWrap: "wrap" }}>
+              {(["estado", "status", "equipe", "dia"] as EixoDoQuadro[]).map((e) => {
+                const ativo = eixoDoQuadro === e;
+                return (
+                  <button
+                    key={e}
+                    onClick={() => setEixoDoQuadro(e)}
+                    aria-pressed={ativo}
+                    title={`Separar as colunas por ${EIXO_LABEL[e].toLowerCase()}`}
+                    style={{
+                      height: 28, padding: "0 10px", borderRadius: 14, cursor: "pointer",
+                      border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+                      background: ativo ? GRAD_PRIMARIA : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                      color: ativo ? SOBRE_PRIMARIA : textSecondary,
+                      fontFamily: FONT, fontWeight: 600, fontSize: 11.5, whiteSpace: "nowrap",
+                    }}
+                  >
+                    {EIXO_LABEL[e]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {/* R126 — o "+": abre chamado técnico sem sair da tela. Ao lado do
               alternador, como na Início (R91). Some para quem não pode abrir
               chamado (a matriz de permissões manda; botão para porta trancada
@@ -1180,11 +1267,16 @@ function PainelOperacional() {
 
         {visao === "kanban" ? (
           <div className="kanban-op" style={{ flex: 1, minHeight: 0 }}>
-            {COLUNA_OP_ORDEM.map((col) => {
-              const itens = quadro[col];
-              const cor = CORES_COLUNA[col];
+            {colunas.map((coluna) => {
+              const col = coluna.chave as ColunaOperacional;
+              const itens = coluna.itens as any[];
+              // a cor só existe no eixo de ESTADO, que é o único com
+              // vocabulário de cor próprio (R76). Nos outros o filete é
+              // neutro: inventar cor por equipe ou por dia faria a tela
+              // dizer um significado que a casa não tem.
+              const cor = CORES_COLUNA[col] ?? (isLight ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.22)");
               return (
-                <div key={col} className="kanban-op-coluna">
+                <div key={coluna.chave} className="kanban-op-coluna">
                   {/* cabeçalho da coluna: nome, contagem e um filete na cor
                       dela — o mesmo vocabulário de estado do resto do app */}
                   <div style={{
@@ -1192,7 +1284,7 @@ function PainelOperacional() {
                     padding: "0 2px 8px",
                   }}>
                     <span style={{ width: 8, height: 8, borderRadius: 4, background: cor, flexShrink: 0 }} />
-                    <span style={{ ...MICRO, color: cor }}>{COLUNA_OP_LABEL[col]}</span>
+                    <span style={{ ...MICRO, color: cor }}>{coluna.titulo}</span>
                     <span style={{
                       marginLeft: "auto", fontFamily: FONT, fontWeight: 700, fontSize: 11,
                       color: textSecondary, fontVariantNumeric: "tabular-nums",
@@ -1211,6 +1303,17 @@ function PainelOperacional() {
                       </div>
                     ) : itens.map((c: any) => {
                       const info = chamadoStatusInfo(c.status);
+                      // R295: a data que o ESTADO pede, e o rótulo que diz
+                      // o que ela é — "14/09 08:00" sozinho não distingue
+                      // "vai começar" de "começou".
+                      const momento = momentoDoCard(c);
+                      const equipeDoCard = c.responsavel_id
+                        ? duplas.find((d) => d.id === duplaDaPessoaNaSemana(
+                            c.responsavel_id,
+                            referenciaSemanal(new Date(c.data_hora_agendada ?? c.created_at ?? agora)),
+                            escala,
+                          ))?.nome ?? null
+                        : null;
                       return (
                         <button
                           key={c.id}
@@ -1248,13 +1351,43 @@ function PainelOperacional() {
                             }}>
                               {info.label}
                             </span>
+                            {/* R295: o TIPO DE DEMANDA, que o Davi pediu e o
+                                card não tinha — sem ele, corretiva e
+                                preventiva são o mesmo retângulo. */}
                             <span style={{
-                              fontFamily: FONT, fontSize: 10, whiteSpace: "nowrap",
-                              color: col === "atrasado" ? vermelho : textSecondary,
+                              fontFamily: FONT, fontSize: 9.5, whiteSpace: "nowrap",
+                              color: textSecondary,
                             }}>
-                              {c.responsavel_id ? nomeTecnico.get(c.responsavel_id) ?? "Técnico" : "Sem técnico"}
-                              {c.prazo_limite && col !== "concluido" ? ` · ${textoPrazo(c.prazo_limite, agora)}` : ""}
+                              {TIPO_LABEL[c.tipo as ChamadoTipo] ?? c.tipo ?? "—"}
                             </span>
+                          </div>
+
+                          {/* a linha de QUEM e QUANDO. A equipe entra ao lado
+                              do técnico porque é ela que sai no carro (R100) —
+                              e some quando o eixo JÁ é equipe, para o card não
+                              repetir o nome da coluna em que está. */}
+                          <div style={{
+                            display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
+                            fontFamily: FONT, fontSize: 10,
+                            color: col === "atrasado" ? vermelho : textSecondary,
+                          }}>
+                            <span style={{ whiteSpace: "nowrap" }}>
+                              {c.responsavel_id ? nomeTecnico.get(c.responsavel_id) ?? "Técnico" : "Sem técnico"}
+                            </span>
+                            {equipeDoCard && eixoDoQuadro !== "equipe" && (
+                              <span style={{ whiteSpace: "nowrap" }}>· {equipeDoCard}</span>
+                            )}
+                            {momento.inicio && (
+                              <span style={{ whiteSpace: "nowrap", marginLeft: "auto" }}>
+                                {momento.rotulo}{" "}
+                                {new Date(momento.inicio).toLocaleString("pt-BR", {
+                                  day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                                })}
+                                {momento.fim && ` → ${new Date(momento.fim).toLocaleString("pt-BR", {
+                                  day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                                })}`}
+                              </span>
+                            )}
                           </div>
                         </button>
                       );

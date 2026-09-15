@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-15** · última regra: **R294** · último diário:
-**U147** · verificador: **3.474 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-15** · última regra: **R295** · último diário:
+**U148** · verificador: **3.481 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
 Banco — **Pendente: U147**
@@ -43,6 +43,7 @@ Ler isto antes de prometer qualquer coisa a alguém.
 | R292 | preventiva: uma atividade, roteiro de todos os blocos | ditada |
 | R293 | baixa de equipamento gera UMA atividade para o Gilleno | ditada |
 | R294 | operacional cria atividade, não executa chamado de campo | **no ar** (U144) |
+| R295 | o quadro do Painel Operacional por estado/status/equipe/dia, e o card com a data que o estado pede | **no ar** (U148) — faltam os três botões do card |
 
 Fim de entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
@@ -80,7 +81,7 @@ técnica de campo é o **Vinicius**.
      pontas, a folha do gestor, a chegada por localização (etapa 3).
 5. `docs/PLANO_V0.1.md` — o plano por fases e as perguntas Q1–Q23 com as
    respostas anotadas.
-6. `docs/PRODUTO.md` — TODAS as regras (R1–R294). Não se lê de ponta a ponta:
+6. `docs/PRODUTO.md` — TODAS as regras (R1–R295). Não se lê de ponta a ponta:
    consulta-se pela regra citada no código. O número cresce a cada entrega —
    navegue pelo **sumário do topo**, não por este contador.
 7. `docs/manual/README.md` — o manual por segmento; ler o do segmento em que
@@ -158,7 +159,8 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U144 | **criar atividade deixa de ser a mesma chave de abrir chamado** (R294). O pop-up da Início sempre criou `natureza: interno`, mas era travado por `chamados.novo` — e quem não tinha a chave recebia a tela do técnico ("o chamado chega a você pela programação"). Para o OPERACIONAL isso é porta trancada com a placa errada, e foi o que o Erik encontrou. Nasceu `atividades.nova`; o operacional saiu de `CARGOS_DE_CAMPO`. Migration **U144 (rodada em 14/09)** |
 | U145 | **a tela das equipes perde o eixo da semana** (R285). Saíram o seletor, a herança e o modo "Escalar"; entraram dois gestos diretos e o líder. Medir a tela achou um **técnico desativado (Denner) ocupando vaga** — a tela resolvia nome pela mesma lista que usa para oferecer, e quem saiu da empresa não resolve por lá. Sem migration |
 | U146 | **o técnico de campo fica com três tipos** (R283). `operacional` saiu do campo (era oferecida e nunca virava demanda de dupla) e `vistoria` mudou de natureza — virou atividade INTERNA do gestor, que é onde a validação dele é registrada (R156). Medido antes: zero chamados de campo com esses tipos, logo sem migration |
-| U147 | **o campo perde o prazo automático** (R284) e a escala por semana vira uma VISTA. Os dois ramos do SLA saíram do gatilho; o prazo da obra fica, porque é espelho de uma data que alguém marcou. E a ponta solta da R285: **sete telas** ainda liam `duplas_escala`, congelada desde a U142 — `useEscala()` passou a materializar a forma a partir de `equipe_membros`, e nenhuma das sete mudou uma linha. Migration **U147 (pendente)** |
+| U147 | **o campo perde o prazo automático** (R284) e a escala por semana vira uma VISTA. Os dois ramos do SLA saíram do gatilho; o prazo da obra fica, porque é espelho de uma data que alguém marcou. E a ponta solta da R285: **sete telas** ainda liam `duplas_escala`, congelada desde a U142 — `useEscala()` passou a materializar a forma a partir de `equipe_membros`, e nenhuma das sete mudou uma linha. Migration **U147 (rodada em 14/09)** |
+| U148 | **o quadro do Painel Operacional ganha eixo** (R295): estado (o padrão da R76), status, equipe e dia da semana, com a conta em `colunasDoQuadro` — lógica pura, a tela só pinta. O card passou a dizer tipo de demanda, equipe e a data que o ESTADO pede, com RÓTULO ("Agendado"/"Começou"/"Feito"), porque "14/09 08:00" sozinho não distingue "vai começar" de "começou". **Medindo no navegador**: a mesma fila contava 1 card num eixo e 3 no outro — só o eixo de estado excluía cancelado. Passou a ser regra única, travada por asserção de TOTAL, não de coluna. Sem migration |
 
 ## 4. Banco: migrations
 
@@ -166,8 +168,8 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **U147** (`20261007090000_u147_o_campo_nao_tem_prazo.sql`, **PENDENTE**)
-  — tira do gatilho `chamado_preencher()` os dois ramos que davam prazo de SLA
+- **U147** (`20261007090000_u147_o_campo_nao_tem_prazo.sql`, rodada em
+  14/09/2026) — tira do gatilho `chamado_preencher()` os dois ramos que davam prazo de SLA
   ao chamado de campo (R284). O prazo da IMPLANTAÇÃO fica: é o espelho de
   `implantacao_fim`, uma data que alguém marcou (R120). O pré-voo ABORTA se o
   corpo vivo não for o da U89 — substituir uma versão não lida levaria o

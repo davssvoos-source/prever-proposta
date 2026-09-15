@@ -4717,9 +4717,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /setVisao\(v\); if \(v === "kanban"\) setKpiAtivo\(null\);/.test(op7), true);
   eq('as lentes só aparecem na LISTA — no quadro elas esvaziariam colunas (as três recortam subconjuntos de "em aberto")',
      /\{visao === "lista" && \(\s*\n\s*<div className="trilho-x"/.test(op7), true);
-  eq('as colunas do quadro vêm da função pura, não de um filtro reescrito na tela',
-     /agruparPorColuna\(chamados as any\[\], agora\)/.test(op7)
-     && /COLUNA_OP_ORDEM\.map\(\(col\) => \{/.test(op7), true);
+  // R295 (14/09/2026): o quadro ganhou EIXO. As quatro colunas fixas viraram
+  // as colunas que `colunasDoQuadro` devolve para o eixo escolhido — e o eixo
+  // `estado` continua sendo o padrão, com as mesmas quatro da R76. O que esta
+  // asserção guarda não mudou: as colunas saem de lógica PURA.
+  eq('R295: as colunas do quadro vêm da função pura (agora por EIXO), não de um filtro reescrito na tela — e o eixo `estado` continua devolvendo as quatro da R76',
+     [/colunasDoQuadro\(eixoDoQuadro, chamados as any\[\], \{/.test(op7),
+      /\{colunas\.map\(\(coluna\) => \{/.test(op7),
+      /agruparPorColuna\(chamados as any\[\], agora\)/.test(op7),
+      (() => {
+        const I = carregar('src/features/paineis/indicadores.ts');
+        const c = (id, status, extra = {}) => ({ id, status, natureza: 'campo', prioridade: 'normal', ...extra });
+        const cols = I.colunasDoQuadro('estado', [c('a', 'aberto'), c('b', 'concluido')], { agora: new Date(2026, 8, 14) });
+        return cols.map((x) => x.chave);
+      })()],
+     [true, true, true, ['nao_agendado', 'agendado', 'atrasado', 'concluido']]);
   eq('a cor da coluna sai do vocabulário de ESTADO (PRISMA), não da rampa de dados',
      /nao_agendado: isLight \? PRISMA\.azul\.light/.test(op7)
      && /atrasado:     isLight \? PRISMA\.vermelho\.light/.test(op7), true);
@@ -22469,6 +22481,95 @@ assincronas.push(async () => {
        return [comVelho, comZero];
      })(),
      [[], 4]);
+}
+
+// ── R295 — O QUADRO GANHA EIXO (14/09/2026) ───────────────────────────────
+//
+// Davi: "O Kanban deve ter visualização por STATUS, por EQUIPE, e por DIA DA
+// SEMANA, eu me refiro às colunas do Kanban."
+//
+// O eixo de sempre (R76) NÃO saiu: ela decidiu contra o status cru como ÚNICA
+// leitura, e continua certa. O que o Davi pediu foi ACRESCENTAR modos.
+{
+  const IQ = carregar('src/features/paineis/indicadores.ts');
+  const op7q = require('fs').readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  const agoraQ = new Date(2026, 8, 15, 10, 0, 0);
+  const ch = (id, extra) => ({
+    id, natureza: 'campo', prioridade: 'normal', status: 'aberto',
+    created_at: new Date(2026, 8, 14).toISOString(), ...extra,
+  });
+  const FILA = [
+    ch('a', { status: 'em_andamento', responsavel_id: 'p1', iniciada_em: new Date(2026, 8, 15, 8).toISOString() }),
+    ch('b', { status: 'aberto', responsavel_id: 'p2' }),
+    ch('c', { status: 'cancelado', responsavel_id: 'p1' }),
+  ];
+  const eqDe = (c) => (c.responsavel_id === "p1" ? { id: "E1", nome: "Equipe 1" } : null);
+  const dias = [{ chave: "2026-09-15", titulo: "Ter 15/09" }];
+  const somar = (cols) => cols.reduce((s, c) => s + c.itens.length, 0);
+
+  // A INVARIANTE, e ela foi achada MEDINDO a tela: trocar de eixo não pode
+  // mudar QUANTOS chamados existem. O eixo de estado sempre excluiu cancelado
+  // (R76); os três novos não excluíam, e o mesmo quadro contava 1 num eixo e 3
+  // no outro. Um botão de visualização que muda o total destrói a confiança no
+  // número inteiro.
+  eq('R295 CRÍTICO: os quatro eixos contam a MESMA fila — trocar de eixo muda o AGRUPAMENTO, nunca o total. Foi assim que o defeito apareceu na tela: 1 card no eixo Estado e 3 no eixo Equipe, porque só o de estado excluía cancelado',
+     (() => {
+       const op = { agora: agoraQ, equipeDoChamado: eqDe, diaDoChamado: () => "2026-09-15", dias,
+         status: ["aberto", "em_andamento"].map((s) => ({ chave: s, titulo: s })) };
+       return ["estado", "status", "equipe", "dia"].map((e) => somar(IQ.colunasDoQuadro(e, FILA, op)));
+     })(),
+     [2, 2, 2, 2]);
+
+  eq('R295: o eixo `estado` continua devolvendo as QUATRO colunas da R76, na ordem dela — acrescentar modos não podia mexer no padrão',
+     IQ.colunasDoQuadro("estado", FILA, { agora: agoraQ }).map((c) => c.chave),
+     ['nao_agendado', 'agendado', 'atrasado', 'concluido']);
+
+  // A equipe vazia FICA: é ela que o gestor precisa ver para distribuir.
+  eq('R295: no eixo EQUIPE a coluna vazia fica (é a equipe livre, que é justamente a que o gestor procura) e quem não tem equipe vira uma pilha no fim, não some',
+     (() => {
+       const cols = IQ.colunasDoQuadro("equipe", FILA, {
+         agora: agoraQ, equipeDoChamado: eqDe,
+         equipes: [{ id: "E1", nome: "Equipe 1" }, { id: "E2", nome: "Equipe 2" }],
+       });
+       return cols.map((c) => [c.chave, c.itens.length]);
+     })(),
+     [["E1", 1], ["E2", 0], ["sem_equipe", 1]]);
+
+  eq('R295: no eixo DIA, quem não tem data vira a coluna "Sem data" NA FRENTE — é a pilha a agendar, e é o primeiro trabalho do gestor',
+     (() => {
+       const cols = IQ.colunasDoQuadro("dia", FILA, {
+         agora: agoraQ, dias,
+         diaDoChamado: (c) => (c.id === "a" ? "2026-09-15" : null),
+       });
+       return cols.map((c) => [c.chave, c.itens.length]);
+     })(),
+     [["sem_data", 1], ["2026-09-15", 1]]);
+
+  // O momento do card: três leituras do mesmo card, não três linhas.
+  eq('R295 CRÍTICO: o card mostra a data que o ESTADO pede — agendado mostra o agendamento, em andamento mostra o início, encerrado mostra início e fim. E o RÓTULO diz o que a data é: "14/09 08:00" sozinho não distingue "vai começar" de "começou"',
+     (() => {
+       const m = (c) => { const r = IQ.momentoDoCard(c); return [r.rotulo, !!r.inicio, !!r.fim]; };
+       return [
+         m({ status: "aberto", data_hora_agendada: "2026-09-15T11:00:00Z" }),
+         m({ status: "em_andamento", data_hora_agendada: "2026-09-15T11:00:00Z", iniciada_em: "2026-09-15T11:20:00Z" }),
+         m({ status: "concluido", iniciada_em: "2026-09-15T11:20:00Z", finalizada_em: "2026-09-15T13:00:00Z" }),
+         m({ status: "aberto" }),
+       ];
+     })(),
+     [['Agendado', true, false], ['Começou', true, false], ['Feito', true, true], ['Agendado', false, false]]);
+
+  // A data SECA não ganha hora inventada.
+  eq('R295: a data agendada sem hora (`data_agendada`) não recebe horário inventado — prometer "08:00" onde ninguém combinou hora é a tela mentindo',
+     IQ.momentoDoCard({ status: "aberto", data_agendada: "2026-09-16" }).inicio,
+     "2026-09-16T00:00:00");
+
+  // E a tela: o seletor só no quadro, e o dia sai da MESMA conta do calendário.
+  eq('R295: o seletor de eixo só aparece no QUADRO (na lista seria controle inerte), e o eixo por dia usa `lugarNoCalendario` — a mesma conta do calendário, para as duas telas não discordarem sobre em que dia a atividade cai (foi o P57)',
+     [/\{visao === "kanban" && \(/.test(op7q),
+      /lugarNoCalendario\(c\)\.quando/.test(op7q),
+      /setEixoDoQuadro\(e\)/.test(op7q),
+      /TIPO_LABEL\[c\.tipo as ChamadoTipo\]/.test(op7q)],
+     [true, true, true, true]);
 }
 
 // ── R284 / U147 — O CAMPO NÃO TEM MAIS PRAZO AUTOMÁTICO (14/09/2026) ──────
