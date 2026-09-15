@@ -9,7 +9,7 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-15** · última regra: **R297** · último diário:
-**U152** · verificador: **3.532 asserções, 0 falharam** · `tsc`: **0** (o
+**U152** · verificador: **3.536 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
 Banco — **Pendentes: U150 e U152**, nesta ordem.

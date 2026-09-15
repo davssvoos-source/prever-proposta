@@ -218,11 +218,23 @@ rosca estreitou; "Abertos por cliente" foi para a esquerda. A regra está na
 R125; a receita de dashboard continua sendo `docs/DASHBOARD.md`.
 
 ## 7. Glossário — as palavras que já colidiram, e como se fala aqui
+> **A colisão mais cara é a primeira linha.** Davi, 15/09/2026: *"nós usamos o
+> termo 'equipe' duas vezes distintas, e quando se trata sobre equipe do
+> operacional, equipe do T.I, Comercial, qualquer equipe, isso de ter um lider
+> nao se aplica. O líder se aplica apenas a equipe tecnica DE CAMPO, que podem
+> ter varias equipes dentro da equipe tecnica de campo."*
+>
+> A fronteira é estrutural: `equipe_membros.equipe_id` é FK para `duplas`, e a
+> coluna `papel` só existe ali. **Escreva "equipe de campo" por extenso em
+> toda frase de tela** — o Nicholas e o Erik são da T.I., têm equipe, e ler "a
+> equipe dele ainda não tem líder nomeado" sobre eles manda procurar um botão
+> que não existe e não deve existir.
 
 | Palavra | Significa | Não confundir com |
 |---|---|---|
-| **equipe** (sem adjetivo) | departamento: técnica, T.I., comercial, controle patrimonial, SAC, monitoramento, outras | — |
-| **equipe de campo** | a turma que sai no mesmo carro (tabela `duplas`, escala por semana) | "equipe" |
+| **equipe** (sem adjetivo) | departamento: técnica, T.I., comercial, controle patrimonial, SAC, monitoramento, outras. **NÃO tem líder** | "equipe de campo" |
+| **equipe de campo** | a turma que sai no mesmo carro (`duplas`/`equipe_membros`, composição por INSTANTE desde a R285). Há **VÁRIAS** dentro da equipe técnica, e cada uma **tem um líder e N ajudantes** | "equipe" (o departamento) |
+| **líder** | de uma **equipe de campo**, e só. É quem responde pela turma, e é dele que o apoio automático é puxado (R297) | chefe de departamento — isso não existe no sistema |
 | **tipo** (do chamado) | corretiva · preventiva · implantação · operacional · vistoria | **modalidade**, que é do contrato (locação/manutenção/comodato/venda) |
 | **sistema** (do cliente) | conjunto funcional instalado — CFTV, alarme, eclusa | **equipamento** (peça física, série, QAP) |
 | **fase** (da implantação) | infraestrutura · instalação · configuração · acabamento | **etapa**, que é o momento da foto (antes/depois) |

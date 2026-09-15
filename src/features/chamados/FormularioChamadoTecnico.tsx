@@ -730,11 +730,16 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
                 resposta. */}
             {tecnicoId && apoios === null && apoioSugerido.length === 0 && (
               <div style={{ ...NOTA, marginTop: 6 }}>
+                {/* "EQUIPE DE CAMPO" POR EXTENSO, SEMPRE. A palavra "equipe"
+                    sozinha quer dizer DEPARTAMENTO nesta casa (T.I., comercial,
+                    SAC, técnica…), e departamento não tem líder. Ler "a equipe
+                    dele ainda não tem líder" sobre alguém da T.I. mandaria a
+                    pessoa procurar um botão que não existe — e não deve. */}
                 {!equipeDerivada
-                  ? "Este técnico não está em nenhuma equipe — sem equipe, o chamado entra na fila de programação."
+                  ? "Este técnico não está em nenhuma equipe de campo — sem equipe de campo, o chamado entra na fila de programação."
                   : liderDaEquipeAtual === null
-                    ? "A equipe dele ainda não tem líder nomeado. Nomeie um em Equipes e o apoio passa a vir sozinho."
-                    : `Quem lidera esta equipe é ${nomeDeTecnico(liderDaEquipeAtual)} — o apoio só é puxado quando o responsável é o líder.`}
+                    ? "A equipe de campo dele ainda não tem líder nomeado. Nomeie um em Equipes e o apoio passa a vir sozinho."
+                    : `Quem lidera esta equipe de campo é ${nomeDeTecnico(liderDaEquipeAtual)} — o apoio só é puxado quando o responsável é o líder.`}
               </div>
             )}
           </div>

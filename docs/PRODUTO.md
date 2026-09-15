@@ -5702,9 +5702,30 @@ adaptado."
   turma — que continua resolvível na programação, onde o bloco é movido.
   **Revisa a R126** na metade em que "a equipe vem PRIMEIRO".
 
-  **O apoio é PLURAL e vem do LÍDER.** Equipe de três grava dois apoios. Se o
-  responsável **não** é o líder da equipe dele, o apoio **não** é preenchido —
-  e o campo vazio explica por quê, com o conserto junto quando há um.
+  **O apoio é PLURAL e vem do LÍDER.** Equipe de campo de três grava dois
+  apoios. Se o responsável **não** é o líder da equipe de campo dele, o apoio
+  **não** é preenchido — e o campo vazio explica por quê, com o conserto
+  junto quando há um.
+
+  **LÍDER É COISA DE EQUIPE DE CAMPO, E SÓ.** A palavra "equipe" tem dois
+  donos neste sistema (glossário em `CONTEXTO_OPERACAO_TECNICA.md` §7), e a
+  liderança pertence a um só: *(Davi, 15/09/2026: "nós usamos o termo
+  'equipe' duas vezes distintas, e quando se trata sobre equipe do
+  operacional, equipe do T.I, Comercial, qualquer equipe, isso de ter um
+  lider nao se aplica. O líder se aplica apenas a equipe tecnica DE CAMPO,
+  que podem ter varias equipes dentro da equipe tecnica de campo".)*
+
+  | o que | quem é | tem líder? |
+  |---|---|---|
+  | **equipe** (departamento) | Técnica, T.I., Comercial, SAC, Controle Patrimonial, Monitoramento, Outras | **não** |
+  | **equipe de campo** | a turma que sai no mesmo carro; há **várias** dentro da equipe técnica | **sim** |
+
+  A fronteira é ESTRUTURAL, não convenção de escrita:
+  `equipe_membros.equipe_id` é FK para `duplas`, e a coluna `papel` só existe
+  ali. Nenhum departamento tem onde guardar um líder — e não deve ganhar.
+  **Toda frase de tela diz "equipe de campo" por extenso**: o Nicholas e o
+  Erik são da T.I., têm equipe, e ler "a equipe dele ainda não tem líder
+  nomeado" sobre eles mandaria alguém procurar um botão que não existe.
 
   **Revisa a R285** exatamente onde ela dizia o contrário: lá o papel não era
   condição ("quem foi ao prédio foi a equipe, não o organograma dela"). A

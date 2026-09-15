@@ -22773,6 +22773,39 @@ assincronas.push(async () => {
      [['a2', 'lider'], ['a1', 'a2']]);
 
   // ── a tela ─────────────────────────────────────────────────────────────
+  // ── A FRONTEIRA DAS DUAS "EQUIPES" ─────────────────────────────────────
+  // Davi, 15/09/2026: "nós usamos o termo 'equipe' duas vezes distintas, e
+  // quando se trata sobre equipe do operacional, equipe do T.I, Comercial,
+  // qualquer equipe, isso de ter um lider nao se aplica. O líder se aplica
+  // apenas a equipe tecnica DE CAMPO."
+  //
+  // O mecanismo já respeitava isso; o que errou foi o TEXTO. Estas duas
+  // asserções travam as duas metades: a estrutura e a escrita.
+  {
+    const eq297 = carregar('src/lib/equipes.ts');
+    const u142 = require('fs').readFileSync('supabase/migrations/20261004090000_u142_equipe_por_instante.sql', 'utf8');
+
+    eq('R297 CRÍTICO: liderança é ESTRUTURALMENTE de equipe de campo. `equipe_membros.equipe_id` é FK para `duplas` (as turmas do carro) e a coluna `papel` só existe ali — os SETE departamentos não têm onde guardar um líder, e não devem ganhar',
+       [/equipe_id  uuid NOT NULL REFERENCES public\.duplas\(id\)/.test(u142),
+        /papel      text NOT NULL DEFAULT 'ajudante'/.test(u142),
+        // o vocabulário dos DEPARTAMENTOS não conhece papel nenhum
+        eq297.EQUIPES.slice().sort(),
+        Object.keys(eq297.EQUIPE_LABEL).some((k) => /lider|papel|chefe/i.test(k))],
+       [true, true, ['comercial', 'monitoramento', 'outras', 'patrimonio', 'sac', 'tecnica', 'ti'], false]);
+
+    eq('R297 CRÍTICO: TODA frase de tela diz "equipe de campo" por extenso. O Nicholas e o Erik são da T.I. — têm equipe —, e ler "a equipe dele ainda não tem líder nomeado" sobre eles manda procurar um botão que não existe e não deve existir',
+       // uma regex por frase: `[^"]*` atravessa quebra de linha e casaria daqui
+       // até a próxima aspa qualquer, contando 1 onde há 3.
+       [/não está em nenhuma equipe de campo — sem equipe de campo/.test(form297),
+        /A equipe de campo dele ainda não tem líder nomeado/.test(form297),
+        /Quem lidera esta equipe de campo é \$\{nomeDeTecnico\(liderDaEquipeAtual\)\}/.test(form297),
+        // e nenhuma delas pode ter sobrado com "equipe" seca
+        /não está em nenhuma equipe —/.test(form297),
+        /A equipe dele ainda não tem líder/.test(form297),
+        /Quem lidera esta equipe é/.test(form297)],
+       [true, true, true, false, false, false]);
+  }
+
   eq('R297 CRÍTICO: o campo "Equipe de campo" SAIU da abertura, e a equipe passou a ser SEMPRE a derivada do responsável. Perguntar as duas era pedir a mesma informação duas vezes',
      // a CONSTRUÇÃO, não a palavra: "Equipe de campo" sobrevive em dois
      // comentários — um cita a frase do Davi, o outro explica a remoção —, e
@@ -22831,11 +22864,33 @@ assincronas.push(async () => {
   eq('U152: o portão prova os TRÊS casos — líder puxa, ajudante não puxa, e equipe sem líder não puxa para ninguém (que é o estado de hoje)',
      [/PORTÃO 1 ok: responsável LÍDER/.test(u152),
       /PORTÃO 2 ok: responsável AJUDANTE/.test(u152),
-      /PORTÃO 3 ok: equipe sem líder nomeado/.test(u152),
-      // e ele pega gente FORA de equipe: foi o EXCLUDE da U142 que derrubou
-      // o portão dela no SQL Editor, por usar uma pessoa real já backfillada
-      /WHERE m\.pessoa_id = p\.id AND m\.saiu_em IS NULL/.test(u152sql)],
-     [true, true, true, true]);
+      /PORTÃO 3 ok: equipe sem líder nomeado/.test(u152)],
+     [true, true, true]);
+
+  // ── A CICATRIZ DO PORTÃO, 15/09/2026 ───────────────────────────────────
+  // A primeira tentativa no SQL Editor caiu com 23P01. A causa era o portão:
+  // ele escolhia "gente livre" como quem não tem vínculo ABERTO, e o EXCLUDE
+  // da U142 cobra SOBREPOSIÇÃO DE FAIXA — uma faixa FECHADA que terminava hoje
+  // cruzou com a faixa de teste, que começava ontem.
+  //
+  // É a SEGUNDA vez que um portão meu cai neste mesmo EXCLUDE (a primeira foi
+  // o da própria U142), e por isso vira asserção e não só comentário.
+  eq('U152 CRÍTICO: a composição de teste do portão vive no FUTURO DISTANTE, e o chamado é agendado para lá. Faixa FECHADA nenhuma alcança 2126, e faixa ABERTA o WHERE já exclui — sem isso o EXCLUDE da U142 derruba o portão sobre o dado real, como derrubou na primeira tentativa (23P01)',
+     [/v_quando  timestamptz := now\(\) \+ interval '100 years';/.test(u152sql),
+      /entrou_em\) *\n *VALUES \(v_equipe, v_lider, 'lider', *v_quando - interval '1 day'\)/.test(u152sql),
+      // e o chamado é agendado para o MESMO instante, senão a composição de
+      // teste não vale quando `instante_da_equipe` for consultado
+      (u152sql.match(/data_hora_agendada\)/g) || []).length,
+      (u152sql.match(/v_lider, v_quando\)|v_ajud, v_quando\)/g) || []).length],
+     [true, true, 3, 3]);
+
+  eq('U152 CRÍTICO: falha de MONTAGEM do portão vira AVISO; falha de REGRA continua explodindo. O §1–§3 já commitou quando o portão roda — na primeira tentativa a tela disse "Query failed" sobre uma migration que ESTAVA aplicada, e isso não pode voltar a acontecer',
+     [/EXCEPTION\s*\n\s*WHEN OTHERS THEN/.test(u152sql),
+      /IF SQLERRM LIKE '%PORTÃO FALHOU%' THEN RAISE; END IF;/.test(u152sql),
+      /PORTÃO PULADO: não consegui montar o cenário de teste/.test(u152sql),
+      // as três recusas de REGRA carregam a marca que as relança
+      (u152sql.match(/RAISE EXCEPTION 'PORTÃO FALHOU/g) || []).length],
+     [true, true, true, 3]);
 }
 
 // ── R284 — "ATRASADO" NO CAMPO, A SEGUNDA METADE (15/09/2026) ─────────────

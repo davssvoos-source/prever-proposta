@@ -14527,6 +14527,69 @@ quem não tem avatar, `<img>` para quem tem. Os rótulos da janela ficaram
 exatamente: Assunto · Detalhes · Prioridade · **Técnico responsável · Apoio** ·
 Data · Hora · Duração · Deslocamento.
 
+### O portão caiu no SQL Editor, e o defeito era dele
+
+O Davi rodou e voltou com **23P01** — violação do EXCLUDE
+`equipe_membros_uma_equipe_por_vez`. A regra estava certa; quem errou foi a
+MONTAGEM do teste.
+
+Eu selecionei "gente livre" como **quem não tem vínculo ABERTO**. Mas o
+EXCLUDE não cobra isso: cobra **sobreposição de faixa**. A pessoa escolhida
+tinha uma faixa FECHADA que ia do marco zero até hoje às 05:04, e eu inseri a
+partir de ontem às 12:36 — as duas se cruzam.
+
+```
+nova:      ["2026-09-14 12:36", ∞)
+existente: ["0001-01-01",       "2026-09-15 05:04")   ← cruza
+```
+
+**É a segunda vez que um portão meu cai neste mesmo EXCLUDE** — a primeira foi
+o da própria U142 —, e o arquivo até citava aquela cicatriz, sem perceber que
+a estava repetindo com outra roupa. Por isso virou asserção, não comentário.
+
+Duas correções, e a segunda importa tanto quanto a primeira:
+
+1. **A composição de teste foi para o futuro distante** (`now() + 100 anos`), e
+   o chamado é agendado para lá. Faixa FECHADA nenhuma alcança 2126; faixa
+   ABERTA o `WHERE` já exclui. O teste continua válido porque
+   `instante_da_equipe` usa `data_hora_agendada`, e `membros_da_equipe`
+   compara com `<=`, que é inclusivo.
+2. **Falha de MONTAGEM virou aviso; falha de REGRA continua explodindo.** O
+   §1–§3 já tinha COMMITado quando o portão estourou, então o SQL Editor disse
+   *"Query failed"* sobre uma migration que **estava aplicada**. Um portão que
+   faz isso é pior do que portão nenhum: ele mente sobre o resultado.
+
+Corrigido NO LUGAR, e a justificativa é estreita: o §1–§3 não mudou um byte —
+só o portão, que por construção termina em `ROLLBACK` e não grava nada.
+
+### "Equipe" tem dois donos, e eu escrevi a palavra errada na tela
+
+Davi, lendo o resumo: *"nós usamos o termo 'equipe' duas vezes distintas, e
+quando se trata sobre equipe do operacional, equipe do T.I, Comercial,
+qualquer equipe, isso de ter um lider nao se aplica. O líder se aplica apenas
+a equipe tecnica DE CAMPO, que podem ter varias equipes dentro da equipe
+tecnica de campo."*
+
+O MECANISMO já estava certo, e é estrutural: `equipe_membros.equipe_id` é FK
+para `duplas` — as turmas que saem no mesmo carro —, e a coluna `papel` só
+existe ali. Os sete DEPARTAMENTOS de `src/lib/equipes.ts` não têm onde guardar
+um líder.
+
+O que estava errado era o TEXTO, e no pior lugar possível: **as frases que o
+usuário lê**. Elas diziam "equipe" seca. O Nicholas e o Erik são da T.I. —
+eles TÊM equipe —, e ler *"a equipe dele ainda não tem líder nomeado"* sobre um
+deles manda a pessoa procurar um botão de nomear líder da T.I., que não existe
+e não deve existir.
+
+As três frases passaram a dizer **"equipe de campo" por extenso**, e a
+asserção trava as duas metades: a estrutural (o `papel` só na FK de `duplas`,
+e o vocabulário dos departamentos sem papel nenhum) e a escrita (as três
+frases, uma regex cada — a primeira tentativa usou `[^"]*`, que atravessa
+quebra de linha e contou 1 onde havia 3).
+
+O glossário do `CONTEXTO_OPERACAO_TECNICA.md` §7 ganhou a linha do **líder** e
+um aviso no topo com a frase do Davi: é ele que uma sessão nova consulta
+quando a palavra colide.
 **Números.** Verificador: **3.532 asserções, 0 falharam**. `tsc`: 0. `vite build` completa.
 Migrations **U150 e U152 PENDENTES** — a U152 é a que faz o banco concordar com
 a tela nova.

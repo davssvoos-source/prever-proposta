@@ -151,6 +151,18 @@ export function parceirosNoInstante(
 /**
  * O APOIO AUTOMÁTICO DA ABERTURA (R297, 15/09/2026).
  *
+ * "EQUIPE" AQUI É SEMPRE **EQUIPE DE CAMPO** — a turma que sai no mesmo
+ * carro (`duplas`/`equipe_membros`). A palavra tem outro dono neste sistema:
+ * o DEPARTAMENTO (T.I., comercial, SAC, técnica…, em `src/lib/equipes.ts`),
+ * e **departamento não tem líder**. Davi, 15/09/2026: "quando se trata sobre
+ * equipe do operacional, equipe do T.I, Comercial, qualquer equipe, isso de
+ * ter um lider nao se aplica. O líder se aplica apenas a equipe tecnica DE
+ * CAMPO, que podem ter varias equipes dentro da equipe tecnica de campo."
+ *
+ * A fronteira é estrutural, não convenção: `equipe_membros.equipe_id` é FK
+ * para `duplas`, e `papel` só existe ali. Nenhum departamento tem onde
+ * guardar um líder — e este comentário existe para que ninguém acrescente.
+ *
  * Davi: "o apoio é preenchido automaticamente de acordo com a dupla do
  * responsável (CASO O RESPONSAVEL QUE FOI INSERIDO SEJA LIDER DE ALGUMA
  * DUPLA, CASO NAO SEJA LIDER, NÃO DEVE APARECER O APOIO AUTOMATICAMENTE)."

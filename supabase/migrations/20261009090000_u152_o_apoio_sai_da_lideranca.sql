@@ -23,10 +23,22 @@
 -- `parceiros_da_equipe`: "Não olha papel: o líder não é condição". A R297
 -- revisa exatamente essa metade.
 --
--- Por que a distinção faz sentido: o líder é quem RESPONDE pela equipe, e
--- atribuir a ele é atribuir à turma. Atribuir a um ajudante é outra frase — é
--- mandar aquela pessoa —, e arrastar o líder junto como "apoio" inverteria a
--- hierarquia sem ninguém ter pedido.
+-- Por que a distinção faz sentido: o líder é quem RESPONDE pela equipe de
+-- campo, e atribuir a ele é atribuir à turma. Atribuir a um ajudante é outra
+-- frase — é mandar aquela pessoa —, e arrastar o líder junto como "apoio"
+-- inverteria a hierarquia sem ninguém ter pedido.
+--
+-- ── DE QUAL "EQUIPE" ESTAMOS FALANDO ──────────────────────────────────────
+-- Da EQUIPE DE CAMPO, e só dela. Davi, 15/09/2026: "quando se trata sobre
+-- equipe do operacional, equipe do T.I, Comercial, qualquer equipe, isso de
+-- ter um lider nao se aplica. O líder se aplica apenas a equipe tecnica DE
+-- CAMPO, que podem ter varias equipes dentro da equipe tecnica de campo."
+--
+-- A fronteira já é estrutural e esta migration não a afrouxa:
+-- `equipe_membros.equipe_id` é FK para `duplas` — as turmas que saem no mesmo
+-- carro —, e `papel` só existe ali. Os DEPARTAMENTOS (`chamados.equipe`:
+-- técnica, T.I., comercial, SAC, patrimônio, monitoramento, outras) não têm
+-- onde guardar líder, e não devem ganhar.
 --
 -- ── O QUE NÃO MUDA, E É DE PROPÓSITO ───────────────────────────────────────
 -- 1. `parceiros_da_equipe` FICA COMO ESTÁ. Ela responde "quem mais está nesta
@@ -47,6 +59,21 @@
 -- Os apoios que JÁ EXISTEM não são tocados por esta migration: ela não roda
 -- ressincronização nenhuma. O que já foi gravado fica; o que nascer daqui em
 -- diante segue a regra nova.
+--
+-- ── A CICATRIZ DESTE ARQUIVO (15/09/2026) ──────────────────────────────────
+-- A primeira tentativa no SQL Editor parou com **23P01** no PORTÃO — e o
+-- §1–§3 já tinha COMMITado, então a tela disse "Query failed" sobre uma
+-- migration que estava aplicada.
+--
+-- A causa foi o portão, não a regra: ele escolhia "gente livre" como quem não
+-- tem vínculo ABERTO, e o EXCLUDE da U142 cobra SOBREPOSIÇÃO DE FAIXA. Uma
+-- faixa FECHADA que terminava hoje cruzou com a faixa de teste, que começava
+-- ontem. Era a mesma armadilha que derrubou o portão da U142.
+--
+-- Corrigido NO LUGAR (o §1–§3 não mudou um byte — só o portão, que por
+-- construção não grava nada): a composição de teste vai para o FUTURO
+-- DISTANTE, onde faixa fechada nenhuma alcança, e o portão passou a engolir
+-- falha de MONTAGEM como aviso, reservando a explosão para falha de REGRA.
 --
 -- IDEMPOTENTE: CREATE OR REPLACE em duas funções, sem DDL de tabela e sem
 -- escrita de dado. Rodar duas vezes é o mesmo que rodar uma.
@@ -109,8 +136,10 @@ REVOKE EXECUTE ON FUNCTION public.apoio_automatico(uuid, timestamptz) FROM PUBLI
 GRANT  EXECUTE ON FUNCTION public.apoio_automatico(uuid, timestamptz) TO authenticated, service_role;
 
 COMMENT ON FUNCTION public.apoio_automatico(uuid, timestamptz) IS
-  'R297 (U152): os OUTROS da equipe NAQUELE INSTANTE, e SÓ quando `_pessoa` é o '
-  'LÍDER dela. Vazia quando a pessoa não lidera, quando a equipe não tem líder '
+  'R297 (U152): os OUTROS da EQUIPE DE CAMPO (duplas) NAQUELE INSTANTE, e SÓ '
+  'quando `_pessoa` é o '
+  'LÍDER dela. Liderança NÃO existe em departamento (T.I., comercial, SAC…): '
+  'só na equipe de campo. Vazia quando a pessoa não lidera, quando a equipe não tem líder '
   'nomeado, ou quando ela não está em equipe nenhuma. REVISA a R285, que dizia '
   '"o líder não é condição" — ver o COMMENT de parceiros_da_equipe, que continua '
   'respondendo a outra pergunta ("quem mais está nesta equipe") e NÃO mudou.';
@@ -262,9 +291,19 @@ DECLARE
   v_ajud    uuid;
   v_chamado uuid;
   v_n       int;
+  -- O INSTANTE DO TESTE MORA NO FUTURO DISTANTE, e isso não é capricho.
+  --
+  -- O EXCLUDE da U142 não cobra "vínculo aberto": cobra SOBREPOSIÇÃO DE
+  -- FAIXA. Uma faixa FECHADA que termina hoje cruza com uma que começa
+  -- ontem — foi assim que a primeira versão deste portão estourou com 23P01,
+  -- repetindo o erro que derrubou o portão da U142.
+  --
+  -- Em 2126 nenhuma faixa fechada pode cruzar: todas terminam antes. A única
+  -- que cruzaria é uma ABERTA, e essas o WHERE lá embaixo já exclui.
+  v_quando  timestamptz := now() + interval '100 years';
 BEGIN
-  -- duas pessoas LIVRES: o EXCLUDE da U142 recusa quem já está em outra equipe,
-  -- e foi exatamente isso que derrubou o portão da U142 no SQL Editor.
+  -- gente sem vínculo ABERTO: uma faixa aberta vai até o infinito e cruzaria
+  -- o futuro distante também.
   SELECT id INTO v_lider FROM public.profiles p
    WHERE NOT EXISTS (SELECT 1 FROM public.equipe_membros m
                       WHERE m.pessoa_id = p.id AND m.saiu_em IS NULL)
@@ -276,18 +315,20 @@ BEGIN
    LIMIT 1;
 
   IF v_lider IS NULL OR v_ajud IS NULL THEN
-    RAISE NOTICE 'PORTÃO PULADO: não há duas pessoas fora de equipe para montar o teste.';
+    RAISE NOTICE 'PORTÃO PULADO: não há duas pessoas sem vínculo aberto para montar o teste. A migration está aplicada — veja a conferência acima.';
     RETURN;
   END IF;
 
   INSERT INTO public.duplas (nome) VALUES ('__portao_u152') RETURNING id INTO v_equipe;
   INSERT INTO public.equipe_membros (equipe_id, pessoa_id, papel, entrou_em)
-  VALUES (v_equipe, v_lider, 'lider',    now() - interval '1 day'),
-         (v_equipe, v_ajud,  'ajudante', now() - interval '1 day');
+  VALUES (v_equipe, v_lider, 'lider',    v_quando - interval '1 day'),
+         (v_equipe, v_ajud,  'ajudante', v_quando - interval '1 day');
 
-  -- 1) responsável É O LÍDER → o apoio nasce, e é o ajudante
-  INSERT INTO public.chamados (titulo, natureza, tipo, prioridade, status, responsavel_id)
-  VALUES ('__portao_u152_lider', 'campo', 'corretiva', 'normal', 'aberto', v_lider)
+  -- 1) responsável É O LÍDER → o apoio nasce, e é o ajudante.
+  --    `data_hora_agendada = v_quando` é o que faz `instante_da_equipe`
+  --    apontar para o futuro onde a composição de teste vale.
+  INSERT INTO public.chamados (titulo, natureza, tipo, prioridade, status, responsavel_id, data_hora_agendada)
+  VALUES ('__portao_u152_lider', 'campo', 'corretiva', 'normal', 'aberto', v_lider, v_quando)
   RETURNING id INTO v_chamado;
 
   SELECT count(*) INTO v_n FROM public.chamado_apoios
@@ -298,8 +339,8 @@ BEGIN
   RAISE NOTICE 'PORTÃO 1 ok: responsável LÍDER → o apoio nasce com a turma dele.';
 
   -- 2) responsável é AJUDANTE → nenhum apoio
-  INSERT INTO public.chamados (titulo, natureza, tipo, prioridade, status, responsavel_id)
-  VALUES ('__portao_u152_ajudante', 'campo', 'corretiva', 'normal', 'aberto', v_ajud)
+  INSERT INTO public.chamados (titulo, natureza, tipo, prioridade, status, responsavel_id, data_hora_agendada)
+  VALUES ('__portao_u152_ajudante', 'campo', 'corretiva', 'normal', 'aberto', v_ajud, v_quando)
   RETURNING id INTO v_chamado;
 
   SELECT count(*) INTO v_n FROM public.chamado_apoios WHERE chamado_id = v_chamado;
@@ -312,8 +353,8 @@ BEGIN
   UPDATE public.equipe_membros SET papel = 'ajudante'
    WHERE equipe_id = v_equipe AND pessoa_id = v_lider;
 
-  INSERT INTO public.chamados (titulo, natureza, tipo, prioridade, status, responsavel_id)
-  VALUES ('__portao_u152_sem_lider', 'campo', 'corretiva', 'normal', 'aberto', v_lider)
+  INSERT INTO public.chamados (titulo, natureza, tipo, prioridade, status, responsavel_id, data_hora_agendada)
+  VALUES ('__portao_u152_sem_lider', 'campo', 'corretiva', 'normal', 'aberto', v_lider, v_quando)
   RETURNING id INTO v_chamado;
 
   SELECT count(*) INTO v_n FROM public.chamado_apoios WHERE chamado_id = v_chamado;
@@ -323,6 +364,22 @@ BEGIN
   RAISE NOTICE 'PORTÃO 3 ok: equipe sem líder nomeado → nenhum apoio automático (é o estado de HOJE).';
 
   RAISE NOTICE 'PORTÃO COMPLETO. Nada disto foi gravado (ROLLBACK a seguir).';
+
+-- O PORTÃO NÃO PODE FAZER UMA MIGRATION BEM-SUCEDIDA PARECER FALHADA.
+--
+-- Ele roda sobre o dado REAL do Davi, e o §1–§3 já COMMITou quando ele
+-- começa. Na primeira tentativa desta migration foi exatamente isso que
+-- aconteceu: as funções foram criadas, o portão estourou num 23P01 de
+-- montagem, e a tela do SQL Editor disse "Query failed" — como se nada
+-- tivesse sido aplicado.
+--
+-- FALHA DE MONTAGEM vira aviso; FALHA DE REGRA continua explodindo. É a
+-- distinção que importa: as três EXCEPTION acima carregam "PORTÃO FALHOU" e
+-- são relançadas.
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLERRM LIKE '%PORTÃO FALHOU%' THEN RAISE; END IF;
+    RAISE NOTICE 'PORTÃO PULADO: não consegui montar o cenário de teste neste banco (%: %). A migration ESTÁ aplicada — confira o §3 acima.', SQLSTATE, SQLERRM;
 END
 $u152portao$;
 
