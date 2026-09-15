@@ -9,21 +9,109 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
-> **Depois da v0.0.12 — entregue e ainda NÃO empacotado (15/09/2026).**
-> As entregas **U141 a U151** vieram DEPOIS do pacote abaixo e não estão nele:
-> o checklist que parou de clicar na linha de baixo (R281), a equipe valendo do
-> instante da troca com líder (R285), a chave `atividades.nova` que consertou o
-> bug do Erik (R294), os três tipos do campo com a vistoria virando atividade
-> interna (R283), o campo sem prazo automático (R284, U147), o quadro por eixo
-> e o card do Painel Operacional (R295, U148), a barra do Operacional na régua
-> da Início (R296, U149), o retorno como ida nova na MESMA atividade (R286,
-> U150) e o "atrasado" do campo passando a significar a data marcada vencida
-> (R284, U151). O próximo pacote é que as leva.
->
-> **A única migration que falta rodar antes dele é a U150** (o retorno na mesma
-> atividade). A U142, a U143, a U144 e a U147 já foram rodadas pelo Davi em
-> 14/09/2026 — inclusive a U147, que tirou o SLA do gatilho do campo.
+## v1.0.1 — 2026-09-15 (U141–U152) · migrations **U150 e U152 pendentes**, nesta ordem
 
+> **O salto de número é decisão do Davi** (15/09/2026: *"Essa será a versão
+> 1.0.1"*). Vem da v0.0.12 e **pula a 1.0.0**: nunca houve uma. O número é
+> livre — nada no sistema deriva comportamento dele, e a única regra é
+> `package.json` = `src/lib/versao.ts`, que o verificador confere.
+>
+> *Havia um `dist-windows/Prever-1.0.0` no disco, e ele NÃO era uma versão:
+> era de 08/09/2026 15:13 (commit `f28dfd7`), quatro minutos depois do
+> `Prever-0.0.2` — resto de quando o `build-windows.cjs` ainda tinha 1.0.0 como
+> padrão, antes de o pino de versão existir (U127, 10/09). Apagado em 15/09
+> com autorização do Davi, porque um pacote falso ao lado do verdadeiro é um
+> erro esperando para acontecer na hora de instalar.*
+>
+> **PODE INSTALAR ANTES DE RODAR AS MIGRATIONS.** Conferido antes de empacotar:
+> nenhuma consulta do app pede as colunas novas (`chamados.retornos`,
+> `agenda_campo.resultado`) e nenhuma tela chama as RPCs novas. Sem as
+> migrations, o que falta é COMPORTAMENTO, não a tela: o apoio automático
+> continua ignorando quem é líder (U152) e o retorno ainda não tem onde ser
+> registrado (U150). Rodar as duas fecha isso, e elas podem ser rodadas depois
+> do pacote — a ordem entre elas é U150 → U152.
+
+### O Painel Operacional virou a mesa do gestor
+
+- **O quadro separa as colunas por ESTADO, STATUS, EQUIPE ou DIA DA SEMANA**
+  (R295). O eixo de sempre continua sendo o padrão; os três novos são lentes.
+  Trocar de eixo muda o agrupamento, **nunca o total** — um botão de
+  visualização que muda quantos chamados existem destrói a confiança no número.
+- **O card diz o que o Vinicius listou**: tipo de demanda, cliente, equipe e a
+  data que o ESTADO pede — agendado mostra o agendamento, em andamento mostra o
+  início, encerrado mostra início e fim —, cada uma com rótulo ("Agendado",
+  "Começou", "Feito"). Sem o rótulo, "14/09 08:00" não distingue "vai começar"
+  de "começou".
+- **A barra virou a barra da Início** (R296): os indicadores recolhem e ficam
+  recolhidos, os controles têm todos a mesma altura, e nasceu o **botão de
+  ordenar**, que a tela nunca teve — a lista saía na ordem em que o banco
+  devolvia.
+- **A porta das Equipes mudou de lugar**: ela morava dentro do painel que agora
+  recolhe, e sumia junto. Gesto de gestão não pode depender de um painel de
+  leitura estar aberto.
+
+### A equipe de campo passou a valer do INSTANTE da troca
+
+- **Um líder e quantos ajudantes forem precisos** (R285), e a troca vale **do
+  momento em que ela é feita** — os dias já vividos continuam com quem
+  realmente foi. A escala por SEMANA acabou: o seletor, a herança e o botão
+  "Escalar" saíram da tela.
+- **O técnico que já está em outra equipe aparece na lista**, e o sistema
+  **pergunta antes de mover**, dizendo de onde. Antes ele era escondido, e
+  quem precisava dele ia desfazer a outra equipe primeiro.
+
+### A abertura de chamado técnico
+
+- **Pergunta-se QUEM, não qual equipe** (R297). O campo "Equipe de campo" saiu
+  — ela passou a ser sempre a do responsável —, e **Técnico responsável** e
+  **Apoio** ficaram lado a lado, **com foto** na lista e no escolhido.
+- **O apoio vem do LÍDER**, e é plural: equipe de campo de três põe dois
+  apoios. Se o responsável não é o líder, o apoio não é preenchido, e o campo
+  vazio diz por quê — com o conserto junto quando há um.
+- **Líder é coisa de equipe de CAMPO**, nunca de departamento (T.I., comercial,
+  SAC…). Toda frase de tela diz "equipe de campo" por extenso.
+- **Quatro textos saíram da janela**, a pedido do Davi: o subtítulo do diálogo,
+  a nota de prazo da implantação, a sugestão de data pela prioridade e o "Sem
+  data, o chamado entra na fila". **Ficou** o aviso de que a data digitada não
+  será gravada sem equipe e sem duração — esse avisa de uma PERDA.
+
+### O campo não tem mais prazo
+
+- **O prazo automático por prioridade acabou** (R284, migration U147, já
+  rodada). Quem agenda é gente, e a prioridade é o que orienta a data.
+- **"Atrasado" passou a significar "a data agendada já passou e não foi
+  feito".** Enquanto isso ainda saía do prazo, a coluna "Atrasados" e o
+  quadrado do KPI ficaram presos em ZERO — nenhum chamado de campo nasce mais
+  com prazo. A **implantação** mantém prazo, porque ali ele é o espelho do fim
+  previsto da obra, não um SLA.
+- **O painel do chamado parou de oferecer um campo Prazo editável** em chamado
+  de campo, que deixava alguém criar à mão o número que a regra aboliu.
+
+### O campo tem três tipos, e o operacional não vai a campo
+
+- **Corretiva, preventiva e implantação** (R283). A **vistoria** virou
+  atividade INTERNA do gestor e saiu da programação da equipe técnica.
+- **O cargo OPERACIONAL cria atividade interna e não executa chamado de campo**
+  (R294). Era o bug do Erik: o pop-up do "+" sempre criou atividade interna,
+  mas era trancado pela chave de ABRIR CHAMADO — porta trancada com a placa
+  errada. Nasceu a chave `atividades.nova`.
+
+### O retorno (precisa da U150)
+
+- **O retorno é a MESMA atividade** (R286), com a etiqueta "Retornado Nx".
+  Nasce uma ida nova na agenda, e cada ida guarda quem foi, quando foi e o que
+  se tentou — o registro vai para a linha do tempo do chamado.
+- **Ida cancelada não conta**: ninguém foi ao prédio, e um "Retornado 3x" que
+  inclui visita que não aconteceu é o número que mata a confiança na etiqueta.
+- A faixa "Retornos pendentes" e o botão "Retorno" no card **ainda não estão
+  nesta versão** — eles sobem depois que a U150 rodar.
+
+### E o checklist que clicava na linha de baixo
+
+- **O disco amarelo do hover saiu** (R281). Ele media 49×49 numa caixa de
+  19×19: dez dos dezenove pixels visíveis de um item pertenciam ao item
+  seguinte, e marcar rápido marcava o errado. **No dedo a linha cresce para
+  40px**, a régua de alvo de toque.
 ## v0.0.12 — 2026-09-14 (U130–U140) · **nenhuma migration pendente** (U131, U132, U134 e U136 rodadas em 13/09; U137 e U139 em 14/09)
 
 > Três semanas de entrega num pacote só. O servidor está na **v0.0.7**: ele

@@ -24,10 +24,17 @@ U131, U132, U134 e **U136** — esta última na segunda tentativa, e a data é a
 que o diário da própria entrega registra. Em 14/09/2026: U137, U139,
 **U142**, **U143**, **U144** e **U147**.
 
-**Servidor: v0.0.7** (192.168.10.182). O pacote gerado é a **v0.0.12**
-(14/09/2026) — o que entrou em cada versão está em `docs/VERSOES.md`.
-**Atenção:** as entregas de 14 e 15/09 listadas abaixo (**U141–U151**) são
-POSTERIORES a esse pacote e não estão nele. O próximo pacote é que as leva.
+**Servidor: v0.0.7** (192.168.10.182). O pacote gerado é a **v1.0.1**
+(15/09/2026, `dist-windows/Prever-1.0.1.zip`) — o que entrou em cada versão
+está em `docs/VERSOES.md`. Ele leva **tudo** de U141 a U152: nada de 14 e
+15/09 ficou de fora.
+
+**O pacote PODE ser instalado antes de rodar as migrations.** Conferido antes
+de empacotar: nenhuma consulta do app pede as colunas novas
+(`chamados.retornos`, `agenda_campo.resultado`) e nenhuma tela chama as RPCs
+novas. Sem a U150 e a U152 o que falta é COMPORTAMENTO, não tela — o apoio
+automático continua ignorando quem é líder, e o retorno não tem onde ser
+registrado.
 
 ### A leva do Vinicius (14/09/2026) — o que está de pé e o que ainda é só regra
 
