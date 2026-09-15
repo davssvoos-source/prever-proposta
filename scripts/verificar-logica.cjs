@@ -50,6 +50,29 @@ let ok = 0, falhas = 0;
  * contarem — um verificador dizendo "0 falharam" sem ter olhado.
  */
 const assincronas = [];
+
+/**
+ * O texto SEM as linhas de comentário — o que procurar quando a pergunta é
+ * "este código faz X?".
+ *
+ * Quatro vezes em 14/09/2026 uma asserção leu a PROSA que explica o defeito e
+ * concluiu que o defeito continuava lá: o `setMonth` da P21, o `.limit(2000)`
+ * do P32, o `is_gestor()` das migrations e o `chamado_sla` da U147. Em todos os
+ * quatro o comentário citava, corretamente, aquilo que o conserto tinha tirado.
+ *
+ * `dialeto`:
+ *   "js"  — `//`, `*`, `/*` (padrão: .ts, .tsx, .cjs)
+ *   "sql" — `--`
+ *
+ * Não tira literais de texto: para isso existe o caso do `is_gestor()` em
+ * COMMENT ON, que tem o seu próprio recorte onde é usado. Aqui a regra é só
+ * uma — LINHA que começa com marcador de comentário não conta.
+ */
+const soCodigo = (texto, dialeto = "js") => {
+  const marca = dialeto === "sql" ? /^\s*--/ : /^\s*(\/\/|\*|\/\*)/;
+  return String(texto ?? "").split("\n").map((l) => (marca.test(l) ? "" : l)).join("\n");
+};
+
 const eq = (nome, obtido, esperado) => {
   const a = JSON.stringify(obtido), b = JSON.stringify(esperado);
   if (a === b) { ok++; } else { falhas++; console.log(`FALHOU  ${nome}\n  obtido=${a}\n  esperado=${b}`); }
@@ -21975,9 +21998,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // defeito, dentro do próprio arquivo, cita o `setMonth` — e uma busca crua
   // acha a explicação e acusa o conserto de ser o defeito. Asserção olha
   // construção de código, nunca prosa.
-  const soCodigo = fech21.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const fech21Codigo = soCodigo(fech21);
   eq('P21: a cobrança parcelada usa `mesesAdiante` — nenhum `setMonth` solto sobrou no caminho do dinheiro',
-     [/mesesAdiante\(dados\.dataBase, i\)/.test(soCodigo), /setMonth/.test(soCodigo),
+     [/mesesAdiante\(dados\.dataBase, i\)/.test(fech21Codigo), /setMonth/.test(fech21Codigo),
       /setMonth/.test(fech21)],
      [true, false, true]);
 }
@@ -22448,6 +22471,134 @@ assincronas.push(async () => {
      [[], 4]);
 }
 
+// ── R284 / U147 — O CAMPO NÃO TEM MAIS PRAZO AUTOMÁTICO (14/09/2026) ──────
+//
+// Davi: "Não precisa ter o campo de prazo, podemos trabalhar somente com Data
+// agendada" — e, sobre o SLA: "o gestor ou SAC vai agendar a atividade de
+// acordo com a prioridade".
+//
+// Saíram DOIS ramos do gatilho: o prazo que nascia do SLA por prioridade e o
+// "escalar prioridade aperta o prazo". Os dois produziam um NÚMERO QUE NINGUÉM
+// USAVA PARA DECIDIR — ele pintava card de vermelho e entrava em contador de
+// atrasados sem corresponder a promessa alguma feita ao cliente.
+{
+  const fsR284 = require('fs');
+  const u147 = fsR284.readFileSync('supabase/migrations/20261007090000_u147_o_campo_nao_tem_prazo.sql', 'utf8');
+  const form284 = fsR284.readFileSync('src/features/chamados/FormularioChamadoTecnico.tsx', 'utf8');
+
+  // O corpo NOVO da função, dentro do dólar-quote desta migration, SEM as
+  // linhas de comentário: a prosa que explica por que `chamado_sla` fica como
+  // referência cita a tabela pelo nome, e a busca crua acusaria o conserto de
+  // ser o defeito. Quarta vez nesta sessão — asserção olha código, não prosa.
+  const corpo147 = soCodigo((u147.match(/AS \$u147\$([\s\S]*?)\$u147\$;/) ?? ["", ""])[1], "sql");
+
+  eq('R284 CRÍTICO: o gatilho parou de ler `chamado_sla` — os dois ramos que davam prazo ao chamado de campo (no INSERT e ao escalar prioridade) saíram, e com eles o número que ninguém usava para decidir',
+     [/chamado_sla/.test(corpo147),
+      /horas_prazo/.test(corpo147),
+      /v_horas/.test(corpo147)],
+     [false, false, false]);
+
+  // E o que FICA é decisão, não esquecimento: o prazo da implantação não vem
+  // do SLA, é o espelho de uma data que alguém escolheu ao planejar a obra.
+  eq('R284 CRÍTICO: o espelho de `implantacao_fim` FICA — aquele prazo não é calculado pelo sistema, é a data que alguém marcou ao planejar a obra (R89/U89), e tirá-lo quebraria o cronograma sem ninguém pedir',
+     [/implantacao_fim IS DISTINCT FROM OLD\.implantacao_fim/.test(corpo147),
+      /NEW\.implantacao_fim \+ 1\)::timestamp AT TIME ZONE/.test(corpo147),
+      /proximo_numero_chamado/.test(corpo147),
+      /sugerir_tipo_chamado/.test(corpo147)],
+     [true, true, true, true]);
+
+  // O pré-voo protege o que eu NÃO li: se o corpo vivo não for o da U89, esta
+  // migration estaria prestes a sobrescrever uma versão desconhecida — e o
+  // espelho da obra sumiria junto, calado.
+  eq('U147: o pré-voo aborta se o corpo vivo não for o da U89 — substituir uma versão que eu não li levaria junto o cronograma da obra, sem erro nenhum',
+     [/prosrc LIKE .%implantacao_fim IS DISTINCT FROM OLD\.implantacao_fim%./.test(u147),
+      /não é o da U89/.test(u147),
+      /o chamado de campo urgente NASCEU com prazo/.test(u147),
+      /mudar a prioridade inventou um prazo/.test(u147)],
+     [true, true, true, true]);
+
+  // E a migration NÃO apaga o que já existe — medido: os chamados de campo da
+  // base têm o prazo como ÚNICA data, e apagá-lo os faria sumir do calendário.
+  eq('U147: a migration não escreve dado nenhum — os prazos que já existem ficam, porque para os chamados de hoje eles são a única data que existe',
+     // o recorte é a seção de TRABALHO (até o primeiro COMMIT): o portão do §3
+     // faz UPDATE de propósito, e desfaz tudo em ROLLBACK — medi-lo aqui
+     // acusaria de escrita um teste que existe para não escrever nada.
+     [/UPDATE public\.chamados/.test(
+        u147.slice(0, u147.indexOf("COMMIT;")).replace(/--[^\n]*/g, "")),
+      /NÃO limpa os prazos que já existem/.test(u147),
+      /AGENDAR PASSA A FAZER PARTE DE ABRIR/.test(u147)],
+     [false, true, true]);
+
+  // Na TELA, a régua do SLA continua — mudou de PROMESSA para SUGESTÃO.
+  eq('R284: a tela de abertura ORIENTA em vez de prometer — a hora da prioridade vira sugestão de quando marcar, e a frase diz quem decide',
+     [/é a referência desta prioridade/.test(form284),
+      /Quem marca a data é você/.test(form284),
+      /Prazo de atendimento: \$\{horasPrazo\}h/.test(form284),
+      /const sugestaoDeData = useMemo/.test(form284)],
+     [true, true, false, true]);
+}
+
+// ── A ESCALA POR SEMANA VIROU UMA VISTA (14/09/2026) ──────────────────────
+//
+// PONTA SOLTA DA R285, achada ao ler o formulário de abertura: SETE telas
+// liam `duplas_escala` — que a U142 aposentou. Elas recebiam a composição
+// congelada na última semana gravada, **sem nenhum sinal de que estavam lendo
+// o passado**, porque a consulta responde normalmente. Entre elas, o
+// formulário que PROPÕE o responsável de um chamado novo.
+//
+// A saída não foi reescrever as sete: `Escala` é uma FORMA, e a forma continua
+// boa. O que mudou é de onde a resposta vem — ela passa a ser MATERIALIZADA da
+// composição por instante.
+{
+  const DE = carregar('src/features/duplas/modelo.ts');
+  const datE = require('fs').readFileSync('src/features/duplas/data.ts', 'utf8');
+
+  // A âncora é QUARTA AO MEIO-DIA. Segunda 00:00 perderia uma troca feita na
+  // segunda de manhã — e é justamente na segunda que o Vinicius monta equipe.
+  eq('ESCALA CRÍTICO: a âncora de cada semana é quarta-feira ao meio-dia — ancorar na virada da segunda perderia uma troca feita na segunda de manhã, que é justamente quando a equipe é montada',
+     (() => {
+       const q = DE.quartaDaSemana("2026-S38");
+       return [q?.getDay(), q?.getHours(), q?.getDate(), q?.getMonth() + 1, DE.quartaDaSemana("lixo")];
+     })(),
+     [3, 12, 16, 9, null]);
+
+  // A materialização respeita o TEMPO: quem saiu da equipe aparece nas semanas
+  // em que estava e some das seguintes. É a propriedade inteira da R285.
+  eq('ESCALA CRÍTICO: a semana materializada mostra quem estava na equipe NAQUELA semana — quem saiu continua nas anteriores e some das seguintes, que é a razão de a composição ter virado faixa de tempo',
+     (() => {
+       const M = [
+         { equipeId: "A", pessoaId: "andre", papel: "lider", entrouEm: new Date(2026, 8, 1).toISOString(), saiuEm: null },
+         { equipeId: "A", pessoaId: "lucas", papel: "ajudante", entrouEm: new Date(2026, 8, 1).toISOString(), saiuEm: new Date(2026, 8, 15).toISOString() },
+       ];
+       const e = DE.escalaDeMembros(M, ["2026-S37", "2026-S38"]);
+       const nomes = (s) => (e.porSemana.get(s) ?? []).map((l) => l.pessoa_id).sort();
+       return [nomes("2026-S37"), nomes("2026-S38"), e.semanasAbertas];
+     })(),
+     [["andre", "lucas"], ["andre"], ["2026-S37", "2026-S38"]]);
+
+  // E a consulta lê a tabela VIVA, não o arquivo.
+  eq('ESCALA CRÍTICO: `useEscala` lê `equipe_membros` (a verdade) e NÃO `duplas_escala` (o arquivo que a U142 aposentou) — as sete telas que a consomem não mudaram uma linha e pararam de ler o passado',
+     (() => {
+       const uso = (datE.match(/export function useEscala\(\)[\s\S]*?\n\}/) ?? [""])[0];
+       return [/from\("equipe_membros" as any\)/.test(uso),
+               /duplas_escala/.test(uso),
+               /escalaDeMembros\(membros/.test(uso),
+               /export function useEscalaArquivada/.test(datE)];
+     })(),
+     [true, false, true, true]);
+
+  // A janela é declarada, e a razão de cada ponta está escrita: o gráfico olha
+  // oito semanas para trás; agendar para o mês que vem é rotina, e semana
+  // futura fora da janela devolveria equipe VAZIA — que a tela leria como
+  // "ninguém escalado" em vez de "eu não perguntei".
+  eq('ESCALA: a janela materializada é declarada com o motivo das duas pontas — sem a metade futura, agendar para o mês que vem devolveria equipe vazia, e a tela leria isso como "ninguém escalado"',
+     [/const SEMANAS_ATRAS = 20;/.test(datE), /const SEMANAS_A_FRENTE = 4;/.test(datE),
+      // `[\s*]+` e não `\s+`: a quebra de linha de um bloco JSDoc traz o ` * `
+      // no meio da frase, e o regex cru acusaria um texto que está lá.
+      /leria como "ninguém está[\s*]+escalado" em vez de "eu não perguntei"/.test(datE)],
+     [true, true, true]);
+}
+
 // ── R290 — O TETO DE PARCELAS MORA EM TRÊS LUGARES (14/09/2026) ───────────
 //
 // Davi, 14/09/2026, perguntado se o "1x a 12x" valia para tudo: "Só para
@@ -22788,8 +22939,10 @@ assincronas.push(async () => {
   // "is_gestor()" dentro de um COMMENT ON para explicar o gate, e nenhuma
   // delas chama. Sem tirar os literais, a asserção acusaria as cinco: seria o
   // quarto caso nesta sessão de um pino lendo prosa como código.
-  const vivo = (s) => s.split("\n").map((l) => (/^\s*--/.test(l) ? "" : l)).join("\n")
-    .replace(/'(?:[^']|'')*'/g, "''");
+  // comentário pelo ajudante; literal de texto à parte, porque ele é o recorte
+  // desta varredura em particular (cinco migrations CITAM `is_gestor()` dentro
+  // de um COMMENT ON, e nenhuma delas chama).
+  const vivo = (s) => soCodigo(s, "sql").replace(/'(?:[^']|'')*'/g, "''");
 
   eq('CICATRIZ U142 CRÍTICO: toda migration que cria `EXCLUDE USING gist` põe `extensions` no search_path ANTES — sem isso o DDL morre com "uuid has no default operator class" mesmo com o btree_gist instalado, e o erro só aparece quando o Davi aperta Run',
      migs.filter(([, s]) => {

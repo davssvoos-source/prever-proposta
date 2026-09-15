@@ -8,11 +8,13 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-14** · última regra: **R294** · último diário:
-**U146** · verificador: **3.465 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-15** · última regra: **R294** · último diário:
+**U147** · verificador: **3.474 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
-**Banco: nenhuma migration pendente.** Rodadas em 13/09/2026, nesta ordem:
+Banco — **Pendente: U147**
+(`20261007090000_u147_o_campo_nao_tem_prazo.sql` — tira o prazo automático do
+chamado de campo, R284). Rodadas em 13/09/2026, nesta ordem:
 U131, U132 e U134. Em 14/09/2026: U136, U137, U139, **U142**, **U143** e
 **U144**.
 
@@ -30,7 +32,7 @@ Ler isto antes de prometer qualquer coisa a alguém.
 | R281 | o checklist não clica na linha de baixo | **no ar** (U141) |
 | R282 | corretiva com dois textos (Problema · Solução) | ditada |
 | R283 | o campo tem três tipos; vistoria vira interna | **no ar** (U146) |
-| R284 | o campo não tem prazo; a prioridade orienta a data | ditada |
+| R284 | o campo não tem prazo; a prioridade orienta a data | **código pronto** — falta rodar a U147 |
 | R285 | a equipe vale do instante da troca; líder + N ajudantes | **no ar** (U142 + U145) |
 | R286 | o retorno é a mesma atividade, com etiqueta | ditada |
 | R287 | duração estimada ao abrir o chamado | ditada |

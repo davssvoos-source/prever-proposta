@@ -298,6 +298,69 @@ export function montarEscala(semanasAbertas: string[], linhas: LinhaDeEscala[]):
 }
 
 /**
+ * A ESCALA POR SEMANA, MATERIALIZADA a partir da composição por instante
+ * (R285/U142).
+ *
+ * `Escala` é uma FORMA, e a forma continua boa: "quem estava em cada equipe,
+ * semana a semana" é exatamente o que o gráfico de oito semanas e a grade da
+ * programação precisam perguntar. O que mudou foi de ONDE a resposta vem —
+ * `duplas_escala` virou arquivo na U142, e quem continuasse lendo de lá
+ * receberia a composição congelada na última semana escrita, sem nenhum sinal
+ * de que está lendo o passado.
+ *
+ * A âncora de cada semana é QUARTA AO MEIO-DIA, e não segunda 00:00: uma troca
+ * feita na segunda de manhã deve valer para aquela semana, e ancorar na virada
+ * a perderia por horas. O meio da semana representa a semana de trabalho sem
+ * tomar partido entre uma troca de segunda e uma de sexta.
+ *
+ * As semanas materializadas são TODAS "abertas": no modelo por instante não
+ * existe semana sem decisão — existe a composição que valia naquele momento,
+ * e ela sempre tem resposta. A herança (`escalaSemanaVigente`) continua
+ * existindo para quem a chama, e passa a ser identidade.
+ */
+export function escalaDeMembros(
+  membros: MembroDaEquipe[], semanas: string[],
+): Escala {
+  const porSemana = new Map<string, LinhaDeEscala[]>();
+  for (const semana of semanas) {
+    const quando = quartaDaSemana(semana);
+    if (!quando) continue;
+    const vivos = membros.filter((m) => valeNoInstante(m, quando));
+    const linhas: LinhaDeEscala[] = vivos.map((m, i) => ({
+      semana,
+      dupla_id: m.equipeId,
+      pessoa_id: m.pessoaId,
+      // `ordem` é só exibição (a U76 escreveu isso na própria coluna), e aqui
+      // ela serve para o líder aparecer primeiro no chip da equipe.
+      ordem: m.papel === "lider" ? 0 : i + 1,
+    }));
+    porSemana.set(semana, linhas);
+  }
+  return { semanasAbertas: [...semanas].sort(comparaSemana), porSemana };
+}
+
+/**
+ * Quarta-feira ao meio-dia (local) da semana ISO "AAAA-SNN".
+ *
+ * O 4 de janeiro está SEMPRE na semana ISO 1 — é a definição —, então recuar
+ * dele até a segunda e avançar (nn-1) semanas dá a borda certa em qualquer
+ * ano, inclusive nos de 53 semanas. Daí +2 dias e meio-dia.
+ */
+export function quartaDaSemana(semana: string): Date | null {
+  const m = /^(\d{4})-S(\d{2})$/.exec(semana);
+  if (!m) return null;
+  const ano = Number(m[1]);
+  const n = Number(m[2]);
+  const quatroDeJaneiro = new Date(ano, 0, 4);
+  const diaDaSemana = (quatroDeJaneiro.getDay() + 6) % 7; // 0 = segunda
+  const segundaDaSemana1 = new Date(ano, 0, 4 - diaDaSemana);
+  const d = new Date(segundaDaSemana1);
+  d.setDate(d.getDate() + (n - 1) * 7 + 2);
+  d.setHours(12, 0, 0, 0);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
  * A HERANÇA, em uma função: a semana cuja escala vale em `semana` é ela mesma,
  * ou a ABERTA mais recente ANTES dela.
  *

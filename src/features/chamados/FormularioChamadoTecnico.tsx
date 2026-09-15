@@ -1,6 +1,9 @@
 // O FORMULÁRIO de chamado de CAMPO — a dupla se desloca até o cliente (U7).
 // Cliente → sistema → problema/prioridade → técnico/equipe e agenda.
-// O número e o prazo de atendimento (SLA) são preenchidos pelo banco.
+// O número é preenchido pelo banco. O PRAZO não existe mais no campo (R284,
+// U147): o gatilho parou de calculá-lo da prioridade, e quem diz para quando
+// a equipe vai é quem AGENDA. A prioridade continua na tela, agora como o que
+// ela sempre foi de verdade — a orientação de para quando marcar.
 //
 // ── R126/U93: UM FORMULÁRIO, DOIS LUGARES ──────────────────────────────────
 // Até a U93 este corpo vivia dentro da rota `/chamados/novo-campo`. O "+" da
@@ -245,8 +248,14 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
     [equipeEscolhida, data, blocosDaSemana, deslocamentoMin],
   );
 
+  // R284 (U147): o número da `chamado_sla` continua valendo como RÉGUA —
+  // urgente 4h, alta 24h, normal 72h —, e o que ele deixou de ser é uma
+  // promessa que o banco gravava sozinho. Aqui ele vira a SUGESTÃO de para
+  // quando marcar: "urgente costuma ir em 4h — sugerido 15/09 às 10:00".
+  // Sugestão que a pessoa lê e decide é diferente de prazo que nasce calado e
+  // pinta card de vermelho sem ninguém ter prometido nada.
   const horasPrazo = sla[prioridade] ?? null;
-  const prazoPrevisto = useMemo(() => {
+  const sugestaoDeData = useMemo(() => {
     if (horasPrazo == null) return null;
     const d = new Date();
     d.setHours(d.getHours() + horasPrazo);
@@ -558,10 +567,10 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
           </div>
           <div style={{ ...NOTA, marginTop: 8 }}>
             {tipo === "implantacao"
-              ? "Implantação não tem SLA por prioridade: o prazo é o fim previsto do período da obra (R120)."
+              ? "Implantação não tem prazo por prioridade: o prazo é o fim previsto do período da obra (R120)."
               : horasPrazo == null
-                ? "Sem prazo definido — agendável livremente."
-                : `Prazo de atendimento: ${horasPrazo}h · vence ${prazoPrevisto?.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`}
+                ? "Sem referência de tempo para esta prioridade — marque a data abaixo."
+                : `${horasPrazo}h é a referência desta prioridade — sugere marcar até ${sugestaoDeData?.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}. Quem marca a data é você.`}
           </div>
         </div>
       </div>

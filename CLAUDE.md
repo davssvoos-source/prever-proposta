@@ -131,6 +131,14 @@ trabalho da I.A." O que se repetia em toda entrega virou ferramenta ou regra:
   ESTADO e em todo `{{VERIFICADOR}}` (deixe o marcador na entrada do diário).
   Antes dele vem a prosa: a entrada `## vX — data (Un) · migration…` no
   `VERSOES.md`, a regra, o diário, o ESTADO §3/§4.
+- **`soCodigo(texto, "js"|"sql")` antes de procurar construção de código.**
+  O verificador tem o ajudante no topo. Quatro asserções em 14/09/2026 leram a
+  PROSA que explica o defeito e concluíram que ele continuava lá — o `setMonth`
+  da P21, o `.limit(2000)` do P32, o `is_gestor()` das migrations e o
+  `chamado_sla` da U147. Em todos, o comentário citava corretamente o que o
+  conserto tinha tirado. O aviso "grep acha comentário" já existia e não
+  bastou: o remédio era uma linha que cada bloco reescrevia à mão, e a que se
+  esquece é a que morde.
 - **Pino descreve ARQUIVO, nunca estado do banco.** "A migration existe / o
   código faz X" fica verde para sempre; "o ESTADO aponta a U tal como
   pendente" fica vermelho no dia em que o Davi roda a migration. A versão tem

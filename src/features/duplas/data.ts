@@ -8,7 +8,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { montarEscala, type Dupla, type Escala, type LinhaDeEscala, type MembroDaEquipe } from "./modelo";
+import { escalaDeMembros, montarEscala, type Dupla, type Escala, type LinhaDeEscala, type MembroDaEquipe } from "./modelo";
+import { referenciaSemanal } from "@/lib/periodos";
 
 // membro_a/membro_b saíram na U77. A constante é escrita à mão porque `*`
 // traria colunas de auditoria que ninguém usa — e porque nomear as colunas é o
@@ -133,9 +134,71 @@ export function useDuplas() {
  * decididas — sem ela não dá para distinguir "ainda não decidimos" (herda) de
  * "esta equipe não sai nesta semana" (vazia de propósito).
  */
+/**
+ * A JANELA que a escala materializa: 20 semanas atrás e 4 à frente.
+ *
+ * Atrás, porque o gráfico do Painel Operacional desenha OITO semanas e a
+ * grade da programação anda para trás — 20 cobre as duas com folga. À
+ * frente, porque agendar para o mês que vem é rotina, e uma semana futura
+ * fora da janela devolveria equipe VAZIA, que a tela leria como "ninguém está
+ * escalado" em vez de "eu não perguntei".
+ */
+const SEMANAS_ATRAS = 20;
+const SEMANAS_A_FRENTE = 4;
+
+/**
+ * A escala por SEMANA — materializada da composição por instante (R285/U142).
+ *
+ * Até a U142 esta consulta lia `duplas_escala`, que era a verdade. Depois dela
+ * a verdade é `equipe_membros`, e `duplas_escala` virou ARQUIVO: ninguém mais
+ * escreve lá. Quem continuasse lendo o arquivo receberia a composição
+ * congelada na última semana gravada — **sem nenhum sinal de que está lendo o
+ * passado**, porque a consulta responde normalmente. Era o caso de sete telas,
+ * inclusive o formulário que PROPÕE o responsável de um chamado novo.
+ *
+ * A forma continua a mesma, então nenhuma das sete mudou uma linha. O que
+ * mudou é a fonte.
+ */
 export function useEscala() {
   return useQuery({
     queryKey: ["duplas-escala"],
+    queryFn: async (): Promise<Escala> => {
+      const { data, error } = await supabase
+        .from("equipe_membros" as any)
+        .select("equipe_id, pessoa_id, papel, entrou_em, saiu_em");
+      if (error) throw error;
+      const membros: MembroDaEquipe[] = ((data as any[]) ?? []).map((m) => ({
+        equipeId: m.equipe_id as string,
+        pessoaId: m.pessoa_id as string,
+        papel: (m.papel === "lider" ? "lider" : "ajudante") as MembroDaEquipe["papel"],
+        entrouEm: m.entrou_em as string,
+        saiuEm: (m.saiu_em ?? null) as string | null,
+      }));
+      // a janela em chaves de semana, da mais antiga para a mais nova
+      const semanas: string[] = [];
+      for (let i = -SEMANAS_ATRAS; i <= SEMANAS_A_FRENTE; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i * 7);
+        semanas.push(referenciaSemanal(d));
+      }
+      return escalaDeMembros(membros, [...new Set(semanas)]);
+    },
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * O ARQUIVO: a escala como ela foi gravada até a U142, por semana ISO.
+ *
+ * Existe para o dia em que alguém precisar comparar o que o sistema DIZIA com
+ * o que ele diz agora — a conversão da U142 é reversível justamente porque
+ * esta tabela ficou de pé. Nenhuma tela a consome, e é por isso que ela não
+ * entra em `useEscala`: lê-la para desenhar seria ler o passado achando que é
+ * o presente.
+ */
+export function useEscalaArquivada() {
+  return useQuery({
+    queryKey: ["duplas-escala-arquivo"],
     queryFn: async (): Promise<Escala> => {
       const [semanas, linhas] = await Promise.all([
         supabase.from("duplas_escala_semanas" as any).select("semana"),
@@ -148,7 +211,8 @@ export function useEscala() {
         (linhas.data as any[] as LinhaDeEscala[]) ?? [],
       );
     },
-    staleTime: 60_000,
+    enabled: false,
+    staleTime: Infinity,
   });
 }
 

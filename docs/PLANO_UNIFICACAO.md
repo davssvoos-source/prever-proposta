@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 168 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 171 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -171,6 +171,9 @@
 - [U144 — criar atividade deixa de ser a mesma chave de abrir chamado (R294)](#u144-criar-atividade-deixa-de-ser-a-mesma-chave-de-abrir-chamado-r294)
 - [U145 — a tela das equipes perde o eixo da semana (R285)](#u145-a-tela-das-equipes-perde-o-eixo-da-semana-r285)
 - [U146 — o técnico de campo fica com três tipos, e a vistoria muda de lado (R283)](#u146-o-técnico-de-campo-fica-com-três-tipos-e-a-vistoria-muda-de-lado-r283)
+- [U147 — o campo perde o prazo automático (R284), e a escala por semana vira uma vista](#u147-o-campo-perde-o-prazo-automático-r284-e-a-escala-por-semana-vira-uma-vista)
+- [A ponta solta da R285, achada por acaso](#a-ponta-solta-da-r285-achada-por-acaso)
+- [A quarta vez do mesmo erro, e a ferramenta que faltava](#a-quarta-vez-do-mesmo-erro-e-a-ferramenta-que-faltava)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -13797,3 +13800,88 @@ Sem o terceiro, o modelo continuaria mandando para a equipe de campo uma
 atividade que agora é do gestor.
 
 **Números.** Verificador: **3.463 asserções, 0 falharam**. `tsc`: 0. Sem migration.
+
+## U147 — o campo perde o prazo automático (R284), e a escala por semana vira uma vista
+
+**O pedido.** Davi, 14/09/2026: *"Não precisa ter o campo de prazo, podemos
+trabalhar somente com Data agendada com o sistema de contar a quantidade de
+vezes em que foi remarcada"* — e, sobre o SLA automático: *"o gestor ou SAC vai
+agendar a atividade de acordo com a prioridade. Se a prioridade for baixa, alta
+ou urgente ele vai adaptar a data agendada de acordo com isso."*
+
+**O que saiu.** Dois ramos do gatilho `chamado_preencher()`: o prazo que nascia
+do SLA por prioridade no INSERT, e o "escalar prioridade aperta o prazo" no
+UPDATE. Os dois produziam **um número que ninguém usava para decidir**. Quem
+diz quando a equipe vai é gente; a prioridade orienta essa escolha. O número
+sozinho pintava card de vermelho e entrava em contador de "atrasados" sem
+corresponder a promessa alguma feita ao cliente.
+
+**O que ficou, e é decisão.** O prazo da IMPLANTAÇÃO fica. Ele não vem do SLA:
+é o ESPELHO de `implantacao_fim`, uma data que uma pessoa escolheu ao planejar
+a obra (R89/U89). A R284 derruba "o número que o sistema calcula sozinho", não
+"a data que alguém marcou" — e tirar o espelho quebraria o cronograma sem
+ninguém ter pedido. O pré-voo da migration **aborta** se o corpo vivo da função
+não for o da U89, porque substituir uma versão que eu não li levaria o espelho
+junto, calado.
+
+**O que a migration NÃO faz, e foi medido antes de decidir.** Ela não limpa os
+prazos que já existem. Os 5 chamados de campo da base têm prazo e **nenhum tem
+data agendada** — o prazo é a única data que eles têm, e é por ela que aparecem
+no calendário. Apagá-lo os faria sumir da tela de quem trabalha com eles hoje.
+O que já foi prometido fica registrado; o que nasce daqui em diante não inventa
+promessa.
+
+**A consequência visível, declarada:** um chamado de campo criado SEM agendar
+passa a não ter data nenhuma. Ele some do calendário e vive na coluna "não
+agendado" do quadro, que é onde a R76 já dizia que ele deveria estar.
+**Agendar passa a fazer parte de abrir.** Na tela, a régua do SLA continua
+existindo — mudou de PROMESSA para SUGESTÃO: *"4h é a referência desta
+prioridade — sugere marcar até 15/09 às 10:00. Quem marca a data é você."*
+
+## A ponta solta da R285, achada por acaso
+
+Fui ler o formulário de abertura para mexer na frase do prazo e vi que ele
+chama `useEscala()`. **Sete telas** ainda liam `duplas_escala` — a tabela que a
+U142 aposentou. Elas recebiam a composição congelada na última semana gravada,
+**sem nenhum sinal de que estavam lendo o passado**, porque a consulta responde
+normalmente. Entre elas: o formulário que PROPÕE o responsável de um chamado
+novo, a grade da programação e o gráfico de oito semanas do Painel Operacional.
+
+A saída não foi reescrever as sete. `Escala` é uma **forma** — "quem estava em
+cada equipe, semana a semana" —, e a pergunta continua boa: é exatamente o que
+o gráfico e a grade precisam. O que mudou é de ONDE a resposta vem:
+`useEscala()` passa a MATERIALIZAR a forma a partir de `equipe_membros`.
+Nenhuma das sete mudou uma linha.
+
+A âncora de cada semana é **quarta ao meio-dia**, e não segunda 00:00: uma
+troca feita na segunda de manhã deve valer para aquela semana, e ancorar na
+virada a perderia por horas — justamente na segunda, que é quando a equipe é
+montada. A janela é 20 semanas atrás e 4 à frente, e as duas pontas têm
+motivo escrito: atrás porque o gráfico olha oito; à frente porque agendar para
+o mês que vem é rotina, e semana futura fora da janela devolveria equipe VAZIA
+— que a tela leria como "ninguém escalado" em vez de "eu não perguntei".
+
+`duplas_escala` ficou como arquivo, com um hook próprio (`useEscalaArquivada`,
+`enabled: false`) que existe para o dia em que alguém precisar comparar o que o
+sistema DIZIA com o que ele diz agora. Nenhuma tela o consome, e é por isso que
+ele não entra no `useEscala`: ler o arquivo para desenhar seria ler o passado
+achando que é o presente.
+
+**Conferido no navegador:** o gráfico de oito semanas do Painel Operacional e a
+grade da programação continuam desenhando as três equipes — agora de dado vivo.
+
+## A quarta vez do mesmo erro, e a ferramenta que faltava
+
+Quatro asserções minhas HOJE leram o próprio comentário e acusaram o conserto
+de ser o defeito: o `setMonth` da P21, o `.limit(2000)` do P32, o `is_gestor()`
+das migrations e o `chamado_sla` desta U147. Em todos os quatro o comentário
+citava, **corretamente**, aquilo que o conserto tinha tirado.
+
+O CLAUDE.md já avisava ("grep acha comentário, filtre linhas que começam com
+`//`"), e o aviso não bastou — porque o remédio era uma linha que cada bloco
+reescrevia à mão, e a que se esquece é a que morde. Virou ferramenta:
+`soCodigo(texto, "js"|"sql")` no topo do verificador, com o dialeto de
+comentário certo, e os quatro lugares de hoje passaram a chamá-la.
+
+**Números.** Verificador: **3.474 asserções, 0 falharam**. `tsc`: 0. Migration **U147
+PENDENTE**.
