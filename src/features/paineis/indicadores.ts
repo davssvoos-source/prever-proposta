@@ -436,6 +436,82 @@ export interface ColunaDoQuadro<T> {
 }
 
 /**
+ * O RETORNO (R286, 14/09/2026).
+ *
+ * Davi: "O retorno deve manter a mesma atividade e adicionar uma etiqueta de
+ * Retornado 2x ou algo do tipo… Assim mapeamos quantas vezes foram ao local
+ * tentar solucionar, quem foi, quando foi, e o que cada um tentou."
+ *
+ * O número vem de `chamados.retornos`, que a U150 mantém como ESPELHO de
+ * `agenda_campo` — uma linha por ida, e só conta a ida que aconteceu e não
+ * resolveu. Aqui mora só a leitura: que etiqueta mostrar, e quem entra na
+ * fila de retornos pendentes.
+ */
+
+/**
+ * "Retornado 2x" — ou nada.
+ *
+ * ZERO NÃO VIRA ETIQUETA. "Retornado 0x" num card é ruído que ocupa a linha
+ * mais cara do quadro para dizer que nada aconteceu; a ausência da etiqueta já
+ * diz isso. É a mesma régua da R153.
+ */
+export function etiquetaDeRetorno(retornos: number | null | undefined): string | null {
+  const n = retornos ?? 0;
+  if (n <= 0) return null;
+  return `Retornado ${n}x`;
+}
+
+/**
+ * A FILA DE RETORNOS PENDENTES (R286).
+ *
+ * Davi: "deverá ter um campo de 'Retornos Pendentes' onde toda atividade com
+ * retorno pendente aparece ai."
+ *
+ * "PENDENTE" É O QUE ESPERA UMA DECISÃO DELE, não o retorno que já está
+ * marcado. A equipe foi, não resolveu, e ninguém remarcou — essa é a pilha que
+ * some do radar: o chamado continua aberto, não tem dia, e não aparece em
+ * nenhuma coluna de "hoje". O retorno JÁ agendado não entra: ele tem data e
+ * vive no quadro como qualquer agendado.
+ *
+ * Repare que isto NÃO precisa de coluna nova no banco. Três coisas que a tela
+ * já carrega bastam — e um terceiro espelho seria mais uma coisa para
+ * divergir.
+ */
+export function retornoPendente(
+  c: { status?: string | null; retornos?: number | null; data_hora_agendada?: string | null; data_agendada?: string | null },
+  agora: Date = new Date(),
+): boolean {
+  if ((c.retornos ?? 0) <= 0) return false;
+  if (c.status === "concluido" || c.status === "cancelado") return false;
+  const marcado = c.data_hora_agendada ?? (c.data_agendada ? `${c.data_agendada}T23:59:59` : null);
+  // sem data: pendente, é a pilha a remarcar.
+  if (!marcado) return true;
+  // COM data no FUTURO não é pendente — já foi remarcado. A data seca conta
+  // até o FIM do dia: um retorno marcado para hoje ainda pode acontecer hoje,
+  // e cobrá-lo de manhã como "pendente" seria a tela apressando quem trabalha.
+  return new Date(marcado).getTime() <= agora.getTime();
+}
+
+/** A fila inteira, na ordem em que o gestor a resolve: mais idas primeiro. */
+export function filaDeRetornos<T extends {
+  status?: string | null; retornos?: number | null;
+  data_hora_agendada?: string | null; data_agendada?: string | null;
+}>(chamados: T[], agora: Date = new Date()): T[] {
+  return chamados
+    .filter((c) => retornoPendente(c, agora))
+    // MAIS IDAS PRIMEIRO, e não o mais antigo primeiro: o problema crônico é
+    // o que estraga cliente, e é o que a R286 existe para fazer PARECER
+    // crônico. Empate no número: quem está esperando há mais tempo.
+    .sort((a, b) => {
+      const d = (b.retornos ?? 0) - (a.retornos ?? 0);
+      if (d !== 0) return d;
+      const qa = a.data_hora_agendada ?? a.data_agendada ?? "";
+      const qb = b.data_hora_agendada ?? b.data_agendada ?? "";
+      return qa.localeCompare(qb);
+    });
+}
+
+/**
  * A ORDEM DA LISTA DO PAINEL OPERACIONAL (R296, 14/09/2026).
  *
  * Davi: "os filtros e botão de ordem deverão ser igual ao do INICIO, onde é

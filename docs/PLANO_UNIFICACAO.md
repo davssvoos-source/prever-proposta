@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 173 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 174 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -176,6 +176,7 @@
 - [A quarta vez do mesmo erro, e a ferramenta que faltava](#a-quarta-vez-do-mesmo-erro-e-a-ferramenta-que-faltava)
 - [U148 — o quadro do Painel Operacional ganha eixo, e o card ganha o que o Davi listou (R295)](#u148-o-quadro-do-painel-operacional-ganha-eixo-e-o-card-ganha-o-que-o-davi-listou-r295)
 - [U149 — a barra do Operacional vira a barra da Início, e a lista ganha ordem (R296)](#u149-a-barra-do-operacional-vira-a-barra-da-início-e-a-lista-ganha-ordem-r296)
+- [U150 — o retorno é a mesma atividade (R286)](#u150-o-retorno-é-a-mesma-atividade-r286)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -14100,3 +14101,104 @@ inteira foi para o Davi como mockup antes do código, que é o método desta cas
 
 **Números.** Verificador: **3.491 asserções, 0 falharam**. `tsc`: 0. `vite
 build` completa. Sem migration nova.
+
+## U150 — o retorno é a mesma atividade (R286)
+
+**O Davi pediu a DECISÃO, não a implementação.** *"O retorno deve manter a
+mesma atividade e adicionar uma etiqueta de Retornado 2x ou algo do tipo…
+Assim mapeamos quantas vezes foram ao local tentar solucionar, quem foi,
+quando foi, e o que cada um tentou… Ou talvez seja melhor criar um chamado
+novo..? Eu quero que você analise isso e tome a decisão de maneira
+estratégica a partir do que disse acima."*
+
+A decisão e as três razões estão na R286. O que este diário registra é a
+consequência técnica dela — e ela é a melhor prova de que a decisão estava
+certa: **quase nada precisou nascer.**
+
+### Por que a migration é pequena
+
+`agenda_campo` já é **uma linha por IDA** desde a U78, e a U81 já congela o
+apoio de cada ida para preservar quem esteve no prédio. "Quem foi, quando
+foi" já estava guardado. O que ninguém registrava era **se a ida resolveu** —
+e essa é a única coisa que o gestor precisa saber para decidir se manda
+alguém de volta.
+
+Então a U150 acrescenta duas colunas (`resultado`, `resultado_nota`), um
+contador espelho (`chamados.retornos`), um gatilho e uma porta. Nenhuma tabela
+nova. Um chamado novo por retorno teria duplicado o mecanismo da agenda E
+perdido o fio entre as idas — as duas coisas de uma vez.
+
+### O contador é espelho, e espelho se reconta
+
+O card diz "Retornado 2x" e o card não faz junção: lê uma linha de `chamados`.
+Então `retornos` é coluna, como `reagendamentos` (R225). A diferença que
+importa: **a coluna nunca é somada**. O gatilho RECONTA da agenda a cada
+mudança, então ela é cache de uma conta — não uma segunda verdade que possa
+divergir em silêncio.
+
+**Ida cancelada não conta.** Ninguém foi ao prédio. Um "Retornado 3x" que
+inclui uma visita que não aconteceu é exatamente o número que faz o gestor
+parar de acreditar na etiqueta — e uma etiqueta em que ninguém acredita é pior
+que nenhuma.
+
+### O defeito que eu escrevi e o portão pegou
+
+O gatilho começou assim:
+
+```sql
+PERFORM public.recontar_retornos(COALESCE(NEW.chamado_id, OLD.chamado_id));
+```
+
+Parece defensivo. **É uma bomba no ramo de DELETE**: em plpgsql, `NEW` num
+DELETE não é nulo — é um record NÃO ATRIBUÍDO, e lê-lo levanta *"record new is
+not assigned yet"*. O `COALESCE` estoura **antes** de chegar ao segundo braço.
+
+O efeito seria invisível por meses: ninguém apaga bloco de agenda todo dia. No
+dia em que alguém apagasse, a operação inteira falharia com uma mensagem de
+plpgsql que não diz nada a quem está na tela. O ramo virou explícito, e o
+**portão apaga um bloco de propósito** para provar que ele funciona.
+
+### Os dois censos me acusaram, e estavam certos
+
+Escrevi `chamado_registrar_retorno` carimbando `cumprido_em` com um UPDATE
+próprio. Duas asserções ficaram vermelhas de uma vez:
+
+- o **censo da linha do tempo** ("um sexto escritor acusa sozinho");
+- o **censo de `agenda_campo`** ("uma sétima acusa sozinha"), que guarda a
+  doutrina de PORTA ÚNICA da U78.
+
+O primeiro é admissão deliberada: a linha do tempo é onde *"o que cada um
+tentou"* se lê, e carimbar a ida e escrever o evento têm de ser **um ato** —
+em dois, a tela que falhar no meio deixa um retorno contado sem ninguém saber
+o que se tentou, que é justamente a informação que o Davi pediu para guardar.
+
+O segundo era **defeito meu**. `cumprido_em` é coluna da U78, e a porta dela
+carrega três regras que eu estava copiando sem perceber: permissão por chamado,
+braço de gestor para bloco sem chamado, e a recusa de dar baixa em bloco
+desmarcado. A função passou a **delegar**: `PERFORM agenda_campo_cumprir(...)`
+para o carimbo, e UPDATE próprio só nas duas colunas que a U78 não conhecia.
+Uma asserção nova trava a delegação — e o censo registra o recorte por escrito,
+porque censo que se atualiza sozinho deixa de proteger.
+
+### O que NÃO entrou nesta migration, de propósito
+
+1. **Não marca `resultado = 'resolvido'` ao concluir.** Exigiria mexer em
+   `concluir_chamado_com_cobranca`, a porta mais delicada do sistema (trava de
+   duplicata, cobrança, faturamento) — e o contador não precisa: ele conta
+   'retorno', não a ausência dele. `resultado IS NULL` quer dizer "ninguém
+   disse", e é honesto.
+2. **Não cria coluna "retorno pendente".** Seria um terceiro espelho, e a
+   pergunta é respondível com o que existe: `retornos > 0`, chamado em aberto,
+   e sem data futura. Mora em lógica pura (`retornoPendente`), onde dá para
+   exercitar sem banco — e onde as duas decisões finas foram travadas: a data
+   **seca** vale até o FIM do dia (um retorno marcado para hoje ainda pode
+   acontecer hoje, e cobrá-lo às 10h seria a tela apressando quem trabalha), e a
+   fila vem com **mais idas primeiro**, porque o problema crônico é o que
+   estraga cliente.
+3. **A faixa "Retornos pendentes" e o botão "Retorno" no card ficam para
+   depois de o Davi rodar a U150.** Botão que chama coluna inexistente não é
+   "quase pronto": é botão quebrado. O que subiu agora é a lógica pura e a
+   migration; a tela vem junto com a confirmação de que ela rodou.
+
+**Números.** Verificador: **3.504 asserções, 0 falharam**. `tsc`: 0. Migration
+**U150 PENDENTE**.

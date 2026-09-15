@@ -5337,7 +5337,8 @@ adaptado."
 > | **R283** | entregue (U146) |
 > | **R284** | código pronto; falta rodar a migration **U147** |
 > | **R285** | entregue (U142 no banco, U145 na tela) |
-> | **R286**–**R289** | ditadas |
+> | **R286** | banco pronto; falta rodar a migration **U150** — a faixa e o botão vêm depois dela |
+> | **R287**–**R289** | ditadas |
 > | **R290** | confirma o código — nada mudou, e a regra amarrou os três lugares |
 > | **R291**–**R293** | ditadas |
 > | **R294** | entregue (U144) |
@@ -5440,6 +5441,30 @@ adaptado."
   contrário — um chamado com seis retornos suja a fila — é justamente a razão
   de ele ficar: um problema crônico tem de PARECER crônico, e escondido atrás
   de chamados novos ele pareceria seis problemas resolvidos.
+
+  **COMO FICOU NO BANCO (U150).** A decisão é pequena no schema justamente
+  porque o sistema já tinha a forma: `agenda_campo` é uma linha por IDA desde
+  a U78. O que faltava era **como a ida terminou** — `resultado`
+  (`resolvido` | `retorno`) e `resultado_nota` ("o que cada um tentou"). O
+  número da etiqueta mora em `chamados.retornos`, **espelho recontado por
+  gatilho** a partir da agenda, nunca somado à mão: o card diz "Retornado Nx"
+  sem fazer junção, e o espelho não tem como divergir.
+
+  **Ida CANCELADA não conta.** Ninguém foi ao prédio — e um "Retornado 3x"
+  que inclui uma visita que não aconteceu é exatamente o número que faz o
+  gestor perder a confiança na etiqueta.
+
+  **"Retorno pendente" é o que espera decisão do gestor**, e não tudo o que
+  já retornou alguma vez: foi, não resolveu, e **ninguém remarcou**. O
+  retorno já agendado para o futuro não entra — ele tem data e vive no quadro
+  como qualquer agendado. Isso não precisou de coluna nenhuma: sai de
+  `retornos`, do status e da data que a tela já carrega, em lógica pura
+  (`retornoPendente`). A fila vem com **mais idas primeiro**, porque o
+  problema crônico é o que estraga cliente.
+
+  **"Retornado 0x" não existe.** Zero não vira etiqueta: a ausência já diz
+  isso, e a linha do card é cara demais para anunciar que nada aconteceu (a
+  régua da R153).
 
 - **R287** — **A duração estimada é inserida ao ABRIR o chamado.** Quem abre
   diz quanto tempo aquilo deve levar, e é esse número que a agenda do técnico

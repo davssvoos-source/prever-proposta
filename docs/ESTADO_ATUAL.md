@@ -9,13 +9,15 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-15** · última regra: **R296** · último diário:
-**U149** · verificador: **3.491 asserções, 0 falharam** · `tsc`: **0** (o
+**U150** · verificador: **3.504 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
-Banco — **Pendente: U147**
-(`20261007090000_u147_o_campo_nao_tem_prazo.sql` — tira o prazo automático do
-chamado de campo, R284). Rodadas em 13/09/2026, nesta ordem:
-U131, U132 e U134. Em 14/09/2026: U136, U137, U139, **U142**, **U143** e
+Banco — **Pendente: U150**
+(`20261008090000_u150_o_retorno_e_a_mesma_atividade.sql` — o retorno como ida
+nova na MESMA atividade, R286; a faixa "Retornos pendentes" e o botão
+"Retorno" no card só sobem depois dela). Rodadas em 13/09/2026, nesta ordem:
+U131, U132 e U134. Em 14/09/2026: U136, U137, U139, **U142**, **U143**,
+**U147** e
 **U144**.
 
 **Servidor: v0.0.7** (192.168.10.182). O pacote gerado é a **v0.0.12**
@@ -45,6 +47,7 @@ Ler isto antes de prometer qualquer coisa a alguém.
 | R294 | operacional cria atividade, não executa chamado de campo | **no ar** (U144) |
 | R295 | o quadro do Painel Operacional por estado/status/equipe/dia, e o card com a data que o estado pede | **no ar** (U148) — faltam os três botões do card |
 | R296 | a barra do Operacional na régua da Início: indicadores recolhíveis, poucos controles, e ordem na lista | **no ar** (U149) |
+| R286 | o retorno é a MESMA atividade, com "Retornado Nx" na etiqueta | banco e lógica prontos (U150) — **falta rodar a migration**; a faixa e o botão vêm depois dela |
 
 Fim de entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
@@ -161,6 +164,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U145 | **a tela das equipes perde o eixo da semana** (R285). Saíram o seletor, a herança e o modo "Escalar"; entraram dois gestos diretos e o líder. Medir a tela achou um **técnico desativado (Denner) ocupando vaga** — a tela resolvia nome pela mesma lista que usa para oferecer, e quem saiu da empresa não resolve por lá. Sem migration |
 | U146 | **o técnico de campo fica com três tipos** (R283). `operacional` saiu do campo (era oferecida e nunca virava demanda de dupla) e `vistoria` mudou de natureza — virou atividade INTERNA do gestor, que é onde a validação dele é registrada (R156). Medido antes: zero chamados de campo com esses tipos, logo sem migration |
 | U147 | **o campo perde o prazo automático** (R284) e a escala por semana vira uma VISTA. Os dois ramos do SLA saíram do gatilho; o prazo da obra fica, porque é espelho de uma data que alguém marcou. E a ponta solta da R285: **sete telas** ainda liam `duplas_escala`, congelada desde a U142 — `useEscala()` passou a materializar a forma a partir de `equipe_membros`, e nenhuma das sete mudou uma linha. Migration **U147 (rodada em 14/09)** |
+| U150 | **o retorno é a MESMA atividade** (R286) — a decisão que o Davi me pediu para tomar. Quase nada precisou nascer: `agenda_campo` já é uma linha por IDA desde a U78, e faltava só COMO a ida terminou. O contador é espelho recontado por gatilho, e ida cancelada não conta. Dois defeitos meus achados antes de rodar: `COALESCE(NEW.x, OLD.x)` estoura no ramo de DELETE (`NEW` é record não atribuído, não nulo), e os dois CENSOS acusaram a função por carimbar `cumprido_em` fora das portas da U78 — ela passou a delegar. Migration **U150 (pendente)** |
 | U149 | **a barra do Operacional vira a barra da Início** (R296). A régua saiu MEDIDA na tela ao lado — pílula 40/raio 11, botão quadrado 42/raio 12 —, e o Operacional tinha 28px ao lado de pílulas de ~26: dois pisos na mesma linha, que é o que o Davi descreveu. Os quatro botões de eixo viraram UMA pílula com menu e o alternador virou UM botão com o destino. Nasceu a ORDEM da lista (`ordenarCampo`), que a tela nunca teve — e que a R284 tornou urgente, porque `ordenarChamados` pesa por prazo e o campo não tem mais prazo. Sem migration |
 | U148 | **o quadro do Painel Operacional ganha eixo** (R295): estado (o padrão da R76), status, equipe e dia da semana, com a conta em `colunasDoQuadro` — lógica pura, a tela só pinta. O card passou a dizer tipo de demanda, equipe e a data que o ESTADO pede, com RÓTULO ("Agendado"/"Começou"/"Feito"), porque "14/09 08:00" sozinho não distingue "vai começar" de "começou". **Medindo no navegador**: a mesma fila contava 1 card num eixo e 3 no outro — só o eixo de estado excluía cancelado. Passou a ser regra única, travada por asserção de TOTAL, não de coluna. Sem migration |
 
@@ -170,6 +174,16 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
+- **U150** (`20261008090000_u150_o_retorno_e_a_mesma_atividade.sql`,
+  **PENDENTE**) — o RETORNO (R286). `agenda_campo` ganha `resultado`
+  (`resolvido` | `retorno`) e `resultado_nota`; `chamados.retornos` nasce como
+  ESPELHO recontado por gatilho — nunca somado à mão —, e a porta
+  `chamado_registrar_retorno(uuid, text)` carimba a ida **pela porta da U78**
+  e escreve na linha do tempo no MESMO ato. Ida cancelada não conta. Nenhuma
+  tabela nova: `agenda_campo` já é uma linha por IDA desde a U78, e o que
+  faltava era só como a ida terminou. **A faixa "Retornos pendentes" e o botão
+  "Retorno" no card só sobem depois que esta rodar** — botão que chama coluna
+  inexistente é botão quebrado.
 - **U147** (`20261007090000_u147_o_campo_nao_tem_prazo.sql`, rodada em
   14/09/2026) — tira do gatilho `chamado_preencher()` os dois ramos que davam prazo de SLA
   ao chamado de campo (R284). O prazo da IMPLANTAÇÃO fica: é o espelho de

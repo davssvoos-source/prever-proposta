@@ -9694,10 +9694,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // U99 (R171): decidir_pedido_compra saiu da lista — a U99 a derruba (DROP
   // FUNCTION IF EXISTS), e o censo, que desconta os DROPs, deixou de vê-la.
-  eq('CRÍTICO: CENSO — as funções VIVAS que escrevem na linha do tempo são EXATAMENTE estas cinco (derivado do repo × lista à mão; um sexto escritor acusa sozinho)',
+  eq('CRÍTICO: CENSO — as funções VIVAS que escrevem na linha do tempo são EXATAMENTE estas seis (derivado do repo × lista à mão; um sétimo escritor acusa sozinho)',
      escritores,
      ['aprovar_chamado_financeiro',    // S4 — 'Cobrança aprovada: N item(ns).'
       'chamado_registrar_evento',      // u7:353 — aberto / status / atribuído / sprint
+      // U150 (R286) — o RETORNO. Ele entra na lista porque a linha do tempo é
+      // onde "o que cada um tentou" se lê: Davi pediu para guardar "quem foi,
+      // quando foi, e o que cada um tentou", e o bloco da agenda é magro de
+      // propósito (R99). Carimbar a ida e escrever o evento são UM ato: em
+      // dois, a tela que falhar no meio deixa um retorno contado sem ninguém
+      // saber o que se tentou.
+      'chamado_registrar_retorno',
       // U82 — 'Encerramento: N atendimento(s) … foram desmarcados.' Um gatilho
       // que resolve doze blocos em silêncio é a U78 de novo com outra roupa: o
       // evento é o que faz o ato do soltador ser LEGÍVEL no app.
@@ -10751,14 +10758,35 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     }
     return vivo;
   };
-  const escrevemAgenda82 = [...corposVivos82().entries()]
+  // guardado numa constante porque a asserção da U150, logo abaixo, precisa do
+  // CORPO de `chamado_registrar_retorno` — e recalcular os corpos vivos duas
+  // vezes é varrer as migrations inteiras de novo por nada.
+  const vivasA82 = corposVivos82();
+  const escrevemAgenda82 = [...vivasA82.entries()]
     .filter(([, c]) => /(UPDATE|INSERT INTO|DELETE FROM) public\.agenda_campo\b/
       .test(c.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n')))
     .map(([n]) => n).sort();
-  eq('CRÍTICO: CENSO — as funções VIVAS que escrevem em public.agenda_campo são exatamente estas seis: as QUATRO portas da U78, a QUINTA da U82 (a que afirma) e o SOLTADOR (a que só desmarca). Uma sétima acusa sozinha',
+  // U150 (R286): a SÉTIMA entrou, e o censo a acusou antes de o Davi rodar
+  // a migration — que é o trabalho dele. Ela é admitida com um recorte
+  // estreito e declarado: `chamado_registrar_retorno` escreve APENAS as duas
+  // colunas que a U78 não conhecia (`resultado`, `resultado_nota`) e DELEGA o
+  // carimbo de `cumprido_em` à porta da U78 (`agenda_campo_cumprir`). Sem essa
+  // delegação ela teria de copiar três regras — permissão por chamado, braço de
+  // gestor para bloco sem chamado, recusa de baixa em bloco desmarcado —, e
+  // copiar regra é como duas versões começam a discordar.
+  eq('CRÍTICO: CENSO — as funções VIVAS que escrevem em public.agenda_campo são exatamente estas sete: as QUATRO portas da U78, a QUINTA da U82 (a que afirma), o SOLTADOR (a que só desmarca) e o RETORNO da U150 (que só escreve as duas colunas novas e delega o carimbo). Uma oitava acusa sozinha',
      escrevemAgenda82,
      ['agenda_campo_afirmar', 'agenda_campo_cancelar', 'agenda_campo_cumprir',
-      'agenda_campo_marcar', 'chamado_solta_agenda', 'desagendar_chamado']);
+      'agenda_campo_marcar', 'chamado_registrar_retorno', 'chamado_solta_agenda',
+      'desagendar_chamado']);
+
+  eq('U150 CRÍTICO: a porta do retorno DELEGA o carimbo a `agenda_campo_cumprir` em vez de escrever `cumprido_em` — é o que a mantém de fora da doutrina de porta única da U78, e o que impede a cópia das três regras dela',
+     (() => {
+       const corpo = (vivasA82 || new Map()).get('chamado_registrar_retorno') || '';
+       return [/PERFORM public\.agenda_campo_cumprir\(v_bloco, true\);/.test(corpo),
+               /SET cumprido_em/.test(corpo)];
+     })(),
+     [true, false]);
 
   // ── 9) O LAÇO DA PORTA — `[^;]` para o regex não atravessar o `;` ────────
   // A regra 2, quinta variação: `[\s\S]{0,N}` atravessa o ponto e vírgula e
@@ -22489,6 +22517,106 @@ assincronas.push(async () => {
        return [comVelho, comZero];
      })(),
      [[], 4]);
+}
+
+// ── R286 / U150 — O RETORNO É A MESMA ATIVIDADE (14/09/2026) ──────────────
+//
+// Davi pediu a DECISÃO, não a implementação: "Ou talvez seja melhor criar um
+// chamado novo..? Eu quero que você analise isso e tome a decisão de maneira
+// estratégica." A decisão e as três razões estão na R286.
+{
+  const IR = carregar('src/features/paineis/indicadores.ts');
+  const fsr = require('fs');
+  const u150 = fsr.readFileSync('supabase/migrations/20261008090000_u150_o_retorno_e_a_mesma_atividade.sql', 'utf8');
+  const u150sql = soCodigo(u150, "sql");
+
+  eq('R286: zero não vira etiqueta — "Retornado 0x" num card gasta a linha mais cara do quadro para dizer que nada aconteceu (a régua da R153)',
+     [IR.etiquetaDeRetorno(0), IR.etiquetaDeRetorno(null), IR.etiquetaDeRetorno(undefined),
+      IR.etiquetaDeRetorno(1), IR.etiquetaDeRetorno(3)],
+     [null, null, null, 'Retornado 1x', 'Retornado 3x']);
+
+  // A fila é a que espera DECISÃO do Vinicius, não a lista de tudo que já
+  // retornou alguma vez.
+  eq('R286 CRÍTICO: "retorno pendente" é o que espera decisão do gestor — foi, não resolveu, e NINGUÉM remarcou. O retorno já agendado para o futuro NÃO entra: ele tem data e vive no quadro como qualquer agendado',
+     (() => {
+       const agora = new Date(2026, 8, 15, 10, 0, 0);
+       const c = (extra) => ({ status: "aberto", retornos: 1, ...extra });
+       return [
+         IR.retornoPendente(c({}), agora),                                                  // sem data → pendente
+         IR.retornoPendente(c({ data_hora_agendada: "2026-09-20T08:00:00" }), agora),        // futuro → não
+         IR.retornoPendente(c({ data_hora_agendada: "2026-09-12T08:00:00" }), agora),        // passado → pendente
+         IR.retornoPendente(c({ retornos: 0 }), agora),                                     // nunca retornou → não
+         IR.retornoPendente(c({ status: "concluido" }), agora),                             // encerrado → não
+         IR.retornoPendente(c({ status: "cancelado" }), agora),                             // encerrado → não
+       ];
+     })(),
+     [true, false, true, false, false, false]);
+
+  eq('R286: a data SECA vale até o FIM do dia — um retorno marcado para hoje ainda pode acontecer hoje, e cobrá-lo às 10h como "pendente" é a tela apressando quem trabalha',
+     [IR.retornoPendente({ status: "aberto", retornos: 1, data_agendada: "2026-09-15" }, new Date(2026, 8, 15, 10, 0, 0)),
+      IR.retornoPendente({ status: "aberto", retornos: 1, data_agendada: "2026-09-14" }, new Date(2026, 8, 15, 10, 0, 0))],
+     [false, true]);
+
+  eq('R286: a fila vem com MAIS IDAS primeiro — o problema crônico é o que estraga cliente, e é o que a regra existe para fazer PARECER crônico. Empate: quem espera há mais tempo',
+     (() => {
+       const agora = new Date(2026, 8, 15, 10, 0, 0);
+       const f = [
+         { id: "uma", status: "aberto", retornos: 1 },
+         { id: "tres", status: "aberto", retornos: 3 },
+         { id: "duasVelha", status: "aberto", retornos: 2, data_hora_agendada: "2026-09-01T08:00:00" },
+         { id: "duasNova", status: "aberto", retornos: 2, data_hora_agendada: "2026-09-10T08:00:00" },
+         { id: "fora", status: "concluido", retornos: 5 },
+       ];
+       return IR.filaDeRetornos(f, agora).map((c) => c.id);
+     })(),
+     ['tres', 'duasVelha', 'duasNova', 'uma']);
+
+  // ── a migration ─────────────────────────────────────────────────────────
+
+  eq('U150: o retorno NÃO cria estrutura nova — `agenda_campo` já é uma linha por IDA desde a U78. O que nasce é como a ida TERMINOU, e o vocabulário é fechado (a terceira grafia de "retorno" faria o contador ignorar idas de verdade, em silêncio)',
+     [/ADD COLUMN IF NOT EXISTS resultado\s+text/.test(u150sql),
+      /ADD COLUMN IF NOT EXISTS resultado_nota text/.test(u150sql),
+      /CHECK \(resultado IS NULL OR resultado IN \('resolvido', 'retorno'\)\)/.test(u150sql),
+      /CREATE TABLE/i.test(u150sql)],
+     [true, true, true, false]);
+
+  eq('U150 CRÍTICO: `resultado` só existe DEPOIS da visita — "não resolveu" numa ida que não aconteceu é frase sem sentido, e seria contada como retorno',
+     /CHECK \(resultado IS NULL OR cumprido_em IS NOT NULL\)/.test(u150sql), true);
+
+  eq('U150 CRÍTICO: o contador é ESPELHO recontado da verdade, nunca somado à mão — e BLOCO CANCELADO NÃO CONTA: ninguém foi ao prédio, e um "Retornado 3x" que inclui visita que não aconteceu é o número que faz o gestor perder a confiança na etiqueta',
+     [/SET retornos = v_n/.test(u150sql),
+      /a\.resultado = 'retorno'\s*\n\s*AND a\.cancelado_em IS NULL/.test(u150sql),
+      /retornos = coalesce\(/.test(u150sql)],
+     [true, true, false]);
+
+  eq('U150 CRÍTICO: no ramo de DELETE o gatilho NÃO lê `NEW` — em plpgsql `NEW` num DELETE é record não atribuído, e `COALESCE(NEW.x, OLD.x)` estoura ANTES de avaliar o segundo braço. O portão apaga um bloco de propósito para provar',
+     [/IF TG_OP = 'DELETE' THEN\s*\n\s*PERFORM public\.recontar_retornos\(OLD\.chamado_id\);/.test(u150sql),
+      /COALESCE\(NEW\.chamado_id, OLD\.chamado_id\)/.test(u150sql),
+      /DELETE FROM public\.agenda_campo WHERE id = v_bloco;/.test(u150sql)],
+     [true, false, true]);
+
+  eq('U150: o bloco que muda de chamado reconta os DOIS — recontar só o novo deixaria o antigo com um retorno a mais para sempre, e ninguém olharia porque o número continua plausível',
+     /IF TG_OP = 'UPDATE' AND OLD\.chamado_id IS DISTINCT FROM NEW\.chamado_id THEN\s*\n\s*PERFORM public\.recontar_retornos\(OLD\.chamado_id\);/.test(u150sql),
+     true);
+
+  eq('U150 CRÍTICO: carimbar a ida e escrever na linha do tempo são UM ato. Separados, a tela que falhar no meio deixa um retorno contado sem ninguém saber o que se tentou — que é justamente o que o Davi pediu para guardar',
+     [/INSERT INTO public\.chamado_eventos \(chamado_id, tipo, descricao, user_id\)/.test(u150sql),
+     /VALUES \(_chamado, 'retorno',/.test(u150sql),
+      // o carimbo vai pela porta da U78, e as duas colunas novas são as únicas
+      // que esta função escreve na agenda — ver o CENSO da agenda_campo
+      /PERFORM public\.agenda_campo_cumprir\(v_bloco, true\);/.test(u150sql),
+      /SET resultado\s+= 'retorno',\s*\n\s*resultado_nota = v_nota,/.test(u150sql)],
+     [true, true, true, true]);
+
+  eq('U150: a porta abre para quem usa a tela; a FERRAMENTA do gatilho (que reescreve o espelho de qualquer chamado) fica fechada',
+     [/GRANT  EXECUTE ON FUNCTION public\.chamado_registrar_retorno\(uuid, text\) TO authenticated, service_role;/.test(u150sql),
+      /REVOKE EXECUTE ON FUNCTION public\.recontar_retornos\(uuid\) FROM PUBLIC, anon, authenticated;/.test(u150sql)],
+     [true, true]);
+
+  eq('U150: chamado ENCERRADO não recebe retorno — se foi concluído a ida resolveu por definição, e num cancelado ninguém foi; e sem ida ABERTA a porta recusa dizendo o que fazer, porque o silêncio faria o gestor achar que registrou',
+     [/IF v_status IN \('concluido', 'cancelado'\) THEN/.test(u150sql),
+      /Marque a ida na programação antes de registrar o retorno dela/.test(u150sql)],
+     [true, true]);
 }
 
 // ── R296 — A BARRA DO OPERACIONAL É A BARRA DA INÍCIO (14/09/2026) ────────
