@@ -81,7 +81,13 @@ que não depende dele está de pé; o que depende está listado abaixo.
    Reenviar) leva à Lovable. Conferir com o T.I. antes de tirar a Lovable.
 6. **Quem é avisado** (P73): as listas de destinatários do banco não conhecem o
    gestor — importa no dia em que o Vinicius deixar de ser Admin.
-7. **A hospedagem** — a orientação para validar com o T.I.: sair da Lovable é
+7. **A frente V (R303)** — a auditoria de tipografia das oito páginas está em
+   `docs/REVISAO_TIPOGRAFIA_2026-09-15.md` (66 desvios alta/média, por página, com
+   o trecho literal e o pino que quebra). A §3 do DS foi corrigida. **Aplicar é
+   leva própria** — muda hierarquia visível e dezenas de pinos; decidir se entra
+   inteira, por página, ou só o mecânico (pesos 300/500 fora da escala, hex fora
+   de paleta.ts, tamanhos quebrados).
+8. **A hospedagem** — a orientação para validar com o T.I.: sair da Lovable é
    fácil (`ONBOARDING.md` §6; o passo zero é confirmar que o projeto Supabase é
    da empresa, em supabase.com). Sair do **Supabase** NÃO é "tirar uma
    hospedagem": o app depende de auth (38 arquivos), 31 RPCs, 2 buckets, realtime

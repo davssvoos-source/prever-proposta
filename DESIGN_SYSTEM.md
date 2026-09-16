@@ -275,24 +275,30 @@ text-shadow: 0 1px 3px rgba(0,0,0,0.35);
 ## 3. Tipografia
 
 **Família:** `"Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif`
-Pesos carregados: 200, 300, 400, 500, 600, 700.
+Pesos carregados: **100, 400, 600, 700** — e SÓ estes (R195; o verificador é
+CRÍTICO nisso). *(v24 — 2026-09-15, R303: esta tabela estava desatualizada frente
+à §12, ao `__root.tsx` e ao código — listava 200/300/500/800 e `-0.02em`. A
+auditoria da R303 a corrigiu: código e verificador são a verdade.)*
 
 ```html
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;400;600;700&display=swap" rel="stylesheet">
 ```
 
-| Papel | Tamanho | Peso | Extras |
-|---|---|---|---|
-| Título de página | 22px | 700 | `letter-spacing: -0.02em` (R195: era 600) |
-| Título de tela/header | 18px | 600 | `letter-spacing: 0.02em` |
-| Título de card | 16px | 600 | — |
-| **Micro-label de seção** | **10–11px** | **700** | `letter-spacing: 0.12–0.18em`, `text-transform: uppercase` |
-| Corpo | 13–14px | 300–500 | — |
-| Corpo secundário | 12px | 300 | cor `text-secondary` |
-| Legenda/observação | 10–11px | 300 | cor `text-muted` |
-| **Label de botão CTA** | **13px** | **700** | `letter-spacing: 0.16–0.18em`, `uppercase` |
-| Valor monetário destaque | 20px | 800 | — |
+| Papel | Tamanho | Peso | Extras | Onde mora |
+|---|---|---|---|---|
+| Título de página | 22px | 700 | `letter-spacing: -0.01em` | `title(isLight)` em ui.ts / inline nas rotas |
+| Título de tela/header (celular) | 18px | 600 | — | — |
+| Título de card / nome de pessoa ou cliente | 16px (13–14 em lista) | 600 | — | §12 |
+| **Micro-rótulo de SEÇÃO** | **12px** | **700** | `letter-spacing: 0.16em`, `uppercase`, cor `label-caps` | `rotuloDeSecao(isLight)` (§6.2, R243) |
+| Rótulo de CAMPO | 10px | 600 | `letter-spacing: 0.12em`, `uppercase` | `LABEL` na tela que o usa (§6.2) |
+| Título de coluna (tabela, quadro) | 10–11px | 700 | `0.08–0.12em`, `uppercase` | §6.24 |
+| Corpo | 12–13.5px | 400 | — | — |
+| Texto secundário | 12px | 400 | cor `text-secondary` (`#505050` / `rgba(255,255,255,0.55)`) | token do tema |
+| Legenda/observação | 10–11px | 400 | cor `text-secondary` | — |
+| Chip / etiqueta | 9–10px | 600 | `uppercase`, PREENCHIDA (R177) | `etiqueta(cor)` |
+| Botão (CTA, pílula, quadrado) | 12.5–13px | 600 | pílula 40/11, quadrado 42/12 (§6.26) | `goldButton()`, `pilulaDaBarra`, `botaoDaBarra` |
+| Número de KPI / valor em destaque | 20–26px | 700 | `tabular-nums`, glow levíssimo da própria cor | §6.6 |
 
 O micro-label maiúsculo é o elemento mais característico do sistema —
 use-o para abrir **toda** seção de conteúdo.
