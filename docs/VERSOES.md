@@ -14,8 +14,9 @@
 > A primeira leva da **revisão sistêmica** que o Davi abriu com o uso oficial do
 > app (15/09/2026): *"fazer uma revisão detalhada e sistêmica de tudo o que temos
 > hoje, e a partir dessa revisão, o sistema tenda a ter melhor usabilidade pelos
-> usuários."* Regras R298–R304. Esta versão foi para a Lovable pelo `main`; o
-> pacote Windows sai quando o Davi pedir (o servidor continua na v0.0.7).
+> usuários."* Regras R298–R304. Foi para a Lovable pelo `main` em 16/09/2026, e o
+> pacote Windows saiu no mesmo dia: `dist-windows/Prever-1.0.2.zip` (commit
+> `74ebf88`). O servidor recebe quando o Davi instalar (estava na v0.0.7).
 
 **Para quem usa:**
 

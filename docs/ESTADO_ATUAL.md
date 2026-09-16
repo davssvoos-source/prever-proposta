@@ -29,10 +29,16 @@ funções da U7/U13 mandam para admin/comercial/sac (P73).
 em 13/09: U131, U132, U134 e **U136**; em 14/09: U137, U139, **U142**, **U143**,
 **U144** e **U147**.
 
-**Servidor: v0.0.7** (192.168.10.182:5555 · grupoprever.ddns.net:5555). O último
-pacote gerado é a **v1.0.1** (`dist-windows/Prever-1.0.1.zip`); a **v1.0.2** foi
-para o `main` (a Lovable publica) e o pacote Windows dela sai quando o Davi pedir
-— o que entrou em cada versão está em `docs/VERSOES.md`.
+**Servidor: v0.0.7** (192.168.10.182:5555 · grupoprever.ddns.net:5555) — o Davi
+instala a **v1.0.2** quando puder. O pacote está gerado:
+`dist-windows/Prever-1.0.2.zip` (16/09/2026, commit `74ebf88`, 460 arquivos), e o
+código já está no `main` (a Lovable publica de lá). O que entrou em cada versão
+está em `docs/VERSOES.md`.
+
+**A instalação é `atualizar.ps1`** (manual/hospedagem-windows.md §Atualizar): ele
+para o serviço, troca a `app\`, PRESERVA o `config.env` com as chaves e sobe de
+novo. O pacote nunca toca no banco — e desta vez não precisa: a U153 e a U154 já
+rodaram.
 
 **A v1.0.2 PODE subir antes de rodar as migrations.** Sem a U153 sobra uma linha
 órfã na matriz; sem a U154 o cargo gestor não existe no banco — o app já o aceita
