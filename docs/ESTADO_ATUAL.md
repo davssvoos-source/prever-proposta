@@ -12,16 +12,17 @@
 **U154** · verificador: **3.577 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
-Banco — **Pendentes: U153 e U154**, nesta ordem.
-**U153** (`20261010090000_u153_todos_os_chamados_sai.sql`) — apaga a chave
-`chamados.painel` da matriz (R301: a tela "Todos os chamados" saiu; a rota
-redireciona para a Operacional). Inofensiva se demorar: sobra uma linha órfã.
-**U154** (`20261011090000_u154_o_cargo_gestor.sql`) — o cargo **GESTOR** (R304):
-enum, os dois CHECKs, `salvar_permissoes`, `handle_new_user`, `is_gestor`,
-`pode_ver_financeiro` e a semente da quinta coluna. Aborta se a U153 não tiver
-rodado. **Depois dela**, o Davi troca o cargo do Vinicius para Gestor na aba
-Usuários — a migration não faz isso (não sabe o e-mail de ninguém). Sem a U154
-ninguém consegue RECEBER o cargo (o CHECK recusa); nada quebra.
+Banco — **nenhuma migration pendente.** A **U153** (`chamados.painel` sai da matriz, R301) e a
+**U154** (o cargo **GESTOR**: enum, os dois CHECKs, `salvar_permissoes`,
+`handle_new_user`, `is_gestor`, `pode_ver_financeiro` e a semente da quinta
+coluna, R304) foram **rodadas pelo Davi em 16/09/2026**, nesta ordem. A U150 e a
+U152 rodaram em 15/09.
+
+**O que falta é UM GESTO, não uma migration:** trocar o cargo do **Vinicius** de
+Admin para **Gestor** em Administrativo → Usuários → editar. A migration não faz
+isso de propósito — ela não sabe o e-mail de ninguém. Enquanto ele for Admin,
+nada muda para ele; no dia da troca, ele deixa de receber os avisos que as
+funções da U7/U13 mandam para admin/comercial/sac (P73).
 
 **U150 e U152 RODADAS em 15/09/2026** (conferido no banco: `chamados.retornos`,
 `agenda_campo.resultado`, `apoio_automatico(uuid, timestamptz)` existem). Rodadas
@@ -67,8 +68,8 @@ que não depende dele está de pé; o que depende está listado abaixo.
   médio NÃO entrou: o valor da proposta não é gravado em coluna nenhuma.
 
 **O que espera o Davi:**
-1. Rodar **U153** e **U154**, nesta ordem, e trocar o cargo do **Vinicius** para
-   Gestor na aba Usuários (R304).
+1. ~~Rodar **U153** e **U154**~~ — rodadas em 16/09/2026. Falta **trocar o cargo do
+   Vinicius** para Gestor na aba Usuários (R304).
 2. **Ticket médio** (R302): qual valor é o ticket — mensal recorrente,
    implantação, por forma de pagamento? Precisa de coluna nova + gravação na hora
    de gerar a proposta; até lá o dashboard tem quatro KPIs.
@@ -123,10 +124,10 @@ Ler isto antes de prometer qualquer coisa a alguém.
 | R298 | Administrativo: sem textos e sem KPIs, pílulas na régua, convites compactos com Reenviar | **no ar** (U153) |
 | R299 | "Sobreaviso" → GESTÃO TÉCNICA: dashboard, Equipes e Fechamentos moram lá; a chave `sobreaviso` fica; `/sobreaviso` redireciona com a busca | **no ar** (U153) |
 | R300 | na Gestão Técnica, indicadores → fila de decisão (retorno · cobrança) → plantão recolhível; o calendário cabe na tela | **no ar** (U153) |
-| R301 | Operacional = a fila: quadro por dia como padrão, preferências no navegador, hoje dourado, botão de ações no card; "Todos os chamados" saiu | **no ar** (U153) — **falta rodar a U153** (a linha órfã da matriz) |
+| R301 | Operacional = a fila: quadro por dia como padrão, preferências no navegador, hoje dourado, botão de ações no card; "Todos os chamados" saiu | **no ar** (U153 rodada em 16/09) |
 | R302 | Comercial: dashboard (período · serviço · funil · KPIs), filtro de Tipo de serviço, sem Clientes | **no ar** (U153) — o KPI **ticket médio** espera uma coluna e a decisão do Davi (qual valor) |
 | R303 | títulos, tamanhos, cores e famílias das páginas principais numa escala só | **no ar** (U153) — ver a seção da revisão sistêmica |
-| R304 | o cargo GESTOR (hoje o Vinicius): gestor, vê valores, não administra | tela **no ar** (U154) — **falta rodar a U154** e trocar o cargo do Vinicius na aba Usuários |
+| R304 | o cargo GESTOR (hoje o Vinicius): gestor, vê valores, não administra | **no ar** (U154 rodada em 16/09) — **falta o Davi trocar o cargo do Vinicius** na aba Usuários |
 
 Fim de entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.

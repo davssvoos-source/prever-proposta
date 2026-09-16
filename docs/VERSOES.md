@@ -9,7 +9,7 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
-## v1.0.2 — 2026-09-15 (U153–U154) · migrations **U153 e U154 pendentes**, nesta ordem (U150 e U152 rodadas em 15/09)
+## v1.0.2 — 2026-09-15 (U153–U154) · migrations **U153 e U154 rodadas em 16/09/2026** (U150 e U152 em 15/09)
 
 > A primeira leva da **revisão sistêmica** que o Davi abriu com o uso oficial do
 > app (15/09/2026): *"fazer uma revisão detalhada e sistêmica de tudo o que temos
@@ -44,9 +44,9 @@
 **Migrations:** **U153** (`20261010090000_u153_todos_os_chamados_sai.sql`) apaga a
 chave `chamados.painel` da matriz; **U154** (`20261011090000_u154_o_cargo_gestor.sql`)
 cria o cargo gestor (enum, CHECKs, `is_gestor`, `pode_ver_financeiro`, semente).
-Nesta ordem — a U154 aborta se a U153 não tiver rodado. **O app pode subir antes
-delas**: sem a U153 sobra uma linha órfã na matriz (inofensiva); sem a U154 ninguém
-consegue RECEBER o cargo gestor (o CHECK recusa) — nada quebra.
+As duas rodaram em 16/09/2026, nesta ordem. **Falta um gesto do Davi**, não uma
+migration: trocar o cargo do Vinicius de Admin para Gestor em Administrativo →
+Usuários (a migration não conhece o e-mail de ninguém).
 
 ## v1.0.1 — 2026-09-15 (U141–U152) · migrations **U150 e U152 rodadas em 15/09/2026**
 
