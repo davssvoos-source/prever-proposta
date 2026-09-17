@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 178 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 179 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -181,6 +181,7 @@
 - [U152 — na abertura pergunta-se QUEM, e o apoio vem da liderança (R297)](#u152-na-abertura-pergunta-se-quem-e-o-apoio-vem-da-liderança-r297)
 - [U153 — v1.0.2: a revisão sistêmica começa — a Gestão Técnica, a Operacional como fila, o Administrativo e o Comercial (R298–R303)](#u153-v102-a-revisão-sistêmica-começa-a-gestão-técnica-a-operacional-como-fila-o-administrativo-e-o-comercial-r298r303)
 - [U154 — o cargo GESTOR (R304)](#u154-o-cargo-gestor-r304)
+- [U155 — o operacional lê a base de clientes inteira (R305)](#u155-o-operacional-lê-a-base-de-clientes-inteira-r305)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -14792,3 +14793,68 @@ Revisa a R13 (o Vinicius era Admin por falta de um cargo que dissesse o que ele
 é). O censo do `is_gestor` no verificador passou a ler a definição VIVA (a da
 U154) e mede 40 arquivos / 172 ocorrências / 55 policies — a dívida P51 (a
 função não olha `ativo`) continua a mesma.
+
+## U155 — o operacional lê a base de clientes inteira (R305)
+
+**O relato.** Davi, 17/09/2026: *"O Erik me relatou que foi criar uma atividade
+e atribuir um cliente a ela, e o cliente Paineiras não apareceu... Eu pedi a ele
+para verificar e notei que vários clientes não aparecem para ele."*
+
+### A causa, e por que ela sobreviveu um mês
+
+`pode_ver_cliente` (S1, 20/08; revista na U71) libera a leitura de um cliente
+para `is_gestor()` **ou** para quem tem relação de trabalho com ele. Quando ela
+nasceu, os cargos eram quatro e a divisão era limpa: gestor vê tudo, técnico vê
+o dele. O **operacional** nasceu depois, na U127 (10/09), e nasceu com uma
+frase que ninguém levou até a RLS — *"consegue visualizar todas as atividades
+de todos"* — e com `is_gestor` INTOCADA, de propósito: ele vê, não manda.
+
+Aí a régua de LER e a de MANDAR eram a mesma função. O operacional não manda,
+logo não lia; e como ele não é técnico, ninguém foi conferir o balde em que ele
+caiu. **Um cargo novo entra em todos os lugares que enumeram cargo** — foi a
+lição da U127 e é a lição de novo, com um lugar que a U127 não tinha na lista:
+as funções de RLS que decidem por `is_gestor`.
+
+O sintoma que o Davi viu foi o seletor de cliente da atividade nova. Mas o
+defeito era maior, e a leitura do código o mede: a `chamados_select` (U132)
+só recorta o TÉCNICO, então o Erik lia **todas** as atividades — e as dos
+outros vinham com o nome do cliente em branco, porque o join morria na RLS de
+`clientes`. É exatamente o sintoma que o comentário da própria S1 descreve
+como inaceitável, escrito para o técnico e acontecendo com o operacional:
+*"o técnico veria o chamado aberto na Início com o nome do cliente em branco"*.
+E a tela **Clientes** dele, que o catálogo abre desde a R244, vinha podada.
+
+### O conserto: separar LER de ESCREVER
+
+A tentação era acrescentar o operacional em `pode_ver_cliente`. Não: essa
+função gateia **quatro policies de escrita** (`cliente_sistemas` e
+`cliente_equipamentos`, insert e update). Acrescentá-lo ali daria a ele, de
+passagem, o direito de alterar o patrimônio de qualquer cliente — o que até
+pode fazer sentido (é ele quem controla o QAP) mas **ninguém pediu**, e
+conserto de defeito não é hora de ampliar poder.
+
+Então nasceu `pode_ler_cliente(uuid)`, que **delega** à outra e acrescenta o
+cargo: `pode_ver_cliente(_id) OR eh_operacional(auth.uid())`. Delegar, e não
+copiar, é o ponto — a regra de "relação de trabalho" continua escrita num
+lugar só, e quem a mudar amanhã muda para os dois caminhos. As três policies
+de SELECT (`clientes`, `cliente_sistemas`, `cliente_equipamentos`; as unidades
+herdam pelo salto) passaram a ler a nova; a escrita não foi tocada, e o
+verificador prende as duas coisas: **duas** policies com `USING
+(public.pode_ler_cliente(` mais a de equipamentos pelo `EXISTS`, e **zero**
+policy de escrita citando a função nova.
+
+`eh_operacional` copia a forma de `eh_tecnico` (U132): lê o **cargo** de
+`profiles`, não o papel de `user_roles`. É a régua da casa para "que cargo é
+este", e o verificador prende que `user_roles` não aparece na migration.
+
+### A medida
+
+A migration abre com um SELECT que refaz a conta de `pode_ver_cliente` à mão,
+por pessoa de cargo operacional, contra o total de clientes. Antes de rodar,
+os dois números divergem — é o retrato do defeito. Depois, a conferência
+mostra os dois iguais. Sem essa medida, "consertei" seria uma afirmação sem
+número atrás.
+
+**O que NÃO mudou:** o técnico continua recortado (R264/U132), de propósito —
+quem vai ao prédio vê o cliente do trabalho dele. E nenhuma linha de tela
+mudou: o defeito era do banco, e é no banco que ele se conserta.

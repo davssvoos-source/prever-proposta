@@ -8,11 +8,18 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-15** · última regra: **R304** · último diário:
-**U154** · verificador: **3.577 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-17** · última regra: **R305** · último diário:
+**U155** · verificador: **3.581 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
-Banco — **nenhuma migration pendente.** A **U153** (`chamados.painel` sai da matriz, R301) e a
+Banco — **Pendente: U155** (`20261012090000_u155_o_operacional_le_a_base_de_clientes.sql`)
+— o cargo OPERACIONAL passa a LER a base de clientes inteira (R305, o defeito que
+o Erik encontrou em 17/09). Sem ela, o Erik e o Nicholas continuam enxergando só
+os clientes em que já trabalharam: o seletor de cliente da atividade nova vem
+podado e a lista de Clientes também. O código não muda com ela — muda o que o
+banco devolve.
+
+A **U153** (`chamados.painel` sai da matriz, R301) e a
 **U154** (o cargo **GESTOR**: enum, os dois CHECKs, `salvar_permissoes`,
 `handle_new_user`, `is_gestor`, `pode_ver_financeiro` e a semente da quinta
 coluna, R304) foram **rodadas pelo Davi em 16/09/2026**, nesta ordem. A U150 e a
@@ -134,6 +141,7 @@ Ler isto antes de prometer qualquer coisa a alguém.
 | R302 | Comercial: dashboard (período · serviço · funil · KPIs), filtro de Tipo de serviço, sem Clientes | **no ar** (U153) — o KPI **ticket médio** espera uma coluna e a decisão do Davi (qual valor) |
 | R303 | títulos, tamanhos, cores e famílias das páginas principais numa escala só | **no ar** (U153) — ver a seção da revisão sistêmica |
 | R304 | o cargo GESTOR (hoje o Vinicius): gestor, vê valores, não administra | **no ar** (U154 rodada em 16/09) — **falta o Davi trocar o cargo do Vinicius** na aba Usuários |
+| R305 | o OPERACIONAL lê a base de clientes inteira (o defeito do Erik) | **falta rodar a U155** — é só banco; nenhuma tela muda |
 
 Fim de entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.

@@ -13781,7 +13781,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // continua não existindo pela tabela (U78 §4).
        // U154 (+1 arquivo, +8 ocorrências, +0 policies): reemite is_gestor com o
        // GESTOR na lista (R304) — pré-voo, CREATE, COMMENT e as duas conferências.
-       [true, false, 40, 172, 55]);
+       // U155 (+1 arquivo, +1 ocorrência, +0 policies): a MEDIDA ANTES do defeito
+       // do Erik refaz a conta de `pode_ver_cliente` à mão para mostrar quantos
+       // clientes cada operacional enxergava — e a conta começa em is_gestor.
+       [true, false, 41, 173, 55]);
   }
 }
 
@@ -24567,6 +24570,54 @@ assincronas.push(async () => {
       MC.kpisComerciais(umaPorMesC, new Date(2026, 8, 30, 23, 59, 59)).mediaPorMes, MC.kpisComerciais(umaPorMesC, new Date(2026, 9, 1, 0, 0, 1)).mediaPorMes,
       MC.kpisComerciais([], agoraC)],
      [0.3, 75, 1, 1, 1, { mediaPorMes: 0, taxaVisitaProposta: null, tempoMedioDias: null, aguardandoEnvio: 0 }]);
+}
+
+
+// ── R305 / U155 — o OPERACIONAL lê a base de clientes inteira (17/09/2026) ─
+//
+// O defeito que o Erik encontrou: ele foi criar atividade, e o cliente
+// Paineiras não estava no seletor. Causa medida: `pode_ver_cliente` exige
+// `is_gestor()` ou relação de trabalho, e o cargo operacional não é gestor
+// (R244, de propósito) — ele lia só os clientes em que já tinha trabalhado,
+// enquanto a R221 lhe dava TODAS as atividades e a R294, a capacidade de
+// criar. Tela aberta e dado podado eram duas respostas para a mesma pergunta.
+{
+  const fsU155 = require('fs');
+  const u155 = fsU155.readFileSync('supabase/migrations/20261012090000_u155_o_operacional_le_a_base_de_clientes.sql', 'utf8');
+  const vivo = u155.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+  const TL155 = carregar('src/lib/telas.ts');
+
+  eq('R305 CRÍTICO: a LEITURA de cliente passa a ter função própria — `pode_ler_cliente` DELEGA a `pode_ver_cliente` e acrescenta só o cargo operacional (não reescreve a régua: quem escreve continua lendo a outra)',
+     [/CREATE OR REPLACE FUNCTION public\.pode_ler_cliente\(_cliente_id uuid\)/.test(vivo),
+      /SELECT public\.pode_ver_cliente\(_cliente_id\)\s*\n\s*OR public\.eh_operacional\(auth\.uid\(\)\);/.test(vivo),
+      /CREATE OR REPLACE FUNCTION public\.eh_operacional\(_user_id uuid\)/.test(vivo),
+      /p\.cargo = 'operacional'/.test(vivo),
+      // a régua é do CARGO, como a do técnico (U132) — não do papel em user_roles
+      /user_roles/.test(vivo)],
+     [true, true, true, true, false]);
+
+  eq('R305 CRÍTICO: são exatamente as TRÊS policies de SELECT que mudam de função — e NENHUMA de escrita; a U155 não amplia poder nenhum',
+     [(vivo.match(/FOR SELECT TO authenticated\s*\n\s*USING \(public\.pode_ler_cliente\(/g) ?? []).length,
+      /AND public\.pode_ler_cliente\(s\.cliente_id\)/.test(vivo),
+      /FOR (INSERT|UPDATE|DELETE)/.test(vivo),
+      /pode_ver_cliente\(uuid\)/.test(u155)],
+     [2, true, false, true]);
+
+  eq('R305: a migration MEDE o defeito antes (quantos clientes cada operacional enxerga contra o total), confere depois, e traz o DESFAZER que devolve as três policies',
+     [/SELECT p\.nome,\s*\n\s*\(SELECT count\(\*\) FROM public\.clientes\) AS total_de_clientes,/.test(u155),
+      />>> OLHAR <<</.test(u155), /DESFAZER/.test(u155),
+      /RODAR NO SQL EDITOR DO SUPABASE, À MÃO/.test(u155),
+      /o TÉCNICO continua recortado/.test(u155)],
+     [true, true, true, true, true]);
+
+  // A CONTRADIÇÃO QUE O DEFEITO ERA: o catálogo abre a tela de Clientes para o
+  // operacional desde a R244. Enquanto a RLS o tratava como técnico, a matriz
+  // prometia uma tela que o banco esvaziava — e é isso que não pode voltar.
+  eq('R305 CRÍTICO: o catálogo abre Clientes ao operacional (R244) — a promessa da matriz e o que o banco entrega têm de contar a mesma história',
+     [TL155.TELAS.find((t) => t.chave === 'clientes')?.padrao.operacional,
+      TL155.TELAS.find((t) => t.chave === 'atividades.nova')?.padrao.operacional,
+      TL155.TELAS.find((t) => t.chave === 'dashboard')?.padrao.operacional],
+     [true, true, true]);
 }
 
 

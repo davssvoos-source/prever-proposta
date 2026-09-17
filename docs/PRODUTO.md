@@ -16,7 +16,7 @@
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
-- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R304 (75)
+- [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R305 (76)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -6040,3 +6040,40 @@ adaptado."
   Vinicius for Admin isso não muda nada; no dia em que virar Gestor, ele
   deixa de receber esses avisos até uma leva própria reescrever essas listas
   em cima de `is_gestor()`. Está listado em ESTADO_ATUAL como pendência.
+
+- **R305** — **Quem vê TODA a base de clientes: quem manda (gestor) e quem vê
+  tudo (operacional). A tela aberta e o dado podado eram duas respostas para a
+  mesma pergunta.** *(Davi, 17/09/2026: "O Erik me relatou que foi criar uma
+  atividade e atribuir um cliente a ela, e o cliente Paineiras não apareceu…
+  notei que vários clientes não aparecem para ele.")*
+
+  **O defeito, medido.** A RLS de `clientes` (S1, revista na U71) libera a
+  leitura para `is_gestor()` **ou** para quem tem relação de trabalho com
+  aquele cliente — chamado dele, apoio dele, visita dele, ou a fila sem dono.
+  O cargo **operacional NÃO é gestor**, por decisão da própria R244 ("vê tudo,
+  não manda"): ele caía no balde do técnico e enxergava só os clientes em que
+  já tinha trabalhado. O Paineiras não estava nessa lista.
+
+  **Por que isso é contradição, e não só falta.** Três coisas já diziam o
+  contrário: a **R244** dá a ele a tela **Clientes** no catálogo (`clientes:
+  true`) e a frase *"consegue visualizar todas as atividades de todos"*; a
+  **R221** deixa toda pessoa logada ler toda atividade, e a policy de
+  `chamados` (U132) só recorta o **técnico** — então o Erik via os chamados dos
+  outros **com o nome do cliente em branco**, que é exatamente o sintoma que o
+  comentário da S1 descreve e diz não querer; e a **R294** deu a ele a
+  capacidade de **criar atividade** — criar atividade sem conseguir escolher o
+  cliente é porta trancada com a placa errada, a mesma família de defeito que
+  a R294 existiu para consertar.
+
+  **O corte é de LEITURA, e só.** A U155 cria `pode_ler_cliente(uuid)` =
+  `pode_ver_cliente(uuid)` **ou** cargo operacional, e aponta para ela as três
+  policies de **SELECT** que dependiam da outra (`clientes`,
+  `cliente_sistemas`, `cliente_equipamentos` — e, por herança, as unidades).
+  **A ESCRITA não muda**: `cliente_sistemas` e `cliente_equipamentos`
+  continuam exigindo `pode_ver_cliente`, que é relação de trabalho. Dar ao
+  operacional a escrita do patrimônio pode até fazer sentido (é ele quem
+  controla o QAP), mas isso é decisão de produto que ninguém pediu — e uma
+  correção de defeito não é hora de ampliar poder.
+
+  **O técnico continua recortado.** A R264 (U132) é deliberada: quem vai ao
+  prédio vê o cliente do trabalho dele. Nada nesta regra a toca.
