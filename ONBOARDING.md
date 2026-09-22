@@ -15,7 +15,7 @@ o Sigma OS.
 | Item | Como |
 |---|---|
 | **O sistema** | `git clone` do GitHub (`davssvoos-source/prever-proposta`). Código, docs, migrations, `.env` público, template da proposta — tudo viaja no git. |
-| **Contexto do assistente** | Já está no repo: `CLAUDE.md` é lido automaticamente por qualquer sessão nova do Claude Code — vale para a sua conta nova E para as contas do resto do T.I. |
+| **Contexto do assistente** | Já está no repo: `AGENTS.md` (a cápsula do Pattern Harness; `CLAUDE.md` só a importa) é lido automaticamente por qualquer sessão nova do Claude Code — vale para a sua conta nova E para as contas do resto do T.I. |
 | **`.env` da pasta-mãe** | Tem a SERVICE key do Supabase — **NUNCA entra no repo**. Copie à parte (gerenciador de senhas) ou gere outra no painel. |
 | **`arquivo/`** (opcional) | O histórico morto da pasta-mãe, já organizado (ver o README de lá). Nada roda a partir dele. |
 
@@ -49,7 +49,7 @@ Sanidade (as três têm de passar antes de qualquer mudança):
 ```bash
 node scripts/verificar-logica.cjs        # "... 0 falharam"
 npx vite build                           # completa
-npx tsc --noEmit | grep -c "error TS"    # 57 pré-existentes (baseline vivo — CLAUDE.md)
+npx tsc --noEmit | grep -c "error TS"    # 0 — baseline ZERO desde a U138 (AGENTS.md)
 ```
 
 ## 4. Zerar os dados operacionais
@@ -66,7 +66,8 @@ importações — reimportariam tudo num banco limpo).
   num vault da organização como subpasta). Nada a converter.
 - A fonte de verdade continua sendo o repo (versionada, assertada). O vault
   é espelho de leitura; regra nova entra por commit, não só pela nota.
-- Toda conta do Claude do T.I. herda o método pelo `CLAUDE.md` — ele é o
+- Toda conta do Claude do T.I. herda o método pelo `AGENTS.md` (o `CLAUDE.md`
+  gerado só o importa) — ele é o
   onboarding dos colegas também.
 
 ## 6. A saída da Lovable — plano guardado, NÃO é para agora
@@ -115,7 +116,7 @@ importa, e o primeiro passo é o único perigoso de tudo:
 O retrato vivo do projeto (última regra, último diário, migrations rodadas e
 pendentes, decisões recentes, perguntas abertas, o que o Davi vai mandar,
 quem é quem, a ordem de leitura) mora em **`docs/ESTADO_ATUAL.md`** e é
-atualizado a cada entrega. É o primeiro arquivo a ler depois do `CLAUDE.md`
+atualizado a cada entrega. É o primeiro arquivo a ler depois do `AGENTS.md`
 numa máquina nova — este documento aqui é o procedimento de MUDAR de máquina;
 aquele é o de ENTENDER o sistema.
 

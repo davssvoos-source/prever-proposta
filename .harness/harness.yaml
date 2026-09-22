@@ -1,0 +1,75 @@
+# Pattern Harness — manifesto do Prever OS.
+# Contrato entre o harness e a stack: agentes e CI leem daqui, nunca assumem
+# comandos da linguagem. Adoção e adaptações: docs/decisions/ADR-0001.
+version: 1
+
+project:
+  name: prever-os
+  description: Prever OS — o sistema de atividades do Grupo Prever (React + TanStack Start + Supabase).
+
+# Os seis verbos do padrão, com a implementação desta stack (ADR-0003).
+# O verificador da casa É a suíte de testes; o ESLint fica fora dos gates.
+commands:
+  setup:  npm install
+  build:  npx vite build
+  test:   node scripts/verificar-logica.cjs
+  lint:   npx tsc --noEmit
+  format: npx prettier --write .
+  run:    npx vite dev
+
+# O que "pronto" significa, em ordem de execução. Todos obrigatórios.
+# Runner: python3 scripts/harness-gates.py (Windows: py -3 scripts/harness-gates.py).
+# Precisa de Python 3.10+ e de scripts/requirements.txt; os gates rodam num sh POSIX
+# (no Windows, o sh do Git for Windows). Códigos de saída: 0 verde, 1 gate falhou,
+# 2 manifesto inválido (nada executa).
+gates:
+  - name: docs-lint           # regras anti-obesidade da documentação (docs/conventions.md)
+    run: sh scripts/docs-lint.sh
+    required: true
+  - name: sumarios            # os sumários gerados dos documentos mestre estão em dia
+    run: node scripts/sumario.cjs --check
+    required: true
+  - name: cobertura-em-dia    # a tabela "Cobertura R# → verificação" dos states é derivada
+    run: node scripts/cobertura-regras.cjs --check
+    required: true
+  - name: adapters-in-sync
+    run: sh scripts/harness-sync.sh --check
+    required: true
+  - name: index-in-sync
+    run: sh scripts/harness-index.sh --check
+    required: true
+  - name: runner-tests
+    run: sh scripts/py3.sh -B -m unittest discover -s scripts/tests
+    required: true
+  - name: lint                # tsc em ZERO erros (baseline zero desde a U138)
+    run: ${commands.lint}
+    required: true
+  - name: tests               # o verificador termina em "0 falharam"
+    run: ${commands.test}
+    required: true
+  - name: build               # regenera src/routeTree.gen.ts — commite o gerado
+    run: ${commands.build}
+    required: true
+
+# Índice e grafo: derivados, nunca redigidos.
+index:
+  file: .harness/INDEX.md
+  generator: scripts/harness-index.sh
+  edges: typed-references          # R# (global, docs/PRODUTO.md), U#, P#, ADR-####, nome de skill
+
+agents:
+  roles: [planner, implementer, reviewer, verifier]
+  definitions: .harness/agents/
+
+# Documentação viva: requisito e estado por módulo, entrados pelos índices.
+# Adaptação (ADR-0001/0002): o catálogo de regras é docs/PRODUTO.md (R# global);
+# docs/requirements/<m>.md é a vista por módulo. Skills no padrão aberto Agent Skills.
+docs:
+  indexes: [docs/ARCHITECTURE.md, docs/REQUIREMENTS.md]
+  requirements: docs/requirements/
+  state: docs/state/
+  decisions: docs/decisions/
+  catalog: docs/PRODUTO.md
+  skills: .claude/skills/
+  notation: R-serie                # regra numerada com a frase do Davi; EARS nas sínteses por módulo
+  checkpoints: [regra, adr, migration]   # regra antes do código; ADR na mudança estrutural; migration é gesto do Davi

@@ -103,7 +103,7 @@ Regras que não se negociam durante:
 
 ## 4. Fim de entrega
 
-Os sete passos do `CLAUDE.md`, mais o oitavo:
+Os sete passos do `AGENTS.md`, mais o oitavo:
 
 ```bash
 node scripts/verificar-logica.cjs | tail -1     # "0 falharam"

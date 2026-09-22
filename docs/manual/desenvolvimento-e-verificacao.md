@@ -135,3 +135,30 @@ entrada do serviço e os scripts de manutenção. A pasta é gerada e está no
 `.gitignore`. O que o pacote faz no servidor está em
 `docs/manual/hospedagem-windows.md`. O verificador cobra que o pacote nunca
 leva segredo (só as chaves públicas do `.env` vão para o `config.padrao.env`).
+
+## A definição de pronto: os gates do harness (U156)
+
+Desde 22/09/2026 o repositório segue o **Pattern Harness** da T.I. (ADR-0001 em
+`docs/decisions/`). O fluxo acima continua igual; o que mudou é que "pronto" deixou
+de ser lembrado e passou a ser **executado**: `.harness/harness.yaml` declara os
+seis comandos da stack (`setup`, `build`, `test`, `lint`, `format`, `run`) e nove
+gates, e um executor os roda em ordem:
+
+```bash
+py -3 -m pip install -r scripts/requirements.txt   # uma vez (Linux/CI: python3)
+py -3 scripts/harness-gates.py                     # 0 = tudo verde · 1 = gate falhou · 2 = manifesto inválido
+```
+
+Os gates, na ordem: `docs-lint` (linhas ≤ 120 nos documentos novos, Status ≤ 140,
+ADR com Data/Status e indexado, requisito indexado e com state, state sem data fora
+de Pendências), `sumarios` (`sumario.cjs --check`), `cobertura-em-dia`
+(`cobertura-regras.cjs --check`), `adapters-in-sync`, `index-in-sync`,
+`runner-tests` (16 testes do executor), `lint` (`tsc` em zero), `tests` (o
+verificador em "0 falharam") e `build` (`vite build`). O CI do GitHub roda o mesmo
+executor a cada push em `main`.
+
+Arquivos **gerados** — nunca editar à mão, regenerar: `CLAUDE.md` e os adaptadores
+das outras ferramentas (`sh scripts/harness-sync.sh`), `.harness/INDEX.md`
+(`sh scripts/harness-index.sh`), a tabela de cobertura de cada `docs/state/<m>.md`
+(`node scripts/cobertura-regras.cjs`), os sumários, `src/routeTree.gen.ts`. A skill
+`entrega` tem a ordem do fecho.

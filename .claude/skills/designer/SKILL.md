@@ -163,7 +163,7 @@ hex: o mesmo script resolve, e o verificador cobra depois.
 
 ## 8. Design não escapa do ciclo do repo
 
-O `CLAUDE.md` vale igual para interface — em especial:
+O `AGENTS.md` vale igual para interface — em especial:
 
 1. **Regra nova de produto** (inclusive visual, se o Davi ditou) → R-série em
    `docs/PRODUTO.md`, **citando a frase dele**.

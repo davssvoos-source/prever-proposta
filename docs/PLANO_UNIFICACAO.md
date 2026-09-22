@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 179 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 180 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -182,6 +182,7 @@
 - [U153 — v1.0.2: a revisão sistêmica começa — a Gestão Técnica, a Operacional como fila, o Administrativo e o Comercial (R298–R303)](#u153-v102-a-revisão-sistêmica-começa-a-gestão-técnica-a-operacional-como-fila-o-administrativo-e-o-comercial-r298r303)
 - [U154 — o cargo GESTOR (R304)](#u154-o-cargo-gestor-r304)
 - [U155 — o operacional lê a base de clientes inteira (R305)](#u155-o-operacional-lê-a-base-de-clientes-inteira-r305)
+- [U156 — o Pattern Harness aplicado: a cápsula, os módulos e os gates (22/09/2026)](#u156-o-pattern-harness-aplicado-a-cápsula-os-módulos-e-os-gates-22092026)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -14858,3 +14859,136 @@ número atrás.
 **O que NÃO mudou:** o técnico continua recortado (R264/U132), de propósito —
 quem vai ao prédio vê o cliente do trabalho dele. E nenhuma linha de tela
 mudou: o defeito era do banco, e é no banco que ele se conserta.
+
+## U156 — o Pattern Harness aplicado: a cápsula, os módulos e os gates (22/09/2026)
+
+**O pedido.** Davi, 22/09/2026: *"Aplique o padrão estruturado na pasta
+D:\Prever\sistema\docs\padrao-projeto, a IA deve atualizar a documentação
+conforme o projeto, principalmente o arquivo README.md"*. A pasta é um clone do
+**Pattern Harness** da T.I. do Grupo Prever (Bitbucket `preverti/pattern`): o
+padrão da casa para repositório trabalhado por agentes de IA — fonte única em
+arquivos, cápsula `AGENTS.md`, adaptadores gerados por ferramenta, documentação
+viva por módulo entrada por índices, ADRs imutáveis e gates que definem "pronto".
+
+### O que o padrão encontrou aqui
+
+Um repositório com documentação viva madura — 305 regras com a frase do Davi,
+155 entregas no diário, o retrato, a lista do que depende dele, três skills,
+3.581 asserções — e três buracos exatamente onde o padrão aperta: **não havia
+`README.md`** (quem chegava caía no `CLAUDE.md`, um método de 14 KB específico de
+uma ferramenta), **não havia índice por módulo** (a única porta era o retrato,
+e dele para 10 mil linhas de PRODUTO e diário) e **"pronto" era sensação**:
+verificador, `tsc` e build eram lembrados pelo ritual, não cobrados por um
+executor. O `AGENTS.md` tinha só o bloco da Lovable.
+
+### As quatro adaptações — e por que não copiar o template ao pé da letra
+
+Estão no **ADR-0001** (`docs/decisions/`), a primeira decisão estrutural
+registrada nesse formato:
+
+1. **`AGENTS.md` é a cápsula e `CLAUDE.md` virou `@AGENTS.md`**, gerado por
+   `scripts/harness-sync.sh`. O bloco `LOVABLE:BEGIN/END` fica intocado no topo —
+   é dela, e ela publica de `main`.
+2. **O `R#` é GLOBAL.** O template quer `<modulo>:R#` local. Aqui o catálogo é a
+   `PRODUTO.md`, com 305 regras citadas por número em código, diário, verificador
+   e manual; renumerar por módulo quebraria milhares de referências e reescreveria
+   o que o Davi ditou. `docs/requirements/<modulo>.md` é a VISTA: síntese EARS +
+   tabela "| Rn | essência |", extraída do catálogo por script.
+3. **Skills em `.claude/skills/`, sem symlink.** A casa já tinha três lá (o local do
+   padrão aberto Agent Skills); este Git Bash no Windows copia em vez de linkar, e a
+   Lovable clona o repo para buildar. `.harness/` fica com manifesto, papéis, MCP e
+   índice.
+4. **Windows.** `harness-gates.py` roda cada gate em `[sh, -c]` — `/bin/sh` onde
+   existe, o `sh` do Git pelo PATH onde não; `scripts/py3.sh` acha `python3`, `py -3`
+   ou `python` (o `python3` do PATH desta máquina é o atalho da Microsoft Store). O
+   CI é GitHub Actions (`.github/workflows/harness.yml`), porque o repo está no
+   GitHub — o `bitbucket-pipelines.yml` do template não se aplica.
+
+Os outros dois ADRs fecham o resto: **ADR-0002** — a documentação que já existia
+É a fonte (PRODUTO = catálogo, PLANO = história, ESTADO = retrato do sistema,
+DECISOES_PENDENTES = retrato da decisão); o padrão a indexa, não a reescreve.
+**ADR-0003** — o verificador da casa é o gate de testes (`test`), `tsc` é o
+`lint`, `vite build` é o `build`; o ESLint fica disponível mas fora dos gates
+(baseline nunca zerado — gate que sempre falha ensina a ignorar gate vermelho);
+migration NÃO é gate (o Davi a roda; o que se prende é a FORMA).
+
+### O que nasceu
+
+- **`README.md`** — o pedido principal: o que é, stack, onde roda, como começar, o
+  mapa em camadas (L1–L9), os documentos que já existiam, as regras de ouro, a
+  estrutura.
+- **`AGENTS.md`** — a cápsula: resumo, protocolo de leitura (a tabela de onde mora
+  cada coisa, com o ESTADO em primeiro), o ciclo em 8 passos, migrations,
+  comandos e pronto, mapa de módulos, invariantes fechadas, manutenção, limites.
+- **`docs/REQUIREMENTS.md`** → 9 módulos em `docs/requirements/` (atividades,
+  campo, comercial, clientes, financeiro, acessos, paineis, interface,
+  plataforma) e o presente de cada um em `docs/state/`. **Toda regra R1–R305 caiu
+  em exatamente um módulo** — o gerador recusa regra sem módulo ou em dois.
+- **`docs/ARCHITECTURE.md`** → ADR-0000 (template), 0001, 0002, 0003;
+  `docs/NFR.md` (só o que tem número), `docs/PROJECT-STRUCTURE.md`,
+  `docs/conventions.md`.
+- **`.harness/harness.yaml`** — os seis verbos (`setup` npm install · `build` vite
+  build · `test` verificador · `lint` tsc · `format` prettier · `run` vite dev) e
+  nove gates: docs-lint, sumários em dia, cobertura em dia, adaptadores e índice em
+  sincronia, testes do executor, tsc, verificador, build. `.harness/agents/` (os
+  quatro papéis, com o que cada um lê e não faz AQUI), `.harness/mcp/servers.json`
+  (vazio), `.harness/INDEX.md` (gerado).
+- **Skill `entrega`** (`.claude/skills/entrega/`) — o fecho: classificar a mudança
+  (correção · comportamento novo → R antes do código · estrutural → ADR e, se toca
+  o banco, `banco`), a tabela "mudou X → atualize Y", os três comandos do fim.
+- **Scripts**: `harness-gates.py`, `harness-sync.sh`, `harness-index.sh`,
+  `docs-lint.sh` (R1–R5 anti-obesidade; os documentos mestre anteriores estão em
+  `LEGACY` e só avisam — 13 avisos hoje, 219 deles na revisão de tipografia),
+  `py3.sh`, **`cobertura-regras.cjs`** (a tabela "Cobertura R# → verificação" de
+  cada state é DERIVADA: conta as menções nominais a cada regra no verificador;
+  `--check` é gate), os testes do executor (`scripts/tests/`, 16 casos, cópia fiel
+  do padrão), `requirements.txt`.
+- **Adaptadores gerados**: `CLAUDE.md`, `.cursor/rules/harness.mdc`,
+  `.gemini/GEMINI.md`, `.agent/rules/harness.md`, `.github/copilot-instructions.md`,
+  `.mcp.json`.
+
+### O que mudou de lugar — e nada se perdeu
+
+O `CLAUDE.md` antigo foi distribuído, não apagado: o ciclo, as migrations, as
+invariantes e o mapa foram para a cápsula; as **armadilhas** (PGRST201, triggers,
+Recharts, CSP, portal em diálogo, `e.currentTarget`, o plugin do TanStack, o zip
+incompleto) e as **ferramentas da IA** (`editar.cjs`, `fechar-entrega.cjs`,
+`soCodigo`, pino de arquivo, medir no navegador) foram para
+`docs/conventions.md`; o mapa do repo virou `docs/PROJECT-STRUCTURE.md`. Os 15
+pinos do verificador que liam `CLAUDE.md` passaram a ler `AGENTS.md` — e o pino
+da U68 que exigia PGRST201 e a lição do baseline lê a cápsula MAIS as convenções,
+porque é lá que essas duas frases moram agora. ONBOARDING, ESTADO, PLANO_V0.1 e
+as skills `organizador` e `designer` apontam para a cápsula. O `ONBOARDING.md`
+ainda dizia "57 pré-existentes" no comando do `tsc` — o quinto lugar onde o
+baseline velho sobrevivia; agora diz ZERO.
+
+### O que a verificação pegou
+
+- Os testes do executor falhavam em 2 de 16 no Windows: o `subprocess` decodificava
+  a saída do `sh` em cp1252 e "índice" virava "Ã­ndice". `encoding='utf-8'` no
+  teste (a única mudança na cópia, além de zerar `LEGACY` na árvore temporária).
+- O gerador dos módulos recusou uma linha de `Propósito:` com 146 caracteres antes
+  do docs-lint ver — a regra R1 (≤ 120) está no gerador também.
+- `docs/*/*.md` do lint e o `find` do índice alcançavam `docs/padrao-projeto/` (o
+  clone, com `.git` próprio) e `docs/importacao/` (os 4.241 equipamentos em JSON):
+  os dois ficaram fora, e o clone entrou no `.gitignore`.
+- A cobertura derivada mostrou **282 das 305 regras com asserção nominal** e 23 sem
+  menção pelo número (a maioria em `paineis` e `atividades`, regras visuais antigas
+  cobertas por asserção que não cita o número). Não é buraco novo — é a primeira
+  vez que dá para ver.
+
+### O que NÃO mudou
+
+Nenhuma regra de produto (a última continua a R305), nenhuma migration, nenhuma
+tela, nenhuma versão nova (o Davi pediu para acumular até o próximo executável).
+`PRODUTO.md`, `PLANO_UNIFICACAO.md`, `ESTADO_ATUAL.md`, `DECISOES_PENDENTES.md`,
+os contextos e o manual continuam sendo a fonte; os sumários continuam sendo
+gerados por `sumario.cjs`. O bloco da Lovable no `AGENTS.md` está byte a byte.
+
+**Como se usa a partir daqui:** `py -3 scripts/harness-gates.py` (Linux/CI:
+`python3`) é a definição de pronto; depois de alterar `AGENTS.md`, o manifesto ou
+as skills, `sh scripts/harness-sync.sh && sh scripts/harness-index.sh`; depois de
+mexer no verificador ou nas tabelas de regras, `node scripts/cobertura-regras.cjs`.
+A skill `entrega` tem a ordem inteira.
+
+Verificador: 3.593 asserções, 0 falharam.

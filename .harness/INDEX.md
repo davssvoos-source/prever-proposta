@@ -1,0 +1,83 @@
+# Índice — Prever OS
+
+> Gerado por `scripts/harness-index.sh` — não editar à mão.
+> Nó raiz da navegação: um recurso por linha, ordenado por caminho.
+> Arestas entre recursos usam referências tipadas por ID estável
+> (R# de docs/PRODUTO.md, U#, P#, ADR-####, nome de skill) dentro dos próprios arquivos.
+
+- `.claude/skills/banco/SKILL.md` — Banco de dados e migrations do app Prever (Supabase/Postgres). Use SEMPRE que a tarefa tocar em schema, coluna, CHECK, tabela, RLS/policy, função SQL, gatilho, cron, bucket de storage, semente de permissões (permissoes_tela), ou quando uma tela nova precisar de um valor que o banco ainda não aceita. Escreve a migration no padrão da casa (idempotente, pré-voo, conferência obtido × esperado × veredito, DESFAZER), aplica a regra 5 da ordem de deploy (listas NAO_OFERECIDOS até o Davi rodar) e prepara o aviso ao Davi — que é quem roda tudo, à mão, no SQL Editor.
+- `.claude/skills/designer/SKILL.md` — Designer de produto digital sênior do app Prever. Use SEMPRE que a tarefa envolver interface, UX, tela nova, redesenho, componente, Design System, tokens (cor, tipografia, espaçamento, raio, sombra), responsividade, estados (loading, vazio, erro, sucesso), acessibilidade, contraste, hierarquia visual — ou quando o Davi disser "melhore essa tela", "está feio", "deixe mais profissional", "não gostei do layout", "arrume o modo claro". Raciocina sobre experiência e hierarquia ANTES de escrever código, e implementa DENTRO do design system que já existe (DESIGN_SYSTEM.md, src/lib/paleta.ts, src/lib/ui.ts) — nunca cria um paralelo.
+- `.claude/skills/designer/references/analise.md` — Análise crítica de uma tela existente
+- `.claude/skills/designer/references/estados.md` — Estados, formulários, responsividade e acessibilidade
+- `.claude/skills/designer/references/inventario.md` — Inventário — o que JÁ EXISTE neste repo
+- `.claude/skills/entrega/SKILL.md` — O fecho de toda entrega no Prever OS — regra antes do código, asserção, diário, documentação só do que mudou, derivados regenerados e gates verdes.
+- `.claude/skills/organizador/SKILL.md` — O organizador e planejador do projeto Prever. Use em TODA sessão — ao começar ("inicie a sessão"), ao receber um pedido ou uma revisão do Davi, ao planejar uma entrega com várias frentes, ao fechar uma entrega, ao criar ou reestruturar um documento, e sempre que a pergunta for "onde isso está registrado?", "o que está pendente?", "o que o Davi já decidiu?". Garante que os documentos mestre (ESTADO_ATUAL, PRODUTO, PLANO_UNIFICACAO, PENDENCIAS, contextos ditados, manual) fiquem verdadeiros, sem contradição e navegáveis por sumário — e que nada que o Davi disse se perca.
+- `.claude/skills/organizador/references/documentos-mestre.md` — Os documentos mestre — onde mora cada fato
+- `.claude/skills/organizador/references/rituais.md` — Os quatro rituais — passo a passo, com os comandos
+- `.harness/agents/implementer.md` — Papel: implementer
+- `.harness/agents/planner.md` — Papel: planner
+- `.harness/agents/reviewer.md` — Papel: reviewer
+- `.harness/agents/verifier.md` — Papel: verifier
+- `.harness/harness.yaml` — Pattern Harness — manifesto do Prever OS.
+- `.harness/mcp/servers.json` — Fonte canônica de servidores MCP do projeto. harness-sync.sh projeta este arquivo para .mcp.json na raiz (Claude Code); as demais ferramentas leem daqui ou nativamente. Vazio de propósito: o Prever OS não expõe servidor MCP hoje.
+- `AGENTS.md` — Prever OS — Cápsula de Contexto
+- `DESIGN_SYSTEM.md` — Prever — Design System v2 (Supernova)
+- `ONBOARDING.md` — ONBOARDING — migração para a máquina nova
+- `README.md` — Prever OS
+- `docs/ARCHITECTURE.md` — Arquitetura — Índice
+- `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md` — A estrutura das atividades — ditada pelo Davi em 03/09/2026
+- `docs/CONTEXTO_OPERACAO_TECNICA.md` — Operação Técnica — o contexto, ditado pelo Davi
+- `docs/CONTEXTO_VIATURAS.md` — O controle das viaturas — ditado pelo Davi em 13/09/2026
+- `docs/DASHBOARD.md` — Prever — Estrutura de Dashboard (v1, R65)
+- `docs/DECISOES_PENDENTES.md` — O que depende do Davi — a lista única
+- `docs/ESTADO_ATUAL.md` — Estado atual do projeto — leia isto primeiro
+- `docs/NFR.md` — Requisitos Não-Funcionais
+- `docs/PENDENCIAS_TECNICAS.md` — Pendências técnicas — registro dos defeitos da revisão
+- `docs/PLANO_UNIFICACAO.md` — Unificação Prever — Plano da Temporada 2
+- `docs/PLANO_V0.1.md` — Plano de ação — rumo à versão 0.1
+- `docs/PRODUTO.md` — Prever App — Documento Mestre do Produto
+- `docs/PROJECT-STRUCTURE.md` — Estrutura do Repositório
+- `docs/REGRAS_BLOCOS.md` — Regras de Blocos — Escopo Técnico do Orçamento
+- `docs/REQUIREMENTS.md` — Requisitos — Índice de Módulos
+- `docs/REVISAO_2026-09-03.md` — Revisão completa do sistema — 03/09/2026
+- `docs/REVISAO_TIPOGRAFIA_2026-09-15.md` — Revisão de tipografia das páginas principais — 15/09/2026 (R303, frente V)
+- `docs/SISTEMA_OS.md` — Sistema de Ordens de Serviço — Prever
+- `docs/VERSOES.md` — Versões do Prever — o que entrou em cada uma
+- `docs/conventions.md` — Convenções
+- `docs/decisions/ADR-0000-template.md` — ADR-0000 — <Título da decisão>
+- `docs/decisions/ADR-0001-adotar-pattern-harness.md` — ADR-0001 — Adotar o Pattern Harness no Prever OS
+- `docs/decisions/ADR-0002-documentacao-viva-existente-e-a-fonte.md` — ADR-0002 — A documentação viva que já existia é a fonte; o padrão a indexa
+- `docs/decisions/ADR-0003-verificador-como-gate.md` — ADR-0003 — O verificador da casa é o gate de testes
+- `docs/manual/README.md` — Manual Prever Proposta
+- `docs/manual/banco-e-migrations.md` — Banco e migrations — procedimentos e convenções
+- `docs/manual/clientes-qap.md` — Clientes e QAP — a base que vem de fora
+- `docs/manual/codigos-de-erro.md` — Códigos de erro — como ler e como usar
+- `docs/manual/comercial.md` — Domínio comercial — da prospecção à resposta do cliente
+- `docs/manual/desenvolvimento-e-verificacao.md` — Desenvolvimento — como trabalhar neste repo sem quebrá-lo
+- `docs/manual/financeiro.md` — Financeiro — contratos, fechamentos e valores
+- `docs/manual/hospedagem-windows.md` — Hospedagem em servidor Windows — o pacote, o instalador e o serviço (R220, U118)
+- `docs/manual/interface-e-design.md` — Interface — como construir telas no padrão da casa
+- `docs/manual/operacao-campo.md` — Operação de campo — chamados, fila e programação
+- `docs/manual/permissoes-e-acesso.md` — Permissões e acesso — cargos, matriz e RLS
+- `docs/manual/seguranca.md` — Segurança — o que protege o sistema e o que já queimou
+- `docs/manual/visao-geral.md` — Visão geral do sistema
+- `docs/requirements/_template.md` — <Módulo> — Requisitos
+- `docs/requirements/acessos.md` — Acessos — Requisitos
+- `docs/requirements/atividades.md` — Atividades — Requisitos
+- `docs/requirements/campo.md` — Campo — Requisitos
+- `docs/requirements/clientes.md` — Clientes — Requisitos
+- `docs/requirements/comercial.md` — Comercial — Requisitos
+- `docs/requirements/financeiro.md` — Financeiro — Requisitos
+- `docs/requirements/interface.md` — Interface — Requisitos
+- `docs/requirements/paineis.md` — Painéis — Requisitos
+- `docs/requirements/plataforma.md` — Plataforma — Requisitos
+- `docs/state/_template.md` — <Módulo> — Estado da Implementação
+- `docs/state/acessos.md` — Acessos — Estado da Implementação
+- `docs/state/atividades.md` — Atividades — Estado da Implementação
+- `docs/state/campo.md` — Campo — Estado da Implementação
+- `docs/state/clientes.md` — Clientes — Estado da Implementação
+- `docs/state/comercial.md` — Comercial — Estado da Implementação
+- `docs/state/financeiro.md` — Financeiro — Estado da Implementação
+- `docs/state/interface.md` — Interface — Estado da Implementação
+- `docs/state/paineis.md` — Painéis — Estado da Implementação
+- `docs/state/plataforma.md` — Plataforma — Estado da Implementação

@@ -38,7 +38,8 @@ NÃO entra em cada um). O resumo:
 | `docs/CONTEXTO_*.md` | o que o Davi ditou, na íntegra, e as decisões D-série | quando ele dita um contexto novo |
 | `docs/manual/*.md` | como o sistema funciona, por segmento | quando a regra muda o comportamento |
 | `DESIGN_SYSTEM.md` | tokens, componentes, anti-padrões | quando muda token ou receita |
-| `CLAUDE.md` | o método | raramente — só quando o método muda |
+| `AGENTS.md` | a cápsula: o método (o `CLAUDE.md` é gerado e só a importa) | raramente — só quando o método muda |
+| `docs/requirements/<m>.md` · `docs/state/<m>.md` | as regras que governam o módulo · o que existe hoje | a cada entrega que toca o módulo |
 
 Regra de ouro: **registrar no documento certo é melhor do que registrar em
 dois.** Duplicata é a fonte das contradições que o Davi pediu para evitar.
@@ -93,7 +94,7 @@ Os detalhes de cada um estão em `references/rituais.md`. Aqui, o essencial.
 
 ### 2.4 Fim de entrega — os sete passos, e mais um
 
-O ciclo do `CLAUDE.md`: (1) regra no PRODUTO · (2) lógica pura · (3)
+O ciclo do `AGENTS.md`: (1) regra no PRODUTO · (2) lógica pura · (3)
 asserção · (4) build + tsc no baseline · (5) diário · (6) commit + push ·
 (7) `ESTADO_ATUAL.md`. E o oitavo, desta skill:
 
@@ -142,7 +143,7 @@ Os documentos mestre têm 22 mil linhas. Ninguém lê isso; navega-se.
   sistema (Sprint, pedido de compra, uma tela), `grep -rl` nos docs e corrija
   cada menção — e trave por asserção, como a U100 fez.
 - **Documento novo** segue o modelo em `references/documentos-mestre.md` §3
-  e entra no mapa do `CLAUDE.md` e na ordem de leitura do `ESTADO_ATUAL.md`.
+  e entra no mapa do `AGENTS.md` e na ordem de leitura do `ESTADO_ATUAL.md`.
   Documento que ninguém acha é documento que não existe.
 
 ## 5. O que esta skill vigia (e acusa)
@@ -174,5 +175,5 @@ o que custa é a escolha silenciosa que ninguém acha depois.
 | `references/documentos-mestre.md` | onde mora cada fato; o modelo de documento novo; os sinais de envelhecimento |
 | `references/rituais.md` | o passo a passo dos quatro rituais, com os comandos |
 
-E, fora da skill: `CLAUDE.md` (o método), `docs/ESTADO_ATUAL.md` (o retrato),
+E, fora da skill: `AGENTS.md` (a cápsula), `docs/ESTADO_ATUAL.md` (o retrato),
 `scripts/sumario.cjs` (os sumários).

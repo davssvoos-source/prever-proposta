@@ -1,0 +1,4 @@
+{
+  "$comment": "Fonte canônica de servidores MCP do projeto. harness-sync.sh projeta este arquivo para .mcp.json na raiz (Claude Code); as demais ferramentas leem daqui ou nativamente. Vazio de propósito: o Prever OS não expõe servidor MCP hoje.",
+  "mcpServers": {}
+}

@@ -98,11 +98,20 @@ checklist de conformidade.
 **Não entra:** regra de produto (cite a R que motivou), decisão de tela
 específica (diário).
 
-### `CLAUDE.md` — o método
+### `AGENTS.md` — a cápsula (o método)
 
-**Entra:** o ciclo de trabalho, as invariantes, as armadilhas, o mapa do
-repo, as confirmações de sanidade. Muda raramente. Quando mudar, avise o Davi
-— é o contrato de como se trabalha.
+**Entra:** o ciclo de trabalho, as invariantes, o protocolo de leitura, o mapa
+de módulos e os limites. Muda raramente. Quando mudar, avise o Davi — é o
+contrato de como se trabalha. `CLAUDE.md` é GERADO (`@AGENTS.md`) e não se
+edita; as armadilhas e as ferramentas da IA moram em `docs/conventions.md`.
+
+### `docs/requirements/<m>.md` · `docs/state/<m>.md` — o módulo
+
+**Entra no requisito:** a síntese EARS e a tabela das regras (R#) que governam
+o módulo — a regra em si continua na `PRODUTO.md`. **Entra no state:** o que
+existe, os padrões a reusar, a configuração, a cobertura R# → verificação
+(gerada por `node scripts/cobertura-regras.cjs`) e as pendências. State é
+PRESENTE: reescreve-se a seção, nunca se acrescenta parágrafo datado.
 
 ### `docs/DASHBOARD.md` · `docs/REGRAS_BLOCOS.md` · `docs/SISTEMA_OS.md` · `docs/REVISAO_2026-09-03.md`
 
@@ -113,7 +122,7 @@ a tela de 03/09 com as Q11–Q17. Consultam-se pelo assunto.
 ### `.claude/skills/*/` — os métodos que carregam sozinhos
 
 `designer` (interface), `organizador` (este), `banco` (migrations). Uma skill
-nova entra no mapa do `CLAUDE.md` e no `ESTADO_ATUAL.md`.
+nova entra no mapa do `AGENTS.md` e no `ESTADO_ATUAL.md`.
 
 ## 2. Vocabulário das séries
 
@@ -179,7 +188,7 @@ Todo documento mestre nasce com:
 ## 1. …
 ```
 
-E, ao nascer, entra em três lugares: o mapa do `CLAUDE.md`, a ordem de
+E, ao nascer, entra em três lugares: o mapa do `AGENTS.md`, a ordem de
 leitura do `ESTADO_ATUAL.md` e a lista de alvos de `scripts/sumario.cjs`
 (se tiver mais de ~150 linhas).
 
@@ -192,7 +201,7 @@ Quando algo sai do sistema, ele continua nos documentos por meses. Ao remover
 tela, campo, conceito ou termo, rode:
 
 ```bash
-grep -rln "<termo>" CLAUDE.md ONBOARDING.md DESIGN_SYSTEM.md docs/*.md docs/manual/*.md
+grep -rln "<termo>" AGENTS.md ONBOARDING.md DESIGN_SYSTEM.md docs/*.md docs/*/*.md
 ```
 
 e corrija **cada** menção — depois trave por asserção (a U100 fixou a

@@ -5008,14 +5008,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R79 está documentado', /\*\*R79\*\*/.test(produto24), true);
 }
 
+// U156 (22/09/2026): o método mudou de casa. AGENTS.md é a cápsula do Pattern
+// Harness (CLAUDE.md virou o adaptador gerado "@AGENTS.md"); as armadilhas e as
+// ferramentas foram para docs/conventions.md. Os pinos deste bloco e dos blocos
+// U93/U94/U96/U100/U101/U102/U118/U119/U127/U133/R277 que liam CLAUDE.md passaram
+// a ler AGENTS.md — os rótulos ainda dizem "CLAUDE.md" por história; o que uma
+// sessão nova lê é a cápsula.
 // ── U68: o contexto do projeto viaja com o repo ────────────────────────────
 // A memória do assistente é por CONTA e por MÁQUINA — na troca das duas
 // (2026-08-24) ela evapora. CLAUDE.md carrega o método; ONBOARDING.md, a
 // transição. Se um dos dois sumir, a próxima sessão nova volta à arqueologia.
 {
   const fs50 = require('fs');
-  eq('CLAUDE.md existe na raiz — é o que uma sessão nova lê sozinha', fs50.existsSync('CLAUDE.md'), true);
-  const cl = fs50.readFileSync('CLAUDE.md', 'utf8');
+  eq('CLAUDE.md existe na raiz — é o que uma sessão nova lê sozinha', fs50.existsSync('AGENTS.md'), true);
+  // U156: a cápsula MAIS as convenções — PGRST201 e a lição do baseline moram em conventions.md.
+  const cl = fs50.readFileSync('AGENTS.md', 'utf8') + '\n' + fs50.readFileSync('docs/conventions.md', 'utf8');
   eq('CLAUDE.md ensina o ciclo completo (R → implementação → asserções → build → U → push)',
      ['docs/PRODUTO.md', 'verificar-logica.cjs', 'vite build', 'PLANO_UNIFICACAO'].every((t) => cl.includes(t)),
      true);
@@ -5125,7 +5132,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // vez que um regex meu não tolera a quebra de linha do markdown — o texto
   // guardado é o mesmo, só mudou onde o parágrafo quebra.
   eq('CRÍTICO: o CLAUDE.md avisa para NÃO "arrumar" .env/AGENTS.md/.lovable enquanto a Lovable estiver ativa — foi assim que o app caiu duas vezes',
-     /ficam\s+como estão/.test(fs51.readFileSync('CLAUDE.md', 'utf8')), true);
+     /ficam\s+como estão/.test(fs51.readFileSync('AGENTS.md', 'utf8')), true);
 }
 
 // ── U70: o fim de linha é LF, e isso viaja no clone ────────────────────────
@@ -16661,7 +16668,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const prod93 = fs93.readFileSync('docs/PRODUTO.md', 'utf8');
   const plan93 = fs93.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8');
   const man93 = fs93.readFileSync('docs/manual/operacao-campo.md', 'utf8');
-  const claude93 = fs93.readFileSync('CLAUDE.md', 'utf8');
+  const claude93 = fs93.readFileSync('AGENTS.md', 'utf8');
   eq('U93 (regra 7): R124–R130 existem; o diário tem a U93; o manual fala dos painéis novos',
      [['R124', 'R125', 'R126', 'R127', 'R128', 'R129', 'R130'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod93)),
       /^## U93 — /m.test(plan93), /Implantações em andamento/.test(man93), /Aguardando conferência/.test(man93)],
@@ -16851,7 +16858,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [['R131', 'R132', 'R133'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod94)),
       /^## U94 — /m.test(plan94),
       fs94.existsSync('docs/REVISAO_2026-09-03.md'),
-      /REVISAO_2026-09-03\.md/.test(ler94('CLAUDE.md')),
+      /REVISAO_2026-09-03\.md/.test(ler94('AGENTS.md')),
       /Semanal/.test(ler94('docs/manual/operacao-campo.md')),
       /abas/.test(ler94('docs/manual/permissoes-e-acesso.md')),
       /ficha do cliente/.test(ler94('docs/manual/financeiro.md'))],
@@ -17354,7 +17361,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [fs96.existsSync('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md'),
       /## 1\. O documento do Davi, na íntegra/.test(ler96('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md')),
       /D9 —/.test(ler96('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md')), /Q22 —/.test(ler96('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md')),
-      /CONTEXTO_ESTRUTURA_ATIVIDADES\.md/.test(ler96('CLAUDE.md'))],
+      /CONTEXTO_ESTRUTURA_ATIVIDADES\.md/.test(ler96('AGENTS.md'))],
      [true, true, true, true, true]);
   eq('U96 (regra 7): a U96 está no diário, a Fase H no plano, a estrutura no manual, as dívidas P55–P57 e a §6.13 do design system',
      [/^## U96 — /m.test(ler96('docs/PLANO_UNIFICACAO.md')), /### Fase H — A estrutura das atividades/.test(ler96('docs/PLANO_V0.1.md')),
@@ -17870,7 +17877,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // ── a revisão dos documentos (pedido do Davi: "quando eu for rodar numa máquina nova, seja tranquilo") ──
   const estado = ler100('docs/ESTADO_ATUAL.md');
   const prod100 = ler100('docs/PRODUTO.md');
-  const claude100 = ler100('CLAUDE.md');
+  const claude100 = ler100('AGENTS.md');
   const ultimaRegraProduto = Math.max(...[...prod100.matchAll(/^- \*\*R(\d+)\*\* —/gm)].map((m) => Number(m[1])));
   eq('ESTADO_ATUAL CRÍTICO: existe, é a primeira linha do mapa do CLAUDE.md, e o ciclo de trabalho manda atualizá-lo',
      [/^# Estado atual do projeto/m.test(estado),
@@ -18098,7 +18105,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         /PLANO_UNIFICACAO\.md/.test(skill), /ESTADO_ATUAL\.md/.test(skill)],
        [true, true, true, true]);
     eq('SKILL designer (regra 7): o CLAUDE.md e o ESTADO_ATUAL apontam para ela — skill que ninguém acha é skill que não existe',
-       [/\.claude\/skills\/designer/.test(ler101('CLAUDE.md')),
+       [/\.claude\/skills\/designer/.test(ler101('AGENTS.md')),
         /\.claude\/skills\/designer/.test(ler101('docs/ESTADO_ATUAL.md'))],
        [true, true]);
   }
@@ -18148,8 +18155,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /- \[7\. Regras ditadas[^\n]*· R1–R32 \(32\)/.test(ler102('docs/PRODUTO.md'))
        && /- \[21\. A estrutura das atividades[^\n]*· R137–R\d+ \(\d+\)/.test(ler102('docs/PRODUTO.md')), true);
   eq('U102 (regra 7): o CLAUDE.md tem o passo 8 (sumários) e as duas skills no mapa; o ESTADO cita as três skills; a U102 está no diário',
-     [/8\. \*\*Sumários\*\*/.test(ler102('CLAUDE.md')),
-      /\.claude\/skills\/organizador\//.test(ler102('CLAUDE.md')) && /\.claude\/skills\/banco\//.test(ler102('CLAUDE.md')),
+     [/8\. \*\*Sumários\*\*/.test(ler102('AGENTS.md')),
+      /\.claude\/skills\/organizador\//.test(ler102('AGENTS.md')) && /\.claude\/skills\/banco\//.test(ler102('AGENTS.md')),
       /\*\*organizador\*\*/.test(ler102('docs/ESTADO_ATUAL.md')) && /\*\*banco\*\*/.test(ler102('docs/ESTADO_ATUAL.md')),
       /^## U102 /m.test(ler102('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true, true]);
@@ -19562,7 +19569,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [['R218', 'R219', 'R220'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod118)),
       Number((prod118.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 220,
       /^# Hospedagem em servidor Windows/m.test(ler118('docs/manual/hospedagem-windows.md')),
-      /hospedagem-windows\.md/.test(ler118('docs/manual/README.md')), /hospedagem-windows\.md/.test(ler118('ONBOARDING.md')), /hospedagem-windows\.md/.test(ler118('CLAUDE.md')),
+      /hospedagem-windows\.md/.test(ler118('docs/manual/README.md')), /hospedagem-windows\.md/.test(ler118('ONBOARDING.md')), /hospedagem-windows\.md/.test(ler118('AGENTS.md')),
       /\.ficha-grid/.test(ler118('.claude/skills/designer/references/inventario.md')) && /\.fab-chat/.test(ler118('.claude/skills/designer/references/inventario.md')),
       /^## P61 /m.test(ler118('docs/PENDENCIAS_TECNICAS.md')) && /^## P62 /m.test(ler118('docs/PENDENCIAS_TECNICAS.md')),
       /^## U118 /m.test(ler118('docs/PLANO_UNIFICACAO.md')), /U118/.test(ler118('docs/ESTADO_ATUAL.md'))],
@@ -19810,7 +19817,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       Number((prod119.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 229,
       /^### 6\.21 O chat da Início/m.test(ler119('DESIGN_SYSTEM.md')) && /^### 6\.22 O editor de texto/m.test(ler119('DESIGN_SYSTEM.md')),
       /recado para todos/.test(ler119('docs/manual/visao-geral.md')) && /Agendado/.test(ler119('docs/manual/visao-geral.md')),
-      /VERSOES\.md/.test(ler119('CLAUDE.md')) && /^## v0\.0\.1 /m.test(ler119('docs/VERSOES.md')),
+      /VERSOES\.md/.test(ler119('AGENTS.md')) && /^## v0\.0\.1 /m.test(ler119('docs/VERSOES.md')),
       /^## P63 /m.test(ler119('docs/PENDENCIAS_TECNICAS.md')),
       // U122: a U119 rodou em 08/09/2026 — o ESTADO a lista entre as rodadas
       /^## U119 /m.test(ler119('docs/PLANO_UNIFICACAO.md')), /^- \*\*U119\*\* \(/m.test(ler119('docs/ESTADO_ATUAL.md'))],
@@ -20828,7 +20835,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       // é que a entrada dela exista dizendo que exige a U127
       /^## v0\.0\.9 [^\n]*U127/m.test(ler127('docs/VERSOES.md')),
       fs127.existsSync('scripts/lib/editar.cjs') && fs127.existsSync('scripts/fechar-entrega.cjs'),
-      /fechar-entrega\.cjs/.test(ler127('CLAUDE.md')) && /lib\/editar\.cjs/.test(ler127('CLAUDE.md'))],
+      /fechar-entrega\.cjs/.test(ler127('AGENTS.md')) && /lib\/editar\.cjs/.test(ler127('AGENTS.md'))],
      [true, true, true, true, true, true, true, true, true, true, true, true]);
 }
 
@@ -21762,7 +21769,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const existe266 = fs266.existsSync('docs/CONTEXTO_VIATURAS.md');
   const ctx266 = existe266 ? fs266.readFileSync('docs/CONTEXTO_VIATURAS.md', 'utf8') : '';
   const prod266 = fs266.readFileSync('docs/PRODUTO.md', 'utf8');
-  const claude266 = fs266.readFileSync('CLAUDE.md', 'utf8');
+  const claude266 = fs266.readFileSync('AGENTS.md', 'utf8');
   const estado266 = fs266.readFileSync('docs/ESTADO_ATUAL.md', 'utf8');
   const sum266 = fs266.readFileSync('scripts/sumario.cjs', 'utf8');
   const manual266 = fs266.readFileSync('docs/manual/operacao-campo.md', 'utf8');
@@ -22562,7 +22569,7 @@ assincronas.push(async () => {
   const pag8 = ler8('src/routes/_authenticated/visita.$id.pagamento.tsx');
   const sum8 = ler8('scripts/sumario.cjs');
   const manif8 = ler8('android/app/src/main/AndroidManifest.xml');
-  const claude8 = ler8('CLAUDE.md');
+  const claude8 = ler8('AGENTS.md');
 
   // R277 — A PORTA PÚBLICA. Era um botão "Criar conta" numa tela de login, e
   // por trás dele 28 policies que respondiam a qualquer `authenticated`. O
@@ -24618,6 +24625,149 @@ assincronas.push(async () => {
       TL155.TELAS.find((t) => t.chave === 'atividades.nova')?.padrao.operacional,
       TL155.TELAS.find((t) => t.chave === 'dashboard')?.padrao.operacional],
      [true, true, true]);
+}
+
+
+// ── U156 — o Pattern Harness aplicado (22/09/2026) ───────────────────────────
+//
+// Davi: "Aplique o padrão estruturado na pasta docs/padrao-projeto, a IA deve
+// atualizar a documentação conforme o projeto, principalmente o arquivo README.md".
+// A cápsula é AGENTS.md; CLAUDE.md virou adaptador gerado; a documentação por
+// módulo entra pelos índices; "pronto" é o executor de gates. Os pinos abaixo
+// descrevem ARQUIVOS (regra 10) — a execução dos gates é do próprio executor
+// (py -3 scripts/harness-gates.py), e a sincronia dos derivados é gate lá.
+{
+  const fs156 = require('fs');
+  const ler156 = (p) => (fs156.existsSync(p) ? fs156.readFileSync(p, 'utf8') : '');
+  const existe156 = (p) => fs156.existsSync(p);
+  const agents156 = ler156('AGENTS.md');
+
+  eq('U156 CRÍTICO: CLAUDE.md é o adaptador GERADO — exatamente "@AGENTS.md" — e a cápsula AGENTS.md começa pelo bloco da Lovable, intocado, antes do título',
+     [ler156('CLAUDE.md').trim(), agents156.startsWith('<!-- LOVABLE:BEGIN -->'),
+      agents156.indexOf('<!-- LOVABLE:END -->') < agents156.indexOf('# Prever OS — Cápsula de Contexto'),
+      /Avoid rewriting\s+>?\s*published git history/.test(agents156)],
+     ['@AGENTS.md', true, true, true]);
+
+  const readme156 = ler156('README.md');
+  eq('U156 (o pedido principal): README.md existe, chama o sistema pelo nome e aponta a cápsula, o manifesto, os índices, o retrato, a lista do Davi, o catálogo e o executor',
+     [/^# Prever OS\n/.test(readme156),
+      ['AGENTS.md', '.harness/harness.yaml', 'docs/REQUIREMENTS.md', 'docs/ESTADO_ATUAL.md', 'docs/DECISOES_PENDENTES.md',
+       'docs/PRODUTO.md', 'docs/ARCHITECTURE.md', 'scripts/harness-gates.py', 'ADR-0001'].filter((t) => !readme156.includes(t)),
+      /## Começando/.test(readme156) && /## Regras de ouro/.test(readme156) && /## Mapa/.test(readme156)],
+     [true, [], true]);
+
+  const man156 = ler156('.harness/harness.yaml');
+  eq('U156: o manifesto declara os SEIS verbos com a implementação da casa (verificador = test, tsc = lint, vite build = build) e os nove gates, todos obrigatórios',
+     [['setup:', 'build:', 'test:', 'lint:', 'format:', 'run:'].every((v) => new RegExp('^  ' + v, 'm').test(man156)),
+      /test:\s+node scripts\/verificar-logica\.cjs/.test(man156), /lint:\s+npx tsc --noEmit/.test(man156), /build:\s+npx vite build/.test(man156),
+      ['docs-lint', 'sumarios', 'cobertura-em-dia', 'adapters-in-sync', 'index-in-sync', 'runner-tests', 'lint', 'tests', 'build']
+        .filter((g) => !new RegExp('- name: ' + g + '\\b').test(man156)),
+      (man156.match(/required: true/g) ?? []).length, (man156.match(/required: false/g) ?? []).length],
+     [true, true, true, true, [], 9, 0]);
+
+  eq('U156: a infraestrutura do harness existe — executor, sync, índice, lint, py3, cobertura, testes, papéis, MCP, skill entrega, CI, os adaptadores gerados e os índices da documentação',
+     ['scripts/harness-gates.py', 'scripts/harness-sync.sh', 'scripts/harness-index.sh', 'scripts/docs-lint.sh', 'scripts/py3.sh',
+      'scripts/cobertura-regras.cjs', 'scripts/requirements.txt', 'scripts/tests/test_docs_lint.py', 'scripts/tests/test_harness_gates.py',
+      '.harness/INDEX.md', '.harness/agents/planner.md', '.harness/agents/implementer.md', '.harness/agents/reviewer.md',
+      '.harness/agents/verifier.md', '.harness/mcp/servers.json', '.claude/skills/entrega/SKILL.md', '.github/workflows/harness.yml',
+      '.mcp.json', '.cursor/rules/harness.mdc', '.gemini/GEMINI.md', '.agent/rules/harness.md', '.github/copilot-instructions.md',
+      'docs/ARCHITECTURE.md', 'docs/REQUIREMENTS.md', 'docs/NFR.md', 'docs/PROJECT-STRUCTURE.md', 'docs/conventions.md']
+       .filter((p) => !existe156(p)),
+     []);
+
+  // As adaptações ao Windows e à casa (ADR-0001) são código, não prosa: o executor
+  // não depende de /bin/sh, o sync não faz symlink, o lint e o índice não alcançam o
+  // clone do padrão nem a carga do QAP, e o teste decodifica UTF-8 (a falha que o
+  // primeiro run pegou: "índice" virava "Ã­ndice" em cp1252).
+  const gates156 = ler156('scripts/harness-gates.py');
+  const sync156 = ler156('scripts/harness-sync.sh');
+  const lint156 = ler156('scripts/docs-lint.sh');
+  const idx156 = ler156('scripts/harness-index.sh');
+  eq('U156 (ADR-0001): executor por [sh, -c] com fallback ao sh do Git; sync sem symlink e emitindo CLAUDE.md = @AGENTS.md; lint e índice fora de padrao-projeto/ e importacao/; LEGACY com os documentos mestre; teste em UTF-8; CI e .gitignore',
+     [/subprocess\.run\(\[posix_shell\(\), '-c', command\]/.test(gates156), !/executable='\/bin\/sh'/.test(gates156), /shutil\.which\('sh'\)/.test(gates156),
+      !/ln -s/.test(sync156), /emit "CLAUDE\.md" "@AGENTS\.md"/.test(sync156),
+      /docs\/padrao-projeto\/\*\|docs\/importacao\/\*/.test(lint156), /LEGACY_PADRAO="docs\/PRODUTO\.md/.test(lint156), /\.claude\/skills\/\*\/SKILL\.md/.test(lint156),
+      /! -path 'docs\/padrao-projeto\/\*'/.test(idx156) && /\.claude\/skills docs/.test(idx156),
+      /encoding='utf-8'/.test(ler156('scripts/tests/test_docs_lint.py')),
+      /python3 scripts\/harness-gates\.py/.test(ler156('.github/workflows/harness.yml')),
+      /^docs\/padrao-projeto\/$/m.test(ler156('.gitignore'))],
+     [true, true, true, true, true, true, true, true, true, true, true, true]);
+
+  // A documentação por módulo: toda regra do catálogo em EXATAMENTE um módulo, todo
+  // módulo indexado, com state (marcadores de cobertura) e no mapa da cápsula.
+  const prod156 = ler156('docs/PRODUTO.md');
+  const ultima156 = Math.max(...[...prod156.matchAll(/^- \*\*R(\d+)\*\* —/gm)].map((m) => Number(m[1])));
+  const reqs156 = fs156.readdirSync('docs/requirements').filter((f) => f.endsWith('.md') && !f.startsWith('_'));
+  const dono156 = new Map();
+  const duplas156 = [];
+  for (const f of reqs156) {
+    for (const m of ler156('docs/requirements/' + f).matchAll(/^\| R(\d+) \|/gm)) {
+      const r = Number(m[1]);
+      if (dono156.has(r)) duplas156.push('R' + r); else dono156.set(r, f);
+    }
+  }
+  const semModulo156 = [];
+  for (let r = 1; r <= ultima156; r++) if (!dono156.has(r)) semModulo156.push('R' + r);
+  const foraDoCatalogo156 = [...dono156.keys()].filter((r) => !new RegExp('^- \\*\\*R' + r + '\\*\\*( \\([^)]*\\))? —', 'm').test(prod156)).map((r) => 'R' + r);
+  eq('U156 CRÍTICO (ADR-0002): toda regra R1–R' + ultima156 + ' do catálogo está em EXATAMENTE um docs/requirements/<modulo>.md — nenhuma sem módulo, nenhuma em dois, nenhuma inventada',
+     [reqs156.length > 0, semModulo156, duplas156, foraDoCatalogo156], [true, [], [], []]);
+
+  const reqIndex156 = ler156('docs/REQUIREMENTS.md');
+  eq('U156: cada módulo está indexado em REQUIREMENTS.md, tem o state com os marcadores de cobertura e a seção Pendências, e uma linha no mapa da cápsula',
+     reqs156.filter((f) => {
+       const id = f.replace(/\.md$/, '');
+       const st = ler156('docs/state/' + f);
+       return !(reqIndex156.includes('(requirements/' + f + ')') && st.includes('<!-- cobertura:inicio -->') && st.includes('<!-- cobertura:fim -->')
+         && st.includes('## Pendências') && new RegExp('^\\| ' + id + ' \\|', 'm').test(agents156));
+     }),
+     []);
+
+  // A cobertura é DERIVADA (cobertura-regras.cjs) — o gate confere a sincronia; aqui
+  // se prende a FORMA: o bloco gerado lista as regras do módulo, na ordem do requisito.
+  eq('U156: a tabela "Cobertura R# → verificação" de cada state lista exatamente as regras do requisito do módulo (mesma contagem, primeira e última iguais)',
+     reqs156.filter((f) => {
+       const regras = [...ler156('docs/requirements/' + f).matchAll(/^\| R(\d+) \|/gm)].map((m) => Number(m[1]));
+       const st = ler156('docs/state/' + f);
+       const bloco = st.slice(st.indexOf('<!-- cobertura:inicio -->'), st.indexOf('<!-- cobertura:fim -->'));
+       const linhas = [...bloco.matchAll(/^\| produto:R(\d+) \|/gm)].map((m) => Number(m[1]));
+       return !(linhas.length === regras.length && linhas[0] === regras[0] && linhas[linhas.length - 1] === regras[regras.length - 1]);
+     }),
+     []);
+
+  const arch156 = ler156('docs/ARCHITECTURE.md');
+  eq('U156: os três ADRs da adoção existem com Data e Status e estão indexados em ARCHITECTURE.md; o template é o ADR-0000',
+     ['ADR-0001-adotar-pattern-harness.md', 'ADR-0002-documentacao-viva-existente-e-a-fonte.md', 'ADR-0003-verificador-como-gate.md']
+       .filter((f) => {
+         const t = ler156('docs/decisions/' + f);
+         const id = f.slice(0, 8);
+         return !(/^- \*\*Data:\*\* 2026-09-22/m.test(t) && /^- \*\*Status:\*\* Aceito/m.test(t) && arch156.includes('[' + id + '](decisions/' + f + ')'));
+       }).concat(existe156('docs/decisions/ADR-0000-template.md') ? [] : ['sem template']),
+     []);
+
+  // O método mudou de casa e nada se perdeu: quem mandava ler "o CLAUDE.md" aponta a
+  // cápsula; as armadilhas e as ferramentas moram em conventions.md.
+  const conv156 = ler156('docs/conventions.md');
+  eq('U156: as armadilhas e as ferramentas da IA moram em docs/conventions.md (PGRST201, Recharts, portal em diálogo, editar.cjs, fechar-entrega, soCodigo, pino de arquivo, medir no navegador, a lição do baseline)',
+     ['PGRST201', 'Recharts', 'closest', 'lib/editar.cjs', 'fechar-entrega.cjs', 'soCodigo', 'Pino descreve ARQUIVO', 'MEDIR no navegador',
+      'baseline de erro de tipo é onde defeito de PRODUÇÃO se esconde'].filter((t) => !conv156.includes(t)),
+     []);
+  eq('U156: ONBOARDING, ESTADO §2, PLANO_V0.1 e as skills organizador/designer apontam para AGENTS.md — e as frases antigas sobre "o CLAUDE.md" saíram',
+     [/`AGENTS\.md` \(a cápsula do Pattern Harness/.test(ler156('ONBOARDING.md')), /baseline ZERO desde a U138 \(AGENTS\.md\)/.test(ler156('ONBOARDING.md')),
+      /^1\. `AGENTS\.md` — a cápsula/m.test(ler156('docs/ESTADO_ATUAL.md')), !/^1\. `CLAUDE\.md` — o método/m.test(ler156('docs/ESTADO_ATUAL.md')),
+      /ciclo obrigatório do `AGENTS\.md`/.test(ler156('docs/PLANO_V0.1.md')),
+      /### `AGENTS\.md` — a cápsula/.test(ler156('.claude/skills/organizador/references/documentos-mestre.md')),
+      !/### `CLAUDE\.md` — o método/.test(ler156('.claude/skills/organizador/references/documentos-mestre.md')),
+      /Os sete passos do `AGENTS\.md`/.test(ler156('.claude/skills/organizador/references/rituais.md')),
+      /O `AGENTS\.md` vale igual para interface/.test(ler156('.claude/skills/designer/SKILL.md')),
+      /\| `AGENTS\.md` \| a cápsula/.test(ler156('.claude/skills/organizador/SKILL.md'))],
+     [true, true, true, true, true, true, true, true, true, true]);
+
+  eq('U156 (regra 7): a U156 está no diário e no ESTADO §3, o manual de desenvolvimento explica os gates, a skill entrega existe com frontmatter e cita fechar-entrega, sync, index, cobertura e o executor',
+     [/^## U156 — /m.test(ler156('docs/PLANO_UNIFICACAO.md')), /U156 \(22\/09\/2026\) — o Pattern Harness da casa está aplicado/.test(ler156('docs/ESTADO_ATUAL.md')),
+      /^## A definição de pronto: os gates do harness/m.test(ler156('docs/manual/desenvolvimento-e-verificacao.md')),
+      /^name: entrega$/m.test(ler156('.claude/skills/entrega/SKILL.md')),
+      ['fechar-entrega.cjs', 'harness-sync.sh', 'harness-index.sh', 'cobertura-regras.cjs', 'harness-gates.py'].filter((t) => !ler156('.claude/skills/entrega/SKILL.md').includes(t))],
+     [true, true, true, true, []]);
 }
 
 

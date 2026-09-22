@@ -5,11 +5,11 @@
 > começa sem memória local) ele responde em cinco minutos: onde estamos, o
 > que está pendente, o que o Davi já decidiu e o que ele ainda vai mandar.
 > **Atualize-o no fim de cada entrega** — é o passo 7 do ciclo de trabalho em
-> `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
+> `AGENTS.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-17** · última regra: **R305** · último diário:
-**U155** · verificador: **3.581 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-22** · última regra: **R305** · último diário:
+**U156** · verificador: **3.593 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
 Banco — **Pendente: U155** (`20261012090000_u155_o_operacional_le_a_base_de_clientes.sql`)
@@ -169,8 +169,14 @@ técnica de campo é o **Vinicius**.
 
 ## 2. A ordem de leitura
 
-1. `CLAUDE.md` — o método (ciclo de trabalho, migrations, invariantes,
-   armadilhas). Cinco minutos.
+1. `AGENTS.md` — a cápsula do Pattern Harness (U156): o ciclo de trabalho, as
+   migrations, as invariantes, o protocolo de leitura e o mapa de módulos. Cinco
+   minutos. `CLAUDE.md` é gerado e só a importa; as armadilhas e as ferramentas
+   da IA estão em `docs/conventions.md`.
+1b. `docs/REQUIREMENTS.md` → `docs/requirements/<modulo>.md` e
+   `docs/state/<modulo>.md` — SÓ o módulo da tarefa: as regras que o governam
+   (apontando a `PRODUTO.md`), o que existe, os padrões a reusar, a cobertura
+   R# → verificação e as pendências. `docs/ARCHITECTURE.md` indexa os ADRs.
 2. **Este arquivo** — onde estamos. As três skills em `.claude/skills/`
    carregam sozinhas quando a tarefa pede: **organizador** (toda sessão:
    rituais, documentos mestre, sumários), **designer** (interface), **banco**
@@ -200,7 +206,16 @@ técnica de campo é o **Vinicius**.
    (R229): a versão é o que muda no servidor; a migration é o que muda no
    banco; os dois andam juntos.
 
-## 3. Onde estamos (15/09/2026)
+## 3. Onde estamos (22/09/2026)
+
+**U156 (22/09/2026) — o Pattern Harness da casa está aplicado.** `AGENTS.md` é a
+cápsula (o método que vivia no `CLAUDE.md`, que agora é gerado e só a importa);
+`README.md` nasceu; `docs/REQUIREMENTS.md` entra em nove módulos
+(`docs/requirements/` + `docs/state/`), com TODA regra R1–R305 em exatamente um;
+`docs/ARCHITECTURE.md` indexa os ADR-0001–0003 (as quatro adaptações do padrão,
+a documentação existente como fonte, o verificador como gate); "pronto" virou
+`py -3 scripts/harness-gates.py` (nove gates, `.harness/harness.yaml`). Sem
+migration, sem versão nova. Detalhe: diário U156.
 
 **Fases do plano** (`PLANO_V0.1.md` §6): A (dashboard da Operacional
 Técnica) e B (o "+") entregues na U93; o núcleo da H (a estrutura das

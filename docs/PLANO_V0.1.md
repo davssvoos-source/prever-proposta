@@ -30,7 +30,7 @@ ponto em que **o Vinicius opera só nele**, e o Gestor OS pode ser desligado.
 Este plano substitui o "plano em sete fases" da absorção do Gestor OS (U75),
 que ficou fora do repo. O que dele já foi entregue está contado na §2; o que
 sobrou entrou aqui, reordenado pela prioridade do Davi. Toda fase segue o
-ciclo obrigatório do `CLAUDE.md` (regra → lógica pura → asserção → build →
+ciclo obrigatório do `AGENTS.md` (regra → lógica pura → asserção → build →
 diário → commit), e nenhuma migration é aplicada pelo repo — o Davi roda à mão.
 
 ---

@@ -63,3 +63,7 @@ android/app/src/main/assets/capacitor.config.json
 # VITE_, que publicaria o valor no bundle.
 .env.local
 .env.*.local
+
+# A cópia local do Pattern Harness (clone do Bitbucket preverti/pattern) é referência de
+# leitura, com .git próprio — o padrão já está APLICADO neste repositório (ADR-0001).
+docs/padrao-projeto/
