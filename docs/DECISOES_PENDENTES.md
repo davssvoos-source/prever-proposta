@@ -166,3 +166,13 @@ restaurado é uma pasta grande, não um backup.
 | `REVISAO_TIPOGRAFIA_2026-09-15.md` | os 66 desvios da frente V |
 | `VERSOES.md` | o que entrou em cada versão instalada |
 | `PLANO_UNIFICACAO.md` | o diário: o porquê de cada decisão técnica |
+
+---
+
+> **Versão em Word, para ler e circular.** `docs/Decisoes-Pendentes-Prever.docx`
+> tem este mesmo conteúdo **reescrito sem jargão** — passo a passo nos gestos,
+> recomendação em cada decisão e glossário no fim. *(Davi, 22/09/2026:
+> "considere que eu não tenho conhecimento prévio de programação".)* Não é uma
+> conversão automática: quando esta lista mudar, refaça o Word com
+> `node scripts/gerar-docx-decisoes.cjs` (a biblioteca `docx` se instala fora do
+> repo — ela não é dependência do app).
