@@ -115,6 +115,13 @@ que não depende dele está de pé; o que depende está listado abaixo.
 
 Ler isto antes de prometer qualquer coisa a alguém.
 
+> **O que depende do DAVI está em `docs/DECISOES_PENDENTES.md`** — a lista
+> única, criada em 22/09/2026 porque ela estava espalhada por quatro
+> documentos e ninguém conseguia responder "o que falta de mim?" sem ler os
+> quatro. Gestos rápidos, decisões de produto, o que ele vai mandar e o que
+> é do T.I., cada um com o que acontece enquanto ele não decide. Este
+> arquivo continua sendo o retrato do SISTEMA; aquele é o da DECISÃO.
+
 | regra | o quê | estado |
 |---|---|---|
 | R281 | o checklist não clica na linha de baixo | **no ar** (U141) |
@@ -615,6 +622,9 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
 
 ## 6. Perguntas em aberto
 
+> As duas estão em `docs/DECISOES_PENDENTES.md` (D5 e D7), com o que cada uma
+> trava. Ficam aqui pela origem: são as sobreviventes das 23 do plano.
+
 Das 23 perguntas do plano, ficam duas:
 
 - **Q8** — o texto padrão da cobrança sugerida e o `tipo_servico` padrão.
@@ -624,6 +634,9 @@ Das 23 perguntas do plano, ficam duas:
   endereços estão anotados na Q13 de `REVISAO_2026-09-03.md`.
 
 ## 7. O que o Davi disse que vai mandar (cobrar dele)
+
+> Resumido em `docs/DECISOES_PENDENTES.md` §3 (M1–M4), com o que cada um
+> destrava. Aqui fica o detalhe de cada um — é o que se lê antes de cobrar.
 
 1. **A estrutura dos fluxos de cada tipo de demanda da área técnica** —
    corretiva, preventiva, implantação: campos de cada um e o caminho. **É o
