@@ -15,6 +15,7 @@ convenções aprendidas em `conventions.md`.
 | [ADR-0001](decisions/ADR-0001-adotar-pattern-harness.md) | Adotar o Pattern Harness | Cápsula em AGENTS.md, CLAUDE.md gerado, gates como pronto; R# global e skills em .claude/skills são adaptações |
 | [ADR-0002](decisions/ADR-0002-documentacao-viva-existente-e-a-fonte.md) | Os documentos existentes são a fonte | PRODUTO = catálogo de regras, PLANO = história, ESTADO = retrato; state por módulo aponta, não duplica |
 | [ADR-0003](decisions/ADR-0003-verificador-como-gate.md) | O verificador é o gate de testes | 3.5k asserções sobre código e docs, tsc zero e vite build são os gates; migration fica fora dos gates |
+| [ADR-0004](decisions/ADR-0004-harness-em-node-windows-e-github.md) | O harness roda em Node, no Windows e no Linux; CI no GitHub | Executor, sync, índice, lint e testes em .cjs no shell da plataforma; matriz windows × ubuntu; sem sh nem Python |
 
 ## Convenções de ADR
 

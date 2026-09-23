@@ -8,8 +8,8 @@
 > `AGENTS.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-22** · última regra: **R305** · último diário:
-**U156** · verificador: **3.593 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-23** · última regra: **R305** · último diário:
+**U157** · verificador: **3.599 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
 Banco — **Pendente: U155** (`20261012090000_u155_o_operacional_le_a_base_de_clientes.sql`)
@@ -214,8 +214,10 @@ cápsula (o método que vivia no `CLAUDE.md`, que agora é gerado e só a import
 (`docs/requirements/` + `docs/state/`), com TODA regra R1–R305 em exatamente um;
 `docs/ARCHITECTURE.md` indexa os ADR-0001–0003 (as quatro adaptações do padrão,
 a documentação existente como fonte, o verificador como gate); "pronto" virou
-`py -3 scripts/harness-gates.py` (nove gates, `.harness/harness.yaml`). Sem
-migration, sem versão nova. Detalhe: diário U156.
+`node scripts/harness-gates.cjs` (nove gates, `.harness/harness.yaml`). **U157
+(23/09/2026)**: o Davi pediu o padrão adaptado a Windows + GitHub — o harness inteiro
+passou a Node (sem sh nem Python) e o CI roda em `windows-latest` e `ubuntu-latest`
+(ADR-0004). Sem migration, sem versão nova. Detalhe: diários U156 e U157.
 
 **Fases do plano** (`PLANO_V0.1.md` §6): A (dashboard da Operacional
 Técnica) e B (o "+") entregues na U93; o núcleo da H (a estrutura das

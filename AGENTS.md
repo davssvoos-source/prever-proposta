@@ -72,8 +72,8 @@ da equipe técnica de campo é o **Vinicius**. Todo o repositório é em **portu
 6. **Commit + push** — mensagem em português; o push publica na Lovable.
 7. **Estado** — `docs/ESTADO_ATUAL.md` (última regra, último diário, migrations, pendências).
 8. **Sumários** e gates — `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`
-   regenera os sumários e roda o verificador; `python3 scripts/harness-gates.py` (no Windows:
-   `py -3 …`) é a definição de pronto.
+   regenera os sumários e roda o verificador; `node scripts/harness-gates.cjs` é a definição
+   de pronto (Windows, Linux e CI — sem Python nem sh).
 
 ## Migrations (regra inegociável)
 

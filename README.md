@@ -20,6 +20,7 @@ ditadas pelo Davi, em conversa, e registradas uma a uma em `docs/PRODUTO.md`.
 | Celular | Capacitor (`android/`) para o app do técnico |
 | Publicação | Lovable publica cada push em `main`; pacote Windows Server via `npm run build:windows` |
 | Documentos | proposta em `.docx`/PDF gerada pelo app |
+| CI | GitHub Actions roda os mesmos gates em `windows-latest` e `ubuntu-latest` a cada push em `main` |
 
 ## Onde roda
 
@@ -38,12 +39,12 @@ npx vite dev                         # run — http://localhost:8080
 npx tsc --noEmit                     # lint: tem de dar 0 erros
 node scripts/verificar-logica.cjs    # test: 3.581 asserções, "0 falharam"
 npx vite build                       # build (regenera src/routeTree.gen.ts — commite)
-py -3 -m pip install -r scripts/requirements.txt   # uma vez (Linux/CI: python3)
-py -3 scripts/harness-gates.py       # todos os gates — a definição de pronto
+node scripts/harness-gates.cjs      # todos os gates — a definição de pronto (Windows, Linux e CI)
 ```
 
 Os seis comandos da stack e os gates estão declarados em `.harness/harness.yaml`; agentes
-e CI leem de lá, nunca assumem. O app exige login; a chave pública do Supabase vem do
+e CI leem de lá, nunca assumem. O harness é Node puro — os mesmos comandos no PowerShell,
+no cmd e no bash, sem Python nem Git Bash (ADR-0004). O app exige login; a chave pública do Supabase vem do
 `.env` versionado. A service role key NUNCA entra no repositório.
 
 ## Mapa
@@ -63,7 +64,7 @@ viva por módulo e gates que definem "pronto".
 | `.harness/INDEX.md` | L6 | Índice gerado (nó raiz) — não editar |
 | `.harness/harness.yaml` + `.github/workflows/harness.yml` | L7 | Comandos e gates — a definição de pronto |
 | `docs/ARCHITECTURE.md` → `docs/decisions/`, `docs/NFR.md`, `docs/conventions.md` | L8 | O porquê (ADRs), o que se promete, o aprendido |
-| `scripts/harness-sync.sh` · `harness-index.sh` | L9 | Regeneram adaptadores e índice |
+| `scripts/harness-sync.cjs` · `harness-index.cjs` · `cobertura-regras.cjs` | L9 | Regeneram adaptadores, índice e cobertura |
 
 Os documentos que já existiam continuam sendo a fonte — o padrão os indexa, não os
 reescreve (ADR-0002):
@@ -87,7 +88,7 @@ reescreve (ADR-0002):
 3. Migration é escrita aqui e rodada pelo Davi; idempotente, com conferência e DESFAZER.
 4. Lógica pura em `modelo.ts`; tela só pinta. "Quem conta é quem filtra."
 5. Nunca reescreva histórico do `main`; nunca edite arquivo gerado.
-6. Pronto = gates verdes após a última alteração (`py -3 scripts/harness-gates.py`).
+6. Pronto = gates verdes após a última alteração (`node scripts/harness-gates.cjs`).
 
 ## Estrutura
 

@@ -18,13 +18,13 @@ commands:
   run:    npx vite dev
 
 # O que "pronto" significa, em ordem de execução. Todos obrigatórios.
-# Runner: python3 scripts/harness-gates.py (Windows: py -3 scripts/harness-gates.py).
-# Precisa de Python 3.10+ e de scripts/requirements.txt; os gates rodam num sh POSIX
-# (no Windows, o sh do Git for Windows). Códigos de saída: 0 verde, 1 gate falhou,
+# Runner: node scripts/harness-gates.cjs — Node 24, o mesmo runtime do app (ADR-0004).
+# Cada gate roda no shell da plataforma (cmd.exe no Windows, sh no Linux e no CI), por isso
+# todo `run:` é neutro de shell. Códigos de saída: 0 verde, 1 gate falhou,
 # 2 manifesto inválido (nada executa).
 gates:
   - name: docs-lint           # regras anti-obesidade da documentação (docs/conventions.md)
-    run: sh scripts/docs-lint.sh
+    run: node scripts/docs-lint.cjs
     required: true
   - name: sumarios            # os sumários gerados dos documentos mestre estão em dia
     run: node scripts/sumario.cjs --check
@@ -33,13 +33,13 @@ gates:
     run: node scripts/cobertura-regras.cjs --check
     required: true
   - name: adapters-in-sync
-    run: sh scripts/harness-sync.sh --check
+    run: node scripts/harness-sync.cjs --check
     required: true
   - name: index-in-sync
-    run: sh scripts/harness-index.sh --check
+    run: node scripts/harness-index.cjs --check
     required: true
   - name: runner-tests
-    run: sh scripts/py3.sh -B -m unittest discover -s scripts/tests
+    run: node --test scripts/tests/docs-lint.test.cjs scripts/tests/harness-gates.test.cjs
     required: true
   - name: lint                # tsc em ZERO erros (baseline zero desde a U138)
     run: ${commands.lint}
@@ -54,7 +54,7 @@ gates:
 # Índice e grafo: derivados, nunca redigidos.
 index:
   file: .harness/INDEX.md
-  generator: scripts/harness-index.sh
+  generator: scripts/harness-index.cjs
   edges: typed-references          # R# (global, docs/PRODUTO.md), U#, P#, ADR-####, nome de skill
 
 agents:

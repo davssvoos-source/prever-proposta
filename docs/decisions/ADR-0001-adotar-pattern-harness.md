@@ -1,7 +1,7 @@
 # ADR-0001 — Adotar o Pattern Harness no Prever OS
 
 - **Data:** 2026-09-22
-- **Status:** Aceito
+- **Status:** Aceito — o item 4 foi substituído pelo ADR-0004
 
 ## Contexto
 
@@ -31,6 +31,7 @@ padrão genérico não previa:
 4. **O executor roda no Windows**: `harness-gates.py` usa o `sh` do Git quando `/bin/sh`
    não existe, e os gates com Python chamam `scripts/py3.sh` (que acha `python3`, `py -3`
    ou `python`). O CI é GitHub Actions, porque o repositório está no GitHub.
+   *Substituído pelo ADR-0004 (23/09/2026): o harness inteiro passou a Node — sem sh nem Python.*
 
 Os documentos que já existiam continuam sendo a fonte (ADR-0002); o verificador da casa é
 o gate de testes (ADR-0003).

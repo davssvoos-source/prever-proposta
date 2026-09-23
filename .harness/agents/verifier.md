@@ -4,7 +4,7 @@
 
 - **Lê:** `.harness/harness.yaml`, `docs/requirements/<modulo>.md` e a tabela
   "Cobertura R# → verificação" de `docs/state/<modulo>.md`.
-- **Executa:** `python3 scripts/harness-gates.py` (Windows: `py -3 …`) DEPOIS de documentação
+- **Executa:** `node scripts/harness-gates.cjs` (Windows, Linux e CI) DEPOIS de documentação
   e derivados atualizados; qualquer alteração posterior exige nova execução. Nunca com
   outro agente editando arquivo ao mesmo tempo (a contagem do verificador sai torta).
 - **Escreve:** veredito por gate e os trechos de falha; logs longos ficam em artefato local

@@ -142,11 +142,12 @@ Desde 22/09/2026 o repositório segue o **Pattern Harness** da T.I. (ADR-0001 em
 `docs/decisions/`). O fluxo acima continua igual; o que mudou é que "pronto" deixou
 de ser lembrado e passou a ser **executado**: `.harness/harness.yaml` declara os
 seis comandos da stack (`setup`, `build`, `test`, `lint`, `format`, `run`) e nove
-gates, e um executor os roda em ordem:
+gates, e um executor os roda em ordem. Desde a U157 (23/09/2026) o executor e os scripts são
+Node puro — rodam igual no PowerShell, no cmd, no bash e no CI, sem Python nem Git Bash
+(ADR-0004):
 
 ```bash
-py -3 -m pip install -r scripts/requirements.txt   # uma vez (Linux/CI: python3)
-py -3 scripts/harness-gates.py                     # 0 = tudo verde · 1 = gate falhou · 2 = manifesto inválido
+node scripts/harness-gates.cjs      # 0 = tudo verde · 1 = gate falhou · 2 = manifesto inválido
 ```
 
 Os gates, na ordem: `docs-lint` (linhas ≤ 120 nos documentos novos, Status ≤ 140,
@@ -158,7 +159,7 @@ verificador em "0 falharam") e `build` (`vite build`). O CI do GitHub roda o mes
 executor a cada push em `main`.
 
 Arquivos **gerados** — nunca editar à mão, regenerar: `CLAUDE.md` e os adaptadores
-das outras ferramentas (`sh scripts/harness-sync.sh`), `.harness/INDEX.md`
-(`sh scripts/harness-index.sh`), a tabela de cobertura de cada `docs/state/<m>.md`
+das outras ferramentas (`node scripts/harness-sync.cjs`), `.harness/INDEX.md`
+(`node scripts/harness-index.cjs`), a tabela de cobertura de cada `docs/state/<m>.md`
 (`node scripts/cobertura-regras.cjs`), os sumários, `src/routeTree.gen.ts`. A skill
 `entrega` tem a ordem do fecho.

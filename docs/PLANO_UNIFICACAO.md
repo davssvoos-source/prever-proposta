@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 180 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 181 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -183,6 +183,7 @@
 - [U154 — o cargo GESTOR (R304)](#u154-o-cargo-gestor-r304)
 - [U155 — o operacional lê a base de clientes inteira (R305)](#u155-o-operacional-lê-a-base-de-clientes-inteira-r305)
 - [U156 — o Pattern Harness aplicado: a cápsula, os módulos e os gates (22/09/2026)](#u156-o-pattern-harness-aplicado-a-cápsula-os-módulos-e-os-gates-22092026)
+- [U157 — o harness fala a língua da stack: Node no Windows e no Linux, CI no GitHub (23/09/2026)](#u157-o-harness-fala-a-língua-da-stack-node-no-windows-e-no-linux-ci-no-github-23092026)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -14992,3 +14993,64 @@ mexer no verificador ou nas tabelas de regras, `node scripts/cobertura-regras.cj
 A skill `entrega` tem a ordem inteira.
 
 Verificador: 3.593 asserções, 0 falharam.
+
+## U157 — o harness fala a língua da stack: Node no Windows e no Linux, CI no GitHub (23/09/2026)
+
+**O pedido.** Davi, 23/09/2026: *"esse pattern foi elaborado para Linux Ubuntu e
+repositório Bitbucket, adapte para Windows, com repositório Github"*.
+
+### O que a U156 tinha deixado — e o que o CI mostrou
+
+A U156 adotou o padrão mantendo os scripts DELE: três `.sh` (awk, find, sort), um executor
+em Python com PyYAML, e as muletas para esta máquina — o `sh` do Git, um `py3.sh` porque o
+`python3` do PATH é o atalho da Microsoft Store, `encoding='utf-8'` no teste porque o
+`subprocess` decodificava em cp1252. Funcionou aqui. **No GitHub, não**: a primeira execução
+do CI, no Ubuntu, caiu no PRIMEIRO gate — o `docs-lint.sh` acusou `ERRO R1 …:  linha(s) >
+120` em todos os 31 documentos novos, com a contagem VAZIA. O awk do Ubuntu (mawk) não
+executa o programa do padrão como o gawk do Git Bash: a mesma linha de shell dá dois
+resultados em dois sistemas. Um harness que só passa na máquina de quem o escreveu não é
+definição de pronto — é sensação com script.
+
+### A decisão (ADR-0004)
+
+O repositório é Node; o harness passa a falar Node. `harness-gates.cjs`, `harness-sync.cjs`,
+`harness-index.cjs` e `docs-lint.cjs` substituem o `.py` e os `.sh`; os 16 testes viraram
+`node --test` (`scripts/tests/*.test.cjs`); `js-yaml` entrou como devDependency — recusar
+YAML malformado e chave duplicada é parte do contrato, não se reinventa. Cada gate roda no
+**shell da plataforma** (`shell: true`: cmd.exe no Windows, sh no Linux e no CI), e por isso
+todo `run:` do manifesto é neutro de shell — regra nova em `docs/conventions.md`. O CI virou
+matriz `windows-latest` × `ubuntu-latest` (a produção é Windows; a Lovable publica de Linux),
+cancelando a execução anterior da mesma branch, e ganhou um modelo de pull request com o
+checklist da skill `entrega`. O ADR-0001 ficou como história: Status aponta para o ADR-0004,
+e o item 4 (as muletas) leva a nota de substituído.
+
+### O contrato não mudou — e como se provou antes de apagar o antigo
+
+- **docs-lint**: a saída de `sh scripts/docs-lint.sh` e a de `node scripts/docs-lint.cjs`
+  são byte a byte IDÊNTICAS sobre o repositório inteiro (13 avisos de legado, as mesmas
+  linhas) — o `.sh` só foi apagado depois desse diff.
+- **índice e adaptadores**: gerados pelo Node por cima dos arquivos que o sh tinha gerado;
+  o `git diff` mostrou só as linhas anunciadas — o nome do gerador no cabeçalho do INDEX e a
+  última linha do guia dos adaptadores (que agora manda rodar `node scripts/harness-sync.cjs`).
+- **executor**: os 6 casos do padrão portados 1:1 — referências aninhadas, falha obrigatória
+  não interrompe a seguinte, falha opcional não derruba, comando inexistente, oito
+  configurações inválidas que não executam nada e saem 2, YAML duplicado/inválido. Os
+  comandos inofensivos viraram neutros de shell (`exit 7` em vez de `true`/`false`/`test -f`).
+
+### O que a verificação pegou
+
+15 dos 16 testes passaram de primeira. O 16º ensinou uma coisa que se lê errado por aí: o
+**cmd.exe devolve 1 para comando inexistente, não 9009** — 9009 é o ERRORLEVEL interno de
+uma sessão; o processo `cmd /c x` sai 1, indistinguível de uma falha comum. A primeira versão
+do executor "normalizava 9009 → 127" — código morto que prometia um contrato que o Windows
+não cumpre. Saiu. O executor diz o que é (127 no sh, 1 no cmd, e o gate obrigatório FALHA nos
+dois), o teste espera isso por plataforma, e o ADR-0004 registra o fato. Depois disso: 16 de
+16, docs-lint ok, adaptadores e índice em sincronia, cobertura em dia.
+
+### O que NÃO mudou
+
+Nenhuma regra de produto, nenhuma migration, nenhuma tela, nenhuma versão. O manifesto tem
+os mesmos seis verbos e os mesmos nove gates, com os mesmos nomes — só os `run:` deixaram de
+chamar `sh` e `py3.sh`. A cápsula, os módulos e os ADRs 0001–0003 continuam valendo.
+
+Verificador: 3.599 asserções, 0 falharam.

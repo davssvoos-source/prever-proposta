@@ -24635,7 +24635,7 @@ assincronas.push(async () => {
 // A cápsula é AGENTS.md; CLAUDE.md virou adaptador gerado; a documentação por
 // módulo entra pelos índices; "pronto" é o executor de gates. Os pinos abaixo
 // descrevem ARQUIVOS (regra 10) — a execução dos gates é do próprio executor
-// (py -3 scripts/harness-gates.py), e a sincronia dos derivados é gate lá.
+// (node scripts/harness-gates.cjs, U157), e a sincronia dos derivados é gate lá.
 {
   const fs156 = require('fs');
   const ler156 = (p) => (fs156.existsSync(p) ? fs156.readFileSync(p, 'utf8') : '');
@@ -24652,7 +24652,7 @@ assincronas.push(async () => {
   eq('U156 (o pedido principal): README.md existe, chama o sistema pelo nome e aponta a cápsula, o manifesto, os índices, o retrato, a lista do Davi, o catálogo e o executor',
      [/^# Prever OS\n/.test(readme156),
       ['AGENTS.md', '.harness/harness.yaml', 'docs/REQUIREMENTS.md', 'docs/ESTADO_ATUAL.md', 'docs/DECISOES_PENDENTES.md',
-       'docs/PRODUTO.md', 'docs/ARCHITECTURE.md', 'scripts/harness-gates.py', 'ADR-0001'].filter((t) => !readme156.includes(t)),
+       'docs/PRODUTO.md', 'docs/ARCHITECTURE.md', 'scripts/harness-gates.cjs', 'ADR-0001'].filter((t) => !readme156.includes(t)),
       /## Começando/.test(readme156) && /## Regras de ouro/.test(readme156) && /## Mapa/.test(readme156)],
      [true, [], true]);
 
@@ -24666,8 +24666,8 @@ assincronas.push(async () => {
      [true, true, true, true, [], 9, 0]);
 
   eq('U156: a infraestrutura do harness existe — executor, sync, índice, lint, py3, cobertura, testes, papéis, MCP, skill entrega, CI, os adaptadores gerados e os índices da documentação',
-     ['scripts/harness-gates.py', 'scripts/harness-sync.sh', 'scripts/harness-index.sh', 'scripts/docs-lint.sh', 'scripts/py3.sh',
-      'scripts/cobertura-regras.cjs', 'scripts/requirements.txt', 'scripts/tests/test_docs_lint.py', 'scripts/tests/test_harness_gates.py',
+     ['scripts/harness-gates.cjs', 'scripts/harness-sync.cjs', 'scripts/harness-index.cjs', 'scripts/docs-lint.cjs',
+      'scripts/cobertura-regras.cjs', 'scripts/tests/docs-lint.test.cjs', 'scripts/tests/harness-gates.test.cjs',
       '.harness/INDEX.md', '.harness/agents/planner.md', '.harness/agents/implementer.md', '.harness/agents/reviewer.md',
       '.harness/agents/verifier.md', '.harness/mcp/servers.json', '.claude/skills/entrega/SKILL.md', '.github/workflows/harness.yml',
       '.mcp.json', '.cursor/rules/harness.mdc', '.gemini/GEMINI.md', '.agent/rules/harness.md', '.github/copilot-instructions.md',
@@ -24676,23 +24676,21 @@ assincronas.push(async () => {
      []);
 
   // As adaptações ao Windows e à casa (ADR-0001) são código, não prosa: o executor
-  // não depende de /bin/sh, o sync não faz symlink, o lint e o índice não alcançam o
-  // clone do padrão nem a carga do QAP, e o teste decodifica UTF-8 (a falha que o
-  // primeiro run pegou: "índice" virava "Ã­ndice" em cp1252).
-  const gates156 = ler156('scripts/harness-gates.py');
-  const sync156 = ler156('scripts/harness-sync.sh');
-  const lint156 = ler156('scripts/docs-lint.sh');
-  const idx156 = ler156('scripts/harness-index.sh');
-  eq('U156 (ADR-0001): executor por [sh, -c] com fallback ao sh do Git; sync sem symlink e emitindo CLAUDE.md = @AGENTS.md; lint e índice fora de padrao-projeto/ e importacao/; LEGACY com os documentos mestre; teste em UTF-8; CI e .gitignore',
-     [/subprocess\.run\(\[posix_shell\(\), '-c', command\]/.test(gates156), !/executable='\/bin\/sh'/.test(gates156), /shutil\.which\('sh'\)/.test(gates156),
-      !/ln -s/.test(sync156), /emit "CLAUDE\.md" "@AGENTS\.md"/.test(sync156),
-      /docs\/padrao-projeto\/\*\|docs\/importacao\/\*/.test(lint156), /LEGACY_PADRAO="docs\/PRODUTO\.md/.test(lint156), /\.claude\/skills\/\*\/SKILL\.md/.test(lint156),
-      /! -path 'docs\/padrao-projeto\/\*'/.test(idx156) && /\.claude\/skills docs/.test(idx156),
-      /encoding='utf-8'/.test(ler156('scripts/tests/test_docs_lint.py')),
-      /python3 scripts\/harness-gates\.py/.test(ler156('.github/workflows/harness.yml')),
+  // (U157) é Node e roda cada gate no shell da plataforma — sem sh nem Python —, o sync
+  // não faz symlink, o lint e o índice não alcançam o clone do padrão nem a carga do
+  // QAP, e o CI roda o mesmo executor em Windows e Linux.
+  const gates156 = soCodigo(ler156('scripts/harness-gates.cjs'), 'js');
+  const sync156 = soCodigo(ler156('scripts/harness-sync.cjs'), 'js');
+  const lint156 = ler156('scripts/docs-lint.cjs');
+  const idx156 = ler156('scripts/harness-index.cjs');
+  eq('U156/U157 (ADR-0001, ADR-0004): executor Node no shell da plataforma (erro de spawn → 127); sync sem symlink emitindo CLAUDE.md = @AGENTS.md; lint e índice fora de padrao-projeto/ e importacao/; LEGACY com os documentos mestre; CI em Windows e Linux; .gitignore',
+     [/shell: true/.test(gates156), /status = 127/.test(gates156), /INVALID MANIFEST/.test(gates156),
+      !/symlink|ln -s/.test(sync156), /emit\('CLAUDE\.md', '@AGENTS\.md'\)/.test(sync156),
+      /'docs\/padrao-projeto\/', 'docs\/importacao\/'/.test(lint156), /LEGACY_PADRAO = \[/.test(lint156) && /'docs\/PRODUTO\.md'/.test(lint156), /\.claude\/skills\/\*\/SKILL\.md/.test(lint156),
+      /'docs\/padrao-projeto\/', 'docs\/importacao\/'/.test(idx156) && /'\.claude\/skills'/.test(idx156),
+      /windows-latest/.test(ler156('.github/workflows/harness.yml')) && /node scripts\/harness-gates\.cjs/.test(ler156('.github/workflows/harness.yml')),
       /^docs\/padrao-projeto\/$/m.test(ler156('.gitignore'))],
-     [true, true, true, true, true, true, true, true, true, true, true, true]);
-
+     [true, true, true, true, true, true, true, true, true, true, true]);
   // A documentação por módulo: toda regra do catálogo em EXATAMENTE um módulo, todo
   // módulo indexado, com state (marcadores de cobertura) e no mapa da cápsula.
   const prod156 = ler156('docs/PRODUTO.md');
@@ -24766,8 +24764,65 @@ assincronas.push(async () => {
      [/^## U156 — /m.test(ler156('docs/PLANO_UNIFICACAO.md')), /U156 \(22\/09\/2026\) — o Pattern Harness da casa está aplicado/.test(ler156('docs/ESTADO_ATUAL.md')),
       /^## A definição de pronto: os gates do harness/m.test(ler156('docs/manual/desenvolvimento-e-verificacao.md')),
       /^name: entrega$/m.test(ler156('.claude/skills/entrega/SKILL.md')),
-      ['fechar-entrega.cjs', 'harness-sync.sh', 'harness-index.sh', 'cobertura-regras.cjs', 'harness-gates.py'].filter((t) => !ler156('.claude/skills/entrega/SKILL.md').includes(t))],
+      ['fechar-entrega.cjs', 'harness-sync.cjs', 'harness-index.cjs', 'cobertura-regras.cjs', 'harness-gates.cjs'].filter((t) => !ler156('.claude/skills/entrega/SKILL.md').includes(t))],
      [true, true, true, true, []]);
+}
+
+
+// ── U157 — o harness fala a língua da stack: Node no Windows e no Linux, CI no GitHub (23/09/2026)
+//
+// Davi: "esse pattern foi elaborado para Linux Ubuntu e repositório Bitbucket, adapte
+// para Windows, com repositório Github". Saíram o sh, o Python e as muletas da U156;
+// entraram quatro .cjs, dois testes em node --test e a matriz windows × ubuntu (ADR-0004).
+{
+  const fs157 = require('fs');
+  const ler157 = (p) => (fs157.existsSync(p) ? fs157.readFileSync(p, 'utf8') : '');
+
+  eq('U157 CRÍTICO: não sobrou sh nem Python no harness — scripts/ sem .sh/.py, sem requirements.txt e sem py3.sh; os quatro scripts e os dois testes são .cjs',
+     [fs157.readdirSync('scripts').filter((f) => /\.(sh|py)$/.test(f) || f === 'requirements.txt'),
+      fs157.existsSync('scripts/tests') ? fs157.readdirSync('scripts/tests').filter((f) => !/\.test\.cjs$/.test(f)) : ['sem pasta'],
+      ['scripts/harness-gates.cjs', 'scripts/harness-sync.cjs', 'scripts/harness-index.cjs', 'scripts/docs-lint.cjs',
+       'scripts/tests/docs-lint.test.cjs', 'scripts/tests/harness-gates.test.cjs'].filter((p) => !fs157.existsSync(p))],
+     [[], [], []]);
+
+  const gates157 = soCodigo(ler157('scripts/harness-gates.cjs'), 'js');
+  eq('U157: o executor roda cada gate no shell da PLATAFORMA (shell: true), não finge que o cmd.exe distingue comando inexistente (sem 9009), recusa chave duplicada via js-yaml e sai 0/1/2',
+     [/spawnSync\(comando, \{ shell: true, cwd: root, stdio: 'inherit' \}\)/.test(gates157),
+      !/9009/.test(gates157),
+      /require\('js-yaml'\)/.test(gates157), /INVALID MANIFEST/.test(gates157), /return 2;/.test(gates157),
+      /"js-yaml":/.test(ler157('package.json'))],
+     [true, true, true, true, true, true]);
+
+  const man157 = ler157('.harness/harness.yaml');
+  const runs157 = man157.split('\n').filter((l) => /^\s*run:/.test(l)).join('\n');
+  eq('U157: o manifesto chama os scripts por node — nenhum gate depende de sh, python ou py -3',
+     [/\b(sh|python3?|py)\s/.test(runs157),
+      ['node scripts/docs-lint.cjs', 'node scripts/harness-sync.cjs --check', 'node scripts/harness-index.cjs --check', 'node --test scripts/tests/']
+        .filter((t) => !man157.includes(t)),
+      /generator: scripts\/harness-index\.cjs/.test(man157)],
+     [false, [], true]);
+
+  const wf157 = ler157('.github/workflows/harness.yml');
+  eq('U157: o CI do GitHub roda o MESMO executor em windows-latest e ubuntu-latest (Node 24, npm ci, sem Python) — e existe o modelo de PR com o checklist da entrega',
+     [/windows-latest/.test(wf157) && /ubuntu-latest/.test(wf157), /node scripts\/harness-gates\.cjs/.test(wf157), /npm ci/.test(wf157),
+      /python/i.test(wf157), /cancel-in-progress: true/.test(wf157),
+      /harness-gates\.cjs/.test(ler157('.github/pull_request_template.md')) && /PRODUTO\.md/.test(ler157('.github/pull_request_template.md'))],
+     [true, true, true, false, true, true]);
+
+  eq('U157: nenhum documento VIVO manda mais rodar python3/py -3 nem os .sh — AGENTS, README, skill entrega, verifier.md, manual, state/plataforma, PROJECT-STRUCTURE, conventions, ESTADO e o manifesto falam node',
+     ['AGENTS.md', 'README.md', '.claude/skills/entrega/SKILL.md', '.harness/agents/verifier.md',
+      'docs/manual/desenvolvimento-e-verificacao.md', 'docs/state/plataforma.md', '.harness/harness.yaml',
+      'docs/PROJECT-STRUCTURE.md', 'docs/conventions.md', 'docs/ESTADO_ATUAL.md']
+       .filter((p) => /py -3|python3|harness-gates\.py|harness-sync\.sh|harness-index\.sh|docs-lint\.sh|py3\.sh|requirements\.txt/.test(ler157(p))),
+     []);
+
+  const adr4 = ler157('docs/decisions/ADR-0004-harness-em-node-windows-e-github.md');
+  eq('U157 (regra 7): o ADR-0004 existe (Data, Aceito, indexado), o ADR-0001 aponta para ele no Status, a U157 está no diário e no ESTADO §3',
+     [/^- \*\*Data:\*\* 2026-09-23/m.test(adr4), /^- \*\*Status:\*\* Aceito/m.test(adr4),
+      /\[ADR-0004\]\(decisions\/ADR-0004-harness-em-node-windows-e-github\.md\)/.test(ler157('docs/ARCHITECTURE.md')),
+      /^- \*\*Status:\*\* Aceito — o item 4 foi substituído pelo ADR-0004/m.test(ler157('docs/decisions/ADR-0001-adotar-pattern-harness.md')),
+      /^## U157 — /m.test(ler157('docs/PLANO_UNIFICACAO.md')), /U157\s*\n?\s*\(23\/09\/2026\)/.test(ler157('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true, true]);
 }
 
 

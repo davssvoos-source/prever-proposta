@@ -1,5 +1,6 @@
-# CI e agentes executam o MESMO manifesto (.harness/harness.yaml).
-# O repositório está no GitHub — o bitbucket-pipelines.yml do padrão vira este workflow.
+# CI e agentes executam o MESMO manifesto (.harness/harness.yaml) — ADR-0004.
+# O repositório está no GitHub: o bitbucket-pipelines.yml do padrão vira este workflow, e a
+# matriz prova o executor onde o Prever OS vive (Windows) e onde a Lovable publica (Linux).
 name: harness-gates
 
 on:
@@ -7,18 +8,23 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: harness-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   gates:
-    runs-on: ubuntu-latest
+    name: gates (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - run: npm ci
-      - run: python3 -m pip install -r scripts/requirements.txt
-      - run: python3 scripts/harness-gates.py
+      - run: node scripts/harness-gates.cjs

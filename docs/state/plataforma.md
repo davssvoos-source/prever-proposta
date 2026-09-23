@@ -12,8 +12,9 @@
   serviço em `192.168.10.182:5555` e `grupoprever.ddns.net:5555`.
 - Verificação: `scripts/verificar-logica.cjs` (asserções permanentes), `scripts/sumario.cjs` (sumários),
   `scripts/fechar-entrega.cjs` (fim de entrega), `scripts/lib/editar.cjs` (patch tudo-ou-nada).
-- Harness: `.harness/harness.yaml` (seis verbos + gates), `scripts/harness-gates.py`, `harness-sync.sh`,
-  `harness-index.sh`, `docs-lint.sh`, `cobertura-regras.cjs`, `py3.sh`; CI em `.github/workflows/harness.yml`.
+- Harness em Node (ADR-0004): `.harness/harness.yaml` (seis verbos + nove gates), `scripts/harness-gates.cjs`,
+  `harness-sync.cjs`, `harness-index.cjs`, `docs-lint.cjs`, `cobertura-regras.cjs`, testes em
+  `scripts/tests/*.test.cjs` (`node --test`); CI em `.github/workflows/harness.yml` (Windows e Linux).
 
 ## Padrões a reusar
 
@@ -26,7 +27,8 @@
 
 - `.env` versionado só com chaves públicas (`VITE_*`); service role key e chave da Anthropic no `config.env`
   do servidor. `SITE_URL` no serviço (convites).
-- Python 3.10+ e `scripts/requirements.txt` para o executor de gates; no Windows, `py -3` e o sh do Git.
+- O harness só precisa do Node 24 (o mesmo do app): `node scripts/harness-gates.cjs` no PowerShell, no cmd,
+  no bash e no CI. Comando de gate é neutro de shell (roda em cmd.exe e em sh).
 
 ## Cobertura R# → verificação
 

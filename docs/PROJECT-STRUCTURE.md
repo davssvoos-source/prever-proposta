@@ -20,11 +20,12 @@ scripts/
 ├── fechar-entrega.cjs       o fim de entrega: versão, ESTADO, sumários, verificador
 ├── build-windows.cjs        o pacote do servidor Windows
 ├── lib/editar.cjs           patch tudo-ou-nada dos rascunhos .cjs
-├── harness-gates.py         valida e executa os gates do manifesto
-├── harness-sync.sh          regenera os adaptadores por ferramenta
-├── harness-index.sh         regenera .harness/INDEX.md
-├── docs-lint.sh             regras anti-obesidade da documentação (ADR-0003 do padrão)
-└── tests/                   testes do executor e do lint
+├── harness-gates.cjs        valida e executa os gates do manifesto (Node — Windows, Linux, CI)
+├── harness-sync.cjs         regenera os adaptadores por ferramenta
+├── harness-index.cjs        regenera .harness/INDEX.md
+├── docs-lint.cjs            regras anti-obesidade da documentação (R1–R5)
+├── cobertura-regras.cjs     regenera a cobertura R# → verificação dos states
+└── tests/                   testes do executor e do lint (node --test)
 docs/
 ├── ESTADO_ATUAL.md          o retrato: onde estamos (índice de leitura)
 ├── DECISOES_PENDENTES.md    o que depende do Davi
@@ -39,7 +40,7 @@ docs/
 └── padrao-projeto/          referência local do Pattern Harness (clone; fora do git)
 .claude/skills/              organizador · designer · banco · entrega (padrão aberto Agent Skills)
 .harness/                    harness.yaml · INDEX.md (gerado) · agents/ · mcp/servers.json
-.github/workflows/           harness.yml — o CI roda os mesmos gates do manifesto
+.github/workflows/           harness.yml — o CI roda os mesmos gates em Windows e Linux; pull_request_template.md
 .cursor/ · .gemini/ · .agent/ · .github/copilot-instructions.md · .mcp.json   adaptadores gerados
 dist-windows/                pacotes gerados (fora do git)
 ```

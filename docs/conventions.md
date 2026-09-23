@@ -27,6 +27,9 @@ documentos apontam para ela.
   obedece. O app exige login e a IA não digita senha: sem sessão aberta, medir é do Davi.
 - **Regex tolera a quebra de linha do markdown** (`\s+`): já foi a causa de quatro falsos
   vermelhos. E rodar o verificador com agente editando arquivo dá contagem torta.
+- **Comando de gate é neutro de shell** (ADR-0004): o executor roda cada `run:` no shell da
+  plataforma — cmd.exe no Windows, sh no Linux. `node …`, `npx …`, `npm …` valem nos dois;
+  `true`, `test -f`, `[ ]` e `$VAR` não. Se precisa de lógica, escreva um `.cjs`.
 
 ## Armadilhas que já morderam (não redescubra)
 
@@ -55,7 +58,7 @@ documentos apontam para ela.
 ## Concisão da documentação (gate `docs-lint`)
 
 - Linhas de prosa ≤ 120 caracteres nos documentos novos do padrão; os documentos mestre
-  anteriores estão em `LEGACY` (topo de `scripts/docs-lint.sh`) e só avisam.
+  anteriores estão em `LEGACY_PADRAO` (topo de `scripts/docs-lint.cjs`) e só avisam.
 - Status de índice: uma linha, ≤ 140 caracteres. State descreve o presente; a história
   está no diário e no git. Data em state só em Pendências.
 - Uma regra tem uma morada: R-série em PRODUTO, ferramenta aqui, receita de painel em

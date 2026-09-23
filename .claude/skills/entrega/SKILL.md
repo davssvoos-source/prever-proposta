@@ -58,8 +58,8 @@ que se recusou, o que a verificação pegou). Depois, na ordem:
 
 ```sh
 node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un   # ou sem --versao quando não há versão nova
-sh scripts/harness-sync.sh && sh scripts/harness-index.sh && node scripts/cobertura-regras.cjs
-py -3 scripts/harness-gates.py        # Linux/CI: python3 — todos os gates verdes = pronto
+node scripts/harness-sync.cjs && node scripts/harness-index.cjs && node scripts/cobertura-regras.cjs
+node scripts/harness-gates.cjs        # Windows, Linux e CI — todos os gates verdes = pronto
 ```
 
 Alteração depois dos gates exige rodá-los de novo. Informe mudanças, evidências e

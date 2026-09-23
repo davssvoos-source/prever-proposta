@@ -1,6 +1,6 @@
 # Índice — Prever OS
 
-> Gerado por `scripts/harness-index.sh` — não editar à mão.
+> Gerado por `scripts/harness-index.cjs` — não editar à mão.
 > Nó raiz da navegação: um recurso por linha, ordenado por caminho.
 > Arestas entre recursos usam referências tipadas por ID estável
 > (R# de docs/PRODUTO.md, U#, P#, ADR-####, nome de skill) dentro dos próprios arquivos.
@@ -48,6 +48,7 @@
 - `docs/decisions/ADR-0001-adotar-pattern-harness.md` — ADR-0001 — Adotar o Pattern Harness no Prever OS
 - `docs/decisions/ADR-0002-documentacao-viva-existente-e-a-fonte.md` — ADR-0002 — A documentação viva que já existia é a fonte; o padrão a indexa
 - `docs/decisions/ADR-0003-verificador-como-gate.md` — ADR-0003 — O verificador da casa é o gate de testes
+- `docs/decisions/ADR-0004-harness-em-node-windows-e-github.md` — ADR-0004 — O harness roda em Node, no Windows e no Linux; o CI é o GitHub
 - `docs/manual/README.md` — Manual Prever Proposta
 - `docs/manual/banco-e-migrations.md` — Banco e migrations — procedimentos e convenções
 - `docs/manual/clientes-qap.md` — Clientes e QAP — a base que vem de fora
