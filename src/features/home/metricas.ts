@@ -7,7 +7,6 @@
 
 import type { Atividade } from "@/features/atividades/modelo";
 import { inicioSemana, dataIso } from "@/lib/periodos";
-import { SPRINTS_DO_MES } from "@/lib/chamado-status";
 
 /**
  * Quantos foram concluídos em cada semana, das PRÓPRIAS atividades.
@@ -107,12 +106,14 @@ export function atividadesDaSemana(chave: string, atividades: Atividade[]): Ativ
  * tela falando de gente diferente. Contando do recorte, filtrar por Erik
  * mostra a meta do Erik e "todos" mostra a da casa.
  *
- * A ETIQUETA DE SPRINT ENVELHECE. "Este mês" no Notion é um rótulo que ninguém
- * volta para tirar: no export de 2026-08-21 havia 7 atividades marcadas "este
- * mês" concluídas em junho e julho. Contadas pela etiqueta, apareceriam como
- * entregas de agosto — a meta comemorando trabalho de dois meses atrás. Então
- * a etiqueta diz a INTENÇÃO e a data diz o FATO: entra o que ainda está em
- * aberto (é o que falta fazer) e o que foi encerrado DENTRO do mês corrente.
+ * R323 (Davi, 24/09/2026): "O Filtro deve ser apenas para as atividades que tem
+ * prazo no mês vigente". Entra a atividade INTERNA, não cancelada, cujo PRAZO cai
+ * no mês corrente — aberta (o que falta) ou concluída (o que saiu). Antes a
+ * conta seguia os baldes de sprint (essa semana · semana que vem · este mês,
+ * R40), e "semana que vem" atravessa a virada: em 23/09 ela ia até 04/10, e uma
+ * atividade de prazo 02/10 aparecia na meta de setembro. O balde é SEMANA; o mês
+ * é outra régua. Consequência aceita: a atrasada de um mês anterior sai da meta
+ * (o prazo dela não é deste mês) — ela continua em "Atrasadas em aberto".
  */
 /** A população "no prato deste mês" — extraída para ser a MESMA base que
  *  `metaDoMes` (o número) e `atividadesDoKpi('concluidas_mes'/'faltam_mes', …)`
@@ -124,18 +125,16 @@ function doMesFiltro(atividades: Atividade[], agora: Date): Atividade[] {
   const nesteMes = (iso: string | null) => {
     if (!iso) return false;
     const d = new Date(iso);
-    return d.getMonth() === mes && d.getFullYear() === ano;
+    return !Number.isNaN(d.getTime()) && d.getMonth() === mes && d.getFullYear() === ano;
   };
 
-  // R40 partiu "este mês" em três baldes (essa semana, semana que vem, este
-  // mês). Contar só `este_mes` faria a meta despencar sem nada ter mudado no
-  // trabalho — a tarefa de quarta-feira simplesmente sairia da conta.
+  // o prazo é gravado às 23:59 do dia, no fuso de quem marcou (dataParaPrazo):
+  // o mês lido em hora local é o mês do dia escolhido
   return atividades.filter(
     (a) =>
       a.natureza === "interno" &&
-      a.sprint !== null && (SPRINTS_DO_MES as string[]).includes(a.sprint) &&
       a.coluna !== "cancelado" &&
-      (a.emAberto || nesteMes(a.encerradoEm)),
+      nesteMes(a.prazoLimite),
   );
 }
 

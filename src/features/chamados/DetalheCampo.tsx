@@ -25,6 +25,7 @@ import {
   atualizarChamado, anexarFoto, excluirFoto, salvarAssinatura,
 } from "@/features/chamados/data";
 import { gerarRelatorioOs } from "@/features/chamados/relatorio";
+import { TituloEditavel } from "@/components/TituloEditavel";
 import { EquipamentosDaAtividade } from "@/features/chamados/EquipamentosDaAtividade";
 import { fluxoDeCampo, tempoDeTrabalho } from "@/features/atividades/fluxos-de-campo";
 import { textoPadraoDaCobranca, tipoDeServicoPadrao } from "@/features/chamados/cobranca-texto";
@@ -298,6 +299,13 @@ export function DetalheCampo({ id, embutido = false }: {
   const iniciar = useMutation({
     mutationFn: () => iniciarChamado(id),
     onSuccess: () => { invalidar(); toast.success("Atendimento iniciado."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // R324: o título se edita no próprio cabeçalho — quem gere ou o técnico responsável
+  const salvarTitulo = useMutation({
+    mutationFn: (titulo: string) => atualizarChamado(id, { titulo }),
+    onSuccess: () => invalidar(),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -646,7 +654,12 @@ export function DetalheCampo({ id, embutido = false }: {
             {os.numero ?? "—"} · {TIPO_LABEL[os.tipo] ?? os.tipo}
           </div>
           {/* R195: título de página é 22/700 */}
-          <h1 style={{ margin: 0, fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 22, lineHeight: 1.25, textWrap: "balance" as any }}>{os.titulo}</h1>
+          {/* R324: clicar no título já edita (gestão ou o técnico responsável; cancelada não) */}
+          <TituloEditavel
+            valor={os.titulo}
+            podeEditar={(!!isGerente || souTecnico) && os.status !== "cancelado"}
+            aoSalvar={(titulo) => salvarTitulo.mutate(titulo)}
+          />
         </div>
       </div>
 

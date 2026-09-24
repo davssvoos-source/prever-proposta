@@ -8,8 +8,8 @@
 > `AGENTS.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-24** · última regra: **R322** · último diário:
-**U161** · verificador: **3.627 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-24** · última regra: **R324** · último diário:
+**U163** · verificador: **3.627 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
 Banco — **Pendentes: U158, U159 e U160** (a v1.0.3; rodar nesta ordem, ANTES de

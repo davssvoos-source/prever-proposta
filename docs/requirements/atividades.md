@@ -101,6 +101,7 @@ depois nesta tabela; a cobertura de cada uma está em `../state/atividades.md`.
 | R308 | Atividade com técnico participando é sempre AGENDADA; prazo não é opção |
 | R317 | O impacto operacional fica manual por enquanto |
 | R318 | Responder a um comentário específico, com a menção automática de quem o escreveu |
+| R324 | O título da atividade se edita no lugar: clicar nele já põe o cursor para escrever |
 
 ## Fora de escopo
 

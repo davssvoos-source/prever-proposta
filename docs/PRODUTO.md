@@ -17,7 +17,7 @@
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
 - [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R305 (76)
-- [25. A v1.0.3: as decisões do Davi de 23/09/2026 — ticket médio, apoio de qualquer cargo, os fluxos do técnico (R306–R317)](#25-a-v103-as-decisões-do-davi-de-23092026-ticket-médio-apoio-de-qualquer-cargo-os-fluxos-do-técnico-r306r317) · R306–R322 (17)
+- [25. A v1.0.3: as decisões do Davi de 23/09/2026 — ticket médio, apoio de qualquer cargo, os fluxos do técnico (R306–R317)](#25-a-v103-as-decisões-do-davi-de-23092026-ticket-médio-apoio-de-qualquer-cargo-os-fluxos-do-técnico-r306r317) · R306–R324 (19)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -6277,3 +6277,24 @@ com o T.I.).
   reparte), e a barra de filtros quebra a linha em vez de rolar; o trilho
   horizontal fica só no celular, onde espremer sete colunas deixaria cada card
   ilegível. *(Revisa a R295/R301 no desenho das colunas.)*
+
+- **R323** — **A Meta do mês conta só o que tem PRAZO no mês vigente.**
+  Davi, 24/09/2026: *"O filtro 'Meta do mês' está errado, eu cliquei no filtro, e
+  uma das atividades que estavam lá, ainda era de Outubro, o prazo dela é 02/10. O
+  Filtro deve ser apenas para as atividades que tem prazo no mês vigente, no caso
+  Setembro."* A causa: a meta seguia os baldes de sprint da R40 (essa semana · semana
+  que vem · este mês), e "semana que vem" atravessa a virada do mês — em 23/09 ela ia
+  até 04/10. Agora entra a atividade interna, não cancelada, cujo prazo cai no mês
+  corrente, aberta ou concluída. A rosca, o clique nela e os tiles "Concluídas no mês"
+  e "Faltam no mês" leem a MESMA base, então mudam juntos. A atrasada de um mês
+  anterior sai da meta (o prazo dela não é deste mês) e continua em "Atrasadas em
+  aberto". A atividade agendada (sem prazo, R225) não entra na meta. *(Revisa a R40
+  no uso dos baldes para a meta; os baldes continuam existindo.)*
+
+- **R324** — **O título da atividade se edita no lugar: clicar nele já põe o cursor para escrever.**
+  Davi, 24/09/2026: *"Na tela de configuração da atividade, ao clicar no titulo deve
+  ser possível alterá-lo. Quando o usuário clica no titulo já fica o cursor de texto
+  para ele escrever, bem prático!"* Na tela da atividade (interna e de campo, também
+  no pop-up da Início, R238) o título é um campo com a cara do título: o clique põe o
+  cursor onde a pessoa tocou; grava ao sair do campo; Enter grava, Esc desfaz; vazio
+  ou igual não grava. Quem não pode editar a atividade vê o título de sempre, fixo.

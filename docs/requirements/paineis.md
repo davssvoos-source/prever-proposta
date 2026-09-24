@@ -97,6 +97,7 @@ depois nesta tabela; a cobertura de cada uma está em `../state/paineis.md`.
 | R320 | O aviso de validação sai da Início: a validação é do GESTOR e mora na Gestão Técnica |
 | R321 | Sai o texto "Mostrando: … limpar"; entra o botão Limpar filtros ao lado do último filtro |
 | R322 | A Operacional Técnica cabe na tela: sem scroll horizontal no computador |
+| R323 | A Meta do mês conta só o que tem PRAZO no mês vigente |
 
 ## Fora de escopo
 

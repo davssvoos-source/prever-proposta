@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 185 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 187 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -188,6 +188,8 @@
 - [U159 — os avisos automáticos vão só para o administrador (R312)](#u159-os-avisos-automáticos-vão-só-para-o-administrador-r312)
 - [U160 — todos leem todos os clientes, e os cinco pedidos de tela (R310, R311, R318–R322)](#u160-todos-leem-todos-os-clientes-e-os-cinco-pedidos-de-tela-r310-r311-r318r322)
 - [U161 — os fluxos do técnico e quem participa da atividade (R307, R308, R313–R317)](#u161-os-fluxos-do-técnico-e-quem-participa-da-atividade-r307-r308-r313r317)
+- [U162 — a Meta do mês conta o prazo do mês, não o balde da semana (R323)](#u162-a-meta-do-mês-conta-o-prazo-do-mês-não-o-balde-da-semana-r323)
+- [U163 — o título da atividade se edita no lugar (R324)](#u163-o-título-da-atividade-se-edita-no-lugar-r324)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -15179,5 +15181,63 @@ assinatura, bloco na abertura), `blocoObrigatorioNaAbertura`, `tempoDeTrabalho`,
 A tipografia (R309, Opção C): os 66 desvios da revisão de 15/09 numa entrega só,
 com as travas do verificador ajustadas junto — o Davi decidiu em 23/09; entra na
 v1.0.4. E o conteúdo dos checklists por tipo de bloco (M1b), que é dele.
+
+Verificador: 3.627 asserções, 0 falharam.
+
+## U162 — a Meta do mês conta o prazo do mês, não o balde da semana (R323)
+
+**O relato.** Davi, 24/09/2026: *"eu cliquei no filtro, e uma das atividades que
+estavam lá, ainda era de Outubro, o prazo dela é 02/10."*
+
+**A causa.** `doMesFiltro` (a base da rosca da meta, do clique nela e dos tiles
+"Concluídas/Faltam no mês") decidia pelo SPRINT derivado do prazo: entravam os três
+baldes da R40 — essa semana, semana que vem, este mês. A escolha era deliberada (contar
+só `este_mes` faria a meta despencar sem nada mudar), mas carregava um defeito que só
+aparece no fim do mês: "semana que vem" é uma SEMANA, e em 23/09 ela ia de 28/09 a
+04/10. O balde nunca foi uma régua de mês — ele só coincidia com uma no meio do mês.
+
+**O conserto.** A régua passou a ser a que o Davi ditou: o prazo no mês corrente
+(hora local — o prazo é gravado às 23:59 do dia escolhido). Entra aberta ou
+concluída; cancelada e campo continuam fora. O `import` dos baldes saiu de
+`metricas.ts`; os baldes continuam existindo para o que são (a partição da semana).
+
+**O que muda junto, e por quê isso está certo.** Os tiles "Concluídas no mês" e
+"Faltam no mês" leem a mesma base — "quem conta é quem filtra" — e mudam com a meta.
+Duas consequências aceitas: a atrasada de agosto sai da meta de setembro (o prazo dela
+não é deste mês; continua em "Atrasadas em aberto"), e a concluída em agosto com prazo
+em setembro conta como feita de setembro (a régua é o prazo, não a data da entrega).
+
+**O que a verificação pegou.** As fixtures de agosto não tinham prazo — todas
+passavam pela etiqueta `este_mes`. Ganharam `prazoLimite`, os quatro testes dos
+baldes viraram um de prazo (essa semana e fim do mês entram; mês seguinte, anterior e
+sem prazo não), e o caso do Davi virou CRÍTICO: em 23/09 o prazo 02/10 está no balde
+"semana que vem" (a causa, afirmada) e fica fora do número E da lista do clique.
+
+Sem migration. Sem versão nova — a leva acumula até o Davi pedir a v1.0.4.
+
+Verificador: 3.625 asserções, 0 falharam.
+
+## U163 — o título da atividade se edita no lugar (R324)
+
+**O pedido.** Davi, 24/09/2026: *"ao clicar no titulo deve ser possível alterá-lo.
+Quando o usuário clica no titulo já fica o cursor de texto para ele escrever, bem
+prático!"*
+
+**Como.** Um componente, `TituloEditavel`, nas duas telas da atividade (a interna e a
+de campo — e, por tabela, no pop-up da Início, que mostra as mesmas telas, R238). Ele é
+um `<textarea>` vestido de título (22/700, R195): o clique cai no próprio texto e o
+navegador põe o cursor exatamente onde a pessoa tocou — que é o "já fica o cursor" do
+pedido. Não há lápis nem modo de edição: o título É o campo. A altura acompanha o
+texto (título longo quebra em duas linhas, como o `<h1>` quebrava); Enter grava, Esc
+desfaz, sair do campo grava. Um anel neutro (sombra, não borda — não mexe no layout;
+nada de dourado fixo, R79) aparece só com o foco.
+
+**A regra pura** (`src/features/chamados/titulo.ts`, `tituloParaSalvar`): grava o texto
+limpo; vazio ou igual ao atual não grava — a tela volta ao anterior, porque atividade
+sem título some do card e da busca. Quebra de linha colada vira espaço; teto de 200.
+
+**Quem edita.** Na interna, quem já edita a atividade (`podeEditar`, o mesmo gêmeo de
+`pode_editar_chamado`); na de campo, quem gere ou o técnico responsável, e nunca a
+cancelada. Quem não pode vê o título fixo de sempre. Sem migration.
 
 Verificador: 3.627 asserções, 0 falharam.

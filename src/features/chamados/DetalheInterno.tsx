@@ -48,6 +48,7 @@ import { EditorDeDescricao, TextareaComMencoes, type PessoaParaMencao } from "@/
 import { EquipamentosDaAtividade } from "@/features/chamados/EquipamentosDaAtividade";
 import { RoscaDeProgresso } from "@/components/RoscaDeProgresso";
 import { CampoQuando } from "@/components/CampoQuando";
+import { TituloEditavel } from "@/components/TituloEditavel";
 import { progressoDaAtividade } from "@/features/chamados/progresso";
 import { temDiagnostico } from "@/features/chamados/registro";
 import { rotuloReagendado } from "@/features/atividades/modelo";
@@ -532,13 +533,13 @@ export function DetalheInterno({ id, embutido = false }: {
             </button>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* R195: título de página de 22px é 700 */}
-            <h1 style={{
-              margin: 0, fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 22,
-              lineHeight: 1.25, textWrap: "balance" as any,
-            }}>
-              {chamado.titulo}
-            </h1>
+            {/* R195: título de página de 22px é 700. R324: clicar nele já edita —
+                o cursor cai onde a pessoa tocou; grava ao sair, Enter grava, Esc desfaz. */}
+            <TituloEditavel
+              valor={chamado.titulo}
+              podeEditar={podeEditar}
+              aoSalvar={(titulo) => salvar.mutate({ titulo })}
+            />
             {/* R243: a linha "número · aberta há Nd por Fulano · tipo" SAIU
                 (Davi, 10/09/2026). Nada se perde: o tipo é uma linha da ficha,
                 e quem abriu e quando está no rodapé dela ("Recebida de … em"). */}

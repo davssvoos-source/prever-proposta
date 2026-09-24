@@ -1614,6 +1614,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const at = (extra) => ({
     id: 'ch-' + Math.random(), natureza: 'interno', sprint: 'este_mes',
     coluna: 'concluido', emAberto: false, encerradoEm: dia('2026-08-10T10:00:00'),
+    prazoLimite: dia('2026-08-20T23:59:59'), // R323: a meta conta pelo PRAZO no mês
     ...extra,
   });
 
@@ -1628,14 +1629,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // o defeito real medido no export: 7 atividades marcadas "este mês" tinham
   // sido concluídas em junho/julho — contadas pela etiqueta, virariam entrega
   // de agosto
-  eq('meta: etiqueta VELHA não vira entrega do mês (concluída em julho)',
-     meta([at({ encerradoEm: dia('2026-07-15T10:00:00') })]), { total: 0, feitas: 0 });
+  // R323 (24/09/2026): a régua é o PRAZO no mês — o que é de julho fica em julho
+  eq('meta: prazo de julho não entra na meta de agosto, mesmo concluída',
+     meta([at({ prazoLimite: dia('2026-07-15T23:59:59'), encerradoEm: dia('2026-07-15T10:00:00') })]), { total: 0, feitas: 0 });
   eq('meta: cancelado não entra (cancelar não é entregar)',
      meta([at({ coluna: 'cancelado' })]), { total: 0, feitas: 0 });
   eq('meta: chamado de campo não entra (a meta é do quadro interno)',
      meta([at({ natureza: 'campo' })]), { total: 0, feitas: 0 });
-  eq('meta: sprint diferente não entra',
-     meta([at({ sprint: 'backlog' })]), { total: 0, feitas: 0 });
+  eq('meta: sem prazo não entra (R323: o que não tem prazo não é meta de mês nenhum)',
+     meta([at({ prazoLimite: null })]), { total: 0, feitas: 0 });
 
   // ── concluidosPorSemana ─────────────────────────────────────────────────
   const semanaDe = (s) => {
@@ -1708,7 +1710,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       id: 'ch-1', natureza: 'interno', sprint: 'este_mes', coluna: 'concluido',
       emAberto: false, encerradoEm: new Date(2026, 7, 12, 10).toISOString(),
       responsavelId: 'u1', souResponsavel: true, souApoio: false, souAutor: true,
-      titulo: 'feito', numero: 'CH-1', cliente: null, prazoLimite: null, quando: null,
+      titulo: 'feito', numero: 'CH-1', cliente: null, prazoLimite: new Date(2026, 7, 28, 23, 59, 59).toISOString(), quando: null,
     };
     const aberto = { ...feito, id: 'ch-2', coluna: 'aberto', emAberto: true,
                      encerradoEm: null, titulo: 'aberto' };
@@ -1958,14 +1960,26 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const tarefa = (sprint) => ({
     natureza: 'interno', sprint, coluna: 'aberto', emAberto: true, encerradoEm: null,
   });
-  eq('meta do mês inclui "essa semana" (era o defeito da partição)',
-     MET.metaDoMes([tarefa('essa_semana')], agosto).total, 1);
-  eq('meta do mês inclui "semana que vem"',
-     MET.metaDoMes([tarefa('semana_que_vem')], agosto).total, 1);
-  eq('meta do mês NÃO inclui "mês que vem"',
-     MET.metaDoMes([tarefa('mes_que_vem')], agosto).total, 0);
-  eq('meta do mês NÃO inclui backlog',
-     MET.metaDoMes([tarefa('backlog')], agosto).total, 0);
+  // R323 (24/09/2026): a meta deixou de seguir os baldes — conta o PRAZO no mês.
+  // Os baldes continuam existindo (a partição acima); só não decidem mais a meta.
+  const tarefaP = (prazo) => ({ ...tarefa(null), prazoLimite: prazo === null ? null : new Date(prazo).toISOString() });
+  eq('R323: a meta conta o prazo DESTE mês — essa semana e o fim do mês entram; o mês seguinte, o anterior e sem prazo não',
+     [MET.metaDoMes([tarefaP('2026-08-22T23:59:59')], agosto).total, MET.metaDoMes([tarefaP('2026-08-31T23:59:59')], agosto).total,
+      MET.metaDoMes([tarefaP('2026-09-02T23:59:59')], agosto).total, MET.metaDoMes([tarefaP('2026-07-30T23:59:59')], agosto).total,
+      MET.metaDoMes([tarefaP(null)], agosto).total],
+     [1, 1, 0, 0, 0]);
+  // O CASO DO DAVI: em 23/09/2026 a atividade de prazo 02/10 está no balde
+  // "semana que vem" (28/09–04/10) — e era por isso que aparecia na meta de setembro.
+  {
+    const setembro23 = new Date(2026, 8, 23, 10);
+    const doze = new Date(2026, 9, 2, 23, 59, 59).toISOString();
+    const umaDeSetembro = new Date(2026, 8, 30, 23, 59, 59).toISOString();
+    const lista = [{ ...tarefaP(null), id: 'out', prazoLimite: doze }, { ...tarefaP(null), id: 'set', prazoLimite: umaDeSetembro }];
+    eq('R323 CRÍTICO: em 23/09 o prazo 02/10 cai em "semana que vem" (a causa), mas NÃO entra na meta de setembro — nem no número, nem na lista que o clique abre',
+       [CS.sprintDoPrazo(doze, setembro23), MET.metaDoMes(lista, setembro23).total,
+        MET.atividadesDaMeta(lista, setembro23).map((a) => a.id), MET.atividadesDaSelecao({ tipo: 'meta' }, lista, setembro23).map((a) => a.id)],
+       ['semana_que_vem', 1, ['set'], ['set']]);
+  }
 
   // o importador: etiqueta do Notion primeiro, derivação depois, e NUNCA
   // derivar em coisa encerrada (jogaria arquivo de 2025 em "essa semana")
@@ -3554,6 +3568,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const atK = (extra) => ({
     id: 'k-' + Math.random(), natureza: 'interno', sprint: 'este_mes',
     coluna: 'concluido', emAberto: false, encerradoEm: diaK('2026-08-10T10:00:00'),
+    prazoLimite: diaK('2026-08-25T23:59:59'), // R323
     tipo: null, prioridade: null, prazoEstourado: false,
     ...extra,
   });
@@ -3602,7 +3617,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       atK({}),                                                          // concluída este mês
       atK({ emAberto: true, coluna: 'aberto', encerradoEm: null }),      // falta este mês
       atK({ emAberto: true, coluna: 'aberto', encerradoEm: null }),      // falta este mês
-      atK({ encerradoEm: diaK('2026-07-15T10:00:00') }),                 // fora do mês — não conta em nenhum
+      atK({ encerradoEm: diaK('2026-07-15T10:00:00'), prazoLimite: diaK('2026-07-15T23:59:59') }), // prazo fora do mês — não conta em nenhum (R323)
     ];
     const m = MET.metaDoMes(conjunto, agoraKpi);
     eq('CRÍTICO: metaDoMes.feitas === atividadesDoKpi("concluidas_mes").length — o número do tile e o tamanho da lista NUNCA discordam',
@@ -20060,7 +20075,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R234/R243: o cabeçalho é só o título (22/700, text-wrap balance) — a linha de meta saiu, e o que ela dizia continua na ficha',
      [/aberta \{tempoRelativo\(chamado\.created_at\)\}\{chamado\.aberto_por \? ` por \$\{nomeDe\(chamado\.aberto_por\)\}` : ""\}/.test(di121),
       /\{tipoRotulo && <span>· \{tipoRotulo\}<\/span>\}/.test(di121),
-      /fontWeight: 700, fontSize: 22,\s*\n\s*lineHeight: 1\.25, textWrap: "balance" as any,/.test(di121),
+      // R324 (24/09/2026): o título virou o TituloEditavel — o 22/700 com balance mora nele
+      /<TituloEditavel/.test(di121) && /fontWeight: 700, fontSize: 22,\s*\n\s*lineHeight: 1\.25, textWrap: "balance"/.test(require('fs').readFileSync('src/components/TituloEditavel.tsx', 'utf8')),
       /Recebida\{chamado\.aberto_por/.test(di121), /linha\("Tipo", \(/.test(di121)],
      [false, false, true, true, true]);
   eq('R234: a ficha tem o recebimento como rodapé, e fotos em grade de 3 quadrados',
@@ -20820,7 +20836,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         /export function DetalheCampo\(\{ id, embutido = false \}/.test(dc),
         /return <div className="atividade-embutida" style=\{\{ color: textPrimary \}\}>\{conteudo\}<\/div>;/.test(dc),
         /className="pagina-trabalho" style=\{\{ paddingTop: 12, paddingBottom: 48, color: textPrimary \}\}/.test(dc),
-        /fontWeight: 700, fontSize: 22, lineHeight: 1\.25/.test(dc),
+        // R324: o título é o TituloEditavel (22/700 mora nele)
+        /<TituloEditavel/.test(dc) && /fontWeight: 700, fontSize: 22,\s*\n\s*lineHeight: 1\.25/.test(require('fs').readFileSync('src/components/TituloEditavel.tsx', 'utf8')),
         /\{!embutido && \(/.test(dc),
         /<DetalheCampo id=\{chamadoId\} embutido \/>/.test(ler127('src/features/chamados/DialogDaAtividade.tsx'))],
        [true, true, true, true, true, true, true, true, true, true, true, true, true]);
@@ -25008,6 +25025,30 @@ assincronas.push(async () => {
      [[], true, true, true, true, true, []]);
 }
 
+
+
+// ── R324 / U163 — o título da atividade se edita no lugar (24/09/2026) ─────
+// Davi: "ao clicar no titulo deve ser possível alterá-lo. Quando o usuário clica no
+// titulo já fica o cursor de texto para ele escrever, bem prático!"
+{
+  const T324 = carregar('src/features/chamados/titulo.ts');
+  eq('R324: grava o texto limpo; igual ao atual, vazio ou só espaços não grava; quebra de linha vira espaço; teto de 200',
+     [T324.tituloParaSalvar('  Trocar fechadura  ', 'Fechadura'), T324.tituloParaSalvar('Fechadura ', 'Fechadura'),
+      T324.tituloParaSalvar('   ', 'Fechadura'), T324.tituloParaSalvar('Portão\n da garagem', null),
+      T324.tituloParaSalvar('x'.repeat(250), 'y').length],
+     ['Trocar fechadura', null, null, 'Portão da garagem', 200]);
+  const fs324 = require('fs');
+  const comp = soCodigo(fs324.readFileSync('src/components/TituloEditavel.tsx', 'utf8'), 'js');
+  const int324 = fs324.readFileSync('src/features/chamados/DetalheInterno.tsx', 'utf8');
+  const cam324 = fs324.readFileSync('src/features/chamados/DetalheCampo.tsx', 'utf8');
+  eq('R324 na tela: o título é um textarea vestido de título (22/700) que grava no blur, Enter grava e Esc desfaz; sem permissão é o h1; as duas telas da atividade o usam',
+     [/<textarea/.test(comp), /fontWeight: 700, fontSize: 22/.test(comp), /onBlur=\{\(\) => \{ setFocado\(false\); gravar\(\); \}\}/.test(comp),
+      /e\.key === "Enter"/.test(comp) && /e\.key === "Escape"/.test(comp), /if \(!podeEditar\) return <h1/.test(comp),
+      /<TituloEditavel\s*\n\s*valor=\{chamado\.titulo\}\s*\n\s*podeEditar=\{podeEditar\}/.test(int324),
+      /<TituloEditavel\s*\n\s*valor=\{os\.titulo\}/.test(cam324), /atualizarChamado\(id, \{ titulo \}\)/.test(cam324),
+      !/<h1 style=\{\{[^}]*\}\}>\{os\.titulo\}<\/h1>/.test(cam324)],
+     [true, true, true, true, true, true, true, true, true]);
+}
 
 (async () => {
   for (const bloco of assincronas) await bloco();

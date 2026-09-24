@@ -19,6 +19,8 @@
   `temFiltroAtivo` em `dashboard.tsx`) e na Operacional (limpa o recorte de KPI); o "Mostrando:" saiu.
 - A faixa de validação saiu da Início (R320): a Fila de decisão da Gestão Técnica é quem conta.
 - Operacional sem scroll horizontal (R322): `.kanban-op` reparte `--colunas` no desktop; a barra quebra.
+- Meta do mês pelo PRAZO no mês (R323): `doMesFiltro` em `src/features/home/metricas.ts` — a base da rosca,
+  do clique nela e dos tiles "Concluídas/Faltam no mês"; os baldes de sprint não decidem mais a meta.
 
 ## Padrões a reusar
 
@@ -36,7 +38,7 @@
 <!-- cobertura:inicio -->
 <!-- Gerado por `node scripts/cobertura-regras.cjs` — não edite à mão. -->
 
-Regras do módulo: 66 · com asserção nominal no verificador: 59 · sem menção nominal: 7.
+Regras do módulo: 67 · com asserção nominal no verificador: 60 · sem menção nominal: 7.
 
 | Regra | Verificado por |
 |---|---|
@@ -106,6 +108,7 @@ Regras do módulo: 66 · com asserção nominal no verificador: 59 · sem menç�
 | produto:R320 | 5 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R321 | 8 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R322 | 6 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R323 | 8 menções nominalis em `scripts/verificar-logica.cjs` |
 <!-- cobertura:fim -->
 
 ## Pendências

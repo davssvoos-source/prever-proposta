@@ -26,6 +26,9 @@
 - Responder a um comentário (R318, U160): botão por comentário em `DetalheInterno.tsx`, menção
   automática, chip "Respondendo a", ligação `responde_a` (a mesma da R240) e "em resposta a" no feed.
 
+- Título editável no lugar (R324, U163): `src/components/TituloEditavel.tsx` (textarea vestido de título,
+  grava no blur) com a regra pura em `src/features/chamados/titulo.ts`; usado nas duas telas da atividade.
+
 ## Padrões a reusar
 
 - Layout segue a NATUREZA (`DetalheInterno` × `DetalheCampo`), nunca o cargo de quem está na atividade.
@@ -43,7 +46,7 @@
 <!-- cobertura:inicio -->
 <!-- Gerado por `node scripts/cobertura-regras.cjs` — não edite à mão. -->
 
-Regras do módulo: 69 · com asserção nominal no verificador: 60 · sem menção nominal: 9.
+Regras do módulo: 70 · com asserção nominal no verificador: 61 · sem menção nominal: 9.
 
 | Regra | Verificado por |
 |---|---|
@@ -116,6 +119,7 @@ Regras do módulo: 69 · com asserção nominal no verificador: 60 · sem menç�
 | produto:R308 | 4 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R317 | — sem menção nominal; cobertura indireta (tsc, build, asserções da tela) |
 | produto:R318 | 2 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R324 | 5 menções nominalis em `scripts/verificar-logica.cjs` |
 <!-- cobertura:fim -->
 
 ## Pendências
