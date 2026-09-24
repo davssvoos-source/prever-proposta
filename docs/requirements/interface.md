@@ -43,6 +43,7 @@ depois nesta tabela; a cobertura de cada uma está em `../state/interface.md`.
 | R239 | A revisão geral da tela da atividade: uma régua de margem, um scroll, o pop-up por cima de tudo e os equipa… |
 | R275 | Tela nova não fica pronta sem a revisão de margem — e o vocabulário visual é o que o app JÁ fala |
 | R303 | Os títulos, tamanhos, cores e famílias de fonte das páginas principais seguem UMA escala |
+| R309 | A revisão de tipografia é aplicada INTEIRA, numa entrega só (Opção C) |
 
 ## Fora de escopo
 

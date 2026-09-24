@@ -94,6 +94,9 @@ depois nesta tabela; a cobertura de cada uma está em `../state/paineis.md`.
 | R299 | "Sobreaviso" vira "Gestão Técnica", e é a mesa do Vinicius: para lá vão o dashboard e os KPIs da Operaciona… |
 | R300 | Na Gestão Técnica, o que o Vinicius olha TODO DIA ocupa o centro; o que ele monta duas vezes por mês fica s… |
 | R301 | A Operacional Técnica mostra TODOS os chamados da equipe de campo, abre no quadro por DIA DA SEMANA, lembra… |
+| R320 | O aviso de validação sai da Início: a validação é do GESTOR e mora na Gestão Técnica |
+| R321 | Sai o texto "Mostrando: … limpar"; entra o botão Limpar filtros ao lado do último filtro |
+| R322 | A Operacional Técnica cabe na tela: sem scroll horizontal no computador |
 
 ## Fora de escopo
 

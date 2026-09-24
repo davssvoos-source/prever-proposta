@@ -423,7 +423,7 @@ function Rodape({ c, isLight, pessoasMencao, conhecidas, respostaPara, limparRes
           pessoas={pessoasMencao}
           rows={1}
           focarEm={pedidoDeFoco}
-          placeholder={resposta ? "Sua resposta… (Enter envia)" : "Escreva para todos… (# escolhe uma atividade)"}
+          placeholder={resposta ? "Sua resposta… (Enter envia)" : "Escreva para todos… (# atividade)"}
           // R245: o "#" abre as atividades recentes (só o nome); escolher uma
           // ARMA a resposta — o chip #Código aparece acima, e a mensagem vai
           // para a atividade como resposta (R223/R240)

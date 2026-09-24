@@ -35,6 +35,9 @@ export interface PropostaParaMetrica {
   data_hora_agendada?: string | null;
   /** o plano B do ponto de partida, para visita sem data marcada */
   created_at?: string | null;
+  /** R306 (U158): os dois valores gravados ao gerar a proposta — NULL nas anteriores */
+  valor_anual_recorrente?: number | string | null;
+  valor_implantacao?: number | string | null;
 }
 
 export type TipoPeriodo = "semana" | "mes";
@@ -213,14 +216,21 @@ export interface KpisComerciais {
   tempoMedioDias: number | null;
   /** aprovadas sem proposta — a etapa "falta_proposta" de `etapaDaVisita` */
   aguardandoEnvio: number;
+  /** R306: média do valor anual recorrente das ENVIADAS com valor gravado; null sem nenhuma */
+  ticketAnual: number | null;
+  /** R306: média do valor de implantação das mesmas propostas */
+  ticketImplantacao: number | null;
+  /** quantas propostas entram nas duas médias — o subtítulo diz o número */
+  propostasComValor: number;
 }
 
 const DIA_MS = 86_400_000;
 
 /**
- * (4) OS QUATRO KPIs (R302). "Ticket médio" NÃO está aqui de propósito: o
- * valor da proposta nasce em gerarProposta.ts e não é gravado em coluna
- * nenhuma — inventar o número seria fingir um dado que não existe.
+ * (4) OS CINCO KPIs (R302 + R306). O "ticket médio" entrou na R306 (U158): a
+ * proposta grava os dois valores ao ser gerada, e as médias contam só as
+ * ENVIADAS que os têm — as anteriores ficam NULL e fora; o subtítulo diz
+ * quantas entram, para o número nunca parecer maior do que a amostra.
  *
  * · média por mês (M-12): os doze meses FECHADOS antes do corrente — o mês
  *   em curso fica de fora do numerador E do divisor. Com ele dentro, no dia 1º
@@ -261,7 +271,21 @@ export function kpisComerciais(propostas: PropostaParaMetrica[], agora: Date): K
 
   const aguardandoEnvio = propostas.filter((p) => etapaDaVisita(p) === "falta_proposta").length;
 
-  return { mediaPorMes, taxaVisitaProposta, tempoMedioDias, aguardandoEnvio };
+  // R306: o ticket médio — só as ENVIADAS com os dois valores gravados. `numeric`
+  // pode chegar como string pelo PostgREST; `Number` antes de somar.
+  const comValor = propostas
+    .filter((p) => !!p.proposta_enviada_em && p.valor_anual_recorrente !== null && p.valor_anual_recorrente !== undefined)
+    .map((p) => ({ anual: Number(p.valor_anual_recorrente), implantacao: Number(p.valor_implantacao ?? 0) }))
+    .filter((v) => Number.isFinite(v.anual) && Number.isFinite(v.implantacao));
+  const media = (xs: number[]): number | null =>
+    xs.length > 0 ? Math.round((xs.reduce((s, v) => s + v, 0) / xs.length) * 100) / 100 : null;
+  const ticketAnual = media(comValor.map((v) => v.anual));
+  const ticketImplantacao = media(comValor.map((v) => v.implantacao));
+
+  return {
+    mediaPorMes, taxaVisitaProposta, tempoMedioDias, aguardandoEnvio,
+    ticketAnual, ticketImplantacao, propostasComValor: comValor.length,
+  };
 }
 
 /**
@@ -280,4 +304,9 @@ export function passoDoPeriodo(indice: number, total: number): number {
   if (total <= 1) return PASSO_ATUAL;
   const t = Math.min(Math.max(indice, 0), total - 1) / (total - 1);
   return Math.round(PASSO_PASSADO - t * (PASSO_PASSADO - PASSO_ATUAL));
+}
+
+/** "R$ 84.300" — moeda sem centavos, para o tile do ticket (R306). */
+export function moedaCurta(v: number): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(v);
 }

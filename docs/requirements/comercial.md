@@ -45,6 +45,7 @@ depois nesta tabela; a cobertura de cada uma está em `../state/comercial.md`.
 | R260 | Proposta Comercial nasce com responsável do Comercial |
 | R279 | Com item SOB CONSULTA não há total |
 | R302 | O Painel Comercial ganha um dashboard no lugar do funil, um filtro de Tipo de Serviço no lugar dos chips de… |
+| R306 | Ticket médio: dois valores, guardados separadamente — o anual recorrente e a implantação |
 
 ## Fora de escopo
 

@@ -284,9 +284,11 @@ export function GestaoDeUsuarios() {
   // invalidação é só para a lista refletir um cancelamento feito em outra aba.
   const reenviarConviteMutation = useMutation({
     mutationFn: async (c: Convite) => await reenviarConviteFn({ data: { id: c.id } }),
-    onSuccess: (_r, c) => {
+    onSuccess: (r, c) => {
       qc.invalidateQueries({ queryKey: ["convites-pendentes"] });
-      toast.success(`Convite reenviado para ${c.email}`);
+      // R310: a pessoa já entrou — o servidor marcou o convite como aceito e ele sai da lista
+      if ((r as { aceito?: boolean } | null)?.aceito) toast.success(`${c.email} já entrou no sistema — convite marcado como aceito.`);
+      else toast.success(`Convite reenviado para ${c.email}`);
     },
     onError: (e: Error) => toast.error(e.message),
   });

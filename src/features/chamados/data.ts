@@ -21,6 +21,7 @@ import type {
   Natureza,
 } from "@/lib/chamado-status";
 import { EQUIPES, type Equipe } from "@/lib/equipes";
+import { tipoDeServicoPadrao } from "@/features/chamados/cobranca-texto";
 
 export interface Chamado {
   id: string;
@@ -314,6 +315,8 @@ export async function abrirChamado(input: NovoChamadoInput): Promise<string> {
   const linha: Record<string, unknown> = {
     prioridade: "normal",
     equipe: input.natureza === "campo" ? "tecnica" : undefined,
+    // R311 (U160): o tipo de serviço nasce com o chamado — instalação na implantação, manutenção no resto
+    tipo_servico: tipoDeServicoPadrao(input.tipo),
     ...input,
     status,
     aberto_por: u.user?.id ?? null,

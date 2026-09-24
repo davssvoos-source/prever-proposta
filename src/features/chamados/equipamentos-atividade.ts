@@ -84,11 +84,20 @@ export function useEquipamentosDoClienteDaAtividade(chamadoId: string | undefine
   });
 }
 
-/** O nome que a tela mostra para um item: "Câmera Intelbras VHD 1220 · nº 4471". */
+/**
+ * O nome que a tela mostra para um item — R314 (Davi, 23/09/2026): "somente o
+ * Tipo de Categoria, Modelo e Marca — conforme estrutura do QAP ERP". O `nome`
+ * do catálogo É o Tipo de Categoria (R196): "Câmera · Intelbras · VHD 1220". A
+ * identificação sai do rótulo e vai para o `title` (`tituloDoEquipamento`).
+ */
 export function rotuloDoEquipamento(e: { nome: string; modelo?: string | null; fabricante?: string | null; identificacao?: string | null }): string {
-  const partes = [e.nome, e.fabricante, e.modelo].filter((x): x is string => !!x && x.trim().length > 0);
-  const base = partes.join(" ");
-  return e.identificacao ? `${base} · nº ${e.identificacao}` : base;
+  return [e.nome, e.fabricante, e.modelo].filter((x): x is string => !!x && x.trim().length > 0).join(" · ");
+}
+
+/** O rótulo e, quando há, o número de identificação — para o `title` e para a busca. */
+export function tituloDoEquipamento(e: { nome: string; modelo?: string | null; fabricante?: string | null; identificacao?: string | null }): string {
+  const r = rotuloDoEquipamento(e);
+  return e.identificacao ? `${r} · nº ${e.identificacao}` : r;
 }
 
 export interface BlocoComItens {

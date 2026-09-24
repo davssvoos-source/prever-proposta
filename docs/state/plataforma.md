@@ -50,8 +50,7 @@ Regras do módulo: 7 · com asserção nominal no verificador: 7 · sem menção
 
 ## Pendências
 
-- Instalar a v1.0.2 no servidor (G4 em `../DECISOES_PENDENTES.md`): ele está na v0.0.7 desde 08/09/2026.
-- Sair da Lovable (I1) e o backup testado (I3) — com o T.I.
-- Migration U155 pendente (G1).
+- Instalar a v1.0.3 no servidor (G6 em `../DECISOES_PENDENTES.md`) DEPOIS de rodar U158, U159 e U160 (G5).
+- Sair da Lovable (I1), a `SITE_URL` (G3) e o backup testado (I3) — com o T.I.
 - O que depende do Davi está consolidado em `../DECISOES_PENDENTES.md`; a dívida técnica, em
   `../PENDENCIAS_TECNICAS.md`.

@@ -25,6 +25,9 @@ import {
   atualizarChamado, anexarFoto, excluirFoto, salvarAssinatura,
 } from "@/features/chamados/data";
 import { gerarRelatorioOs } from "@/features/chamados/relatorio";
+import { EquipamentosDaAtividade } from "@/features/chamados/EquipamentosDaAtividade";
+import { fluxoDeCampo, tempoDeTrabalho } from "@/features/atividades/fluxos-de-campo";
+import { textoPadraoDaCobranca, tipoDeServicoPadrao } from "@/features/chamados/cobranca-texto";
 import {
   usePecas, registrarPeca, removerPeca,
   DIRECAO_LABEL, DIRECAO_CORES, type DirecaoPeca,
@@ -85,6 +88,8 @@ export function DetalheCampo({ id, embutido = false }: {
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   // movimentação de equipamento — Etapa U3
   const { data: pecasOs = [] } = usePecas(id);
+  // R313/R315/R316: o fluxo do tipo decide o que a tela mostra e exige
+  const fluxo = fluxoDeCampo(os?.tipo);
   const [novaDirecao, setNovaDirecao] = useState<DirecaoPeca>("instalado");
   const [novaDescricao, setNovaDescricao] = useState("");
   const [novaSerie, setNovaSerie] = useState("");
@@ -101,12 +106,23 @@ export function DetalheCampo({ id, embutido = false }: {
   const [lancDescricao, setLancDescricao] = useState("");
   const [lancValor, setLancValor] = useState("");
   const [lancParcelas, setLancParcelas] = useState("1");
+  // R311 (U160): a descrição do lançamento nasce no padrão do Davi — "Manutenção
+  // corretiva, fornecimento de 1 unidade de fechadura, fora de contrato" — a
+  // partir do tipo e das peças instaladas; continua editável.
+  useEffect(() => {
+    if (!os || lancDescricao.trim() !== "") return;
+    setLancDescricao(textoPadraoDaCobranca(
+      os.tipo,
+      pecasOs.filter((p) => p.direcao === "instalado").map((p) => ({ descricao: p.descricao, quantidade: p.quantidade })),
+    ));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [os?.id, os?.tipo, pecasOs.length]);
 
   const candidatoDoLancamento = {
     descricao: lancDescricao,
     valorTotal: (() => { const n = reaisDigitados(lancValor); return Number.isFinite(n) ? n : 0; })(),
     parcelas: (() => { const n = Number(lancParcelas); return Number.isFinite(n) ? n : 0; })(),
-    tipoServico: (os?.tipo_servico ?? "manutencao") as "instalacao" | "manutencao",
+    tipoServico: os?.tipo_servico ?? tipoDeServicoPadrao(os?.tipo),
   };
   const erroDoLanc = erroDoLancamento(candidatoDoLancamento);
   const previaDasParcelas = erroDoLanc
@@ -380,9 +396,10 @@ export function DetalheCampo({ id, embutido = false }: {
 
   const concluir = useMutation({
     mutationFn: async () => {
-      if (!diagnostico.trim()) throw new Error("Descreva o diagnóstico do problema.");
-      if (!servico.trim()) throw new Error("Descreva o serviço executado.");
-      if (!os?.assinatura_url) {
+      // R313/R316: diagnóstico e solução são da corretiva; a implantação conclui sem assinatura
+      if (fluxo.temProblemaESolucao && !diagnostico.trim()) throw new Error("Descreva o diagnóstico do problema.");
+      if (fluxo.temProblemaESolucao && !servico.trim()) throw new Error("Descreva o serviço executado.");
+      if (fluxo.assinaturaObrigatoria && !os?.assinatura_url) {
         if (!assinaturaData) throw new Error("Colete a assinatura de quem acompanhou o serviço.");
         if (!assinanteNome.trim()) throw new Error("Informe o nome de quem assinou.");
         await salvarAssinatura(id, assinaturaData, assinanteNome.trim());
@@ -438,7 +455,7 @@ export function DetalheCampo({ id, embutido = false }: {
         await concluirComCobranca.mutateAsync({
           chamadoId: id,
           decisao,
-          tipoServico: (os.tipo_servico ?? "manutencao") as "instalacao" | "manutencao",
+          tipoServico: os.tipo_servico ?? tipoDeServicoPadrao(os.tipo),
           ...(decisao === "lancar"
             ? {
                 descricao: lancDescricao.trim(),
@@ -640,7 +657,7 @@ export function DetalheCampo({ id, embutido = false }: {
               leitura aqui: quem edita a descrição é o painel de propriedades). */}
           {os.descricao_problema && (
             <div style={CARD}>
-              <span style={SEC}>Problema relatado</span>
+              <span style={SEC}>{fluxo.rotuloDaDescricao === "Problema" ? "Problema relatado" : fluxo.rotuloDaDescricao}</span>
               <TextoComChecklist texto={os.descricao_problema} estilo={{ fontSize: 13 }} />
             </div>
           )}
@@ -739,10 +756,12 @@ export function DetalheCampo({ id, embutido = false }: {
               <span style={SEC}>Execução</span>
 
               {/* Fotos antes/depois */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {([["antes", fotosAntes], ["depois", fotosDepois]] as const).map(([etapa, arr]) => (
+              <div style={{ display: "grid", gridTemplateColumns: fluxo.fotos.antes ? "1fr 1fr" : "1fr", gap: 10 }}>
+                {([["antes", fotosAntes], ["depois", fotosDepois]] as const)
+                  .filter(([etapa]) => etapa === "depois" || fluxo.fotos.antes !== null)
+                  .map(([etapa, arr]) => (
                   <div key={etapa}>
-                    <label style={LABEL}>{etapa === "antes" ? "Antes (problema)" : "Depois (solução)"}</label>
+                    <label style={LABEL}>{etapa === "antes" ? (fluxo.fotos.antes ?? "Antes") : fluxo.fotos.depois}</label>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {arr.map((f) => (
                         <div key={f.id} style={{ position: "relative" }}>
@@ -794,6 +813,7 @@ export function DetalheCampo({ id, embutido = false }: {
                 ))}
               </div>
 
+              {fluxo.temProblemaESolucao && (<>
               <div>
                 <label style={LABEL}>Diagnóstico</label>
                 <textarea
@@ -814,6 +834,7 @@ export function DetalheCampo({ id, embutido = false }: {
                   placeholder="O que foi feito para resolver"
                 />
               </div>
+              </>)}
               {/* Equipamento instalado / retirado — Etapa U3.
                   Substitui o campo de texto: o que entra aqui vira a decisão de
                   cobrança (U4) e o relatório de movimentação do QAP (U6). */}
@@ -993,6 +1014,22 @@ export function DetalheCampo({ id, embutido = false }: {
                 </div>
               )}
             </div>
+          )}
+
+          {/* R313/R316: os equipamentos do PATRIMÔNIO — removidos (por bloco, o da
+              manutenção primeiro) e inseridos (os do cliente sem bloco; na
+              implantação o único alvo é o bloco da atividade). As "peças" acima
+              continuam: são o material fornecido, que vira cobrança (R311). */}
+          {fluxo.temEquipamentos && os.cliente_id && podeExecutar && (
+            <EquipamentosDaAtividade
+              chamadoId={os.id}
+              clienteId={os.cliente_id}
+              podeEditar={emExecucao || !!isGerente}
+              estiloCard={CARD}
+              estiloSecao={SEC}
+              sistemaDaAtividade={os.cliente_sistema_id}
+              soOBlocoDaAtividade={fluxo.alvoDoArrasto === "so-o-bloco-da-atividade"}
+            />
           )}
 
           {/* Cobrança — Etapa U4. Só quem responde pelo financeiro enxerga; o
@@ -1564,6 +1601,22 @@ export function DetalheCampo({ id, embutido = false }: {
                   </span>
                 )}
               </div>
+              {/* R313: chegada, saída e tempo de trabalho — automáticos: "Iniciar
+                  atendimento" marca a chegada, concluir marca a saída. */}
+              {os.iniciada_em && (() => {
+                const saida = os.finalizada_em ?? os.concluida_em;
+                const tempo = tempoDeTrabalho(os.iniciada_em, saida);
+                const hora = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+                const valor: CSSProperties = { fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, fontVariantNumeric: "tabular-nums" };
+                const chave: CSSProperties = { fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 };
+                return (
+                  <>
+                    <div style={linha}><span style={chave}>Chegada</span><span style={valor}>{hora(os.iniciada_em)}</span></div>
+                    <div style={linha}><span style={chave}>Saída</span><span style={valor}>{saida ? hora(saida) : "—"}</span></div>
+                    <div style={linha}><span style={chave}>Tempo de trabalho</span><span style={valor}>{tempo?.texto ?? "—"}</span></div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 

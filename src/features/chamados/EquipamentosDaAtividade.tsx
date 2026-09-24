@@ -55,10 +55,11 @@ import { useInventario } from "@/features/clientes/inventario";
 import { CabecalhoDoPainel, estiloDoPainel } from "@/features/clientes/EquipamentosDoCliente";
 import { TIPO_ARRASTO, arrastoEhNosso, lerArrasto, serializarArrasto } from "@/features/clientes/vinculo";
 import {
-  desfazerMovimento, moverEquipamento, repartirEquipamentos, rotuloDoEquipamento,
+  desfazerMovimento, moverEquipamento, repartirEquipamentos, rotuloDoEquipamento, tituloDoEquipamento,
   useEquipamentosDaAtividade, useEquipamentosDoClienteDaAtividade,
   type EquipamentoDoCliente, type MovimentoDeEquipamento,
 } from "./equipamentos-atividade";
+import { comOBlocoDaAtividadePrimeiro } from "@/features/atividades/fluxos-de-campo";
 
 interface Props {
   chamadoId: string;
@@ -67,6 +68,10 @@ interface Props {
   /** o card e o micro-rótulo da página — a MESMA casca dos outros blocos */
   estiloCard: CSSProperties;
   estiloSecao: CSSProperties;
+  /** R313: o bloco desta atividade vai em primeiro na lista */
+  sistemaDaAtividade?: string | null;
+  /** R316: na implantação o único alvo do arrasto é o bloco da atividade */
+  soOBlocoDaAtividade?: boolean;
 }
 
 /** o que está na mão: o item e de qual bloco saiu (null = "Sem bloco") */
@@ -75,7 +80,7 @@ interface Arrasto { id: string; deSistema: string | null }
 /** quantos itens de "Sem bloco" aparecem antes do "mostrar todos" */
 const PRIMEIROS = 24;
 
-export function EquipamentosDaAtividade({ chamadoId, clienteId, podeEditar, estiloCard, estiloSecao }: Props) {
+export function EquipamentosDaAtividade({ chamadoId, clienteId, podeEditar, estiloCard, estiloSecao, sistemaDaAtividade = null, soOBlocoDaAtividade = false }: Props) {
   const { isLight } = useTheme();
   const c = cinzas(isLight);
   const qc = useQueryClient();
@@ -92,13 +97,18 @@ export function EquipamentosDaAtividade({ chamadoId, clienteId, podeEditar, esti
 
   const movimentos = mov.data?.itens ?? [];
   const faltaMigration = !!(mov.data?.faltaMigration || doCliente.data?.faltaMigration);
-  const { blocos, semBloco } = useMemo(
-    () => repartirEquipamentos(sistemas.filter((s) => s.ativo !== false), doCliente.data?.itens ?? []),
-    [sistemas, doCliente.data],
-  );
+  const { blocos, semBloco } = useMemo(() => {
+    const r = repartirEquipamentos(sistemas.filter((s) => s.ativo !== false), doCliente.data?.itens ?? []);
+    // R313: o bloco da manutenção em primeiro; R316: na implantação, só ele
+    const ordenados = comOBlocoDaAtividadePrimeiro(r.blocos, sistemaDaAtividade);
+    const visiveis = soOBlocoDaAtividade && sistemaDaAtividade
+      ? ordenados.filter((b) => b.sistemaId === sistemaDaAtividade)
+      : ordenados;
+    return { blocos: visiveis, semBloco: r.semBloco };
+  }, [sistemas, doCliente.data, sistemaDaAtividade, soOBlocoDaAtividade]);
   const semBlocoFiltrado = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return q ? semBloco.filter((i) => rotuloDoEquipamento(i).toLowerCase().includes(q)) : semBloco;
+    return q ? semBloco.filter((i) => tituloDoEquipamento(i).toLowerCase().includes(q)) : semBloco;
   }, [semBloco, busca]);
   const emBlocos = (doCliente.data?.itens.length ?? 0) - semBloco.length;
   const aMostrar = todos || busca.trim() ? semBlocoFiltrado : semBlocoFiltrado.slice(0, PRIMEIROS);
@@ -172,7 +182,7 @@ export function EquipamentosDaAtividade({ chamadoId, clienteId, podeEditar, esti
       style={{ ...estiloItem, cursor: podeMexer ? "grab" : "default", opacity: arrasto?.id === i.patrimonio_id ? 0.45 : 1 }}
     >
       {podeMexer && <GripVertical size={13} color={c.textoSecundario} style={{ flexShrink: 0 }} aria-hidden />}
-      <span style={{
+      <span title={tituloDoEquipamento(i)} style={{
         fontFamily: FONT, fontSize: 12, color: c.texto, flex: 1, minWidth: 0,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
@@ -338,7 +348,7 @@ export function EquipamentosDaAtividade({ chamadoId, clienteId, podeEditar, esti
                         ? <PackageMinus size={14} color={cor} style={{ flexShrink: 0 }} />
                         : <PackagePlus size={14} color={cor} style={{ flexShrink: 0 }} />}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
+                        <div title={tituloDoEquipamento(m)} style={{
                           fontFamily: FONT, fontSize: 12.5, color: c.texto,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>

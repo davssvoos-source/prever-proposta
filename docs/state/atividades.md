@@ -18,6 +18,14 @@
 - Chat de menções da Início: conversa 9:16, recado para todos, `#Código`, reações, resposta que volta
   pela ligação `responde_a` (R215–R217, R222, R223, R240, R245, R249, R258).
 
+- Quem vê o quê (R307, U161): `layoutDaAtividade` em `src/features/atividades/fluxos-de-campo.ts` decide
+  campo × interno pela natureza, pelo cargo e pela participação; a rota `chamados.$id.tsx` a aplica.
+  Problema e Solução são as mesmas colunas nos dois formatos; comentários são os do chamado.
+- Só agenda com técnico (R308): `exigeAgenda(cargos)` + `soAgenda` no `CampoQuando` — no "+" da Início
+  e na tela da atividade; na atividade de campo a data é a da programação, só leitura.
+- Responder a um comentário (R318, U160): botão por comentário em `DetalheInterno.tsx`, menção
+  automática, chip "Respondendo a", ligação `responde_a` (a mesma da R240) e "em resposta a" no feed.
+
 ## Padrões a reusar
 
 - Layout segue a NATUREZA (`DetalheInterno` × `DetalheCampo`), nunca o cargo de quem está na atividade.
@@ -35,7 +43,7 @@
 <!-- cobertura:inicio -->
 <!-- Gerado por `node scripts/cobertura-regras.cjs` — não edite à mão. -->
 
-Regras do módulo: 65 · com asserção nominal no verificador: 57 · sem menção nominal: 8.
+Regras do módulo: 69 · com asserção nominal no verificador: 60 · sem menção nominal: 9.
 
 | Regra | Verificado por |
 |---|---|
@@ -104,13 +112,16 @@ Regras do módulo: 65 · com asserção nominal no verificador: 57 · sem menç�
 | produto:R262 | 11 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R281 | 6 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R282 | — sem menção nominal; cobertura indireta (tsc, build, asserções da tela) |
+| produto:R307 | 4 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R308 | 4 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R317 | — sem menção nominal; cobertura indireta (tsc, build, asserções da tela) |
+| produto:R318 | 2 menções nominalis em `scripts/verificar-logica.cjs` |
 <!-- cobertura:fim -->
 
 ## Pendências
 
 - Os fluxos por tipo de demanda (campos e caminho de corretiva, preventiva, implantação) — o Davi vai
   mandar (M1 em `../DECISOES_PENDENTES.md`); é o maior bloqueio.
-- Tipo de atividade → impacto operacional preenchido pelo sistema (M2).
-- Atividade com técnico de campo e operacional juntos: decisão D2 (proposta: duas atividades ligadas).
+- Impacto operacional continua manual por decisão (R317) — a relação tipo → impacto fica para depois.
 - O que depende do Davi está consolidado em `../DECISOES_PENDENTES.md`; a dívida técnica, em
   `../PENDENCIAS_TECNICAS.md`.

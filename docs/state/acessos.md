@@ -14,6 +14,13 @@
   convites com reenvio (`convites.functions.ts`); `useUserCargo` mapeia gestor para a interface de admin.
 - Navegação por cargo em `src/components/nav-itens.ts`; guarda por tela `guardaDeTela(chave)`.
 
+- Convite aceito ao reenviar (R310, U160): `reenviarConvite` grava `status = aceito` quando o GoTrue
+  diz que a pessoa já existe; a tela avisa e a lista de pendentes se limpa.
+- Avisos automáticos só para o admin (R312, U159): `notify_chamado`, `alertas_chamados` e
+  `alertas_chamado_faturamento` listam `cargo = admin`; responsável e quem abriu continuam avisados.
+- Leitura de clientes para todos (R319, U160): `pode_ler_cliente` vale para qualquer autenticado;
+  a escrita continua em `pode_ver_cliente`.
+
 ## Padrões a reusar
 
 - Tela removida = rota vira redirect + `DELETE FROM permissoes_tela` na migration (chave nunca se renomeia).
@@ -29,7 +36,7 @@
 <!-- cobertura:inicio -->
 <!-- Gerado por `node scripts/cobertura-regras.cjs` — não edite à mão. -->
 
-Regras do módulo: 22 · com asserção nominal no verificador: 20 · sem menção nominal: 2.
+Regras do módulo: 25 · com asserção nominal no verificador: 23 · sem menção nominal: 2.
 
 | Regra | Verificado por |
 |---|---|
@@ -55,12 +62,14 @@ Regras do módulo: 22 · com asserção nominal no verificador: 20 · sem menç�
 | produto:R298 | 25 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R304 | 19 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R305 | 5 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R310 | 2 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R312 | 2 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R319 | 2 menções nominalis em `scripts/verificar-logica.cjs` |
 <!-- cobertura:fim -->
 
 ## Pendências
 
-- Trocar o cargo do Vinicius para Gestor (G2) — e, no mesmo dia, as listas de aviso do banco (D6 / P73).
-- Convites já aceitos continuam "pendentes" (D4 / P75).
-- Migration U155 pendente (G1).
+- Rodar as migrations U159 (avisos só para o admin) e U160 (todos leem todos os clientes) — G5 em
+  `../DECISOES_PENDENTES.md`. Até a U160, quem não é gestor nem operacional vê a lista podada.
 - O que depende do Davi está consolidado em `../DECISOES_PENDENTES.md`; a dívida técnica, em
   `../PENDENCIAS_TECNICAS.md`.

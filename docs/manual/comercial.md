@@ -155,3 +155,11 @@ apaga na ordem: itens de bloco → blocos → fotos → orçamentos → visita (
 - `src/routes/_authenticated/gerencial.tsx` — a página do domínio
 - `src/features/prospeccao/` · `src/features/proposta/` · `src/features/orcamento/`
 - `supabase/migrations/20260821160000_u29_proposta_e_chamado.sql`
+
+## Ticket médio (R306 — 23/09/2026)
+
+Ao gerar a proposta, a tela de pagamento grava dois valores na visita: o **anual recorrente**
+(12 × o total mensal da forma escolhida) e a **implantação** (locação: insumos + mão de obra;
+compra: equipamentos + mão de obra; comodato: zero). O Painel Comercial mostra o quinto KPI,
+**Ticket médio**, a média das propostas enviadas que já têm os valores — o subtítulo diz
+quantas são (as anteriores a 23/09/2026 não têm e não entram). Exige a migration U158.

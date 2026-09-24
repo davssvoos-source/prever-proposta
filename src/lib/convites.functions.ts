@@ -143,12 +143,20 @@ export const reenviarConvite = createServerFn({ method: "POST" })
 
     if (inviteErr) {
       if (/already|registered|exists|confirmed/i.test(inviteErr.message)) {
-        throw new Error("Esta pessoa já entrou no sistema — o convite não precisa ser reenviado.");
+        // R310 (U160), Davi 23/09/2026: "Quando alguém clicar em 'Reenviar convite'
+        // e o servidor responder que aquela pessoa já existe, o sistema marca o
+        // convite como aceito e ele sai da lista." Não é erro: é o convite cumprido.
+        const { error: aceitoErr } = await supabaseAdmin
+          .from("convites")
+          .update({ status: "aceito" })
+          .eq("id", convite.id);
+        if (aceitoErr) throw new Error(aceitoErr.message);
+        return { success: true, aceito: true, email: convite.email };
       }
       // o texto do driver fica no log do servidor; a tela recebe a frase
       console.error("[reenviarConvite] inviteUserByEmail:", inviteErr.message);
       throw new Error('O e-mail não saiu. Tente de novo em alguns minutos ou peça para a pessoa entrar por "esqueci minha senha".');
     }
 
-    return { success: true, email: convite.email };
+    return { success: true, aceito: false, email: convite.email };
   });

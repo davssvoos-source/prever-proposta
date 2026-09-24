@@ -54,7 +54,8 @@ import { useClientes } from "@/features/clientes/data";
 import {
   useInventario, criarSistema, TIPOS_SISTEMA_OFERECIDOS, TIPO_SISTEMA_LABEL, type TipoSistema,
 } from "@/features/clientes/inventario";
-import { abrirChamado, adicionarApoio, removerApoio } from "@/features/chamados/data";
+import { abrirChamado, adicionarApoio, removerApoio, usePessoas } from "@/features/chamados/data";
+import { blocoObrigatorioNaAbertura } from "@/features/atividades/fluxos-de-campo";
 import { montarChecklistPreventiva } from "@/features/chamados/checklist";
 import { useDuplas, useEscala, useMembrosDeEquipe } from "@/features/duplas/data";
 import {
@@ -96,6 +97,8 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
   const { isLight } = useTheme();
   const { data: clientes = [] } = useClientes();
   const { data: tecnicos = [] } = useTecnicos();
+  // R307: o apoio pode ser QUALQUER pessoa — a lista de técnicos fica para o responsável
+  const { data: pessoas = [] } = usePessoas();
 
   const [tipo, setTipo] = useState<ChamadoTipo>(
     tipoInicial && (tiposDaNatureza("campo") as string[]).includes(tipoInicial) ? tipoInicial : "corretiva",
@@ -206,14 +209,20 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
   const nomeDeTecnico = (id: string) =>
     (tecnicos as any[]).find((t) => t.id === id)?.nome
     ?? membrosDeEquipe.find((m) => m.pessoaId === id)?.nome
+    ?? pessoas.find((p) => p.id === id)?.nome
     ?? "Técnico";
   const pessoaDe = (id: string) => {
-    const t = (tecnicos as any[]).find((x) => x.id === id);
+    const t = (tecnicos as any[]).find((x) => x.id === id) ?? pessoas.find((p) => p.id === id);
     return t ? { nome: t.nome as string, avatar_url: (t.avatar_url ?? null) as string | null } : undefined;
   };
   const opcoesDeTecnico: OpcaoBusca[] = useMemo(
     () => (tecnicos as any[]).map((t) => ({ valor: t.id as string, rotulo: t.nome as string })),
     [tecnicos],
+  );
+  // R307: "ele pode adicionar apoio de qualquer usuário"
+  const opcoesDeApoio: OpcaoBusca[] = useMemo(
+    () => pessoas.map((p) => ({ valor: p.id, rotulo: p.nome })),
+    [pessoas],
   );
   const foto = (id: string, nome: string) => (
     <AvatarCirculo id={id} nome={nome} pessoa={pessoaDe(id)} tamanho={18} />
@@ -374,6 +383,11 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
           descricao: "Em implantação — cadastrado ao abrir o chamado.",
         });
         qc.invalidateQueries({ queryKey: ["cliente-inventario", clienteId] });
+      }
+      // R313: quem abre indica o BLOCO com problema — obrigatório na corretiva
+      // quando o cliente tem blocos cadastrados, e sempre na implantação (R126)
+      if (blocoObrigatorioNaAbertura(tipo, sistemas.filter((s) => s.ativo).length) && !sistemaFinal) {
+        throw new Error("Indique o bloco (sistema) do cliente — a lista de equipamentos do técnico depende dele.");
       }
       const chamadoId = await abrirChamado({
         natureza: "campo",
@@ -717,7 +731,7 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
             <CampoComBusca
               id="chamado-apoio"
               compacto
-              opcoes={opcoesDeTecnico.filter((o) => o.valor !== tecnicoId && !apoiosEfetivos.includes(o.valor))}
+              opcoes={opcoesDeApoio.filter((o) => o.valor !== tecnicoId && !apoiosEfetivos.includes(o.valor))}
               valor={null}
               limpavel={false}
               aoMudar={(v) => { if (v) setApoios([...apoiosEfetivos, v]); }}

@@ -277,3 +277,12 @@ Ditada pelo Davi em 03/09/2026 e transcrita em
 - `docs/PLANO_UNIFICACAO.md` — o diário técnico da unificação
 - `docs/PENDENCIAS_TECNICAS.md` — defeitos conhecidos e riscos aceitos
 - `DESIGN_SYSTEM.md` — o design system completo
+
+## Pedidos de tela de 23/09/2026 (R318, R320–R322)
+
+- **Responder a um comentário** (R318): cada comentário da atividade tem o botão Responder;
+  a caixa nasce com a menção de quem escreveu, e a resposta fica ligada ao comentário.
+- **A faixa de validação saiu da Início** (R320): a fila é do Gestor e mora na Gestão Técnica.
+- **Limpar filtros** (R321): o texto "Mostrando: … limpar" saiu; o botão ao lado do último
+  filtro limpa filtros, seleção do painel e busca (na Início e na Operacional Técnica).
+- **A Operacional Técnica cabe na tela** (R322): as colunas dividem a largura no computador.

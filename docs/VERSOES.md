@@ -9,6 +9,18 @@
 > pelo Davi no SQL Editor), o servidor muda só por pacote
 > (`npm run build:windows` → `atualizar.ps1`, ver `manual/hospedagem-windows.md`).
 
+## v1.0.3 — 2026-09-23 (U158–U161) · migrations **U158, U159 e U160 PENDENTES** (rodar antes de instalar)
+
+> As decisões do Davi de 23/09/2026 (a resposta à lista única, item a item — R306–R322)
+> mais os seis pedidos de tela do mesmo dia. **Ticket médio** no Painel Comercial (R306,
+> U158); **apoio de qualquer cargo** e o formato por participante (R307), **só agenda com
+> técnico** (R308); **convite aceito ao reenviar** (R310); **texto padrão da cobrança**
+> (R311); **avisos só para o administrador** (R312, U159); os **três fluxos do técnico**
+> (R313–R316) na tela de campo; **responder a um comentário** (R318); **todos leem todos os
+> clientes** (R319, U160); a faixa de validação fora da Início (R320); o botão **Limpar
+> filtros** (R321); a **Operacional sem scroll horizontal** (R322). A tipografia (R309)
+> fica para a leva seguinte. Pacote: `dist-windows/Prever-1.0.3.zip`.
+
 ## v1.0.2 — 2026-09-15 (U153–U154) · migrations **U153 e U154 rodadas em 16/09/2026** (U150 e U152 em 15/09)
 
 > A primeira leva da **revisão sistêmica** que o Davi abriu com o uso oficial do

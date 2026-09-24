@@ -26,7 +26,7 @@ import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-route
 import { nomeDeCanal } from "@/lib/realtime";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { ArrowUpDown, ChevronsDownUp, ChevronsUpDown, ClipboardCheck, Inbox, KanbanSquare, List as ListIcon, Plus, Search, WifiOff } from "lucide-react";
+import { ArrowUpDown, ChevronsDownUp, ChevronsUpDown, FilterX, Inbox, KanbanSquare, List as ListIcon, Plus, Search, WifiOff } from "lucide-react";
 import { NovaAtividadeDialog } from "@/features/home/NovaAtividadeDialog";
 import { usePermissoes } from "@/features/gerencial/permissoes";
 
@@ -56,7 +56,7 @@ import { DialogDaAtividade } from "@/features/chamados/DialogDaAtividade";
 import { ChatDeMencoes } from "@/features/home/ChatDeMencoes";
 import { CampoBusca } from "@/features/home/CampoBusca";
 import { GraficoDemanda, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
-import { atividadesDaSelecao, atividadesParaValidar, rotuloDaSelecao, type SelecaoPainel } from "@/features/home/metricas";
+import { atividadesDaSelecao, rotuloDaSelecao, type SelecaoPainel } from "@/features/home/metricas";
 import { useIsGerente } from "@/features/gerencial/data";
 import { CriarRapido } from "@/features/home/CriarRapido";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
@@ -278,7 +278,6 @@ function InicioDoGestor() {
   // inteira) — o número da faixa não pode ser contado por um caminho que não
   // seja o da lista que ela mostra. MEDIDO: contando sobre `paraPaineis`, a
   // faixa sumia no preset padrão, que é o que o gestor abre.
-  const paraValidar = useMemo(() => atividadesParaValidar(uniaoCompleta), [uniaoCompleta]);
   // zera se a base mudar de pessoa/vínculo/equipe embaixo do pé (ex.: gestor
   // troca "Pessoa" com uma seleção ativa) — senão a lista ficaria presa a
   // um recorte que a tela já não anuncia mais em lugar nenhum
@@ -356,6 +355,15 @@ function InicioDoGestor() {
     flexShrink: 0,
   });
 
+  // R321: o que o botão "Limpar filtros" apaga — filtros, seleção do painel e a
+  // busca; a ORDENAÇÃO fica (não é filtro). Ligado só quando há o que limpar.
+  const temFiltroAtivo = !!selecaoPainel || !!filtros.preset || !!filtros.prazo || filtros.vinculos.length > 0
+    || filtros.equipe !== "todas" || filtros.tipo !== "todos" || filtros.pessoa !== "todos" || filtros.busca.trim() !== "";
+  const limparFiltros = () => {
+    setFiltros((f) => ({ ...FILTROS_INICIAIS, ordenacao: f.ordenacao }));
+    setSelecaoPainel(null);
+    setBuscaAberta(false);
+  };
   const botaoIcone: CSSProperties = {
     width: 42, height: 42, borderRadius: 12, flexShrink: 0,
     background: isLight ? "#ffffff" : "#1b1b1b",
@@ -628,38 +636,12 @@ function InicioDoGestor() {
         </div>
         )}
 
-        {/* R155 — A FILA DE VALIDAÇÃO DO GESTOR.
-            Só para a gestão, e só quando há fila: faixa vazia é ruído, e
-            quem se acostuma a ignorá-la deixa de ver a cheia. Tocar filtra
-            a lista para exatamente os que ela contou; tocar de novo desfaz.
-            O número e a lista saem da MESMA função (atividadesParaValidar). */}
-        {ehGestor && paraValidar.length > 0 && (
-          <button
-            onClick={() => setSelecaoPainel((atual) => (atual?.tipo === "validar" ? null : { tipo: "validar" }))}
-            aria-pressed={selecaoPainel?.tipo === "validar"}
-            className="sangra-x"
-            style={{
-              display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
-              padding: "12px 14px", borderRadius: 14, cursor: "pointer",
-              background: isLight ? "#ffffff" : "#141414",
-              border: `1px solid ${selecaoPainel?.tipo === "validar" ? gold : (isLight ? "rgba(160,97,8,0.35)" : "rgba(248,200,17,0.30)")}`,
-              color: textPrimary, fontFamily: FONT,
-            }}
-          >
-            <ClipboardCheck size={18} color={gold} style={{ flexShrink: 0 }} />
-            <span style={{ minWidth: 0, flex: 1, fontSize: 13.5, lineHeight: 1.4 }}>
-              <b style={{ fontWeight: 600 }}>
-                {paraValidar.length === 1
-                  ? "1 atendimento esperando sua validação"
-                  : `${paraValidar.length} atendimentos esperando sua validação`}
-              </b>
-              <span style={{ display: "block", fontSize: 12, color: textSecondary }}>
-                Concluídos em campo, sem decisão de cobrança.
-                {selecaoPainel?.tipo === "validar" ? " Toque para ver tudo de novo." : " Toque para ver só eles."}
-              </span>
-            </span>
-          </button>
-        )}
+        {/* R155 — a fila de validação do gestor MORAVA aqui, numa faixa. R320
+            (Davi, 23/09/2026): "Remova este item! Na tela INICIO não deve
+            aparecer nada disso, aliás esta validação é feita pelo GESTOR, não
+            pelo Admin. E deve aparecer na tela Gestão Técnica." — e lá ela já
+            está: a Fila de decisão da Gestão Técnica (R300) conta e abre o
+            MESMO recorte (concluídas sem decisão de cobrança). */}
 
         {/* O título desceu para cá — o quadrado azul do desenho: vira o
             cabeçalho da área de trabalho, logo acima dos filtros. */}
@@ -762,6 +744,17 @@ function InicioDoGestor() {
                 onMudar={(v) => setFiltros((f) => ({ ...f, pessoa: v[0] ?? "todos" }))}
               />
             )}
+            {/* R321: "ao lado direito do filtro de responsável (último filtro), um novo
+                botão para Limpar filtros" — o quadrado 42/raio 12 da régua (DS §6.26) */}
+            <button
+              onClick={limparFiltros}
+              disabled={!temFiltroAtivo}
+              title="Limpar filtros"
+              aria-label="Limpar filtros"
+              style={{ ...botaoIcone, opacity: temFiltroAtivo ? 1 : 0.45, cursor: temFiltroAtivo ? "pointer" : "default" }}
+            >
+              <FilterX size={17} color={gold} />
+            </button>
             <div style={{ flex: 1, minWidth: 8 }} />
 
             {/* Ordenar virou o ícone que estava aqui (2026-08-22, Davi: "este
@@ -936,23 +929,11 @@ function InicioDoGestor() {
             {/* R60/R65: enquanto uma peça do painel está filtrando, é ELA que
                 explica a lista — a barra "sem data oculto pelo prazo" não faz
                 sentido junto (prazo não vale nesse modo). */}
-            {selecaoPainel ? (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8, minHeight: 32,
-                fontFamily: FONT, fontSize: 12, color: textSecondary,
-              }}>
-                Mostrando: <strong style={{ color: textPrimary, fontWeight: 600 }}>{rotuloDaSelecao(selecaoPainel)}</strong>
-                <button
-                  onClick={() => setSelecaoPainel(null)}
-                  style={{
-                    fontFamily: FONT, fontSize: 12, fontWeight: 600, color: gold,
-                    background: "transparent", border: "none", cursor: "pointer", padding: 0,
-                  }}
-                >
-                  limpar
-                </button>
-              </div>
-            ) : ocultosSemData > 0 && (
+            {/* R321 (Davi, 23/09/2026): a faixa "Mostrando: … limpar" SAIU — o que
+                limpa a seleção do painel e os filtros é o botão ao lado do último
+                filtro da barra (o mesmo desenho dos vizinhos). A seleção continua
+                visível no próprio painel (o tile aceso). */}
+            {!selecaoPainel && ocultosSemData > 0 && (
               <button
                 onClick={() => setFiltros((f) => ({ ...f, prazo: null }))}
                 style={{

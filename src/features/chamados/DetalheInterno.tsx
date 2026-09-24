@@ -37,6 +37,7 @@ import {
   ArrowLeft, Building2, CalendarClock, FileText, Layers, Paperclip, Plus, Send, Trash2,
   UserPlus, Wrench, X,
 } from "lucide-react";
+import { Reply } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -50,6 +51,7 @@ import { CampoQuando } from "@/components/CampoQuando";
 import { progressoDaAtividade } from "@/features/chamados/progresso";
 import { temDiagnostico } from "@/features/chamados/registro";
 import { rotuloReagendado } from "@/features/atividades/modelo";
+import { exigeAgenda } from "@/features/atividades/fluxos-de-campo";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
 import { useIsGerente } from "@/features/gerencial/data";
@@ -110,6 +112,12 @@ export function DetalheInterno({ id, embutido = false }: {
   const { data: propostas = [] } = usePropostasEnviadas();
 
   const [comentario, setComentario] = useState("");
+  // R318 (Davi, 23/09/2026): "responder um comentário específico, e quando clicar
+  // em responder este comentário, é mencionado automaticamente o usuário que
+  // comentou" — a resposta fica LIGADA ao comentário (`responde_a`, R240) e a
+  // caixa nasce com a menção e o cursor (o mesmo pedido de foco da R249).
+  const [respondeA, setRespondeA] = useState<{ eventoId: string; autorNome: string } | null>(null);
+  const [pedidoDeFoco, setPedidoDeFoco] = useState(0);
   const [novoEquip, setNovoEquip] = useState("");
   const [novaSerie, setNovaSerie] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
@@ -213,10 +221,11 @@ export function DetalheInterno({ id, embutido = false }: {
     mutationFn: async () => {
       const t = comentario.trim();
       if (!t) throw new Error("Escreva alguma coisa antes de enviar.");
-      await comentarChamado(id, t);
+      await comentarChamado(id, t, respondeA?.eventoId ?? null);
     },
     onSuccess: () => {
       setComentario("");
+      setRespondeA(null);
       qc.invalidateQueries({ queryKey: ["chamado-eventos", id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -344,6 +353,10 @@ export function DetalheInterno({ id, embutido = false }: {
   const sp = situacaoPrazo(chamado.prazo_limite, chamado.status);
   const comentarios = eventos.filter((e) => e.tipo === "comentario");
   const timeline = eventos.filter((e) => e.tipo !== "comentario");
+  // R308: técnico participando → só agenda. R307: a atividade de CAMPO vista
+  // aqui pelo apoio de outro cargo tem a data da programação, só leitura.
+  const soAgenda = exigeAgenda([chamado.responsavel_id, ...apoios.map((a) => a.profile_id)].map((pid) => (pid ? pessoasPorId[pid]?.cargo : null)));
+  const ehCampo = chamado.natureza === "campo";
   const podeEditar =
     isGerente ||
     chamado.responsavel_id === userId ||
@@ -677,6 +690,26 @@ export function DetalheInterno({ id, embutido = false }: {
                     {c.user_id ? nomeDe(c.user_id) : "—"}
                     <span style={{ fontWeight: 400, color: textSecondary }}> · {tempoRelativo(c.created_at)}</span>
                   </span>
+                  {/* R318: responder ESTE comentário — menciona quem escreveu e liga a resposta a ele */}
+                  {c.user_id && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nome = nomeDe(c.user_id as string);
+                        setRespondeA({ eventoId: c.id, autorNome: nome });
+                        setComentario((v) => (v.trim() ? v : `@${nome} `));
+                        setPedidoDeFoco((n) => n + 1);
+                      }}
+                      title={`Responder a ${nomeDe(c.user_id)}`}
+                      aria-label={`Responder a ${nomeDe(c.user_id)}`}
+                      style={{
+                        marginLeft: "auto", background: "none", border: "none", cursor: "pointer",
+                        color: respondeA?.eventoId === c.id ? gold : textSecondary, display: "flex", padding: 2,
+                      }}
+                    >
+                      <Reply size={13} />
+                    </button>
+                  )}
                   {c.user_id && c.user_id === userId && (
                     <button
                       onClick={() => { if (confirm("Apagar este comentário?")) apagarComentario.mutate(c.id); }}
@@ -684,7 +717,7 @@ export function DetalheInterno({ id, embutido = false }: {
                       title="Apagar meu comentário"
                       aria-label="Apagar meu comentário"
                       style={{
-                        marginLeft: "auto", background: "none", border: "none", cursor: "pointer",
+                        background: "none", border: "none", cursor: "pointer",
                         color: textSecondary, display: "flex", padding: 2,
                       }}
                     >
@@ -692,6 +725,15 @@ export function DetalheInterno({ id, embutido = false }: {
                     </button>
                   )}
                 </div>
+                {/* R318: a resposta diz a quem responde — a ligação `responde_a` da R240 */}
+                {(c as { responde_a?: string | null }).responde_a && (() => {
+                  const pai = comentarios.find((x) => x.id === (c as { responde_a?: string | null }).responde_a);
+                  return pai ? (
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary, marginTop: 2 }}>
+                      <Reply size={11} /> em resposta a {pai.user_id ? nomeDe(pai.user_id) : "—"}
+                    </span>
+                  ) : null;
+                })()}
                 <TextoComChecklist
                   texto={c.descricao ?? ""}
                   estilo={{ fontSize: 13, color: textPrimary, lineHeight: 1.55, marginTop: 2 }}
@@ -701,12 +743,29 @@ export function DetalheInterno({ id, embutido = false }: {
               </div>
             </div>
           ))}
+          {/* R318: o chip da resposta — o mesmo desenho do chat (R240): quem, e um X para desistir */}
+          {respondeA && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
+              <Reply size={12} />
+              <span>Respondendo a <b style={{ fontWeight: 600, color: textPrimary }}>{respondeA.autorNome}</b></span>
+              <button
+                type="button"
+                onClick={() => setRespondeA(null)}
+                aria-label="Cancelar a resposta"
+                title="Cancelar a resposta"
+                style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 2 }}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 44px", gap: 8, alignItems: "start" }}>
             <TextareaComMencoes
               valor={comentario}
               aoMudar={setComentario}
               pessoas={pessoasMencao}
               rows={2}
+              focarEm={pedidoDeFoco}
               placeholder="Escrever um comentário… (@ menciona, Enter envia)"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && comentario.trim() && !enviarComentario.isPending) {
@@ -783,10 +842,11 @@ export function DetalheInterno({ id, embutido = false }: {
                 <CampoQuando
                   idBase="det"
                   compacto
-                  desabilitado={!podeEditar}
+                  desabilitado={!podeEditar || ehCampo}
+                  soAgenda={soAgenda || ehCampo}
                   prazo={prazoParaData(chamado.prazo_limite)}
-                  agendado={chamado.data_agendada ?? ""}
-                  nota={reagendado}
+                  agendado={ehCampo ? (chamado.data_hora_agendada ? chamado.data_hora_agendada.slice(0, 10) : "") : (chamado.data_agendada ?? "")}
+                  nota={ehCampo ? "agendada pela programação de campo" : reagendado}
                   estiloEntrada={{ ...INPUT, height: 32, fontSize: 12.5 }}
                   aoMudar={({ prazo, agendado }) => salvar.mutate({
                     prazo_limite: dataParaPrazo(prazo),

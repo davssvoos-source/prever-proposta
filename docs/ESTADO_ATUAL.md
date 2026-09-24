@@ -8,16 +8,18 @@
 > `AGENTS.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-23** · última regra: **R305** · último diário:
-**U157** · verificador: **3.599 asserções, 0 falharam** · `tsc`: **0** (o
+Última atualização: **2026-09-24** · última regra: **R322** · último diário:
+**U161** · verificador: **3.627 asserções, 0 falharam** · `tsc`: **0** (o
 baseline de 57 erros foi a ZERO na U138).
 
-Banco — **Pendente: U155** (`20261012090000_u155_o_operacional_le_a_base_de_clientes.sql`)
-— o cargo OPERACIONAL passa a LER a base de clientes inteira (R305, o defeito que
-o Erik encontrou em 17/09). Sem ela, o Erik e o Nicholas continuam enxergando só
-os clientes em que já trabalharam: o seletor de cliente da atividade nova vem
-podado e a lista de Clientes também. O código não muda com ela — muda o que o
-banco devolve.
+Banco — **Pendentes: U158, U159 e U160** (a v1.0.3; rodar nesta ordem, ANTES de
+instalar o pacote 1.0.3): `20261013090000_u158_ticket_medio_da_proposta.sql` (as
+duas colunas do ticket, R306), `20261014090000_u159_avisos_so_para_o_administrador.sql`
+(os avisos automáticos só para o admin, R312) e
+`20261015090000_u160_todos_leem_todos_os_clientes.sql` (qualquer pessoa lê qualquer
+cliente, R319). A **U155 rodou em 23/09/2026** — e a U160 a substitui na régua de
+leitura. Sem a U158 o ticket não grava (o PDF sai, o valor não fica); sem a U160,
+quem não é gestor nem operacional continua vendo a lista de clientes podada.
 
 A **U153** (`chamados.painel` sai da matriz, R301) e a
 **U154** (o cargo **GESTOR**: enum, os dois CHECKs, `salvar_permissoes`,
@@ -25,27 +27,25 @@ A **U153** (`chamados.painel` sai da matriz, R301) e a
 coluna, R304) foram **rodadas pelo Davi em 16/09/2026**, nesta ordem. A U150 e a
 U152 rodaram em 15/09.
 
-**O que falta é UM GESTO, não uma migration:** trocar o cargo do **Vinicius** de
-Admin para **Gestor** em Administrativo → Usuários → editar. A migration não faz
-isso de propósito — ela não sabe o e-mail de ninguém. Enquanto ele for Admin,
-nada muda para ele; no dia da troca, ele deixa de receber os avisos que as
-funções da U7/U13 mandam para admin/comercial/sac (P73).
+**Feito em 23/09/2026:** o Davi trocou o cargo do **Vinicius** de Admin para
+**Gestor** (Administrativo → Usuários). Os avisos automáticos, que iam para
+admin/comercial/sac (P73), passam a ir só para o admin pela **U159** (R312) — decisão
+dele no mesmo dia.
 
 **U150 e U152 RODADAS em 15/09/2026** (conferido no banco: `chamados.retornos`,
 `agenda_campo.resultado`, `apoio_automatico(uuid, timestamptz)` existem). Rodadas
 em 13/09: U131, U132, U134 e **U136**; em 14/09: U137, U139, **U142**, **U143**,
 **U144** e **U147**.
 
-**Servidor: v0.0.7** (192.168.10.182:5555 · grupoprever.ddns.net:5555) — o Davi
-instala a **v1.0.2** quando puder. O pacote está gerado:
-`dist-windows/Prever-1.0.2.zip` (16/09/2026, commit `74ebf88`, 460 arquivos), e o
-código já está no `main` (a Lovable publica de lá). O que entrou em cada versão
-está em `docs/VERSOES.md`.
+**Servidor: v1.0.2** (192.168.10.182:5555 · grupoprever.ddns.net:5555) — instalada
+pelo Davi em 23/09/2026. A **v1.0.3** espera as três migrations (G5) e o pacote
+`dist-windows/Prever-1.0.3.zip` (23/09/2026). O código já está no `main` (a Lovable
+publica de lá). O que entrou em cada versão está em `docs/VERSOES.md`.
 
 **A instalação é `atualizar.ps1`** (manual/hospedagem-windows.md §Atualizar): ele
 para o serviço, troca a `app\`, PRESERVA o `config.env` com as chaves e sobe de
-novo. O pacote nunca toca no banco — e desta vez não precisa: a U153 e a U154 já
-rodaram.
+novo. O pacote nunca toca no banco — e desta vez o banco vem ANTES: U158, U159 e
+U160 (G5), depois o pacote (G6).
 
 **A v1.0.2 PODE subir antes de rodar as migrations.** Sem a U153 sobra uma linha
 órfã na matriz; sem a U154 o cargo gestor não existe no banco — o app já o aceita
@@ -80,7 +80,11 @@ que não depende dele está de pé; o que depende está listado abaixo.
   cada um revisado por um cético e corrigido (ver U153 no diário). O ticket
   médio NÃO entrou: o valor da proposta não é gravado em coluna nenhuma.
 
-**O que espera o Davi:**
+> **23/09/2026 — respondido.** O Davi respondeu esta lista item a item (v1.0.3):
+> o que fechou está em `DECISOES_PENDENTES.md` §5, o que ficou em §1–§3. Os itens
+> abaixo ficam como registro da pergunta.
+
+**O que esperava o Davi (em 15/09):**
 1. ~~Rodar **U153** e **U154**~~ — rodadas em 16/09/2026. Falta **trocar o cargo do
    Vinicius** para Gestor na aba Usuários (R304).
 2. **Ticket médio** (R302): qual valor é o ticket — mensal recorrente,
@@ -145,10 +149,10 @@ Ler isto antes de prometer qualquer coisa a alguém.
 | R299 | "Sobreaviso" → GESTÃO TÉCNICA: dashboard, Equipes e Fechamentos moram lá; a chave `sobreaviso` fica; `/sobreaviso` redireciona com a busca | **no ar** (U153) |
 | R300 | na Gestão Técnica, indicadores → fila de decisão (retorno · cobrança) → plantão recolhível; o calendário cabe na tela | **no ar** (U153) |
 | R301 | Operacional = a fila: quadro por dia como padrão, preferências no navegador, hoje dourado, botão de ações no card; "Todos os chamados" saiu | **no ar** (U153 rodada em 16/09) |
-| R302 | Comercial: dashboard (período · serviço · funil · KPIs), filtro de Tipo de serviço, sem Clientes | **no ar** (U153) — o KPI **ticket médio** espera uma coluna e a decisão do Davi (qual valor) |
+| R302 | Comercial: dashboard (período · serviço · funil · KPIs), filtro de Tipo de serviço, sem Clientes | **no ar** (U153) — o KPI **ticket médio** entrou na R306 (U158) |
 | R303 | títulos, tamanhos, cores e famílias das páginas principais numa escala só | **no ar** (U153) — ver a seção da revisão sistêmica |
-| R304 | o cargo GESTOR (hoje o Vinicius): gestor, vê valores, não administra | **no ar** (U154 rodada em 16/09) — **falta o Davi trocar o cargo do Vinicius** na aba Usuários |
-| R305 | o OPERACIONAL lê a base de clientes inteira (o defeito do Erik) | **falta rodar a U155** — é só banco; nenhuma tela muda |
+| R304 | o cargo GESTOR (hoje o Vinicius): gestor, vê valores, não administra | **no ar** (U154 rodada em 16/09) — o Davi trocou o cargo do Vinicius em 23/09/2026 |
+| R305 | o OPERACIONAL lê a base de clientes inteira (o defeito do Erik) | **no ar** (U155 rodada em 23/09/2026; a U160/R319 a substitui na régua de leitura) |
 
 Fim de entrega:
 `node scripts/fechar-entrega.cjs --versao X --regra Rn --diario Un`.
@@ -206,7 +210,7 @@ técnica de campo é o **Vinicius**.
    (R229): a versão é o que muda no servidor; a migration é o que muda no
    banco; os dois andam juntos.
 
-## 3. Onde estamos (22/09/2026)
+## 3. Onde estamos (23/09/2026)
 
 **U156 (22/09/2026) — o Pattern Harness da casa está aplicado.** `AGENTS.md` é a
 cápsula (o método que vivia no `CLAUDE.md`, que agora é gerado e só a importa);
@@ -218,6 +222,17 @@ a documentação existente como fonte, o verificador como gate); "pronto" virou
 (23/09/2026)**: o Davi pediu o padrão adaptado a Windows + GitHub — o harness inteiro
 passou a Node (sem sh nem Python) e o CI roda em `windows-latest` e `ubuntu-latest`
 (ADR-0004). Sem migration, sem versão nova. Detalhe: diários U156 e U157.
+
+**v1.0.3 (23/09/2026) — as respostas do Davi.** Ele respondeu a lista única item a
+item e mandou seis pedidos de tela: **R306–R322**, diários **U158–U161**. Ticket
+médio (U158), avisos só para o admin (U159), todos leem todos os clientes (U160),
+apoio de qualquer cargo e formato por participante (R307), só agenda com técnico
+(R308), convite aceito ao reenviar (R310), texto padrão da cobrança (R311), os três
+fluxos do técnico na tela de campo (R313–R316), responder a comentário (R318), a
+faixa de validação fora da Início (R320), Limpar filtros (R321), Operacional sem
+scroll horizontal (R322). **Três migrations pendentes** (G5) antes de instalar o
+pacote 1.0.3 (G6); o Davi vai testar a tela do técnico no celular (G7). A
+tipografia (R309, Opção C) fica para a v1.0.4.
 
 **Fases do plano** (`PLANO_V0.1.md` §6): A (dashboard da Operacional
 Técnica) e B (o "+") entregues na U93; o núcleo da H (a estrutura das

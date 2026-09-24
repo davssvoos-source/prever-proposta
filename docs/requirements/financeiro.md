@@ -37,6 +37,7 @@ depois nesta tabela; a cobertura de cada uma está em `../state/financeiro.md`.
 | R161 | "A cobrar este mês" é só o que ainda falta faturar |
 | R290 | O parcelamento de 1x a 12x é da MANUTENÇÃO |
 | R291 | Quem lança escolhe o MÊS em que a cobrança começa |
+| R311 | O texto padrão da cobrança e o tipo de serviço padrão |
 
 ## Fora de escopo
 

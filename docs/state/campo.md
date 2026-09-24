@@ -18,6 +18,14 @@
   três telas (R263).
 - Histórico: 227 OS importadas com marcos de campo (R70, R72).
 
+- Os três fluxos do técnico (R313–R316, U161) em `src/features/atividades/fluxos-de-campo.ts`
+  (`FLUXOS_DE_CAMPO`): a tela de campo (`DetalheCampo.tsx`) lê de lá o rótulo da descrição, as fotos,
+  Problema/Solução, o roteiro, os equipamentos (painel do patrimônio com o bloco da atividade primeiro;
+  na implantação só ele), a assinatura obrigatória; chegada/saída/tempo na ficha (`tempoDeTrabalho`).
+- Bloco na abertura (R313): `blocoObrigatorioNaAbertura` em `FormularioChamadoTecnico.tsx`.
+- Rótulo do equipamento = Categoria · Marca · Modelo (R314); o nº fica no `title` (`tituloDoEquipamento`).
+- Apoio de qualquer cargo (R307): o seletor de apoio do chamado de campo lê `usePessoas()`.
+
 ## Padrões a reusar
 
 - Quem afirma que a visita aconteceu é gente, antes de o sistema concluir (R109, R110).
@@ -35,7 +43,7 @@
 <!-- cobertura:inicio -->
 <!-- Gerado por `node scripts/cobertura-regras.cjs` — não edite à mão. -->
 
-Regras do módulo: 63 · com asserção nominal no verificador: 62 · sem menção nominal: 1.
+Regras do módulo: 67 · com asserção nominal no verificador: 65 · sem menção nominal: 2.
 
 | Regra | Verificado por |
 |---|---|
@@ -72,7 +80,7 @@ Regras do módulo: 63 · com asserção nominal no verificador: 62 · sem menç�
 | produto:R130 | 3 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R134 | 3 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R148 | 5 menções nominalis em `scripts/verificar-logica.cjs` |
-| produto:R155 | 15 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R155 | 13 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R156 | 13 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R162 | 2 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R163 | 12 menções nominalis em `scripts/verificar-logica.cjs` |
@@ -102,11 +110,17 @@ Regras do módulo: 63 · com asserção nominal no verificador: 62 · sem menç�
 | produto:R288 | 5 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R292 | 3 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R297 | 18 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R313 | 7 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R314 | 3 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R315 | — sem menção nominal; cobertura indireta (tsc, build, asserções da tela) |
+| produto:R316 | 3 menções nominalis em `scripts/verificar-logica.cjs` |
 <!-- cobertura:fim -->
 
 ## Pendências
 
-- Validação do gestor por tipo (Fase C) espera os fluxos M1 (`../DECISOES_PENDENTES.md`).
+- O CONTEÚDO dos checklists da preventiva por tipo de bloco (R315) — o Davi vai ditar (M1b em
+  `../DECISOES_PENDENTES.md`); até lá valem os modelos de agosto em `chamado_checklist_templates`.
+- Validação do gestor por tipo (Fase C): os fluxos chegaram (R313–R316); falta desenhá-la sobre eles.
 - APK: destino, push e urgência → plantonista dependem do Davi; esta máquina não compila APK.
 - Botão Retorno no card e mini-calendário da data agendada: esperam M1.
 - O que depende do Davi está consolidado em `../DECISOES_PENDENTES.md`; a dívida técnica, em

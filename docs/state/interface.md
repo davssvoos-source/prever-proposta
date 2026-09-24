@@ -27,7 +27,7 @@
 <!-- cobertura:inicio -->
 <!-- Gerado por `node scripts/cobertura-regras.cjs` — não edite à mão. -->
 
-Regras do módulo: 15 · com asserção nominal no verificador: 13 · sem menção nominal: 2.
+Regras do módulo: 16 · com asserção nominal no verificador: 13 · sem menção nominal: 3.
 
 | Regra | Verificado por |
 |---|---|
@@ -46,10 +46,11 @@ Regras do módulo: 15 · com asserção nominal no verificador: 13 · sem menç�
 | produto:R239 | 30 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R275 | 5 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R303 | 1 menção nominal em `scripts/verificar-logica.cjs` |
+| produto:R309 | — sem menção nominal; cobertura indireta (tsc, build, asserções da tela) |
 <!-- cobertura:fim -->
 
 ## Pendências
 
-- Aplicar a revisão de tipografia (66 desvios): caminho a escolher pelo Davi (D3 em `../DECISOES_PENDENTES.md`).
+- Aplicar a revisão de tipografia inteira, numa entrega só (R309, decidida em 23/09/2026 — Opção C).
 - O que depende do Davi está consolidado em `../DECISOES_PENDENTES.md`; a dívida técnica, em
   `../PENDENCIAS_TECNICAS.md`.

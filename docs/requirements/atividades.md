@@ -97,6 +97,10 @@ depois nesta tabela; a cobertura de cada uma está em `../state/atividades.md`.
 | R262 | A data de conclusão é corrigível à mão, e a correção fica na linha do tempo |
 | R281 | O item de checklist vale a própria caixa, e nada além dela |
 | R282 | A corretiva tem DOIS textos: o problema e a solução |
+| R307 | Apoio de qualquer cargo na atividade de campo — e quem não é técnico a vê no formato do tipo dela |
+| R308 | Atividade com técnico participando é sempre AGENDADA; prazo não é opção |
+| R317 | O impacto operacional fica manual por enquanto |
+| R318 | Responder a um comentário específico, com a menção automática de quem o escreveu |
 
 ## Fora de escopo
 

@@ -242,3 +242,10 @@ ficha do cliente — só para quem vê valores (R13). `/contratos/novo` e
 `/contratos/$id` continuam existindo como filhas do tronco, gateadas pela chave
 `contratos`; voltar e excluir levam de volta à ficha. O atalho Contratos saiu do
 painel Administrativo (R131).
+
+## O texto padrão da cobrança (R311 — 23/09/2026)
+
+A descrição do lançamento nasce preenchida no padrão do Davi — *"Manutenção corretiva,
+fornecimento de 1 unidade de fechadura, fora de contrato"* — a partir do tipo de demanda e
+das peças instaladas no atendimento (sem peça: "atendimento técnico"). Continua editável.
+O tipo de serviço nasce com o chamado: **instalação** na implantação, **manutenção** no resto.

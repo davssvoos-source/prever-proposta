@@ -120,6 +120,8 @@ function GerencialPage() {
             nome_predio,
             tipo_local,
             proposta_enviada_em,
+            valor_anual_recorrente,
+            valor_implantacao,
             clientes (nome, email)
           `)
         .order("created_at", { ascending: false });

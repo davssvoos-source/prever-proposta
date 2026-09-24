@@ -889,6 +889,10 @@ export type Database = {
           obs_agendamento: string | null
           prioridade: string | null
           proposta_enviada_em: string | null
+          /** R306 (U158): 12 × o total mensal da forma escolhida — gravado ao gerar a proposta */
+          valor_anual_recorrente: number | null
+          /** R306 (U158): o investimento inicial (locação: insumos + mão de obra; compra: tudo; comodato: 0) */
+          valor_implantacao: number | null
           proposta_motivo_recusa: string | null
           proposta_resultado: string | null
           proposta_resultado_em: string | null
@@ -934,6 +938,8 @@ export type Database = {
           obs_agendamento?: string | null
           prioridade?: string | null
           proposta_enviada_em?: string | null
+          valor_anual_recorrente?: number | null
+          valor_implantacao?: number | null
           proposta_motivo_recusa?: string | null
           proposta_resultado?: string | null
           proposta_resultado_em?: string | null

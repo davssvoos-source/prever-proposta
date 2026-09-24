@@ -299,3 +299,14 @@ programação", certa para o técnico e porta trancada com a placa errada para o
 operacional, que trabalha na sede e cria as próprias atividades. NÃO mudou a
 R163: o técnico continua sem abrir chamado, e por isso `atividades.nova` também
 nasce fechada para ele.*
+
+## Decisões de 23/09/2026 (R310, R312, R319)
+
+- **Convite a quem já entrou** (R310): "Reenviar convite" para uma pessoa que já criou a senha
+  marca o convite como aceito e ele sai da lista de pendentes.
+- **Avisos automáticos só para o administrador** (R312, migration U159): chamado aguardando
+  aprovação, a conferir, atrasado e esperando análise de cobrança avisam só o cargo `admin`.
+  Responsável e quem abriu continuam avisados do que é deles.
+- **Todos leem todos os clientes** (R319, migration U160): a lista de clientes, os blocos e o
+  patrimônio são visíveis para qualquer usuário; mudar cadastro continua com gestor ou quem
+  tem relação de trabalho.

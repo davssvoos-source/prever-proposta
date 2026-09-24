@@ -1,7 +1,7 @@
 # Prever App — Documento Mestre do Produto
 
 <!-- sumario:inicio -->
-> **Sumário** — 14 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 15 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Papéis (permissão) e equipes (roteamento)](#2-papéis-permissão-e-equipes-roteamento)
@@ -17,6 +17,7 @@
 - [22. O patrimônio do QAP, a ficha do cliente, a Início revista e a hospedagem própria (R196–R220, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-a-ficha-do-cliente-a-início-revista-e-a-hospedagem-própria-r196r220-davi-2026-09-04-a-2026-09-08) · R196–R220 (25)
 - [23. A v0.0.2: todos veem tudo, o chat como conversa, toda atividade agendável, equipamentos pela atividade, o sistema versionado (R221–R229, Davi, 2026-09-08)](#23-a-v002-todos-veem-tudo-o-chat-como-conversa-toda-atividade-agendável-equipamentos-pela-atividade-o-sistema-versionado-r221r229-davi-2026-09-08) · R221–R229 (9)
 - [24. A v0.0.3: Prever OS, a tela da atividade feita para desktop e o progresso por checklist (R230–R236, Davi, 2026-09-08)](#24-a-v003-prever-os-a-tela-da-atividade-feita-para-desktop-e-o-progresso-por-checklist-r230r236-davi-2026-09-08) · R230–R305 (76)
+- [25. A v1.0.3: as decisões do Davi de 23/09/2026 — ticket médio, apoio de qualquer cargo, os fluxos do técnico (R306–R317)](#25-a-v103-as-decisões-do-davi-de-23092026-ticket-médio-apoio-de-qualquer-cargo-os-fluxos-do-técnico-r306r317) · R306–R322 (17)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -65,7 +66,7 @@ responde "de quem é a fila"**. Equipes nunca viram papel.
 | Pessoa | Papel | Equipe |
 |---|---|---|
 | Davi | **Admin** | — |
-| Vinicius | **Admin** | Técnica (coordenação) |
+| Vinicius | **Gestor** *(era Admin; R304 — trocado pelo Davi em 23/09/2026)* | Técnica (coordenação) |
 | Atendentes do SAC | **SAC** | — |
 | Time comercial | **Comercial** | Comercial |
 | Gilleno | **SAC** *(era Técnico; R265)* | Controle Patrimonial |
@@ -6077,3 +6078,202 @@ adaptado."
 
   **O técnico continua recortado.** A R264 (U132) é deliberada: quem vai ao
   prédio vê o cliente do trabalho dele. Nada nesta regra a toca.
+
+## 25. A v1.0.3: as decisões do Davi de 23/09/2026 — ticket médio, apoio de qualquer cargo, os fluxos do técnico (R306–R317)
+
+O Davi respondeu, item a item, à lista única de decisões (`DECISOES_PENDENTES.md`,
+versão em Word) em 23/09/2026, abrindo com *"Atualização: versão 1.0.3"*. O que
+era pergunta virou regra; o que era gesto dele foi feito (a U155 rodou, o
+Vinicius é Gestor, a v1.0.2 está no ar na empresa; a `SITE_URL` fica em aberto
+com o T.I.).
+
+- **R306** — **Ticket médio: dois valores, guardados separadamente — o anual recorrente e a implantação.**
+  Davi, 23/09/2026, sobre qual valor é o ticket: *"o valor anual recorrente, ou
+  seja, quanto o cliente paga por ano, e também o valor da implantação, que é o
+  investimento inicial de equipamentos e instalação, guardados separadamente."*
+  A proposta passa a GRAVAR, na hora em que é gerada, `valor_anual_recorrente`
+  (12 × o total mensal da forma escolhida: serviços + locação ou comodato) e
+  `valor_implantacao` (locação: insumos + mão de obra; compra: equipamentos +
+  mão de obra; comodato: zero — a implantação está diluída na mensalidade). O
+  Painel Comercial ganha o quinto KPI que a R302 tinha deixado de fora: **ticket
+  médio**, a média dos dois valores entre as propostas enviadas que já têm o
+  número gravado — o KPI diz quantas são, porque as propostas anteriores a esta
+  regra não têm valor e não entram na média.
+
+- **R307** — **Apoio de qualquer cargo na atividade de campo — e quem não é técnico a vê no formato do tipo dela.**
+  Davi, 23/09/2026: *"Quando um usuário com cargo SAC ou GESTOR vai abrir uma
+  atividade para um determinado técnico (cargo necessário para abrir uma
+  atividade para um técnico de campo), ele pode adicionar apoio de qualquer
+  usuário. Caso o usuário seja de um cargo que não seja TÉCNICO, para ele a
+  atividade aparecerá na tela INICIO, como suas outras atividades. A atividade
+  deverá ser apresentada para ele no mesmo formato de uma atividade do mesmo
+  tipo de demanda caso ele mesmo abrisse através da tela INICIO. Ou seja, em uma
+  manutenção corretiva, para ambos tem os campos de Problema e Solução, então
+  este campo deve ser em comum para os dois, os dois devem inserir em conjunto
+  informações e compartilhar estes campos, mas por exemplo o campo de assinatura
+  só aparece para o técnico de campo, que é o usuário com cargo TÉCNICO […] Os
+  comentários devem aparecer para os dois."* Três consequências: (1) o seletor
+  de apoio do chamado de campo lista TODAS as pessoas ativas, não só o cargo
+  técnico — o responsável continua sendo técnico (ou admin, R241); (2) a
+  atividade de campo abre no **formato interno do seu tipo** para o participante
+  (responsável ou apoio) cujo cargo não é técnico nem de gestão — hoje, o
+  OPERACIONAL; quem gere (admin, gestor, SAC, comercial) continua vendo a tela de
+  campo, porque é nela que estão as fotos, a assinatura e a cobrança que eles
+  conferem; (3) Problema (`descricao_problema`) e Solução (`servico_executado`)
+  são as MESMAS colunas nos dois formatos — quem escreve num, o outro lê —, os
+  comentários são os do chamado (um só), e fotos, equipamentos, chegada/saída e
+  assinatura são só da tela de campo. *(Fecha a D2 de `DECISOES_PENDENTES.md`.
+  Revisa a R75 no apoio automático: a dupla continua sendo a sugestão; a lista
+  de quem pode entrar é que ficou maior.)*
+
+- **R308** — **Atividade com técnico participando é sempre AGENDADA; prazo não é opção.**
+  Davi, 23/09/2026: *"Todas as atividades que houverem pelo menos um usuário com
+  cargo TÉCNICO participando, deverão ser agendadas, e a função de PRAZO não
+  deverá ser possível."* O controle "Quando" (R232) passa a ter um modo
+  `soAgenda`: com um técnico entre responsável e apoios, a opção Prazo some e a
+  atividade só aceita dia agendado — na criação pela Início e na tela da
+  atividade. O chamado de campo já era assim (R284); a regra estende para a
+  atividade INTERNA que tenha um técnico no apoio. *(Regra pura: `exigeAgenda`.)*
+
+- **R309** — **A revisão de tipografia é aplicada INTEIRA, numa entrega só (Opção C).**
+  Davi, 23/09/2026, escolhendo entre "só o mecânico", "página por página" e
+  "tudo de uma vez, numa entrega só": *"Opção C"*. Os 66 desvios de
+  `REVISAO_TIPOGRAFIA_2026-09-15.md` (R303) entram numa leva própria, com as
+  travas do verificador ajustadas junto. *(Fecha a D3.)*
+
+- **R310** — **Reenviar convite a quem já entrou marca o convite como ACEITO.**
+  Davi, 23/09/2026: *"Siga com a ideia: Quando alguém clicar em 'Reenviar
+  convite' e o servidor responder que aquela pessoa já existe, o sistema marca o
+  convite como aceito e ele sai da lista."* `reenviarConvite` deixa de devolver
+  erro nesse caso: grava `convites.status = 'aceito'` e a tela avisa que a pessoa
+  já entrou. *(Fecha a D4 / P75.)*
+
+- **R311** — **O texto padrão da cobrança e o tipo de serviço padrão.**
+  Davi, 23/09/2026 (Q8, adiada desde 04/09): *"O exemplo 'Manutenção corretiva,
+  fornecimento de 1 unidade de fechadura, fora de contrato' ficou ótimo, siga
+  este padrão. E o tipo de serviço padrão: instalação quando for implantação, e
+  manutenção para o resto!"* A descrição do lançamento nasce preenchida —
+  *tipo de demanda* + *fornecimento de N unidade(s) de X* (as peças instaladas
+  no atendimento; sem peça, "atendimento técnico") + *fora de contrato* — e
+  continua editável. `chamados.tipo_servico` nasce na abertura: `instalacao` na
+  implantação, `manutencao` no resto. *(Fecha a D5 / Q8.)*
+
+- **R312** — **Os avisos automáticos do sistema vão só para o ADMINISTRADOR.**
+  Davi, 23/09/2026, sobre quem recebe os avisos automáticos (chamado aguardando
+  aprovação, chamado a conferir, chamado atrasado, chamado esperando análise de
+  cobrança): *"Somente o administrador."* As funções do banco que listavam
+  admin/comercial/SAC à mão (U7, U13 — P73) passam a listar só `cargo = 'admin'`.
+  O responsável e quem abriu continuam avisados do que é deles (atribuição,
+  conclusão, prazo). Comercial e gestor não recebem mais esses avisos — veem as
+  filas nos painéis. *(Fecha a D6 / P73.)*
+
+- **R313** — **A manutenção corretiva de campo: os campos, e quem preenche cada um.**
+  Davi, 23/09/2026: *"Campos: Foto Antes do serviço executado; Foto depois do
+  Serviço executado; problema; solução; equipamentos removidos (Lista disponível
+  de acordo com os equipamentos registrados no cliente, por bloco, sendo o bloco
+  selecionado para aquela manutenção, a primeira opção da lista); equipamentos
+  inseridos (Lista de equipamentos no cliente que estão sem bloco); Assinatura
+  do cliente; Técnico responsável; Apoio; Horário de chegada; Horário de saída;
+  tempo de trabalho realizado. Note que alguns dos campos são automáticos,
+  outros preenchidos por quem abre o chamado, e outros preenchidos pelo próprio
+  técnico. Note também que ao abrir um chamado, o SAC ou o gestor deverão
+  indicar em que bloco, ou seja qual sistema instalado no condomínio está
+  apresentando problema que demande manutenção."* Quem abre indica o **bloco**
+  (`cliente_sistema_id`, obrigatório quando o cliente tem blocos cadastrados);
+  o técnico preenche problema, solução, fotos, equipamentos e colhe a
+  assinatura; chegada e saída são automáticas — `iniciada_em` ("Iniciar
+  atendimento") e `finalizada_em` (concluir) —, e o tempo de trabalho é a
+  diferença. Os equipamentos removidos vêm do patrimônio do cliente por bloco,
+  com o bloco da manutenção em primeiro; os inseridos são os do cliente sem
+  bloco (R237: nada entra no cliente fora do QAP).
+
+- **R314** — **Equipamento na tela: só Tipo de Categoria, Modelo e Marca — a estrutura do QAP.**
+  Davi, 23/09/2026: *"Sempre que formos trabalhar com equipamentos, eu quero que
+  seja exibido na tela somente o Tipo de Categoria, Modelo e Marca - conforme
+  estrutura do QAP ERP."* O rótulo de um equipamento é
+  `Categoria · Marca · Modelo` (o `nome` do catálogo É o Tipo de Categoria,
+  R196); a identificação sai do rótulo e fica no `title`, para quem precisar
+  conferir o número.
+
+- **R315** — **A manutenção preventiva de campo tem um checklist POR BLOCO, e cada tipo de bloco tem o seu.**
+  Davi, 23/09/2026: *"A manutenção preventiva deverá ter os campos de acordo com
+  os blocos cadastrados no sistema. Deveremos criar as regras ainda, mas por
+  exemplo, sempre que houver 1 bloco de controle de acesso de pedestres naquele
+  cliente, terá um bloco de checklist da preventiva de acordo com o tipo de
+  bloco […] Cada um desses tipos de bloco terão um tipo de checklist diferente."*
+  O mecanismo existe (R292: a preventiva nasce com o roteiro de todos os blocos
+  do cliente, um grupo por bloco, itens do modelo do tipo em
+  `chamado_checklist_templates`); o que falta é o CONTEÚDO de cada tipo, que o
+  Davi vai ditar — até lá valem os modelos de agosto. *(Pendência dele: M1b.)*
+
+- **R316** — **A implantação: observação, o bloco a instalar, os equipamentos sem bloco movidos para ele, a foto da instalação — um bloco por atividade, quantas atividades o bloco pedir.**
+  Davi, 23/09/2026: *"A implantação é um tipo de atividade que consiste somente
+  em: Campo de OBSERVAÇÃO, Tipo do bloco que será instalado […], Equipamentos que
+  estão sem bloco com o mecanismo de mover para o bloco que será instalado, Foto
+  da instalação, técnico responsável, Apoio, e as que são padrão até aqui […]
+  Então em uma implantação podem coexistir vários blocos ou somente 1. E quando
+  for mais de um bloco será subdividido em várias atividades, inclusive o mesmo
+  bloco poderá ser dividido em várias atividades. Por exemplo: CFTV — Atividade
+  de passar o cabeamento, Atividade de configurar as cameras, Atividade de
+  vincular o smart Sampa caso tenha, Atividade de fazer o backup do mosaico."*
+  Na tela de campo da implantação: a Observação (é a descrição), o bloco
+  (existente ou criado na abertura, R126), o painel de equipamentos com o bloco
+  da atividade como ÚNICO alvo do arrasto, a foto da instalação (a etapa
+  "depois"); sem Problema/Solução, sem assinatura obrigatória. Uma atividade
+  aponta para UM bloco; várias atividades podem apontar para o mesmo.
+
+- **R317** — **O impacto operacional fica manual por enquanto.**
+  Davi, 23/09/2026: *"O Impacto operacional fica manual por enquanto."* Quem
+  cria escolhe (R142); a relação tipo → impacto (M2) fica para depois.
+
+- **R318** — **Responder a um comentário específico, com a menção automática de quem o escreveu.**
+  Davi, 23/09/2026: *"Adicione a opção de responder um comentário específico, e
+  quando clicar em responder este comentário, é mencionado automaticamente o
+  usuário que comentou no chat. Isso eu me refiro a dentro da atividade, no
+  campo de comentários."* Cada comentário da atividade ganha um botão
+  Responder: a caixa nasce com `@Nome` e o cursor, um chip "Respondendo a
+  Nome" (com X para desistir) fica acima dela, e a resposta é gravada LIGADA ao
+  comentário (`responde_a`, a mesma ligação da R240) — o feed mostra "em
+  resposta a Nome".
+
+- **R319** — **Todos os clientes são visíveis e adicionáveis a uma atividade por qualquer usuário.**
+  Davi, 23/09/2026: *"Para o Nicholas, Erik, enfim para alguns usuários não
+  aparece todos os clientes para adicionar em uma atividade, todos os clientes
+  devem ser possível visualizar ou adicionar em uma atividade por todos."*
+  A LEITURA da base de clientes (e dos blocos e do patrimônio, que seguem a
+  mesma régua) deixa de depender de cargo ou de relação de trabalho:
+  `pode_ler_cliente` vale para qualquer pessoa autenticada (U160). A ESCRITA
+  continua com quem manda ou tem relação de trabalho (`pode_ver_cliente`).
+  *(Revisa a R305/U155 — que somava o operacional à régua — e o recorte de
+  CLIENTES da R264/U132: o técnico continua vendo só atividade de campo, mas
+  lê qualquer cliente.)*
+
+- **R320** — **O aviso de validação sai da Início: a validação é do GESTOR e mora na Gestão Técnica.**
+  Davi, 23/09/2026: *"Meu usuário Admin tem um campo escrito '3 atendimentos
+  esperando sua validação concluídos em campo, sem decisão de cobrança. Toque
+  para ver tudo de novo.' Na página INICIO. Remova este item! Na tela INICIO
+  não deve aparecer nada disso, aliás esta validação é feita pelo GESTOR, não
+  pelo Admin. E deve aparecer na tela Gestão Técnica."* A faixa da R155 sai da
+  Início. O que ela contava já está na Gestão Técnica desde a R300: a Fila de
+  decisão (concluídas sem decisão de cobrança), que conta e abre o mesmo
+  recorte. *(Revisa a R155 no LUGAR da fila; a função pura que a conta não muda.)*
+
+- **R321** — **Sai o texto "Mostrando: … limpar"; entra o botão Limpar filtros ao lado do último filtro.**
+  Davi, 23/09/2026: *"Quando um filtro é ativado na tela INICIO, aparece um
+  texto 'Mostrando: Filtro X Ativo limpar', remova este texto, ao invés disso,
+  deve aparecer ao lado direito do filtro de responsável (ultimo filtro), um
+  novo botão para Limpar filtros, este botão deve seguir todos os padrões que
+  já discutimos!"* O botão é o quadrado 42/raio 12 da régua da barra (DS §6.26),
+  com o ícone de filtro riscado, aceso só quando há o que limpar; limpa os
+  filtros, a seleção do painel e a busca — a ordenação fica, porque não é
+  filtro. A Operacional Técnica, cuja barra é a da Início (R296), recebe o
+  mesmo botão no lugar do seu "Mostrando:". *(Revisa a R60/R65 no anúncio do
+  recorte: a peça acesa do painel é o que diz o que está filtrando.)*
+
+- **R322** — **A Operacional Técnica cabe na tela: sem scroll horizontal no computador.**
+  Davi, 23/09/2026: *"Na tela Operacional Técnica, ajuste o conteúdo ao
+  tamanho da tela. Não quero scroll Horizontal."* No desktop as colunas do
+  quadro DIVIDEM a largura disponível (a tela diz quantas são, e o CSS
+  reparte), e a barra de filtros quebra a linha em vez de rolar; o trilho
+  horizontal fica só no celular, onde espremer sete colunas deixaria cada card
+  ilegível. *(Revisa a R295/R301 no desenho das colunas.)*

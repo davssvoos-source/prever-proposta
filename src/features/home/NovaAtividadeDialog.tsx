@@ -48,6 +48,7 @@ import {
 } from "@/features/chamados/grupos";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
 import { CampoQuando } from "@/components/CampoQuando";
+import { exigeAgenda } from "@/features/atividades/fluxos-de-campo";
 import { usePermissoes } from "@/features/gerencial/permissoes";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
 import {
@@ -95,6 +96,8 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
   // vai para a coluna "Agendado" e não tem prazo
   const [agendarPara, setAgendarPara] = useState("");
   const [apoios, setApoios] = useState<string[]>([]);
+  // R308: com um técnico entre responsável e apoios, a atividade só aceita agenda
+  const soAgenda = exigeAgenda([responsavelId, ...apoios].map((id) => pessoas.find((p) => p.id === id)?.cargo));
   const [propostaId, setPropostaId] = useState<string | null>(null);
   const [arquivos, setArquivos] = useState<File[]>([]);
   const [salvando, setSalvando] = useState(false);
@@ -249,7 +252,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
         // da tela sai das pessoas. Sem equipe no cadastro, o balde de sempre.
         equipe: equipeDoResponsavel ?? "outras",
         cliente_id: clientesIds[0] ?? null,
-        prazo_limite: prazo && !agendarPara ? dataParaPrazo(prazo) : null,
+        prazo_limite: prazo && !agendarPara && !soAgenda ? dataParaPrazo(prazo) : null,
         data_agendada: agendarPara || null,
         impacto_operacional: temImpacto(tipo) ? impacto : null,
         proposta_id: tipo === "implantacao" ? propostaId : null,
@@ -638,6 +641,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
                         agendado={agendarPara}
                         aoMudar={({ prazo: p, agendado: a }) => { setPrazo(p); setAgendarPara(a); }}
                         estiloEntrada={entrada}
+                        soAgenda={soAgenda}
                       />
                     </div>
                     <div>

@@ -47,7 +47,7 @@ import {
 } from "@/lib/paleta";
 import { funilComercial } from "@/features/comercial/etapas";
 import {
-  enviadasPorPeriodo, enviadasPorServico, kpisComerciais, passoDoPeriodo,
+  enviadasPorPeriodo, enviadasPorServico, kpisComerciais, moedaCurta, passoDoPeriodo,
   PERIODOS_NO_GRAFICO, MESES_DA_MEDIA, type KpisComerciais, type PropostaParaMetrica, type TipoPeriodo,
 } from "@/features/comercial/metricas";
 
@@ -97,7 +97,7 @@ const ALTURA_CABECA = 20;
 const BASE_BARRAS = 380;
 const BASE_ROSCA = 236;
 const BASE_FUNIL = 200;
-const LARGURA_KPIS = 244;
+const LARGURA_KPIS = 366; // R306: três colunas — cinco tiles, o ticket médio ocupa duas
 
 /**
  * A LARGURA DO BLOCO DE KPIs — 244 fixos, como o 2×2 do Operacional, ENQUANTO
@@ -236,16 +236,18 @@ function Aviso({ t, children }: { t: Tokens; children: ReactNode }) {
  * (DASHBOARD.md §7.1) — prometeria um clique que não existe. Fica só o
  * `.ruido`, que é textura de superfície, não convite.
  */
-function Tile({ t, isLight, rotulo, valor, sub, cor, title, carregando }: {
+function Tile({ t, isLight, rotulo, valor, sub, cor, title, carregando, estilo }: {
   t: Tokens; isLight: boolean; rotulo: string; valor: string; sub?: string; cor: string; title: string;
   carregando: boolean;
+  /** R306: o tile do ticket ocupa duas colunas da grade */
+  estilo?: CSSProperties;
 }) {
   return (
     <div
       title={title}
       className="ruido"
       style={{
-        ...card(isLight), borderRadius: 14, paddingBlock: 6, paddingInline: 8,
+        ...card(isLight), borderRadius: 14, paddingBlock: 6, paddingInline: 8, ...estilo,
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", gap: 3,
         boxSizing: "border-box", minWidth: 0, textAlign: "center",
@@ -277,11 +279,11 @@ const umaCasa = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits
 
 /**
  * Os quatro KPIs (R302), no PRISMA: azul (o ritmo), verde (a taxa), pêssego
- * (o tempo), laranja (o que está na mão do comercial agora). "Ticket médio"
- * NÃO está aqui: o valor da proposta não é gravado em coluna nenhuma (R302)
- * — entra quando houver onde gravá-lo.
+ * (o tempo), laranja (o que está na mão do comercial agora) — e o "ticket
+ * médio" (R306, U158) no amarelo da marca, em duas colunas: a média anual
+ * recorrente em cima, a implantação e a amostra no subtítulo.
  */
-function QuatroKpis({ t, isLight, kpis, funil, carregando }: {
+function CincoKpis({ t, isLight, kpis, funil, carregando }: {
   t: Tokens; isLight: boolean; kpis: KpisComerciais;
   funil: { visitas: number; enviadas: number }; carregando: boolean;
 }) {
@@ -319,6 +321,17 @@ function QuatroKpis({ t, isLight, kpis, funil, carregando }: {
         valor={String(kpis.aguardandoEnvio)}
         cor={t.laranja}
         title="Visitas técnicas aprovadas que ainda não tiveram a proposta enviada — o que está na mão do comercial agora"
+      />
+      <Tile
+        {...comum}
+        rotulo="Ticket médio"
+        sub={kpis.propostasComValor === 0
+          ? "nenhuma proposta com valor gravado"
+          : `implantação ${moedaCurta(kpis.ticketImplantacao ?? 0)} · ${kpis.propostasComValor} proposta${kpis.propostasComValor === 1 ? "" : "s"}`}
+        valor={kpis.ticketAnual === null ? "—" : `${moedaCurta(kpis.ticketAnual)}/ano`}
+        cor={t.gold}
+        estilo={{ gridColumn: "span 2" }}
+        title="R306: média do valor anual recorrente (12 × mensal) e da implantação entre as propostas enviadas que têm os valores gravados — as anteriores a 23/09/2026 não entram"
       />
     </>
   );
@@ -593,14 +606,14 @@ export function DashboardComercial({ propostas, agora, carregando = false }: Pro
         )}
       </div>
 
-      {/* ── (4) Os KPIs, em 2×2 — 244 fixos como no Operacional; no celular,
+      {/* ── (4) Os KPIs, em 3×2 (R306: cinco tiles) — 366 fixos; no celular,
           onde só ele e o funil sobram, o bloco toma a linha (LARGURA_DOS_KPIS).
           Não é painel (não tem card em volta): é a grade de quatro tiles. */}
       <div style={{
         ...LARGURA_DOS_KPIS, height: ALTURA, display: "grid",
-        gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, boxSizing: "border-box",
+        gridTemplateColumns: "1fr 1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, boxSizing: "border-box",
       }}>
-        <QuatroKpis t={t} isLight={isLight} kpis={kpis} funil={funil} carregando={carregando} />
+        <CincoKpis t={t} isLight={isLight} kpis={kpis} funil={funil} carregando={carregando} />
       </div>
     </div>
   );

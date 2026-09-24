@@ -53,6 +53,9 @@ depois nesta tabela; a cobertura de cada uma está em `../state/acessos.md`.
 | R298 | O Painel Administrativo é a mesa do admin no desktop: sem KPIs, sem os textos de apresentação, com os convi… |
 | R304 | Existe o cargo GESTOR: quem manda na equipe técnica de campo. Hoje é o Vinicius |
 | R305 | Quem vê TODA a base de clientes: quem manda (gestor) e quem vê tudo (operacional). A tela aberta e o dado p… |
+| R310 | Reenviar convite a quem já entrou marca o convite como ACEITO |
+| R312 | Os avisos automáticos do sistema vão só para o ADMINISTRADOR |
+| R319 | Todos os clientes são visíveis e adicionáveis a uma atividade por qualquer usuário |
 
 ## Fora de escopo
 

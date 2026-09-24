@@ -60,7 +60,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutGrid, List, Plus, ArrowUpDown, MoreHorizontal } from "lucide-react";
+import { LayoutGrid, List, Plus, ArrowUpDown, MoreHorizontal, FilterX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { guardaDeTela, destinoNegado, usePermissoes } from "@/features/gerencial/permissoes";
 import { useUserCargo, useTecnicos } from "@/features/gerencial/data";
@@ -406,7 +406,7 @@ function PainelOperacional() {
               ficaram invisíveis por isso. O número de cada chip sai da MESMA
               função que monta a lista (chamadosDaLente). */}
           {visao === "lista" && (
-          <div className="trilho-x" style={{ display: "flex", gap: 6 }}>
+          <div className="trilho-x quebra-no-desktop" style={{ display: "flex", gap: 6 }}>
             {LENTE_ORDEM.map((l) => {
               const ativa = !kpiAtivo && lente === l;
               return (
@@ -435,26 +435,19 @@ function PainelOperacional() {
           </div>
           )}
 
-          {/* O anúncio do recorte (DASHBOARD.md §7.3) — o mesmo contrato da
-              Início: a lista nunca fica filtrada sem dizer por quê. */}
-          {kpiAtivo && (
-            <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary }}>
-              · Mostrando: <strong style={{ color: textPrimary, fontWeight: 600 }}>
-                {KPI_OPERACIONAL_LABEL[kpiAtivo]}
-              </strong>{" "}
-              <span style={{ fontVariantNumeric: "tabular-nums" }}>({atividades.length})</span>
-              <button
-                onClick={() => setKpiAtivo(null)}
-                style={{
-                  marginLeft: 8,
-                  fontFamily: FONT, fontSize: 12, fontWeight: 600, color: gold,
-                  background: "transparent", border: "none", cursor: "pointer", padding: 0,
-                }}
-              >
-                limpar
-              </button>
-            </span>
-          )}
+          {/* R321 (Davi, 23/09/2026): o anúncio "Mostrando: … limpar" SAIU — no lugar,
+              o botão Limpar filtros ao lado do último filtro, o quadrado 42/raio 12
+              da barra (R296: a barra é a da Início). Aceso só com recorte de KPI; o
+              recorte em vigor fica no `title`, e as lentes apagadas dizem que há um. */}
+          <button
+            onClick={() => setKpiAtivo(null)}
+            disabled={!kpiAtivo}
+            title={kpiAtivo ? `Limpar filtros — mostrando ${KPI_OPERACIONAL_LABEL[kpiAtivo]} (${atividades.length})` : "Limpar filtros"}
+            aria-label="Limpar filtros"
+            style={{ ...botaoDaBarra(isLight, textPrimary), opacity: kpiAtivo ? 1 : 0.45, cursor: kpiAtivo ? "pointer" : "default" }}
+          >
+            <FilterX size={17} color={gold} />
+          </button>
           {/* R296 — O GRUPO DA DIREITA, na ordem da Início: o que a ordem está
               fazendo, ordenar, recolher, trocar de vista, criar. Todos 42×42,
               a medida de lá. Um bloco só, encostado à direita por `marginLeft:
@@ -538,7 +531,7 @@ function PainelOperacional() {
         </div>
 
         {visao === "kanban" ? (
-          <div className="kanban-op" style={{ flex: 1, minHeight: 0 }}>
+          <div className="kanban-op" style={{ flex: 1, minHeight: 0, "--colunas": colunas.length } as CSSProperties}>
             {colunas.map((coluna) => {
               const col = coluna.chave as ColunaOperacional;
               const itens = coluna.itens as any[];

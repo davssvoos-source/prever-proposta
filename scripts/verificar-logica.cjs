@@ -3651,8 +3651,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /atual\?\.tipo === "kpi" && atual\.chave === chave \? null : \{ tipo: "kpi", chave \}/.test(dash2)
      && /atual\?\.tipo === "semana" && atual\.chave === chave \? null : \{ tipo: "semana", chave, rotulo \}/.test(dash2)
      && /atual\?\.tipo === "meta" \? null : \{ tipo: "meta" \}/.test(dash2), true);
-  eq('a tela mostra "Mostrando: <label>" com um jeito de limpar, enquanto uma seleção filtra',
-     /Mostrando: <strong[\s\S]{0,80}\{rotuloDaSelecao\(selecaoPainel\)\}<\/strong>/.test(dash2), true);
+  // R321 (23/09/2026): a faixa "Mostrando: … limpar" SAIU a pedido do Davi — o que
+  // limpa é o botão ao lado do último filtro; este pino passou a afirmar a ausência.
+  eq('R321: a Início NÃO mostra mais "Mostrando: <label>" — o que limpa é o botão Limpar filtros da barra',
+     /Mostrando: <strong[\s\S]{0,80}\{rotuloDaSelecao\(selecaoPainel\)\}<\/strong>/.test(dash2), false);
 
   const produto6 = fs31.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R60 está documentado', /\*\*R60\*\*/.test(produto6), true);
@@ -4135,8 +4137,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a lista de chamados técnicos é a da R66, e o "Ver todos os chamados" SAIU (R301: já está tudo aqui)',
      // a construção de CÓDIGO, não o texto: o comentário que explica a saída cita a rota de propósito
      /Chamados técnicos/.test(op2) && !/Ver todos os chamados →/.test(op2) && !/navigate\(\{ to: "\/chamados\/painel" \}\)/.test(op2), true);
-  eq('a lista anuncia o recorte com "Mostrando:", como a Início pede (DASHBOARD.md §7.3)',
-     /Mostrando: <strong/.test(op2), true);
+  // R321 (23/09/2026): o anúncio "Mostrando:" saiu também daqui (R296: a barra é a da
+  // Início) — o recorte do KPI vai para o `title` do botão Limpar filtros.
+  eq('R321: a Operacional NÃO anuncia mais "Mostrando:" — o botão Limpar filtros (42/12) ocupa o lugar',
+     /Mostrando: <strong/.test(op2), false);
   // R73 trocou o `kpiAtivo ?? "abertos"` pela LENTE: a lista tem três
   // recortes agora. A garantia é a mesma — o KPI abre exatamente o que conta.
   // R296 (14/09/2026): `listaChamados` virou uma expressão só, para a ordem
@@ -4781,7 +4785,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /const proximo = v === "lista" \? "kanban" : "lista";[\s\S]{0,90}if \(proximo === "kanban"\) setKpiAtivo\(null\);/.test(op7),
      true);
   eq('as lentes só aparecem na LISTA — no quadro elas esvaziariam colunas (as três recortam subconjuntos de "em aberto")',
-     /\{visao === "lista" && \(\s*\n\s*<div className="trilho-x"/.test(op7), true);
+     // R322 (23/09/2026): a barra ganhou `quebra-no-desktop` (não rola para o lado no computador)
+     /\{visao === "lista" && \(\s*\n\s*<div className="trilho-x( quebra-no-desktop)?"/.test(op7), true);
   // R295 (14/09/2026): o quadro ganhou EIXO. As quatro colunas fixas viraram
   // as colunas que `colunasDoQuadro` devolve para o eixo escolhido — e o eixo
   // `estado` continua sendo o padrão, com as mesmas quatro da R76. O que esta
@@ -13791,7 +13796,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // U155 (+1 arquivo, +1 ocorrência, +0 policies): a MEDIDA ANTES do defeito
        // do Erik refaz a conta de `pode_ver_cliente` à mão para mostrar quantos
        // clientes cada operacional enxergava — e a conta começa em is_gestor.
-       [true, false, 41, 173, 55]);
+       // U160 (23/09/2026): +1 ocorrência viva e +1 statement — a conferência da U160 cita
+       // `is_gestor` para provar que a ESCRITA (pode_ver_cliente) não mudou. O alcance é o mesmo.
+       [true, false, 42, 174, 55]);
   }
 }
 
@@ -19733,7 +19740,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       // e de propósito: o prazo dela é ESPELHO de `implantacao_fim` (R120), e um
       // campo editável que o gatilho reescreve é pior que campo ausente.
       /\{!agendada && chamado\.natureza !== "campo" && \(\s*\n\s*<Grupo rotulo="Prazo"/.test(pc119), /rotulo=\{agendada \? "Agendada para" : "Agendar"\}/.test(pc119), /campo: "data_agendada", patch: \{ data_agendada: e\.target\.value \|\| null \}/.test(pc119),
-      /data_agendada: agendarPara \|\| null,/.test(nad119), /prazo_limite: prazo && !agendarPara \? dataParaPrazo\(prazo\) : null,/.test(nad119),
+      /data_agendada: agendarPara \|\| null,/.test(nad119), /prazo_limite: prazo && !agendarPara && !soAgenda \? dataParaPrazo\(prazo\) : null,/.test(nad119), // R308: com técnico, só agenda
       /case 'agenda_hoje':/.test(ler119('src/components/NotificationPanel.tsx'))],
      [true, true, true, true, true, true, true, true, true]);
   eq('U119 migration (agenda): reagendamentos idempotente com gatilho BEFORE UPDATE que só conta data → OUTRA data; o aviso das 08h é por dia (Brasília) e o job roda às 11:00 UTC',
@@ -19751,7 +19758,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // os vazios — o alvo do arrasto precisa existir antes do primeiro item) do
   // que está SEM BLOCO (o que o QAP trouxe). Substituiu o agrupamento da U119
   // (bloco vazio não aparecia) e o da U120 (misturava "Sem bloco" na lista).
-  eq('R226/R237: repartirEquipamentos lista TODOS os blocos do cliente (inclusive os vazios), em ordem, e devolve à parte o que está sem bloco; rotuloDoEquipamento junta nome, fabricante, modelo e o nº',
+  eq('R226/R237: repartirEquipamentos lista TODOS os blocos do cliente (inclusive os vazios), em ordem, e devolve à parte o que está sem bloco; rotuloDoEquipamento é Categoria · Marca · Modelo, sem o nº (R314)',
      (() => {
        const r = EQ.repartirEquipamentos(
         [{ id: 's1', nome: 'Alfa' }, { id: 's2', nome: 'Zeta' }, { id: 's3', nome: 'Beta' }],
@@ -19763,7 +19770,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
          EQ.repartirEquipamentos([], [{ patrimonio_id: '9', identificacao: null, nome: 'x', modelo: null, fabricante: null, sistema_id: 'sX', sistema_nome: 'Órfão' }]).blocos.map((g) => g.nome),
          EQ.rotuloDoEquipamento({ nome: 'Câmera', fabricante: 'Intelbras', modelo: 'VHD 1220', identificacao: '4471' }), EQ.rotuloDoEquipamento({ nome: 'DVR', modelo: null, fabricante: null, identificacao: null })];
      })(),
-     [['Alfa:1', 'Beta:0', 'Zeta:1'], ['1'], ['Órfão'], 'Câmera Intelbras VHD 1220 · nº 4471', 'DVR']);
+     [['Alfa:1', 'Beta:0', 'Zeta:1'], ['1'], ['Órfão'], 'Câmera · Intelbras · VHD 1220' /* R314 (23/09/2026): Categoria · Marca · Modelo, o nº foi para tituloDoEquipamento */, 'DVR']);
   const di119 = ler119('src/features/chamados/DetalheInterno.tsx');
   const eqUi119 = ler119('src/features/chamados/EquipamentosDaAtividade.tsx');
   const eqD119 = ler119('src/features/chamados/equipamentos-atividade.ts');
@@ -22500,19 +22507,22 @@ assincronas.push(async () => {
   // vínculo), a faixa sumia no preset padrão — justamente a visão que o gestor
   // abre. A fila é responsabilidade sobre TUDO, então conta a união inteira; e
   // a lista que ela abre sai da MESMA base, senão o número mentiria.
-  eq('R155 CRÍTICO: a faixa conta a UNIÃO INTEIRA (não o recorte dos painéis) e a lista que ela abre sai da mesma base — senão ela some no preset padrão, que é onde o gestor vive',
+  // R320 (23/09/2026): a faixa SAIU da Início ("esta validação é feita pelo GESTOR, não
+  // pelo Admin. E deve aparecer na tela Gestão Técnica") — a conta pura continua a mesma
+  // (o pino acima), e quem a mostra é a Fila de decisão da Gestão Técnica (R300).
+  eq('R320: a Início NÃO calcula nem mostra mais a fila de validação — a base da seleção "validar" e a união continuam, para a Gestão Técnica',
      [/const paraValidar = useMemo\(\(\) => atividadesParaValidar\(uniaoCompleta\), \[uniaoCompleta\]\);/.test(dash155),
       /atividadesParaValidar\(paraPaineis\)/.test(dash155),
       dash155.includes('const base = selecaoPainel.tipo === "validar" ? uniaoCompleta : paraPaineis;'),
       /const uniaoCompleta = useMemo/.test(dash155)],
-     [true, false, true, true]);
+     [false, false, true, true]);
 
-  eq('R155: a faixa só aparece para a GESTÃO e só com fila — faixa vazia é ruído, e quem se acostuma a ignorá-la deixa de ver a cheia; e ela sobrevive à troca de filtro, porque não depende dele',
+  eq('R320: a faixa "esperando sua validação" não existe mais na Início (nem o texto, nem o botão); a Fila de decisão da Gestão Técnica é quem conta',
      [dash155.includes('{ehGestor && paraValidar.length > 0 && ('),
-      /const \{ data: ehGestor = false \} = useIsGerente\(\);/.test(dash155),
-      dash155.includes('setSelecaoPainel((atual) => (atual?.tipo === "validar" ? atual : null))'),
-      /esperando sua validação/.test(dash155)],
-     [true, true, true, true]);
+      /esperando sua validação/.test(dash155),
+      /Fila de decisão|FilaDeDecisao/.test(fsV155.readFileSync('src/routes/_authenticated/gestao-tecnica.tsx', 'utf8')),
+      /aguardando_conferencia/.test(fsV155.readFileSync('src/features/paineis/FilaDeDecisao.tsx', 'utf8'))],
+     [false, false, true, true]);
 }
 
 // ── P20 (U139) — o chamado analisado volta a ser decidível ────────────────
@@ -24576,7 +24586,7 @@ assincronas.push(async () => {
      [kC.mediaPorMes, kC.taxaVisitaProposta, kC.aguardandoEnvio,
       MC.kpisComerciais(umaPorMesC, new Date(2026, 8, 30, 23, 59, 59)).mediaPorMes, MC.kpisComerciais(umaPorMesC, new Date(2026, 9, 1, 0, 0, 1)).mediaPorMes,
       MC.kpisComerciais([], agoraC)],
-     [0.3, 75, 1, 1, 1, { mediaPorMes: 0, taxaVisitaProposta: null, tempoMedioDias: null, aguardandoEnvio: 0 }]);
+     [0.3, 75, 1, 1, 1, { mediaPorMes: 0, taxaVisitaProposta: null, tempoMedioDias: null, aguardandoEnvio: 0, ticketAnual: null, ticketImplantacao: null, propostasComValor: 0 }]);
 }
 
 
@@ -24823,6 +24833,179 @@ assincronas.push(async () => {
       /^- \*\*Status:\*\* Aceito — o item 4 foi substituído pelo ADR-0004/m.test(ler157('docs/decisions/ADR-0001-adotar-pattern-harness.md')),
       /^## U157 — /m.test(ler157('docs/PLANO_UNIFICACAO.md')), /U157\s*\n?\s*\(23\/09\/2026\)/.test(ler157('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true]);
+}
+
+
+// ── v1.0.3 — as decisões do Davi de 23/09/2026 (R306–R322; U158–U161) ──────
+//
+// A resposta dele à lista única, item a item, mais os seis pedidos de tela do
+// mesmo dia. Cada regra vira aqui uma asserção sobre a LÓGICA (os módulos
+// puros: ticket.ts, cobranca-texto.ts, fluxos-de-campo.ts) e um pino sobre a
+// FORMA (as telas, as migrations, os documentos). Pino descreve arquivo, nunca
+// o banco: as três migrations o Davi roda depois do push.
+{
+  const fs103 = require('fs');
+  const ler103 = (p) => (fs103.existsSync(p) ? fs103.readFileSync(p, 'utf8') : '');
+
+  // ── R306: o ticket — a conta pura, por forma de pagamento ─────────────
+  const TK = carregar('src/features/comercial/ticket.ts');
+  const base103 = { totalServicosMensais: 1000, locacaoMensal: 500, comodato: { 24: 900, 36: 700, 48: 600, 60: 500 }, implantacaoTotal: 4000, compraTotal: 30000 };
+  eq('R306: locação = 12 × (serviços + locação) com a implantação à parte; compra = 12 × serviços e tudo na implantação; comodato = 12 × (serviços + cascata) e implantação zero',
+     [TK.valoresDaProposta({ ...base103, forma: 'locacao_24' }), TK.valoresDaProposta({ ...base103, forma: 'compra_vista' }), TK.valoresDaProposta({ ...base103, forma: 'comodato_36' })],
+     [{ anualRecorrente: 18000, implantacao: 4000 }, { anualRecorrente: 12000, implantacao: 30000 }, { anualRecorrente: 20400, implantacao: 0 }]);
+  eq('R306: a conta sai em centavos — 12 × 33,335 é 400,02', TK.valoresDaProposta({ ...base103, totalServicosMensais: 33.335, locacaoMensal: 0, forma: 'compra_vista' }).anualRecorrente, 400.02);
+
+  const MC103 = carregar('src/features/comercial/metricas.ts');
+  const agora103 = new Date(2026, 8, 23, 10);
+  const enviada103 = (v, imp) => ({ status: 'aprovado', proposta_enviada_em: '2026-09-10T10:00:00', valor_anual_recorrente: v, valor_implantacao: imp });
+  const k103 = MC103.kpisComerciais([enviada103(12000, 4000), enviada103('18000', '0'), enviada103(null, null),
+    { status: 'aprovado', proposta_enviada_em: null, valor_anual_recorrente: 99999, valor_implantacao: 1 }], agora103);
+  eq('R306: o ticket é a média das ENVIADAS com valor (o numeric pode chegar como string; sem valor e não enviada ficam fora) e diz quantas entram',
+     [k103.ticketAnual, k103.ticketImplantacao, k103.propostasComValor], [15000, 2000, 2]);
+  eq('R306: o tile mostra moeda sem centavos', MC103.moedaCurta(84300).replace(/ /g, ' '), 'R$ 84.300');
+
+  const pag103 = ler103('src/routes/_authenticated/visita.$id.pagamento.tsx');
+  const dashC103 = ler103('src/features/comercial/DashboardComercial.tsx');
+  eq('R306: a tela de pagamento grava os dois valores ao gerar a proposta; o dashboard tem o quinto tile em duas colunas (3×2, 366px) e o painel lê as duas colunas novas',
+     [/valoresDaProposta\(\{/.test(soCodigo(pag103, 'js')), /valor_anual_recorrente: valores\.anualRecorrente, valor_implantacao: valores\.implantacao/.test(pag103),
+      /rotulo="Ticket médio"/.test(dashC103), /gridColumn: "span 2"/.test(dashC103), /gridTemplateColumns: "1fr 1fr 1fr"/.test(dashC103), /const LARGURA_KPIS = 366/.test(dashC103),
+      /valor_anual_recorrente,\s*\n\s*valor_implantacao,/.test(ler103('src/routes/_authenticated/gerencial.tsx'))],
+     [true, true, true, true, true, true, true]);
+  const u158 = ler103('supabase/migrations/20261013090000_u158_ticket_medio_da_proposta.sql');
+  eq('U158: a migration existe, é idempotente (ADD COLUMN IF NOT EXISTS ×2), guarda centavos, tem conferência e DESFAZER',
+     [(u158.match(/ADD COLUMN IF NOT EXISTS valor_/g) ?? []).length, /numeric\(14,2\)/.test(u158), /veredito/.test(u158), /DESFAZER/.test(u158)], [2, true, true, true]);
+
+  // ── R307 / R308: quem participa, e em que formato ─────────────────────
+  const FX = carregar('src/features/atividades/fluxos-de-campo.ts');
+  eq('R307: técnico e quem gere veem a tela de campo; o participante de outro cargo vê o formato interno; quem não participa vê campo; interno é interno',
+     [FX.layoutDaAtividade({ natureza: 'campo', cargo: 'tecnico', souParticipante: true }),
+      FX.layoutDaAtividade({ natureza: 'campo', cargo: 'gestor', souParticipante: true }),
+      FX.layoutDaAtividade({ natureza: 'campo', cargo: 'sac', souParticipante: false }),
+      FX.layoutDaAtividade({ natureza: 'campo', cargo: 'operacional', souParticipante: true }),
+      FX.layoutDaAtividade({ natureza: 'campo', cargo: 'operacional', souParticipante: false }),
+      FX.layoutDaAtividade({ natureza: 'interno', cargo: 'tecnico', souParticipante: true })],
+     ['campo', 'campo', 'campo', 'interno', 'campo', 'interno']);
+  eq('R307: participante = responsável ou apoio; sem sessão não é ninguém',
+     [FX.souParticipante('u1', 'u1', []), FX.souParticipante('u2', 'u1', [{ profile_id: 'u2' }]), FX.souParticipante('u3', 'u1', [{ profile_id: 'u2' }]), FX.souParticipante(null, null, [])],
+     [true, true, false, false]);
+  eq('R308: um técnico entre os participantes exige agenda; sem técnico, não',
+     [FX.exigeAgenda(['sac', 'tecnico']), FX.exigeAgenda(['operacional', null, undefined]), FX.exigeAgenda([])], [true, false, false]);
+
+  const rota103 = ler103('src/routes/_authenticated/chamados.$id.tsx');
+  const form103 = ler103('src/features/chamados/FormularioChamadoTecnico.tsx');
+  const quando103 = ler103('src/components/CampoQuando.tsx');
+  const nova103 = ler103('src/features/home/NovaAtividadeDialog.tsx');
+  const interno103 = ler103('src/features/chamados/DetalheInterno.tsx');
+  eq('R307 na tela: a rota decide o formato por layoutDaAtividade (cargo da sessão + apoios); o apoio do chamado de campo lista todas as pessoas, o responsável continua técnico',
+     [/layoutDaAtividade\(\{/.test(soCodigo(rota103, 'js')), /souParticipante\(sessao\?\.userId, chamado\.responsavel_id, apoios\)/.test(rota103),
+      /const opcoesDeApoio: OpcaoBusca\[\] = useMemo\(\s*\n\s*\(\) => pessoas\.map/.test(form103), /opcoes=\{opcoesDeApoio\.filter/.test(form103), /opcoes=\{opcoesDeTecnico\}/.test(form103)],
+     [true, true, true, true, true]);
+  eq('R308 na tela: o CampoQuando tem o modo soAgenda (a opção Prazo some); o "+" e a tela da atividade o ligam por exigeAgenda; na atividade de campo a data é a da programação, só leitura',
+     [/soAgenda\?: boolean/.test(quando103), /OPCOES\.filter\(\(o\) => !soAgenda \|\| o\.modo === "agenda"\)/.test(quando103),
+      /const soAgenda = exigeAgenda\(\[responsavelId, \.\.\.apoios\]/.test(nova103), /soAgenda=\{soAgenda\}/.test(nova103), /prazo && !agendarPara && !soAgenda/.test(nova103),
+      /const soAgenda = exigeAgenda\(\[chamado\.responsavel_id, \.\.\.apoios\.map/.test(interno103), /soAgenda=\{soAgenda \|\| ehCampo\}/.test(interno103), /desabilitado=\{!podeEditar \|\| ehCampo\}/.test(interno103)],
+     [true, true, true, true, true, true, true, true]);
+
+  // ── R310: o convite aceito ────────────────────────────────────────────
+  const conv103 = ler103('src/lib/convites.functions.ts');
+  eq('R310: reenviar a quem já entrou grava status = aceito e devolve aceito: true — deixou de ser erro; a tela avisa',
+     [/\.update\(\{ status: "aceito" \}\)/.test(soCodigo(conv103, 'js')), /return \{ success: true, aceito: true, email: convite\.email \};/.test(conv103),
+      !/throw new Error\("Esta pessoa já entrou no sistema/.test(soCodigo(conv103, 'js')), /convite marcado como aceito/.test(ler103('src/features/administrativo/Usuarios.tsx'))],
+     [true, true, true, true]);
+
+  // ── R311: o texto padrão da cobrança ──────────────────────────────────
+  const CT = carregar('src/features/chamados/cobranca-texto.ts');
+  eq('R311: o exemplo do Davi, letra por letra', CT.textoPadraoDaCobranca('corretiva', [{ descricao: 'fechadura', quantidade: 1 }]),
+     'Manutenção corretiva, fornecimento de 1 unidade de fechadura, fora de contrato');
+  eq('R311: várias peças no plural; sem peça = atendimento técnico; tipo desconhecido = Atendimento técnico; quantidade inválida vale 1',
+     [CT.textoPadraoDaCobranca('corretiva', [{ descricao: 'câmera', quantidade: 2 }, { descricao: 'fonte', quantidade: 1 }]),
+      CT.textoPadraoDaCobranca('preventiva', []), CT.textoPadraoDaCobranca(null, [{ descricao: 'cabo', quantidade: 0 }], false)],
+     ['Manutenção corretiva, fornecimento de 2 unidades de câmera e 1 unidade de fonte, fora de contrato',
+      'Manutenção preventiva, atendimento técnico, fora de contrato', 'Atendimento técnico, fornecimento de 1 unidade de cabo']);
+  eq('R311: instalação na implantação, manutenção no resto', [CT.tipoDeServicoPadrao('implantacao'), CT.tipoDeServicoPadrao('corretiva'), CT.tipoDeServicoPadrao(undefined)], ['instalacao', 'manutencao', 'manutencao']);
+  const dados103 = ler103('src/features/chamados/data.ts');
+  const campo103 = ler103('src/features/chamados/DetalheCampo.tsx');
+  eq('R311 na tela: o chamado nasce com tipo_servico (antes do ...input, para a escolha explícita vencer); a tela de campo preenche a descrição do lançamento pelo padrão e não cai mais no "manutencao" solto',
+     [/tipo_servico: tipoDeServicoPadrao\(input\.tipo\),\s*\n\s*\.\.\.input,/.test(dados103), /setLancDescricao\(textoPadraoDaCobranca\(/.test(campo103), !/\?\? "manutencao"\) as "instalacao"/.test(soCodigo(campo103, 'js'))],
+     [true, true, true]);
+
+  // ── R312: só o administrador ──────────────────────────────────────────
+  const u159 = ler103('supabase/migrations/20261014090000_u159_avisos_so_para_o_administrador.sql');
+  eq('U159/R312: as três funções são recriadas com cargo = admin (quatro listas + a medida do pré-voo), com conferência e DESFAZER',
+     [(soCodigo(u159, 'sql').match(/CREATE OR REPLACE FUNCTION public\.(notify_chamado|alertas_chamados|alertas_chamado_faturamento)\(/g) ?? []).length,
+      (soCodigo(u159, 'sql').match(/p\.cargo = 'admin'/g) ?? []).length, /veredito/.test(u159), /DESFAZER/.test(u159)],
+     [3, 5, true, true]);
+
+  // ── R313–R316: os três fluxos ─────────────────────────────────────────
+  eq('R313–R316: corretiva com problema/solução, foto antes e depois, equipamentos e assinatura; preventiva com roteiro e sem equipamentos; implantação com observação, só a foto da instalação, o bloco da atividade como único alvo e sem assinatura; tipo desconhecido cai na corretiva',
+     [FX.FLUXOS_DE_CAMPO.corretiva.temProblemaESolucao, FX.FLUXOS_DE_CAMPO.corretiva.fotos.antes !== null, FX.FLUXOS_DE_CAMPO.corretiva.assinaturaObrigatoria,
+      FX.FLUXOS_DE_CAMPO.preventiva.temRoteiro, FX.FLUXOS_DE_CAMPO.preventiva.temEquipamentos,
+      FX.FLUXOS_DE_CAMPO.implantacao.rotuloDaDescricao, FX.FLUXOS_DE_CAMPO.implantacao.fotos.antes, FX.FLUXOS_DE_CAMPO.implantacao.alvoDoArrasto, FX.FLUXOS_DE_CAMPO.implantacao.assinaturaObrigatoria,
+      FX.fluxoDeCampo('melhoria').tipo],
+     [true, true, true, true, false, 'Observação', null, 'so-o-bloco-da-atividade', false, 'corretiva']);
+  eq('R313: o bloco é obrigatório na corretiva quando o cliente tem blocos, sempre na implantação, nunca na preventiva',
+     [FX.blocoObrigatorioNaAbertura('corretiva', 3), FX.blocoObrigatorioNaAbertura('corretiva', 0), FX.blocoObrigatorioNaAbertura('implantacao', 0), FX.blocoObrigatorioNaAbertura('preventiva', 5)],
+     [true, false, true, false]);
+  eq('R313: chegada/saída/tempo — 2 h 15 min; em curso corre até agora; sem chegada não há conta; saída antes da chegada é zero',
+     [FX.tempoDeTrabalho('2026-09-23T08:00:00', '2026-09-23T10:15:00').texto, FX.tempoDeTrabalho('2026-09-23T08:00:00', null, new Date('2026-09-23T08:45:00')).texto,
+      FX.tempoDeTrabalho(null, '2026-09-23T10:00:00'), FX.tempoDeTrabalho('2026-09-23T10:00:00', '2026-09-23T09:00:00').minutos],
+     ['2 h 15 min', 'em curso há 45 min', null, 0]);
+  eq('R313: o bloco da manutenção vem primeiro, os outros na ordem em que estavam',
+     FX.comOBlocoDaAtividadePrimeiro([{ sistemaId: 'a' }, { sistemaId: 'b' }, { sistemaId: 'c' }], 'b').map((b) => b.sistemaId), ['b', 'a', 'c']);
+
+  const eqTela103 = ler103('src/features/chamados/EquipamentosDaAtividade.tsx');
+  eq('R313/R316 na tela: o fluxo governa a tela de campo (diagnóstico/solução, assinatura, fotos), o painel do patrimônio entra com o bloco da atividade e o alvo único da implantação, a ficha mostra chegada/saída/tempo, e a abertura exige o bloco',
+     [/const fluxo = fluxoDeCampo\(os\?\.tipo\);/.test(campo103), /fluxo\.temProblemaESolucao && !diagnostico\.trim\(\)/.test(campo103), /fluxo\.assinaturaObrigatoria && !os\?\.assinatura_url/.test(campo103),
+      /sistemaDaAtividade=\{os\.cliente_sistema_id\}/.test(campo103), /soOBlocoDaAtividade=\{fluxo\.alvoDoArrasto === "so-o-bloco-da-atividade"\}/.test(campo103),
+      /tempoDeTrabalho\(os\.iniciada_em, saida\)/.test(campo103), /gridTemplateColumns: fluxo\.fotos\.antes \? "1fr 1fr" : "1fr"/.test(campo103),
+      /comOBlocoDaAtividadePrimeiro\(r\.blocos, sistemaDaAtividade\)/.test(eqTela103), /blocoObrigatorioNaAbertura\(tipo, sistemas\.filter/.test(form103),
+      /Roteiro de verificação/.test(campo103) && /tipo === "preventiva"/.test(form103)],
+     [true, true, true, true, true, true, true, true, true, true]);
+  const eqData103 = carregar('src/features/chamados/equipamentos-atividade.ts');
+  eq('R314: o rótulo é Categoria · Marca · Modelo, sem o número; o título leva o número; sem marca e modelo sobra a categoria',
+     [eqData103.rotuloDoEquipamento({ nome: 'Câmera', fabricante: 'Intelbras', modelo: 'VHD 1220', identificacao: '4471' }),
+      eqData103.tituloDoEquipamento({ nome: 'Câmera', fabricante: 'Intelbras', modelo: 'VHD 1220', identificacao: '4471' }),
+      eqData103.rotuloDoEquipamento({ nome: 'DVR', modelo: null, fabricante: '' })],
+     ['Câmera · Intelbras · VHD 1220', 'Câmera · Intelbras · VHD 1220 · nº 4471', 'DVR']);
+
+  // ── R318: responder a um comentário ───────────────────────────────────
+  eq('R318: cada comentário tem Responder (menciona o autor, arma responde_a, pede o foco), o chip "Respondendo a" com X, e o feed diz "em resposta a"',
+     [/setRespondeA\(\{ eventoId: c\.id, autorNome: nome \}\)/.test(interno103), /setComentario\(\(v\) => \(v\.trim\(\) \? v : `@\$\{nome\} `\)\)/.test(interno103),
+      /comentarChamado\(id, t, respondeA\?\.eventoId \?\? null\)/.test(interno103), /Respondendo a </.test(interno103), /em resposta a \{pai/.test(interno103), /focarEm=\{pedidoDeFoco\}/.test(interno103)],
+     [true, true, true, true, true, true]);
+
+  // ── R319: todos leem todos os clientes ────────────────────────────────
+  const u160 = ler103('supabase/migrations/20261015090000_u160_todos_leem_todos_os_clientes.sql');
+  eq('U160/R319: pode_ler_cliente passa a valer para qualquer autenticado; a escrita (pode_ver_cliente) não é tocada; conferência e DESFAZER',
+     [/CREATE OR REPLACE FUNCTION public\.pode_ler_cliente\(_cliente_id uuid\)/.test(u160), /SELECT auth\.uid\(\) IS NOT NULL AND _cliente_id IS NOT NULL;/.test(u160),
+      !/CREATE OR REPLACE FUNCTION public\.pode_ver_cliente/.test(u160), /veredito/.test(u160), /DESFAZER/.test(u160)],
+     [true, true, true, true, true]);
+
+  // ── R320 / R321 / R322: a Início e a Operacional ──────────────────────
+  const inicio103 = ler103('src/routes/_authenticated/dashboard.tsx');
+  eq('R320/R321 na Início: sem faixa de validação, sem "Mostrando:", com o botão Limpar filtros (42/12) logo depois do filtro Pessoa, ligado só com filtro ativo, e que preserva a ordenação',
+     [!/paraValidar/.test(inicio103), !/Mostrando: <strong/.test(inicio103), /aria-label="Limpar filtros"/.test(inicio103), /<FilterX size=\{17\} color=\{gold\} \/>/.test(inicio103),
+      /setFiltros\(\(f\) => \(\{ \.\.\.FILTROS_INICIAIS, ordenacao: f\.ordenacao \}\)\)/.test(inicio103), /disabled=\{!temFiltroAtivo\}/.test(inicio103),
+      /pessoa: v\[0\] \?\? "todos" \}\)\)\}\s*\n\s*\/>\s*\n\s*\)\}\s*\n\s*\{\/\* R321/.test(inicio103)],
+     [true, true, true, true, true, true, true]);
+  const op103 = ler103('src/routes/_authenticated/painel.operacional.tsx');
+  const css103 = ler103('src/styles.css');
+  eq('R321/R322 na Operacional: o botão Limpar filtros no lugar do "Mostrando:", `--colunas` no quadro, o CSS que reparte as colunas no desktop (sem rolar para o lado) e a barra que quebra a linha; e o pré-texto do chat numa linha só',
+     [/aria-label="Limpar filtros"/.test(op103), /"--colunas": colunas\.length/.test(op103), /className="trilho-x quebra-no-desktop"/.test(op103),
+      /grid-template-columns: repeat\(var\(--colunas, 5\), minmax\(0, 1fr\)\);/.test(css103), /\.trilho-x\.quebra-no-desktop \{ flex-wrap: wrap; overflow-x: visible; \}/.test(css103),
+      /\.editor-rico-area\[data-vazio="1"\]::before \{[\s\S]{0,700}white-space: nowrap; overflow: hidden; text-overflow: ellipsis;/.test(css103),
+      /Escreva para todos… \(# atividade\)/.test(ler103('src/features/home/ChatDeMencoes.tsx'))],
+     [true, true, true, true, true, true, true]);
+
+  // ── os documentos (regra 7) ───────────────────────────────────────────
+  const prod103 = ler103('docs/PRODUTO.md');
+  eq('v1.0.3 (regra 7): R306–R322 existem com a frase do Davi; o Vinicius é Gestor na tabela; VERSOES e ESTADO falam da 1.0.3 e das três migrations; a lista única registrou o que fechou; os módulos listam as regras; o diário tem U158–U161',
+     [Array.from({ length: 17 }, (_, i) => 'R' + (306 + i)).filter((r) => !new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod103)),
+      /\| Vinicius \| \*\*Gestor\*\*/.test(prod103), /^## v1\.0\.3 — 2026-09-23/m.test(ler103('docs/VERSOES.md')),
+      /U158, U159 e U160/.test(ler103('docs/ESTADO_ATUAL.md')), /## 5\. O que fechou em 23\/09\/2026/.test(ler103('docs/DECISOES_PENDENTES.md')),
+      /^\| R306 \|/m.test(ler103('docs/requirements/comercial.md')) && /^\| R322 \|/m.test(ler103('docs/requirements/paineis.md')) && /^\| R313 \|/m.test(ler103('docs/requirements/campo.md')),
+      ['U158', 'U159', 'U160', 'U161'].filter((u) => !new RegExp('^## ' + u + ' — ', 'm').test(ler103('docs/PLANO_UNIFICACAO.md')))],
+     [[], true, true, true, true, true, []]);
 }
 
 

@@ -1049,6 +1049,20 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   overflow-x: auto;
   overflow-y: hidden;
 }
+/* R322 (Davi, 23/09/2026): "Na tela Operacional Técnica, ajuste o conteúdo ao
+   tamanho da tela. Não quero scroll Horizontal." No desktop as colunas DIVIDEM
+   a largura — a tela diz quantas são em `--colunas` — e nada rola para o lado;
+   o trilho horizontal fica só no celular (acima). */
+@media (min-width: 1024px) {
+  .kanban-op {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(var(--colunas, 5), minmax(0, 1fr));
+    gap: 8px;
+    overflow-x: hidden;
+  }
+  /* a barra de filtros da Operacional também não rola: quebra a linha */
+  .trilho-x.quebra-no-desktop { flex-wrap: wrap; overflow-x: visible; }
+}
 .kanban-op-coluna {
   display: flex;
   flex-direction: column;
@@ -1289,7 +1303,12 @@ html[data-theme="light"] .acao-do-card {
 .editor-rico-area[data-vazio="1"]::before {
   content: attr(data-placeholder); position: absolute; left: 0; top: 0; right: 0;
   padding: inherit; box-sizing: border-box; margin-top: 3px;
-  color: var(--text-muted); pointer-events: none; white-space: pre-wrap;
+  color: var(--text-muted); pointer-events: none;
+  /* 23/09/2026 (Davi: "a caixa de texto do chat ainda está com o pré-texto
+     desalinhado"): o convite NUNCA quebra a linha — na caixa baixa do chat a
+     segunda linha caía fora da caixa e parecia torta. Uma linha, reticências. */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: inherit;
 }
 /* R245: a caixa do chat rola sem mostrar a barra — 120px de teto continuam
    valendo, só a barra some (Davi: "remova a barra de scroll da caixa de texto") */

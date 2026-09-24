@@ -15,6 +15,10 @@
   `src/features/projeto/` e `projeto.$id.tsx` (tela legada, Q13).
 - Nova Visita Técnica numa tela só (R194) em `gerencial.nova.tsx`; prospecção como aba (R38).
 
+- Ticket médio (R306, U158): `visitas_tecnicas.valor_anual_recorrente` e `valor_implantacao` gravados
+  pela tela de pagamento ao gerar a proposta (`src/features/comercial/ticket.ts`, função pura);
+  quinto KPI do dashboard em duas colunas (`CincoKpis`), média só das enviadas com valor.
+
 ## Padrões a reusar
 
 - `proposta_enviada_em` vence `status`: toda etapa do funil é derivada por função pura.
@@ -30,7 +34,7 @@
 <!-- cobertura:inicio -->
 <!-- Gerado por `node scripts/cobertura-regras.cjs` — não edite à mão. -->
 
-Regras do módulo: 18 · com asserção nominal no verificador: 17 · sem menção nominal: 1.
+Regras do módulo: 19 · com asserção nominal no verificador: 18 · sem menção nominal: 1.
 
 | Regra | Verificado por |
 |---|---|
@@ -52,11 +56,12 @@ Regras do módulo: 18 · com asserção nominal no verificador: 17 · sem menç�
 | produto:R260 | 2 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R279 | 2 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R302 | 21 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R306 | 9 menções nominalis em `scripts/verificar-logica.cjs` |
 <!-- cobertura:fim -->
 
 ## Pendências
 
-- Ticket médio (D1): qual valor é o ticket e quando gravá-lo.
+- Rodar a migration U158 (as duas colunas do ticket) — até lá a tela grava e o banco recusa (só o console avisa).
 - Histórico de propostas passado (M4): entra por migration quando o Davi mandar os dados.
 - Telas legadas `/projeto/$id`, `/visita/$id/pendente`, `/gerencial/visita/$id/editar` (D7 / Q13).
 - O que depende do Davi está consolidado em `../DECISOES_PENDENTES.md`; a dívida técnica, em

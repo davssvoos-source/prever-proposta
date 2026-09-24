@@ -25,6 +25,7 @@ import {
   valorPortariaRemota,
 } from "@/features/comercial/regrasComerciais";
 import { computeLinhasMensais, totalMensalServicos, temSobConsulta } from "@/features/comercial/mensalidadesProjeto";
+import { valoresDaProposta } from "@/features/comercial/ticket";
 import {
   gerarPropostaDocx,
   tituloPadraoProposta,
@@ -299,6 +300,18 @@ function PagamentoPage() {
         parcelasCompra: formaEscolhida === "compra_vista" ? parcelasCompra : 1,
         consolidarValores: formaEscolhida.startsWith("comodato_") ? consolidarValores : false,
       });
+      // R306 (U158): a proposta GRAVA os dois valores no momento em que nasce —
+      // a mesma conta do PDF, reunida em valoresDaProposta. Se a coluna ainda
+      // não existe (regra 5: a migration roda depois do push), o PDF já saiu e
+      // o aviso fica no console, não na cara de quem gera.
+      const valores = valoresDaProposta({
+        forma: formaEscolhida, totalServicosMensais, locacaoMensal, comodato, implantacaoTotal, compraTotal,
+      });
+      const { error: errValores } = await supabase
+        .from("visitas_tecnicas")
+        .update({ valor_anual_recorrente: valores.anualRecorrente, valor_implantacao: valores.implantacao } as any)
+        .eq("id", id);
+      if (errValores) console.error("[proposta] valores do ticket não gravados (U158 rodou?):", errValores.message);
       toast.success("Proposta gerada — o download foi iniciado.");
       setModalAberto(false);
     } catch (e: any) {

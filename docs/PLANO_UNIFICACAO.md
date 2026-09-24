@@ -1,7 +1,7 @@
 # Unificação Prever — Plano da Temporada 2
 
 <!-- sumario:inicio -->
-> **Sumário** — 181 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 185 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Decisões já tomadas](#2-decisões-já-tomadas)
@@ -184,6 +184,10 @@
 - [U155 — o operacional lê a base de clientes inteira (R305)](#u155-o-operacional-lê-a-base-de-clientes-inteira-r305)
 - [U156 — o Pattern Harness aplicado: a cápsula, os módulos e os gates (22/09/2026)](#u156-o-pattern-harness-aplicado-a-cápsula-os-módulos-e-os-gates-22092026)
 - [U157 — o harness fala a língua da stack: Node no Windows e no Linux, CI no GitHub (23/09/2026)](#u157-o-harness-fala-a-língua-da-stack-node-no-windows-e-no-linux-ci-no-github-23092026)
+- [U158 — v1.0.3 abre: o ticket médio da proposta (R306)](#u158-v103-abre-o-ticket-médio-da-proposta-r306)
+- [U159 — os avisos automáticos vão só para o administrador (R312)](#u159-os-avisos-automáticos-vão-só-para-o-administrador-r312)
+- [U160 — todos leem todos os clientes, e os cinco pedidos de tela (R310, R311, R318–R322)](#u160-todos-leem-todos-os-clientes-e-os-cinco-pedidos-de-tela-r310-r311-r318r322)
+- [U161 — os fluxos do técnico e quem participa da atividade (R307, R308, R313–R317)](#u161-os-fluxos-do-técnico-e-quem-participa-da-atividade-r307-r308-r313r317)
 <!-- sumario:fim -->
 
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
@@ -15054,3 +15058,126 @@ os mesmos seis verbos e os mesmos nove gates, com os mesmos nomes — só os `ru
 chamar `sh` e `py3.sh`. A cápsula, os módulos e os ADRs 0001–0003 continuam valendo.
 
 Verificador: 3.599 asserções, 0 falharam.
+
+## U158 — v1.0.3 abre: o ticket médio da proposta (R306)
+
+**O pedido.** Davi, 23/09/2026, respondendo à D1 da lista única (*"Atualização:
+versão 1.0.3"*): *"o valor anual recorrente, ou seja, quanto o cliente paga por
+ano, e também o valor da implantação, que é o investimento inicial de
+equipamentos e instalação, guardados separadamente."*
+
+A R302 tinha deixado o quinto KPI de fora porque o valor da proposta nascia em
+`gerarProposta.ts` e morria no PDF. A conta que a tela de pagamento já fazia para
+montar o documento foi reunida numa função pura (`src/features/comercial/ticket.ts`:
+`valoresDaProposta`, por forma de pagamento — locação, compra, comodato), a tela
+passou a gravar os dois números na visita no momento em que gera a proposta
+(migration **U158**: `valor_anual_recorrente`, `valor_implantacao`, `numeric(14,2)`,
+CHECK de não-negativo), o painel lê as duas colunas e o dashboard ganhou o quinto
+tile — em duas colunas, com a média anual em cima e a implantação e a amostra no
+subtítulo. A grade foi de 2×2 para 3×2 (`LARGURA_KPIS` 244 → 366); o limiar em que
+funil e KPIs empilham segue a constante. **Nenhuma proposta antiga ganhou valor:** as
+anteriores ficam NULL e fora da média, e o tile diz quantas entram — inventar o
+número seria fingir dado. Regra 5 respeitada: se a U158 ainda não rodou, o PDF sai
+e a gravação avisa no console, não na cara de quem gera.
+
+## U159 — os avisos automáticos vão só para o administrador (R312)
+
+Davi, 23/09/2026, à D6: *"Somente o administrador."* A P73 registrava que as listas
+de destinatários da U7 e da U13 enumeravam `admin/comercial/sac` à mão e que o
+GESTOR (R304) nunca entrou nelas. A decisão fechou a pendência pelo outro lado: a
+migration **U159** recria `notify_chamado`, `alertas_chamados` e
+`alertas_chamado_faturamento` com os MESMOS corpos e `p.cargo = 'admin'` nas quatro
+listas. O responsável e quem abriu continuam avisados do que é deles. O pré-voo mede
+quantas pessoas recebiam e quantas passam a receber; a conferência lê o corpo das
+funções e o gatilho.
+
+## U160 — todos leem todos os clientes, e os cinco pedidos de tela (R310, R311, R318–R322)
+
+**Clientes (R319).** Davi: *"Para o Nicholas, Erik, enfim para alguns usuários não
+aparece todos os clientes para adicionar em uma atividade, todos os clientes devem
+ser possível visualizar ou adicionar em uma atividade por todos."* A U155 tinha
+somado o operacional à régua de leitura; a decisão tira a régua: a migration **U160**
+faz `pode_ler_cliente` valer para qualquer pessoa autenticada (as três policies de
+SELECT da U155 continuam apontando para ela), e a ESCRITA fica onde estava. Adicionar
+cliente a uma atividade grava em `chamado_locais`, cuja policy é `pode_editar_chamado`
+— nunca dependeu do cliente.
+
+**Convite aceito (R310)** — `reenviarConvite` deixa de responder com erro quando o
+GoTrue diz que a pessoa já existe: grava `status = aceito`, devolve `aceito: true`, e
+a tela avisa; a lista de pendentes se limpa (P75 fecha). **Texto da cobrança (R311)** —
+`cobranca-texto.ts` monta a frase do Davi a partir do tipo e das peças instaladas;
+`tipo_servico` nasce em `abrirChamado` antes do `...input`, para a escolha explícita
+vencer (Q8 fecha). **Responder a um comentário (R318)** — botão por comentário em
+`DetalheInterno.tsx`: menciona o autor, arma `responde_a` (a ligação da R240), chip
+"Respondendo a" com X, foco na caixa pelo mesmo contador da R249, e "em resposta a"
+no feed. **A faixa de validação saiu da Início (R320)** — a Fila de decisão da
+Gestão Técnica já contava o mesmo recorte. **Limpar filtros (R321)** — o "Mostrando:
+… limpar" saiu da Início e da Operacional; entrou o quadrado 42/12 ao lado do último
+filtro, aceso só com o que limpar, preservando a ordenação. **Operacional sem scroll
+horizontal (R322)** — `.kanban-op` reparte `--colunas` no desktop e a barra quebra a
+linha; o trilho fica só no celular. E o pré-texto do chat (R258) passou a uma linha
+só com reticências: numa caixa de 9:16 o convite de duas linhas caía fora da caixa.
+
+## U161 — os fluxos do técnico e quem participa da atividade (R307, R308, R313–R317)
+
+**O pedido.** O Davi ditou, em 23/09/2026, os três fluxos de campo — corretiva,
+preventiva, implantação — campo a campo, e quem preenche o quê; ditou que o apoio
+pode ser de qualquer cargo e como quem não é técnico vê a atividade; e que atividade
+com técnico é sempre agendada. Pediu a ordem: *"CONSIDERE AS ALTERAÇÕES QUE SE FAÇAM
+NECESSÁRIAS A PARTIR DO ITEM 3.1 ANTES DE EXECUTAR O 2.2."*
+
+### O que já existia, e o que faltava
+
+Quase tudo existia em pedaços: o bloco na abertura (`cliente_sistema_id`, R126), as
+fotos antes/depois, a assinatura, o roteiro por bloco com modelos por tipo
+(`chamado_checklist_templates`, R292), o painel do patrimônio por arrasto (R237), a
+chegada (`iniciada_em`) e a saída (`finalizada_em`). O que faltava era a REGRA que
+diz o que cada fluxo mostra e exige — e ela morava em `if`s espalhados pela tela.
+Nasceu `src/features/atividades/fluxos-de-campo.ts`: `FLUXOS_DE_CAMPO` (rótulo da
+descrição, problema/solução, roteiro, fotos, equipamentos e o alvo do arrasto,
+assinatura, bloco na abertura), `blocoObrigatorioNaAbertura`, `tempoDeTrabalho`,
+`comOBlocoDaAtividadePrimeiro` — e, para a R307/R308, `exigeAgenda`,
+`layoutDaAtividade`, `souParticipante`. A tela de campo lê tudo daí.
+
+### As decisões que não estavam ditas
+
+- **Quem vê o formato interno da atividade de campo** (R307): o Davi falou do
+  participante de cargo não técnico. Quem GERE (admin, gestor, SAC, comercial)
+  continua na tela de campo — é nela que estão fotos, assinatura e cobrança, e é
+  isso que eles conferem. Hoje o "outro cargo" é o operacional. Fica dito na regra
+  para ele corrigir se quiser outra coisa.
+- **Bloco obrigatório na corretiva SÓ quando o cliente tem blocos** (R313): exigir
+  sem ter o que escolher travaria o SAC; sem bloco cadastrado a lista do técnico vem
+  vazia e a ficha do cliente é o lugar de cadastrar.
+- **A implantação conclui sem assinatura e sem diagnóstico/solução** (R316): o Davi
+  listou os campos dela e nenhum dos três está lá; obrigar seria inventar.
+- **Chegada e saída são `iniciada_em` e `finalizada_em`** (R313): já existiam, já
+  eram automáticos; só faltava a ficha mostrá-los e o tempo entre os dois.
+- **O apoio de qualquer cargo** (R307): o seletor de apoio do chamado de campo passou
+  a ler `usePessoas()`; o responsável continua vindo de `useTecnicos()` (R241). A
+  dupla continua sendo a sugestão automática (R75).
+- **A preventiva** (R315): o mecanismo por bloco/tipo já existia; o CONTEÚDO por tipo
+  o Davi disse que ainda vai ditar (*"Deveremos criar as regras ainda"*) — M1b na
+  lista única. Até lá valem os modelos de agosto.
+
+### O que a verificação pegou
+
+- Um comentário JSX dentro de um ternário (`{visao === "kanban" ? ( {/* … */} <div…`)
+  — dois filhos onde só cabe um; o `tsc` acusou antes do navegador.
+- `X` importado duas vezes em `DetalheInterno.tsx` (o ícone já existia) — `tsc`.
+- Sete pinos antigos descreviam o que o Davi mandou tirar ou mudar, e foram
+  reapontados COM o motivo ao lado: o "Mostrando:" da Início e da Operacional
+  (R321), a faixa da R155 na Início (R320, dois pinos), o rótulo do equipamento
+  com o nº (R314), o `prazo_limite` do "+" sem `soAgenda` (R308), o objeto dos KPIs
+  sem os três campos do ticket (R306), a classe nova na barra da Operacional (R322)
+  e o censo do `is_gestor`, que ganhou uma ocorrência com a conferência da U160.
+- O pino da U156 acusou as 17 regras novas sem módulo antes de eu lembrar das
+  tabelas de `docs/requirements/` — é o que ele existe para fazer.
+
+### O que fica para a leva seguinte
+
+A tipografia (R309, Opção C): os 66 desvios da revisão de 15/09 numa entrega só,
+com as travas do verificador ajustadas junto — o Davi decidiu em 23/09; entra na
+v1.0.4. E o conteúdo dos checklists por tipo de bloco (M1b), que é dele.
+
+Verificador: 3.627 asserções, 0 falharam.

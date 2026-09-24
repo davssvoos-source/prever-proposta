@@ -1,7 +1,7 @@
 # Operação de campo — chamados, fila e programação
 
 <!-- sumario:inicio -->
-> **Sumário** — 32 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 33 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [Para que serve este documento](#para-que-serve-este-documento)
 - [O ciclo de vida do chamado](#o-ciclo-de-vida-do-chamado)
@@ -35,6 +35,7 @@
 - [Referências](#referências)
 - [Plantão — a escala do plantão (R116, U86; seção da Gestão Técnica desde a R299)](#plantão-a-escala-do-plantão-r116-u86-seção-da-gestão-técnica-desde-a-r299)
 - [Registrar um atendimento de plantão (U87)](#registrar-um-atendimento-de-plantão-u87)
+- [Os três fluxos do técnico e quem participa (R307, R308, R313–R316 — 23/09/2026)](#os-três-fluxos-do-técnico-e-quem-participa-r307-r308-r313r316-23092026)
 <!-- sumario:fim -->
 
 > Manual Prever Proposta — segmento: operação de campo. Gerado em 2026-08-21 a
@@ -1611,3 +1612,21 @@ Não há **tela de listagem** nem **relatório mensal de plantão** — a lista 
 do painel mostra os últimos atendimentos, por recência. O vínculo com o chamado
 **não aparece** na página do chamado. E **apagar não deixa rastro**: o
 atendimento some. Está registrado em `docs/PENDENCIAS_TECNICAS.md` (P53, P54).
+
+## Os três fluxos do técnico e quem participa (R307, R308, R313–R316 — 23/09/2026)
+
+O Davi ditou os campos de cada fluxo de campo. A tela do técnico (no celular) lê
+tudo de `src/features/atividades/fluxos-de-campo.ts`:
+
+| Fluxo | O que a tela tem | Quem preenche |
+|---|---|---|
+| **Corretiva** (R313) | problema e solução, foto antes e depois, equipamentos removidos (por bloco, o da manutenção primeiro) e inseridos (os do cliente sem bloco), assinatura, chegada/saída/tempo | quem abre indica o **bloco** e o problema; o técnico faz o resto; chegada e saída são automáticas (Iniciar / concluir) |
+| **Preventiva** (R315) | o roteiro de verificação, um grupo por bloco do cliente, com o checklist do tipo do bloco; fotos; assinatura | o roteiro nasce na abertura (modelos em `chamado_checklist_templates` — o conteúdo por tipo o Davi ainda vai ditar) |
+| **Implantação** (R316) | observação, o bloco a instalar (existente ou criado na abertura), os equipamentos sem bloco movidos para ele (único alvo), a foto da instalação; sem assinatura obrigatória | um bloco por atividade; o mesmo bloco pode ter várias atividades (cabeamento, configuração, backup…) |
+
+- Equipamento na tela é sempre **Categoria · Marca · Modelo** (R314); o número fica no `title`.
+- O **apoio pode ser de qualquer cargo** (R307). Quem não é técnico nem gestor abre a
+  atividade de campo no formato interno do tipo dela: Problema e Solução são os mesmos
+  campos, os comentários são os mesmos; fotos, equipamentos, chegada/saída e assinatura
+  ficam na tela do técnico.
+- **Com um técnico na atividade, ela é sempre agendada** — a opção Prazo some (R308).

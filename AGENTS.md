@@ -19,8 +19,8 @@ Supabase (Postgres com RLS), publicado pela Lovable a cada push em `main` e inst
 num Windows Server da empresa. Quem dita as regras é o **Davi**, em português; o gestor
 da equipe técnica de campo é o **Vinicius**. Todo o repositório é em **português**.
 
-**Estado (resumo)**: v1.0.2 em uso oficial desde 15/09/2026; 305 regras de produto,
-156 entregas no diário, mais de 3.500 asserções no verificador, `tsc` em zero. O retrato vivo é
+**Estado (resumo)**: em uso oficial desde 15/09/2026 (v1.0.3 em 23/09); 322 regras de produto,
+161 entregas no diário, mais de 3.600 asserções no verificador, `tsc` em zero. O retrato vivo é
 `docs/ESTADO_ATUAL.md`; o que espera o Davi, `docs/DECISOES_PENDENTES.md`.
 
 ## Protocolo de leitura (economia de contexto)

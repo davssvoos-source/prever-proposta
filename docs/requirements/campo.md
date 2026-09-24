@@ -94,6 +94,10 @@ depois nesta tabela; a cobertura de cada uma está em `../state/campo.md`.
 | R288 | Técnico indisponível RECUSA o agendamento, e o deslocamento ocupa a agenda |
 | R292 | A preventiva de campo é UMA atividade com o roteiro de TODOS os blocos |
 | R297 | Na abertura do chamado técnico pergunta-se QUEM, não QUAL EQUIPE — e o apoio vem da LIDERANÇA |
+| R313 | A manutenção corretiva de campo: os campos, e quem preenche cada um |
+| R314 | Equipamento na tela: só Tipo de Categoria, Modelo e Marca — a estrutura do QAP |
+| R315 | A manutenção preventiva de campo tem um checklist POR BLOCO, e cada tipo de bloco tem o seu |
+| R316 | A implantação: observação, o bloco a instalar, os equipamentos sem bloco movidos para ele, a foto da instalação — um bloco por atividade, quantas atividades o bloco pedir |
 
 ## Fora de escopo
 

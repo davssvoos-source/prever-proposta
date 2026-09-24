@@ -15,6 +15,11 @@
 - Calendário em `calendario.tsx`: mensal e semanal, barra do sobreaviso, arrasto entre dias (R152), feriados (R115).
 - Barra de ferramentas na régua: `pilulaDaBarra` 40/raio 11 e `botaoDaBarra` 42/raio 12 em `src/lib/ui.ts`.
 
+- Limpar filtros (R321, U160): botão 42/12 ao lado do último filtro na Início (`limparFiltros`,
+  `temFiltroAtivo` em `dashboard.tsx`) e na Operacional (limpa o recorte de KPI); o "Mostrando:" saiu.
+- A faixa de validação saiu da Início (R320): a Fila de decisão da Gestão Técnica é quem conta.
+- Operacional sem scroll horizontal (R322): `.kanban-op` reparte `--colunas` no desktop; a barra quebra.
+
 ## Padrões a reusar
 
 - KPI e lista saem da mesma função (`chamadosDoKpi`, `filaDeRetornos`); nunca conte na tela.
@@ -31,7 +36,7 @@
 <!-- cobertura:inicio -->
 <!-- Gerado por `node scripts/cobertura-regras.cjs` — não edite à mão. -->
 
-Regras do módulo: 63 · com asserção nominal no verificador: 56 · sem menção nominal: 7.
+Regras do módulo: 66 · com asserção nominal no verificador: 59 · sem menção nominal: 7.
 
 | Regra | Verificado por |
 |---|---|
@@ -94,10 +99,13 @@ Regras do módulo: 63 · com asserção nominal no verificador: 56 · sem menç�
 | produto:R261 | 11 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R289 | 1 menção nominal em `scripts/verificar-logica.cjs` |
 | produto:R295 | 13 menções nominalis em `scripts/verificar-logica.cjs` |
-| produto:R296 | 13 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R296 | 14 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R299 | 38 menções nominalis em `scripts/verificar-logica.cjs` |
-| produto:R300 | 10 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R300 | 11 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R301 | 25 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R320 | 5 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R321 | 8 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R322 | 6 menções nominalis em `scripts/verificar-logica.cjs` |
 <!-- cobertura:fim -->
 
 ## Pendências

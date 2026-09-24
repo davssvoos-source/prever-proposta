@@ -47,7 +47,7 @@ function hojeISO(): string {
 
 export function CampoQuando({
   prazo, agendado, aoMudar, idBase = "quando", desabilitado = false, compacto = false,
-  estiloEntrada, nota,
+  estiloEntrada, nota, soAgenda = false,
 }: {
   /** aaaa-mm-dd, ou "" */
   prazo: string;
@@ -61,6 +61,8 @@ export function CampoQuando({
   estiloEntrada?: CSSProperties;
   /** um aviso extra da tela — ex.: "Re-agendado 2x" */
   nota?: string | null;
+  /** R308: com técnico participando só há agenda — a opção Prazo some */
+  soAgenda?: boolean;
 }) {
   const { isLight } = useTheme();
   const c = cinzas(isLight);
@@ -86,7 +88,7 @@ export function CampoQuando({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {OPCOES.map((o) => (
+        {OPCOES.filter((o) => !soAgenda || o.modo === "agenda").map((o) => (
           <button
             key={o.modo}
             type="button"
@@ -136,7 +138,7 @@ export function CampoQuando({
       )}
       {!escolhida && (
         <span style={{ fontFamily: FONT, fontSize: compacto ? 10.5 : 11, color: c.textoSecundario, lineHeight: 1.4 }}>
-          Sem data{nota ? ` · ${nota}` : ""}
+          Sem data{nota ? ` · ${nota}` : ""}{soAgenda ? " · com técnico na atividade, só agenda" : ""}
         </span>
       )}
     </div>

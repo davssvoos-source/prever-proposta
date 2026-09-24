@@ -11,6 +11,10 @@
   `fechamentos.tsx` e `fechamentos.$id.tsx` (montar fechamento, R119).
 - Lógica em `src/features/financeiro/` e `src/features/contratos/`.
 
+- Texto padrão da cobrança e tipo de serviço padrão (R311, U160): `src/features/chamados/cobranca-texto.ts`
+  (`textoPadraoDaCobranca`, `tipoDeServicoPadrao`); a descrição do lançamento nasce preenchida e editável;
+  `tipo_servico` nasce em `abrirChamado`.
+
 ## Padrões a reusar
 
 - Valor só aparece atrás de `pode_ver_financeiro()`; a tela não decide cargo.
@@ -25,7 +29,7 @@
 <!-- cobertura:inicio -->
 <!-- Gerado por `node scripts/cobertura-regras.cjs` — não edite à mão. -->
 
-Regras do módulo: 10 · com asserção nominal no verificador: 10 · sem menção nominal: 0.
+Regras do módulo: 11 · com asserção nominal no verificador: 11 · sem menção nominal: 0.
 
 | Regra | Verificado por |
 |---|---|
@@ -39,10 +43,11 @@ Regras do módulo: 10 · com asserção nominal no verificador: 10 · sem menç�
 | produto:R161 | 9 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R290 | 6 menções nominalis em `scripts/verificar-logica.cjs` |
 | produto:R291 | 3 menções nominalis em `scripts/verificar-logica.cjs` |
+| produto:R311 | 5 menções nominalis em `scripts/verificar-logica.cjs` |
 <!-- cobertura:fim -->
 
 ## Pendências
 
-- Texto padrão da cobrança e tipo de serviço padrão (D5 / Q8 em `../DECISOES_PENDENTES.md`) — com o Vinicius.
+- Nada pendente do Davi neste módulo.
 - O que depende do Davi está consolidado em `../DECISOES_PENDENTES.md`; a dívida técnica, em
   `../PENDENCIAS_TECNICAS.md`.
